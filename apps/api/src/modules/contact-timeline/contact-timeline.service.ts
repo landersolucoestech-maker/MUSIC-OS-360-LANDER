@@ -8,13 +8,13 @@ export class ContactTimelineService {
 
   constructor(private readonly contactsService: ContactsService) {}
 
-  list(tenantId: string, contactId: string) {
-    this.contactsService.assertBelongsToTenant(tenantId, contactId);
+  async list(tenantId: string, contactId: string) {
+    await this.contactsService.assertBelongsToTenant(tenantId, contactId);
     return this.forContact(tenantId, contactId);
   }
 
-  create(tenantId: string, contactId: string, payload: Record<string, unknown>) {
-    this.contactsService.assertBelongsToTenant(tenantId, contactId);
+  async create(tenantId: string, contactId: string, payload: Record<string, unknown>) {
+    await this.contactsService.assertBelongsToTenant(tenantId, contactId);
     const now = new Date().toISOString();
     const event = { ...payload, id: randomUUID(), contactId, occurredAt: payload['occurredAt'] ?? now, createdAt: now };
     const current = this.forContact(tenantId, contactId);

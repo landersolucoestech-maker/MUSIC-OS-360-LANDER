@@ -72,6 +72,14 @@ const expectedRoutes: ExpectedRoute[] = [
   { controller: ClientsController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'client:create' },
   { controller: ClientsController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'client:update' },
   { controller: ClientsController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'client:delete' },
+  // Parte 80 — timeline, contratos vinculados e anexos (sub-rotas de clients).
+  { controller: ClientsController, methodName: 'getTimeline', httpMethod: RequestMethod.GET, path: ':id/timeline', role: 'viewer', permission: 'client:read' },
+  { controller: ClientsController, methodName: 'addTimelineEntry', httpMethod: RequestMethod.POST, path: ':id/timeline', role: 'editor', permission: 'client:update' },
+  { controller: ClientsController, methodName: 'getContracts', httpMethod: RequestMethod.GET, path: ':id/contracts', role: 'viewer', permission: 'client:read' },
+  { controller: ClientsController, methodName: 'listAttachments', httpMethod: RequestMethod.GET, path: ':id/attachments', role: 'viewer', permission: 'client:read' },
+  { controller: ClientsController, methodName: 'presignAttachment', httpMethod: RequestMethod.POST, path: ':id/attachments/presign', role: 'editor', permission: 'client:update' },
+  { controller: ClientsController, methodName: 'confirmAttachment', httpMethod: RequestMethod.POST, path: ':id/attachments', role: 'editor', permission: 'client:update' },
+  { controller: ClientsController, methodName: 'removeAttachment', httpMethod: RequestMethod.DELETE, path: ':id/attachments/:attachmentId', role: 'editor', permission: 'client:update' },
 
   { controller: ContactsController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'contact:read' },
   { controller: ContactsController, methodName: 'getById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'contact:read' },

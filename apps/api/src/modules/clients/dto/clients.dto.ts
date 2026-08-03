@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsEmail, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsEmail, MaxLength, IsInt, Min, IsNotEmpty } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 export class CreateClientDto {
@@ -30,4 +30,25 @@ export class QueryClientDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() category?: string;
+}
+
+const TIMELINE_TYPES = ['nota', 'ligacao', 'reuniao', 'email', 'whatsapp', 'outro'] as const;
+
+export class CreateClientTimelineEntryDto {
+  @ApiProperty({ enum: TIMELINE_TYPES }) @IsIn(TIMELINE_TYPES) type!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(2000) description!: string;
+}
+
+export class PresignClientAttachmentDto {
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) fileName!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() mimeType!: string;
+  @ApiProperty() @IsInt() @Min(1) sizeBytes!: number;
+}
+
+export class ConfirmClientAttachmentDto {
+  @ApiProperty() @IsString() @IsNotEmpty() storageKey!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) filename!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() mimeType!: string;
+  @ApiProperty() @IsInt() @Min(0) sizeBytes!: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() checksum?: string;
 }

@@ -1,0 +1,55 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { isApplicationMigration } from './migration-classification';
+
+/**
+ * fix-default-privileges-creator-role.migration.spec.ts  (Parte 80)
+ *
+ * Guarda permanente: 20260802000001_GrantMusicosAppOnAllTables (Parte 78)
+ * configurou `ALTER DEFAULT PRIVILEGES FOR ROLE musicos_migrator`, supondo
+ * que isso protegeria toda tabela tenant-scoped futura. Não protegia nada —
+ * confirmado ao vivo nesta Parte: `client_attachments` (criada pela migration
+ * imediatamente anterior, seguindo o padrão RLS + OWNER TO musicos_migrator)
+ * ficou sem NENHUM grant para musicos_app. Postgres aplica default privileges
+ * ao role que executa o CREATE TABLE (aqui, sempre `postgres`, confirmado via
+ * SELECT current_user), não ao owner final definido por um ALTER posterior.
+ */
+const migrationSrc = fs.readFileSync(
+  path.resolve(__dirname, 'migrations/20260803000002_FixDefaultPrivilegesCreatorRole.ts'),
+  'utf8',
+);
+
+describe('FixDefaultPrivilegesCreatorRole20260803000002', () => {
+  it('é classificada como APPLICATION — deve rodar via db:migrate:application', () => {
+    expect(isApplicationMigration('FixDefaultPrivilegesCreatorRole20260803000002')).toBe(true);
+  });
+
+  it('lê o role criador real via SELECT current_user, não hardcoda "musicos_migrator" no código executável', () => {
+    const codeOnly = migrationSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(codeOnly).toMatch(/SELECT current_user/);
+    expect(codeOnly).not.toMatch(/FOR ROLE musicos_migrator/);
+    expect(codeOnly).toMatch(/FOR ROLE "\$\{creatorRole\}"/);
+  });
+
+  it('concede SELECT/INSERT/UPDATE/DELETE em TABLES e USAGE/SELECT em SEQUENCES para o role criador real', () => {
+    expect(migrationSrc).toMatch(/ALTER DEFAULT PRIVILEGES FOR ROLE "\$\{creatorRole\}" IN SCHEMA public/);
+    expect(migrationSrc).toMatch(/GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO musicos_app/);
+    expect(migrationSrc).toMatch(/GRANT USAGE, SELECT ON SEQUENCES TO musicos_app/);
+  });
+
+  it('corrige retroativamente client_attachments (criada antes desta correção existir)', () => {
+    expect(migrationSrc).toMatch(/client_attachments/);
+    expect(migrationSrc).toMatch(/IF EXISTS \(SELECT 1 FROM pg_tables/);
+  });
+
+  it('down() reverte via REVOKE simétrico', () => {
+    const downBlock = migrationSrc.split('async down')[1];
+    expect(downBlock).toMatch(/REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES FROM musicos_app/);
+    expect(downBlock).toMatch(/REVOKE USAGE, SELECT ON SEQUENCES FROM musicos_app/);
+  });
+
+  it('está registrada no index.ts de migrations', () => {
+    const indexSrc = fs.readFileSync(path.resolve(__dirname, 'migrations/index.ts'), 'utf8');
+    expect(indexSrc).toMatch(/FixDefaultPrivilegesCreatorRole20260803000002/);
+  });
+});

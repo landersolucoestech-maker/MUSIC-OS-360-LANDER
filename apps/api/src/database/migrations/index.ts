@@ -151,6 +151,8 @@ import { RealtimeBroadcastAuthorization20260801000001 } from './20260801000001_R
 import { TenantZeroFormalization20260801000002 } from './20260801000002_TenantZeroFormalization';
 import { GrantMusicosAppOnAllTables20260802000001 } from './20260802000001_GrantMusicosAppOnAllTables';
 import { GrantMusicosAppAuthenticatedMembership20260802000002 } from './20260802000002_GrantMusicosAppAuthenticatedMembership';
+import { CreateClientAttachments20260803000001 } from './20260803000001_CreateClientAttachments';
+import { FixDefaultPrivilegesCreatorRole20260803000002 } from './20260803000002_FixDefaultPrivilegesCreatorRole';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -290,4 +292,6 @@ export const ALL_MIGRATIONS = [
   TenantZeroFormalization20260801000002,
   GrantMusicosAppOnAllTables20260802000001,
   GrantMusicosAppAuthenticatedMembership20260802000002,
+  CreateClientAttachments20260803000001,
+  FixDefaultPrivilegesCreatorRole20260803000002,
 ] as const;

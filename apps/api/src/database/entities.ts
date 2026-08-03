@@ -976,6 +976,28 @@ export class ClientEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
 }
 
+// ─── Client Attachments ─────────────────────────────────────────────────────────
+// Parte 80: metadata real de anexos (nunca o binário — apenas a chave do
+// objeto no Cloudflare R2 via StorageService). Distinta da coluna jsonb
+// `attachments` legada em ClientEntity (nunca populada por nenhum fluxo
+// real; mantida intocada, não é a fonte de verdade daqui em diante).
+@Entity('client_attachments')
+@Index(['tenant_id'])
+@Index(['tenant_id', 'client_id'])
+export class ClientAttachmentEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) client_id: string;
+  @Column({ type: 'varchar', length: 500 }) storage_key: string;
+  @Column({ type: 'varchar', length: 255 }) filename: string;
+  @Column({ type: 'varchar', length: 150 }) mime_type: string;
+  @Column({ type: 'bigint' }) size_bytes: number;
+  @Column({ type: 'varchar', length: 128, nullable: true }) checksum: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) uploaded_by: string | null;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+  @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
+}
+
 // ─── Leads ────────────────────────────────────────────────────────────────────
 @Entity('leads')
 @Index(['tenant_id'])
@@ -3166,6 +3188,7 @@ export const ALL_ENTITIES = [
   TransactionEntity,
   InvoiceEntity,
   ClientEntity,
+  ClientAttachmentEntity,
   LeadEntity,
   LeadInteractionEntity,
   CampaignEntity,

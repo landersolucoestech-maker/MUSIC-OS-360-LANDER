@@ -12,13 +12,13 @@ export class ContactAttachmentsService {
 
   constructor(private readonly contactsService: ContactsService) {}
 
-  list(tenantId: string, contactId: string) {
-    this.contactsService.assertBelongsToTenant(tenantId, contactId);
+  async list(tenantId: string, contactId: string) {
+    await this.contactsService.assertBelongsToTenant(tenantId, contactId);
     return this.forContact(tenantId, contactId);
   }
 
-  create(tenantId: string, contactId: string, payload: Record<string, unknown>) {
-    this.contactsService.assertBelongsToTenant(tenantId, contactId);
+  async create(tenantId: string, contactId: string, payload: Record<string, unknown>) {
+    await this.contactsService.assertBelongsToTenant(tenantId, contactId);
     this.validate(payload);
     const attachment = { ...payload, id: randomUUID(), contactId, createdAt: new Date().toISOString() };
     const current = this.forContact(tenantId, contactId);

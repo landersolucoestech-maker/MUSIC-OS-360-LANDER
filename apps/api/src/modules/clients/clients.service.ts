@@ -1,19 +1,31 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Inject, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
+import { randomUUID } from 'node:crypto';
 import { DATA_SOURCE } from '../../database/database.module';
-import { ClientEntity } from '../../database/entities';
+import { ClientEntity, ClientAttachmentEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { StorageService, type UploadCategory } from '../../storage/storage.service';
 import type { CreateClientDto, UpdateClientDto, QueryClientDto } from './dto/clients.dto';
+
+const TIMELINE_ENTITY_TYPE = 'client';
+const ATTACHMENT_CATEGORY: UploadCategory = 'documents';
 
 @Injectable()
 export class ClientsService {
   private readonly repo: Repository<ClientEntity> | null = null;
+  private readonly attachmentsRepo: Repository<ClientAttachmentEntity> | null = null;
 
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly enc: EncryptionService,
+    @Optional() private readonly activityLogs?: ActivityLogsService,
+    @Optional() private readonly storage?: StorageService,
   ) {
-    if (ds) this.repo = ds.getRepository(ClientEntity);
+    if (ds) {
+      this.repo = ds.getRepository(ClientEntity);
+      this.attachmentsRepo = ds.getRepository(ClientAttachmentEntity);
+    }
   }
 
   private mapClient(c: ClientEntity) {
@@ -76,6 +88,7 @@ export class ClientsService {
       updated_by:         userId,
     } as Partial<ClientEntity>);
     const saved = await this.repo!.save(entity as ClientEntity);
+    await this.recordActivity(tenantId, userId, saved.id, 'created', `Cliente "${saved.nome}" criado`, {});
     return this.mapClient(saved as ClientEntity);
   }
 
@@ -91,12 +104,169 @@ export class ClientsService {
     if (phone    !== undefined) updates['telefone_encrypted']  = this.enc.encryptNullable(phone as string | null);
     if (document !== undefined) updates['cpf_cnpj_encrypted'] = this.enc.encryptNullable(document as string | null);
     await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    await this.recordActivity(tenantId, userId, id, 'updated', 'Cliente atualizado', {
+      fields: Object.keys(updates).filter((k) => k !== 'updated_at' && k !== 'updated_by'),
+    });
     return this.findById(tenantId, id);
   }
 
-  async remove(tenantId: string, id: string) {
+  async remove(tenantId: string, id: string, userId?: string) {
     await this.findById(tenantId, id);
     await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+    if (userId) await this.recordActivity(tenantId, userId, id, 'removed', 'Cliente removido', {});
+    return { deleted: true };
+  }
+
+  // ── Timeline (Parte 80) ──────────────────────────────────────────────────────
+  // Reaproveita activity_logs (real, tenant-scoped, já usado por LeadsService
+  // para o mesmo propósito) em vez de criar uma tabela paralela — evita
+  // duplicar o mesmo tipo de evento em duas fontes sem correlação.
+
+  async getTimeline(tenantId: string, id: string, limit = 50) {
+    await this.findById(tenantId, id);
+    if (!this.activityLogs) return [];
+    return this.activityLogs.list(tenantId, { entityType: TIMELINE_ENTITY_TYPE, entityId: id, limit });
+  }
+
+  /** Entrada manual de timeline (nota, ligação, reunião, etc). Cria/edição/
+   * remoção do cliente já registram eventos automaticamente via recordActivity. */
+  async addTimelineEntry(
+    tenantId: string,
+    userId: string,
+    id: string,
+    input: { type: string; description: string },
+  ) {
+    await this.findById(tenantId, id);
+    if (!this.activityLogs) throw new ServiceUnavailableException('Timeline indisponível');
+    return this.activityLogs.create(tenantId, userId, {
+      entity_type: TIMELINE_ENTITY_TYPE,
+      entity_id: id,
+      action: input.type,
+      description: input.description,
+      metadata: {},
+    });
+  }
+
+  private async recordActivity(
+    tenantId: string,
+    userId: string,
+    clientId: string,
+    action: string,
+    description: string,
+    metadata: Record<string, unknown>,
+  ) {
+    if (!this.activityLogs) return;
+    try {
+      await this.activityLogs.create(tenantId, userId, {
+        entity_type: TIMELINE_ENTITY_TYPE,
+        entity_id: clientId,
+        action,
+        description,
+        metadata,
+      });
+    } catch {
+      // Timeline é auxiliar — falha ao registrar não pode derrubar a operação
+      // real do cliente (mesmo padrão de LeadsService.recordActivity).
+    }
+  }
+
+  // ── Contratos vinculados (Parte 80) ──────────────────────────────────────────
+  // Reaproveita a relação física já existente (contracts.cliente_id) — sem
+  // tabela de junção nova.
+
+  async getContracts(tenantId: string, id: string) {
+    await this.findById(tenantId, id);
+    return this.repo!.manager.query(
+      `SELECT id, titulo, tipo, status, valor, data_inicio, data_fim, created_at
+         FROM contracts
+        WHERE tenant_id = $1 AND cliente_id = $2 AND deleted_at IS NULL
+        ORDER BY created_at DESC`,
+      [tenantId, id],
+    );
+  }
+
+  // ── Anexos (Parte 80) ─────────────────────────────────────────────────────────
+  // Metadata real em client_attachments; binário só no R2 (StorageService).
+  // Sem R2 configurado, presign() falha explicitamente (503 R2_NOT_CONFIGURED)
+  // em vez de fabricar sucesso — ver StorageService.getClient().
+
+  async listAttachments(tenantId: string, id: string) {
+    await this.findById(tenantId, id);
+    const rows = await this.attachmentsRepo!
+      .createQueryBuilder('a')
+      .where('a.tenant_id = :tenantId AND a.client_id = :id AND a.deleted_at IS NULL', { tenantId, id })
+      .orderBy('a.created_at', 'DESC')
+      .getMany();
+    return rows;
+  }
+
+  async presignAttachmentUpload(
+    tenantId: string,
+    userId: string,
+    id: string,
+    input: { fileName: string; mimeType: string; sizeBytes: number },
+  ) {
+    await this.findById(tenantId, id);
+    if (!this.storage) throw new ServiceUnavailableException('Storage indisponível');
+    return this.storage.createPresignedUpload({
+      tenantId,
+      userId,
+      category: ATTACHMENT_CATEGORY,
+      fileName: input.fileName,
+      mimeType: input.mimeType,
+      sizeBytes: input.sizeBytes,
+      entity: TIMELINE_ENTITY_TYPE,
+      entityId: id,
+    });
+  }
+
+  /** Confirma que o upload direto ao R2 (via URL pré-assinada) terminou e
+   * persiste a metadata. Nunca recebe nem grava o binário. */
+  async confirmAttachmentUpload(
+    tenantId: string,
+    userId: string,
+    id: string,
+    input: { storageKey: string; filename: string; mimeType: string; sizeBytes: number; checksum?: string },
+  ) {
+    await this.findById(tenantId, id);
+    if (!input.storageKey.startsWith(`tenants/${tenantId}/`)) {
+      throw new BadRequestException('storageKey não pertence a este tenant');
+    }
+    const entity = this.attachmentsRepo!.create({
+      id: randomUUID(),
+      tenant_id: tenantId,
+      client_id: id,
+      storage_key: input.storageKey,
+      filename: input.filename,
+      mime_type: input.mimeType,
+      size_bytes: input.sizeBytes,
+      checksum: input.checksum ?? null,
+      uploaded_by: userId,
+    } as Partial<ClientAttachmentEntity>);
+    const saved = await this.attachmentsRepo!.save(entity as ClientAttachmentEntity);
+    await this.recordActivity(tenantId, userId, id, 'attachment_uploaded', `Anexo "${input.filename}" enviado`, {
+      attachmentId: saved.id,
+    });
+    return saved;
+  }
+
+  async removeAttachment(tenantId: string, userId: string, id: string, attachmentId: string) {
+    const attachment = await this.attachmentsRepo!
+      .createQueryBuilder('a')
+      .where('a.tenant_id = :tenantId AND a.client_id = :id AND a.id = :attachmentId AND a.deleted_at IS NULL', { tenantId, id, attachmentId })
+      .getOne();
+    if (!attachment) throw new NotFoundException('Anexo não encontrado');
+    await this.attachmentsRepo!.update({ id: attachmentId, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+    if (this.storage) {
+      try {
+        await this.storage.delete(attachment.storage_key);
+      } catch {
+        // Metadata já marcada como removida; falha ao apagar do R2 fica só no log do StorageService.
+      }
+    }
+    await this.recordActivity(tenantId, userId, id, 'attachment_removed', `Anexo "${attachment.filename}" removido`, {
+      attachmentId,
+    });
     return { deleted: true };
   }
 

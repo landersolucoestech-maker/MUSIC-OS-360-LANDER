@@ -8,13 +8,13 @@ export class ContactContractsService {
 
   constructor(private readonly contactsService: ContactsService) {}
 
-  list(tenantId: string, contactId: string) {
-    this.contactsService.assertBelongsToTenant(tenantId, contactId);
+  async list(tenantId: string, contactId: string) {
+    await this.contactsService.assertBelongsToTenant(tenantId, contactId);
     return this.forContact(tenantId, contactId);
   }
 
-  link(tenantId: string, contactId: string, payload: Record<string, unknown>) {
-    this.contactsService.assertBelongsToTenant(tenantId, contactId);
+  async link(tenantId: string, contactId: string, payload: Record<string, unknown>) {
+    await this.contactsService.assertBelongsToTenant(tenantId, contactId);
     const contract = { ...payload, id: randomUUID(), contactId, linkedAt: new Date().toISOString() };
     const current = this.forContact(tenantId, contactId);
     this.forTenant(tenantId).set(contactId, [contract, ...current]);
