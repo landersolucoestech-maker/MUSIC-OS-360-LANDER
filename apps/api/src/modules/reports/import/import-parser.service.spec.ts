@@ -30,9 +30,26 @@ describe('ImportParserService — xlsx hardening (advisory GHSA-4r6h-8v6p-xvw6 /
     expect(() => svc.parse('artists.xlsx', Buffer.alloc(0))).toThrow(BadRequestException);
   });
 
-  it('rejeita extensão não suportada', () => {
+  it('rejeita extensão não suportada (arquivo separado por vírgula, nunca aceito) com o código UNSUPPORTED_IMPORT_FORMAT', () => {
     const content = xlsxBuffer([['a']]);
-    expect(() => svc.parse('artists.csv', content)).toThrow(BadRequestException);
+    try {
+      svc.parse('artists.csv', content);
+      throw new Error('deveria ter lançado');
+    } catch (err) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).getResponse()).toMatchObject({ error: 'UNSUPPORTED_IMPORT_FORMAT' });
+    }
+  });
+
+  it('rejeita arquivo separado por vírgula renomeado para .xlsx — assinatura ZIP/OLE2 ausente (Parte 81)', () => {
+    const fakeContent = Buffer.from('nome,email\nAna,a@example.com\n', 'utf8');
+    try {
+      svc.parse('artists.xlsx', fakeContent);
+      throw new Error('deveria ter lançado');
+    } catch (err) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).getResponse()).toMatchObject({ error: 'UNSUPPORTED_IMPORT_FORMAT' });
+    }
   });
 
   it('rejeita conteúdo acima de IMPORT_MAX_BYTES antes de chamar XLSX.read', () => {

@@ -8,9 +8,38 @@ import * as XLSX from 'xlsx';
 import { isWritableKey } from '../../../core/security/safe-object';
 import { IMPORT_MAX_ROWS, IMPORT_MAX_BYTES, IMPORT_MAX_SHEETS, type ImportFormat, type ParsedFile } from './import.types';
 
+function unsupportedImportFormat(detail: string): BadRequestException {
+  return new BadRequestException({
+    error: 'UNSUPPORTED_IMPORT_FORMAT',
+    message: `Formato de arquivo não suportado. Apenas XLSX (.xlsx/.xls) é aceito. ${detail}`,
+  });
+}
+
 function formatFromName(filename: string): ImportFormat {
   if (/\.(xlsx|xls)$/i.test(filename)) return 'xlsx';
-  throw new BadRequestException('Formato de arquivo não suportado (use XLSX).');
+  throw unsupportedImportFormat(`Extensão rejeitada: "${filename}".`);
+}
+
+// .xlsx é sempre um arquivo ZIP/OpenXML (assinatura "PK", 0x50 0x4B); o .xls
+// legado (BIFF8) é um compound file OLE2 (assinatura 0xD0 0xCF 0x11 0xE0...).
+// Um .csv apenas renomeado para .xlsx tem a extensão certa mas NUNCA uma
+// dessas assinaturas; o XLSX.read() do SheetJS faz sniffing de conteúdo e
+// interpretaria o texto delimitado como CSV silenciosamente — checar a
+// assinatura ANTES do parse fecha esse desvio.
+const KNOWN_WORKBOOK_SIGNATURES: readonly Buffer[] = [
+  Buffer.from([0x50, 0x4b, 0x03, 0x04]), // ZIP (.xlsx normal)
+  Buffer.from([0x50, 0x4b, 0x05, 0x06]), // ZIP (arquivo vazio)
+  Buffer.from([0x50, 0x4b, 0x07, 0x08]), // ZIP (spanned)
+  Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), // OLE2/CFBF (.xls legado)
+];
+
+function assertKnownWorkbookSignature(content: Buffer): void {
+  const ok = KNOWN_WORKBOOK_SIGNATURES.some(
+    (sig) => content.length >= sig.length && content.subarray(0, sig.length).equals(sig),
+  );
+  if (!ok) {
+    throw unsupportedImportFormat('O conteúdo não é um workbook OpenXML/OLE2 válido (possível CSV renomeado ou arquivo corrompido).');
+  }
 }
 
 @Injectable()
@@ -26,6 +55,7 @@ export class ImportParserService {
     if (content.length > IMPORT_MAX_BYTES) {
       throw new BadRequestException(`Arquivo excede o limite de ${IMPORT_MAX_BYTES} bytes.`);
     }
+    assertKnownWorkbookSignature(content);
     return this.parseXlsx(content);
   }
 

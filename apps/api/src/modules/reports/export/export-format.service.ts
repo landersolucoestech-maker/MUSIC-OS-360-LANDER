@@ -23,7 +23,7 @@ export const EXCEL_CELL_MAX_CHARS = 32767;
 const EXCEL_CELL_SAFE_CHARS = 32000;
 const TRUNCATION_SUFFIX = '… [truncado: excede o limite de célula do Excel]';
 
-// CSV/formula injection (OWASP): células iniciadas por =, +, -, @ (ou tab/CR)
+// Injeção de fórmula em planilha (OWASP): células iniciadas por =, +, -, @ (ou tab/CR)
 // são reinterpretadas como fórmula por Excel/LibreOffice ao abrir — um nome de
 // cliente como "=HYPERLINK(...)" vira execução, não texto. Prefixo com aspas
 // simples neutraliza sem apagar o valor visível.

@@ -65,7 +65,7 @@ describe('ExportFormatService — serialização XLSX', () => {
       expect(out.length).toBeLessThanOrEqual(EXCEL_CELL_MAX_CHARS);
     });
 
-    describe('formula/CSV injection (OWASP) — nenhuma célula pode virar fórmula ao abrir no Excel/LibreOffice', () => {
+    describe('injeção de fórmula em planilha (OWASP) — nenhuma célula pode virar fórmula ao abrir no Excel/LibreOffice', () => {
       it('neutraliza payloads clássicos de injeção de fórmula', () => {
         expect(sanitizeExcelCellValue('=HYPERLINK("http://evil.test","clique")', { entity: 'clients', column: 'nome' })).toBe(
           "'=HYPERLINK(\"http://evil.test\",\"clique\")",

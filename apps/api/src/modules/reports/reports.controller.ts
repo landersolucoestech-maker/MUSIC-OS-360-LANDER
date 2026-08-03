@@ -17,7 +17,7 @@ import { ReportTableGuardService } from './report-table-guard.service';
 import { ExportEngineService } from './export/export-engine.service';
 import { ImportEngineService } from './import/import-engine.service';
 import { ImportCommitService, type ImportCommitResult } from './import/import-commit.service';
-import { EXPORT_DEFAULT_PAGE_SIZE, type ExportFormat, type ExportQueryParams } from './export/export.types';
+import { EXPORT_DEFAULT_PAGE_SIZE, EXPORT_FORMATS, type ExportFormat, type ExportQueryParams } from './export/export.types';
 import type { ImportValidationResult } from './import/import.types';
 import type { EntitiesInventory } from './entity-metadata.types';
 import type { ReportEntityDefinition } from './definitions/report-entity-definition.types';
@@ -30,7 +30,7 @@ interface ImportValidateBody {
 
 const RESERVED_QUERY_KEYS = new Set(['format', 'columns', 'sort', 'order', 'page', 'pageSize']);
 
-function parseExportParams(query: Record<string, string | string[] | undefined>): ExportQueryParams {
+export function parseExportParams(query: Record<string, string | string[] | undefined>): ExportQueryParams {
   const str = (v: string | string[] | undefined): string | undefined =>
     Array.isArray(v) ? v[0] : v;
   // Chave de filtro vem da query string (controlada pelo cliente): null-proto +
@@ -41,9 +41,20 @@ function parseExportParams(query: Record<string, string | string[] | undefined>)
     const val = str(v);
     if (val !== undefined) filters[k] = val;
   }
+  // Formato é lido de verdade da query string — nunca hardcoded. Um cliente
+  // pedindo ?format=csv (ou qualquer formato fora de EXPORT_FORMATS) é
+  // rejeitado explicitamente aqui, nunca silenciosamente convertido/ignorado.
+  const formatRaw = str(query['format']) ?? 'xlsx';
+  if (!EXPORT_FORMATS.includes(formatRaw as ExportFormat)) {
+    throw new BadRequestException({
+      error: 'UNSUPPORTED_EXPORT_FORMAT',
+      message: `Formato de exportação não suportado: "${formatRaw}". Formatos aceitos: ${EXPORT_FORMATS.join(', ')}.`,
+    });
+  }
+
   const columnsRaw = str(query['columns']);
   return {
-    format: 'xlsx' as ExportFormat,
+    format: formatRaw as ExportFormat,
     columns: columnsRaw ? columnsRaw.split(',').map((c) => c.trim()).filter(Boolean) : undefined,
     filters: Object.keys(filters).length ? filters : undefined,
     sort: str(query['sort']),

@@ -48,6 +48,17 @@ describe('ExportEngineService — orquestração entity-driven', () => {
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entity: 'artists', status: 'success', recordCount: 1, tenantId: 'tenant-1' }));
   });
 
+  it('rejeita formato não suportado (Parte 81 — nenhum formato além de xlsx é aceito) com UNSUPPORTED_EXPORT_FORMAT', async () => {
+    const { engine } = makeEngine();
+    try {
+      await engine.export('artists', params({ format: 'other' as any }), 't', 'u');
+      throw new Error('deveria ter lançado');
+    } catch (err) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).getResponse()).toMatchObject({ error: 'UNSUPPORTED_EXPORT_FORMAT' });
+    }
+  });
+
   it('XLSX retorna cabeçalho pt-BR e content-type correto', async () => {
     const { engine } = makeEngine();
     const xlsx = await engine.export('artists', params({ format: 'xlsx' }), 't', 'u');

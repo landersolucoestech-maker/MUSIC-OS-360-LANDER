@@ -45,7 +45,10 @@ export class ExportEngineService {
   ): Promise<ExportResult> {
     if (!tenantId) throw new ForbiddenException('Tenant nao identificado');
     if (!EXPORT_FORMATS.includes(params.format)) {
-      throw new BadRequestException(`Formato invalido: ${params.format}`);
+      throw new BadRequestException({
+        error: 'UNSUPPORTED_EXPORT_FORMAT',
+        message: `Formato de exportação não suportado: "${params.format}". Formatos aceitos: ${EXPORT_FORMATS.join(', ')}.`,
+      });
     }
 
     const report = this.metadata.scan().entities.find((e) => e.tableName === entity);

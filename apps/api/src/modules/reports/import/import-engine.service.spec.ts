@@ -39,9 +39,9 @@ function makeEngine(opts: { reportable?: boolean; hasEntity?: boolean; def?: Rep
   const tableGuard = { assertTableUsable: jest.fn().mockResolvedValue(undefined) } as any;
   return new ImportEngineService(metadata, definitions, new ImportParserService(), new ImportMapperService(), new ImportValidationService(), tableGuard, new ExportFormatService());
 }
-/** Constrói um arquivo XLSX a partir de linhas CSV-like (facilita os testes). */
-function xlsx(csvText: string) {
-  const rows = csvText.split('\n').map((line) => line.split(','));
+/** Constrói um arquivo XLSX a partir de linhas separadas por vírgula (facilita os testes). */
+function xlsx(delimitedText: string) {
+  const rows = delimitedText.split('\n').map((line) => line.split(','));
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
@@ -114,9 +114,9 @@ describe('ImportEngineService — validação (FASE 2.3A, sem persistência)', (
     expect(res.rows[1].warnings.some((w) => /duplicado/.test(w.message))).toBe(true);
   });
 
-  it('arquivo .csv é rejeitado (apenas XLSX é aceito)', async () => {
-    const csvFile = { filename: 'artists.csv', content: Buffer.from('Nome artístico\nAna') };
-    await expect(makeEngine().validateFile('artists', csvFile, 't')).rejects.toBeInstanceOf(BadRequestException);
+  it('arquivo com extensão diferente de .xlsx/.xls é rejeitado (nenhum outro formato é aceito)', async () => {
+    const wrongExtensionFile = { filename: 'artists.csv', content: Buffer.from('Nome artístico\nAna') };
+    await expect(makeEngine().validateFile('artists', wrongExtensionFile, 't')).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('sem tenant → 403; entidade inexistente → 404; supportsImport=false → 400', async () => {
@@ -126,14 +126,23 @@ describe('ImportEngineService — validação (FASE 2.3A, sem persistência)', (
   });
 });
 
-describe('ImportEngineService — buildTemplate (Parte 80)', () => {
-  it('gera XLSX só com cabeçalho (colunas importáveis do contrato) — zero linhas de dado', async () => {
+describe('ImportEngineService — buildTemplate (Parte 80/81)', () => {
+  it('gera workbook XLSX com aba de dados (cabeçalho + 1 exemplo sintético) e aba de Instruções', async () => {
     const result = await makeEngine().buildTemplate('artists', 't');
     expect(result.filename).toBe('artists_template.xlsx');
     const wb = XLSX.read(result.body, { type: 'buffer' });
-    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]!]!, { header: 1 }) as unknown[][];
-    expect(aoa.length).toBe(1);
-    expect(aoa[0]).toHaveLength(DEF.importableColumns.length);
+    expect(wb.SheetNames).toEqual(['artists', 'Instruções']);
+
+    const dataRows = XLSX.utils.sheet_to_json(wb.Sheets['artists']!, { header: 1 }) as unknown[][];
+    expect(dataRows).toHaveLength(2); // cabeçalho + 1 linha de exemplo sintético
+    expect(dataRows[0]).toHaveLength(DEF.importableColumns.length);
+    expect(dataRows[1]).toHaveLength(DEF.importableColumns.length);
+
+    const instrucoesRows = XLSX.utils.sheet_to_json(wb.Sheets['Instruções']!, { header: 1 }) as unknown[][];
+    expect(instrucoesRows.some((r) => String(r[0]).includes('Versão do template'))).toBe(true);
+    // categoria é NOT NULL sem DEFAULT (Parte 81) → aparece como obrigatório na aba de instruções
+    const categoriaRow = instrucoesRows.find((r) => r[0] === 'Categoria');
+    expect(categoriaRow?.[1]).toBe('Sim');
   });
 
   it('sem tenant → 403; entidade inexistente → 404; supportsImport=false → 400', async () => {
