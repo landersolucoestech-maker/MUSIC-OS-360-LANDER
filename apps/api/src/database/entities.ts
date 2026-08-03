@@ -454,7 +454,13 @@ export class BillingPlanEntity {
   @Column({ type: 'varchar', length: 3, default: 'brl' }) currency: string;
   @Column({ type: 'varchar', length: 10, default: 'month' }) interval: string;
   @Column({ type: 'boolean', default: true }) active: boolean;
-  @Column({ type: 'jsonb', default: {} }) features: Record<string, unknown>;
+  // Lista de rótulos exibidos no card do plano (nunca um mapa de flags) — o
+  // admin form e as telas de billing/landing sempre tratam como array
+  // (.map/.push/.filter). Coluna corrigida de default {} para [] (Parte 84 —
+  // causava "features.map is not a function" em Configurações/Billing);
+  // BillingPlansService.list()/get() normaliza defensivamente linhas
+  // legadas que já persistiram {}.
+  @Column({ type: 'jsonb', default: [] }) features: unknown[];
   @Column({ type: 'jsonb', default: {} }) limits: Record<string, unknown>;
   @Column({ type: 'varchar', length: 255, nullable: true }) stripe_product_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) stripe_price_id: string | null;
@@ -1183,7 +1189,6 @@ export class EventEntity {
   @Column({ type: 'timestamp', nullable: true }) starts_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) local: string | null;
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
-  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor: string | null;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
   // ── Campos do formulário de Evento (1 coluna por campo — nome exato) ─────────
   @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
@@ -1213,8 +1218,6 @@ export class ProjectEntity {
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ProjectStatus.PLANEJAMENTO }) status: ProjectStatus;
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
-  @Column({ type: 'timestamp', nullable: true }) data_inicio: Date | null;
-  @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) orcamento: string | null;
   // `descricao` volta a ser texto livre puro — musicas[] normalizada em project_tracks.
   @Column({ type: 'text', nullable: true }) descricao: string | null;
@@ -2481,7 +2484,6 @@ export class SocietySyncJobEntity {
 export class MarketingProjectEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid', nullable: true }) organization_id: string | null;
   @Column({ type: 'varchar', length: 40 }) type: string;
   @Column({ type: 'varchar', length: 500 }) title: string;
   @Column({ type: 'text', nullable: true }) description: string | null;
@@ -2808,7 +2810,6 @@ export class AssetUsageLogEntity {
 export class AudiovisualProjectEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid', nullable: true }) organization_id: string | null;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'uuid', nullable: true }) release_id: string | null;
   @Column({ type: 'uuid', nullable: true }) phonogram_id: string | null;
@@ -2832,7 +2833,6 @@ export class AudiovisualProjectEntity {
   @Column({ type: 'date', nullable: true }) delivery_date: string | null;
   @Column({ type: 'date', nullable: true }) publish_date: string | null;
   @Column({ type: 'timestamptz', nullable: true }) completed_at: Date | null;
-  @Column({ type: 'timestamptz', nullable: true }) archived_at: Date | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   // ── Campos do formulário (1 coluna por campo — nome EXATO da chave do form) ──
   // migration AudiovisualProjectsFormFieldColumns20260718000012. music_id→phonogram_id
