@@ -35,6 +35,14 @@ paths = [
   # regexes below instead — a real secret pasted into any doc is now detected.
 ]
 regexes = [
+  # Parte 85: tenant-zero (LANDER RECORDS) public identity UUIDs, mirrored
+  # in the web app (AuthContext.tsx / TenantContext.tsx) for display only
+  # under AUTH_DISABLED (dev-only bypass). Deterministic UUIDv5 values, the
+  # source of truth is apps/api/src/database/tenant-zero.constants.ts, not
+  # credentials — flagged by generic-api-key purely on string entropy.
+  '''a900b3a8-fa1c-5a6b-a852-1b0689e27fe3''',
+  '''724f035f-3034-5ea3-9b53-0785b558d4ec''',
+  '''c600dbbd-84ea-5910-8655-eb94389bb224''',
   # Intentionally-invalid JWT fixture used in tests.
   '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.invalid\.payload''',
   # Shared dev/CI test ENCRYPTION_KEY / JWT signing key (never a prod secret).
