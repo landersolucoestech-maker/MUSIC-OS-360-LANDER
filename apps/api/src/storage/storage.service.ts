@@ -31,7 +31,6 @@ const ALLOWED_MIMES = {
   spreadsheets: [
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/csv',
   ],
 } as const;
 
@@ -59,7 +58,6 @@ const MIME_TO_EXTENSIONS: Record<string, readonly string[]> = {
   'audio/mp4':  ['m4a', 'mp4'],
   'application/vnd.ms-excel': ['xls'],
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['xlsx'],
-  'text/csv':   ['csv'],
 };
 
 function extractExtension(fileName: string): string | null {

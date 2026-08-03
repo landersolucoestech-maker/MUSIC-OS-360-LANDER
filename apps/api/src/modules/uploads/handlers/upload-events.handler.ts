@@ -30,7 +30,7 @@ const ALLOWED_MIME_TYPES = new Set([
   'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm',
   'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml',
   'application/pdf',
-  'text/plain', 'text/csv',
+  'text/plain',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]);
