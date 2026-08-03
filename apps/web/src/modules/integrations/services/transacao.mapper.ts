@@ -13,7 +13,6 @@
  * Uso:
  *   import { transacaoMapper } from "@/modules/integrations/mappers";
  *   const transacao = transacaoMapper.fromOfxEntry(ofxEntry);
- *   const row       = transacaoMapper.toCsvRow(transacao);
  */
 
 /** Entidade de domínio Transação (fonte: mockData accounting). */
@@ -42,18 +41,6 @@ export interface OfxEntry {
   MEMO:     string;
 }
 
-/** Linha CSV para export de relatório. */
-export interface TransacaoCsvRow {
-  id:         string;
-  data:       string;
-  tipo:       string;
-  categoria:  string;
-  descricao:  string;
-  valor:      string;
-  status:     string;
-  referencia: string;
-}
-
 export const transacaoMapper = {
   /**
    * Converte uma entrada OFX num objecto TransacaoEntity (sem id/timestamps).
@@ -71,22 +58,6 @@ export const transacaoMapper = {
       data,
       status:      "pendente",
       referencia:  entry.FITID,
-    };
-  },
-
-  /**
-   * Converte uma TransacaoEntity numa linha CSV para export.
-   */
-  toCsvRow(t: TransacaoEntity): TransacaoCsvRow {
-    return {
-      id:         t.id,
-      data:       t.data,
-      tipo:       t.tipo,
-      categoria:  t.categoria,
-      descricao:  t.descricao,
-      valor:      t.tipo === "despesa" ? `-${t.valor.toFixed(2)}` : t.valor.toFixed(2),
-      status:     t.status,
-      referencia: t.referencia ?? "",
     };
   },
 

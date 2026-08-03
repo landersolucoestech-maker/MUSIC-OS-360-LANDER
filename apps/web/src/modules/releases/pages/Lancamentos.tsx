@@ -17,11 +17,12 @@ import {
   Music, Radio, Eye, Plus, Search,
   Loader2, Trash2, MoreHorizontal, Pencil, BarChart3,
   CheckCircle2, Timer, Library, Clock, AlertTriangle, Info,
+  Download, Upload,
 } from "lucide-react";
 import { LancamentoFormModal } from "@/modules/releases/components/LancamentoFormModal";
 import { LancamentoViewModal } from "@/modules/releases/components/LancamentoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
-import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
+import { exportToXlsx, importXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { TablePagination } from "@/shared/ui/table-pagination";
 import { usePagination } from "@/shared/hooks/usePagination";
@@ -36,7 +37,7 @@ import { shareFlowFromReleaseUrl } from "@/modules/releases/services/share-from-
 import type { Lancamento } from "@/modules/releases/types";
 import type { Artista } from "@/modules/artist/types/artista.types";
 
-const lancamentoColumns: CSVColumn[] = [
+const lancamentoColumns: XlsxColumn[] = [
   { key: "titulo", label: "Título" },
   { key: "tipo", label: "Tipo" },
   { key: "status", label: "Status" },
@@ -261,8 +262,8 @@ export default function Lancamentos() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const handleExport = () => exportToCSV(lancamentos, lancamentoColumns, "lancamentos");
-  const handleImport = () => importCSV(async (data) => {
+  const handleExport = () => exportToXlsx(lancamentos, lancamentoColumns, "lancamentos");
+  const handleImport = () => importXlsx(async (data) => {
     let importados = 0;
     for (const row of data) {
       const titulo = row["Título"] || row["titulo"] || row["TITULO"];
@@ -382,6 +383,14 @@ export default function Lancamentos() {
 
   const headerActions = (
     <>
+      <Button variant="outline" size="sm" className="gap-2" data-testid="button-export-lancamentos" onClick={handleExport}>
+        <Download className="h-4 w-4" />
+        Exportar XLSX
+      </Button>
+      <Button variant="outline" size="sm" className="gap-2" data-testid="button-import-lancamentos" onClick={handleImport}>
+        <Upload className="h-4 w-4" />
+        Importar XLSX
+      </Button>
       <Button size="sm" className="gap-2 bg-primary" data-testid="button-novo-lancamento" onClick={() => setFormModal({ open: true, mode: "create" })}>
         <Plus className="h-4 w-4" />
         Novo Lançamento

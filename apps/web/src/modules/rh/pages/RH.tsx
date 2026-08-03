@@ -60,7 +60,7 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { exportToCSV, CSVColumn } from "@/shared/lib/csv";
+import { exportToXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { formatCurrency, formatDate, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import {
   useFuncionarios,
@@ -83,7 +83,7 @@ import {
 import type { DocumentoFuncionario } from "@/modules/rh/hooks/useDocumentosFuncionario";
 import { Label } from "@/shared/ui/label";
 import { FeatureGate } from '@/shared/components/FeatureGate';
-const funcionarioColumns: CSVColumn[] = [
+const funcionarioColumns: XlsxColumn[] = [
   { key: "nome_completo", label: "Nome Completo" },
   { key: "cpf", label: "CPF" },
   { key: "email", label: "Email" },
@@ -97,7 +97,7 @@ const funcionarioColumns: CSVColumn[] = [
   { key: "observacoes", label: "Observações" },
 ];
 
-const folhaColumns: CSVColumn[] = [
+const folhaColumns: XlsxColumn[] = [
   { key: "funcionario_nome", label: "Funcionário" },
   { key: "mes_referencia", label: "Mês Referência" },
   { key: "salario_bruto", label: "Salário Bruto" },
@@ -108,7 +108,7 @@ const folhaColumns: CSVColumn[] = [
   { key: "status", label: "Status" },
 ];
 
-const feriasColumns: CSVColumn[] = [
+const feriasColumns: XlsxColumn[] = [
   { key: "funcionario_nome", label: "Funcionário" },
   { key: "tipo", label: "Tipo" },
   { key: "data_inicio", label: "Data Início" },
@@ -118,7 +118,7 @@ const feriasColumns: CSVColumn[] = [
   { key: "aprovado_por", label: "Aprovado Por" },
 ];
 
-const documentosColumns: CSVColumn[] = [
+const documentosColumns: XlsxColumn[] = [
   { key: "funcionario_nome", label: "Funcionário" },
   { key: "tipo_documento", label: "Tipo Documento" },
   { key: "nome_arquivo", label: "Nome Arquivo" },
@@ -323,14 +323,14 @@ export default function RH() {
   };
 
   const handleExportFuncionarios = () =>
-    exportToCSV(filteredFuncionarios, funcionarioColumns, "funcionarios");
+    exportToXlsx(filteredFuncionarios, funcionarioColumns, "funcionarios");
 
   const handleExportFolha = () => {
     const data = filteredFolha.map((fp) => ({
       ...fp,
       funcionario_nome: getFuncionarioNome(fp.funcionario_id ?? null),
     }));
-    exportToCSV(data, folhaColumns, "folha_pagamento");
+    exportToXlsx(data, folhaColumns, "folha_pagamento");
   };
 
   const handleExportFerias = () => {
@@ -338,7 +338,7 @@ export default function RH() {
       ...fa,
       funcionario_nome: getFuncionarioNome(fa.funcionario_id ?? null),
     }));
-    exportToCSV(data, feriasColumns, "ferias_ausencias");
+    exportToXlsx(data, feriasColumns, "ferias_ausencias");
   };
 
   const handleExportDocumentos = () => {
@@ -346,7 +346,7 @@ export default function RH() {
       ...d,
       funcionario_nome: getFuncionarioNome(d.funcionario_id ?? null),
     }));
-    exportToCSV(data, documentosColumns, "documentos_funcionario");
+    exportToXlsx(data, documentosColumns, "documentos_funcionario");
   };
 
   const handleDeleteFuncionario = () => {
@@ -455,6 +455,21 @@ export default function RH() {
       description="Gestão de funcionários, folha de pagamento, férias e documentos"
       actions={
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={
+              activeTab === "funcionarios" ? handleExportFuncionarios
+                : activeTab === "folha" ? handleExportFolha
+                : activeTab === "ferias" ? handleExportFerias
+                : handleExportDocumentos
+            }
+            data-testid="button-export-rh"
+          >
+            <Download className="h-4 w-4" />
+            Exportar XLSX
+          </Button>
           {activeTab !== "documentos" && (
             <RequirePermission module="rh" action="write">
               <Button

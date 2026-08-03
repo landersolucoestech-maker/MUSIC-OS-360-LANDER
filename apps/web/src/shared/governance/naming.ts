@@ -233,7 +233,7 @@ export const ENTITY_NAMING = {
  *   {Entity}ApiPayload    → corpo da requisição para API (futura)
  *   {Entity}ApiResponse   → resposta da API (futura)
  *   {Entity}LocalPayload  → payload para localStorage (modo standalone)
- *   {Entity}ExportRow     → linha de exportação CSV/PDF
+ *   {Entity}ExportRow     → linha de exportação XLSX/PDF
  *
  * Localização:
  *   FormValues → no módulo que usa o formulário

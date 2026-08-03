@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ContratoWizard } from "@/modules/contracts/components/ContratoWizard";
 import { ContratoViewModal } from "@/modules/contracts/components/ContratoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
-import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
+import { exportToXlsx, importXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { formatCurrency, formatDateDashes, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import { formatCategoryLabel } from "@/shared/lib/category-labels";
@@ -32,7 +32,7 @@ import { usePagination } from "@/shared/hooks/usePagination";
 import { cn } from "@/shared/lib/utils";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 
-const contratoColumns: CSVColumn[] = [
+const contratoColumns: XlsxColumn[] = [
   { key: "titulo", label: "Título" },
   { key: "tipo", label: "Tipo" },
   { key: "status", label: "Status" },
@@ -107,9 +107,9 @@ export default function Contratos() {
     setPlatformFilter("all-platform");
   };
 
-  const handleExport = () => exportToCSV(contratos, contratoColumns, "contratos");
+  const handleExport = () => exportToXlsx(contratos, contratoColumns, "contratos");
   const handleImport = () =>
-    importCSV(async (data) => {
+    importXlsx(async (data) => {
       let importados = 0;
       for (const row of data) {
         const titulo = row["Título"] || row["titulo"] || row["TITULO"];
@@ -191,7 +191,15 @@ export default function Contratos() {
             <FileStack className="h-3.5 w-3.5" />
             Templates
           </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExport} data-testid="button-export-contratos">
+            <Download className="h-3.5 w-3.5" />
+            Exportar XLSX
+          </Button>
           <RequirePermission module="contracts" action="write">
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleImport} data-testid="button-import-contratos">
+              <Upload className="h-3.5 w-3.5" />
+              Importar XLSX
+            </Button>
             <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setWizardOpen(true)} data-testid="button-novo-contrato">
               <Plus className="h-3.5 w-3.5" />
               Novo Contrato

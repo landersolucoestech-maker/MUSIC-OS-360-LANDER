@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import { toast } from "sonner";
 import { formatDate } from "@/shared/lib/format-utils";
 import { ECADViewModal } from "@/modules/monitoring/components/ECADViewModal";
 import { MainLayout } from "@/shared/components/MainLayout";
@@ -52,16 +53,12 @@ export default function Monitoramento() {
 
   const handleImport = () => {
     if (!importFile) return;
-    setImporting(true);
-    setTimeout(() => {
-      setImporting(false);
-      setImportDone(true);
-      setTimeout(() => {
-        setImportDone(false);
-        setImportFile(null);
-        setImportModalOpen(false);
-      }, 1500);
-    }, 1800);
+    // Importação real de relatório ECAD requer endpoint no backend; nunca
+    // simular progresso nem sucesso fictício (ver EcadImportModal.tsx, que
+    // segue o mesmo padrão honesto).
+    toast.error(
+      "Importação de relatório ECAD ainda não está disponível (requer endpoint real no backend).",
+    );
   };
 
   const { deteccoes, isLoading: loadingDet } = useDeteccoes();
@@ -388,7 +385,7 @@ export default function Monitoramento() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Selecione um arquivo CSV ou XLSX exportado do portal ECAD para importar o relatório de recebimentos externos de direitos.
+              Selecione um arquivo XLSX exportado do portal ECAD para importar o relatório de recebimentos externos de direitos.
             </p>
             <div
               className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
@@ -410,7 +407,7 @@ export default function Monitoramento() {
                   <Upload className="h-8 w-8 text-muted-foreground" />
                   <div className="text-center">
                     <p className="text-sm font-medium">Clique para selecionar</p>
-                    <p className="text-xs text-muted-foreground">CSV, XLSX — máx. 10 MB</p>
+                    <p className="text-xs text-muted-foreground">XLSX — máx. 10 MB</p>
                   </div>
                 </>
               )}
@@ -418,7 +415,7 @@ export default function Monitoramento() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.xlsx,.xls"
+              accept=".xlsx,.xls"
               className="hidden"
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
             />

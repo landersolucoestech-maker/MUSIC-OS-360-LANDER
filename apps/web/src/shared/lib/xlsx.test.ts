@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { exportToCSV, type CSVColumn } from "./csv";
+import { exportToXlsx, type XlsxColumn } from "./xlsx";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
@@ -16,18 +16,18 @@ vi.mock("xlsx", () => ({
   writeFile: () => undefined,
 }));
 
-const columns: CSVColumn[] = [{ key: "nome", label: "Nome" }, { key: "valor", label: "Valor" }];
+const columns: XlsxColumn[] = [{ key: "nome", label: "Nome" }, { key: "valor", label: "Valor" }];
 
 beforeEach(() => {
   lastAoa = null;
 });
 
 function capturedSheet(data: Record<string, unknown>[]): unknown[][] {
-  exportToCSV(data, columns, "teste");
+  exportToXlsx(data, columns, "teste");
   return lastAoa!;
 }
 
-describe("exportToCSV — proteção contra formula/CSV injection (OWASP)", () => {
+describe("exportToXlsx — proteção contra injeção de fórmula em planilha (OWASP)", () => {
   it("neutraliza payload de fórmula (=) com prefixo de aspas simples", () => {
     const aoa = capturedSheet([{ nome: '=HYPERLINK("http://evil.test")', valor: 1 }]);
     expect(aoa[1][0]).toBe('\'=HYPERLINK("http://evil.test")');

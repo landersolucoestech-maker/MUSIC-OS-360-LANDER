@@ -263,7 +263,7 @@ export function EcadConfigDialog({ open, onOpenChange }: EcadConfigDialogProps) 
                 <span className="text-sm font-medium">Importar relatório ECAD</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Importe o ficheiro de arrecadação ECAD (.txt / .csv / .xml) recebido por e-mail da sua associação.
+                Importe o ficheiro de arrecadação ECAD (.txt / .xml) recebido por e-mail da sua associação.
               </p>
               <p className="text-xs text-muted-foreground/60 italic">
                 Disponível após vincular relatório ao módulo Accounting.

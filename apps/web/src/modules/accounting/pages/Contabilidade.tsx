@@ -15,7 +15,7 @@ import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { formatCategoryLabel } from "@/shared/lib/category-labels";
-import { exportToCSV } from "@/shared/lib/csv";
+import { exportToXlsx } from "@/shared/lib/xlsx";
 import { FeatureGate } from '@/shared/components/FeatureGate';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -271,7 +271,7 @@ export default function Contabilidade() {
   [filteredTransacoes, artistas]);
 
   const handleExport = () => {
-    exportToCSV(
+    exportToXlsx(
       [
         { secao: "Receitas", categoria: "TOTAL", valor: totalReceitas },
         ...receitasPorCategoria.map((r) => ({ secao: "Receita", categoria: catLabel(r.categoria), valor: r.valor })),

@@ -19,13 +19,13 @@ import { InventarioFormModal } from "@/modules/inventory/components/InventarioFo
 import { InventarioViewModal } from "@/modules/inventory/components/InventarioViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
-import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
+import { exportToXlsx, importXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useInventario } from "@/modules/inventory/hooks/useInventario";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { FeatureGate } from '@/shared/components/FeatureGate';
 
-const inventarioColumns: CSVColumn[] = [
+const inventarioColumns: XlsxColumn[] = [
   { key: "setor", label: "Setor" },
   { key: "categoria", label: "Categoria" },
   { key: "nome", label: "Nome do Item" },
@@ -63,8 +63,8 @@ export default function Inventario() {
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [localFilter, setLocalFilter] = useState("all-local");
 
-  const handleExport = () => exportToCSV(inventario, inventarioColumns, "inventario");
-  const handleImport = () => importCSV(async (data) => {
+  const handleExport = () => exportToXlsx(inventario, inventarioColumns, "inventario");
+  const handleImport = () => importXlsx(async (data) => {
     let importados = 0;
     for (const row of data) {
       const nome = row["Nome do Item"] || row["Nome"] || row["nome"] || row["NOME"];
@@ -144,7 +144,13 @@ export default function Inventario() {
 
   const headerActions = (
     <>
+      <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleExport} data-testid="button-export-inventario">
+        <Download className="h-3.5 w-3.5" />Exportar XLSX
+      </Button>
       <RequirePermission module="inventory" action="write">
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleImport} data-testid="button-import-inventario">
+          <Upload className="h-3.5 w-3.5" />Importar XLSX
+        </Button>
         <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-3.5 w-3.5" />Novo Item</Button>
       </RequirePermission>
     </>

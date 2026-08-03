@@ -1,19 +1,20 @@
-// XLSX Import/Export utilities (replaces the former CSV implementation)
-// Uses the `xlsx` (SheetJS) library already bundled in the project.
+// Canonical client-side XLSX export/import helper (Parte 81 — CSV is not a
+// supported format anywhere on the platform; the `xlsx` (SheetJS) library
+// already bundled in the project is used directly).
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 
-export interface CSVColumn {
+export interface XlsxColumn {
   key: string;
   label: string;
   transform?: (row: Record<string, any>) => string;
 }
 
-// CSV/formula injection (OWASP): células iniciadas por =, @, tab/CR são
-// reinterpretadas como fórmula por Excel/LibreOffice ao abrir. `+`/`-` também
-// são o primeiro caractere de dados legítimos comuns (telefone "+55...",
-// valores negativos) — só neutraliza quando o resto da célula não é um
-// padrão plausível de telefone/número, evitando falso-positivo.
+// Formula injection in spreadsheets (OWASP): cells starting with =, @, tab/CR
+// are reinterpreted as a formula by Excel/LibreOffice on open. `+`/`-` are
+// also the first character of legitimate, common data (phone "+55...",
+// negative amounts) — only neutralised when the rest of the cell isn't a
+// plausible phone/number pattern, avoiding a false positive on real data.
 const ALWAYS_DANGEROUS_PREFIXES = ["=", "@", "\t", "\r"];
 const PLAUSIBLE_PHONE = /^\+[\d\s()-]+$/;
 const PLAUSIBLE_NEGATIVE_NUMBER = /^-[\d.,]+$/;
@@ -28,9 +29,9 @@ function neutralizeFormulaInjection(text: string): string {
 }
 
 // Export data to XLSX
-export function exportToCSV<T extends Record<string, any>>(
+export function exportToXlsx<T extends Record<string, any>>(
   data: T[],
-  columns: CSVColumn[],
+  columns: XlsxColumn[],
   filename: string
 ): void {
   if (data.length === 0) {
@@ -61,7 +62,7 @@ export function exportToCSV<T extends Record<string, any>>(
 }
 
 // Parse an XLSX (or XLS) file into an array of row objects keyed by header label
-export function parseCSV(file: File): Promise<Record<string, string>[]> {
+export function parseXlsx(file: File): Promise<Record<string, string>[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -112,7 +113,7 @@ export function parseCSV(file: File): Promise<Record<string, string>[]> {
 }
 
 // Import XLSX with file picker
-export function importCSV(
+export function importXlsx(
   onImport: (data: Record<string, string>[]) => void | Promise<void>,
   acceptedHeaders?: string[]
 ): void {
@@ -125,7 +126,7 @@ export function importCSV(
     if (!file) return;
 
     try {
-      const data = await parseCSV(file);
+      const data = await parseXlsx(file);
 
       if (data.length === 0) {
         toast.error("Arquivo está vazio");

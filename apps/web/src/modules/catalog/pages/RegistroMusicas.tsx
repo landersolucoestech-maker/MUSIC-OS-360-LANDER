@@ -24,7 +24,7 @@ import { FonogramaViewModal } from "@/modules/catalog/components/FonogramaViewMo
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { ContratoFormModal } from "@/modules/contracts/components/ContratoFormModal";
-import { exportToCSV, importCSV, type CSVColumn } from "@/shared/lib/csv";
+import { exportToXlsx, importXlsx, type XlsxColumn } from "@/shared/lib/xlsx";
 import { toast } from "sonner";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useObras, type ObraInsert } from "@/modules/catalog/hooks/useObras";
@@ -253,7 +253,7 @@ export default function RegistroMusicas() {
     return map;
   }, [allProjetos]);
 
-  const obraColumnsResolved = useMemo<CSVColumn[]>(() => [
+  const obraColumnsResolved = useMemo<XlsxColumn[]>(() => [
     { key: "titulo",        label: "Título da Obra" },
     { key: "tipo_obra",     label: "Tipo de Obra",                    transform: (r) => r.tipo_obra === "referencia" ? "Obra por Referência" : "Obra Autoral" },
     { key: "artista_id",    label: "Artista Responsável",             transform: (r) => artistasPorId.get(r.artista_id as string) ?? "" },
@@ -276,7 +276,7 @@ export default function RegistroMusicas() {
     { key: "letra_completa",label: "Letra",                           transform: exportLetraCompleta },
   ], [artistasPorId, projetosPorId]);
 
-  const fonogramaColumnsResolved = useMemo<CSVColumn[]>(() => {
+  const fonogramaColumnsResolved = useMemo<XlsxColumn[]>(() => {
     type Participant = { nome?: string; percentual?: string };
     const joinParticipacao = (r: Record<string, unknown>, cat: string): string => {
       const p = r["participacao"] as Record<string, Participant[]> | null | undefined;
@@ -427,9 +427,9 @@ export default function RegistroMusicas() {
 
   const handleExport = () => {
     if (activeTab === "fonogramas") {
-      exportToCSV(fonogramas, fonogramaColumnsResolved, "fonogramas");
+      exportToXlsx(fonogramas, fonogramaColumnsResolved, "fonogramas");
     } else {
-      exportToCSV(obras, obraColumnsResolved, "obras");
+      exportToXlsx(obras, obraColumnsResolved, "obras");
     }
   };
 
@@ -454,7 +454,7 @@ export default function RegistroMusicas() {
       ? ["Título", "ISRC", "Status", "Gênero Musical"]
       : ["Título da Obra", "Status", "Artista Responsável", "Gênero"];
 
-    importCSV(async (data) => {
+    importXlsx(async (data) => {
       let importados = 0;
       const obraVinculadaNaoResolvida: string[] = [];
       if (activeTab === "fonogramas") {
@@ -626,7 +626,15 @@ export default function RegistroMusicas() {
 
   const headerActions = (
     <>
+      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExport} data-testid="button-export-registro-musicas">
+        <Download className="h-3.5 w-3.5" />
+        Exportar XLSX
+      </Button>
       <RequirePermission module="catalog" action="write">
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleImport} data-testid="button-import-registro-musicas">
+          <Upload className="h-3.5 w-3.5" />
+          Importar XLSX
+        </Button>
         <Button
           size="sm"
           className="h-8 text-xs gap-1.5"

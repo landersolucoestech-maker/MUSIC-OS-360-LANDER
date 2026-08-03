@@ -29,7 +29,7 @@ export interface FeatureFlags {
   musicChat:          boolean;
   commandPalette:     boolean;
   exportPdf:          boolean;
-  importCsv:          boolean;
+  importXlsx:         boolean;
   bulkActions:        boolean;
   activityFeed:       boolean;
   auditLog:           boolean;
@@ -86,7 +86,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   musicChat:          true,
   commandPalette:     true,
   exportPdf:          true,
-  importCsv:          true,
+  importXlsx:         true,
   bulkActions:        true,
   activityFeed:       true,
   auditLog:           true,

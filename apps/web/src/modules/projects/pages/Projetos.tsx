@@ -20,14 +20,14 @@ import { ProjetoFormModal } from "@/modules/projects/components/ProjetoFormModal
 import { ProjetoViewModal } from "@/modules/projects/components/ProjetoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
-import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
+import { exportToXlsx, importXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import type { ProjetoWithRelationsExtended } from "@/modules/projects/types/projetos-extensions";
 import { getFirstMusicaInfo, getMusicaInfo, parseMusicasFromProjeto, type MusicaData } from "@/modules/projects/lib/musica-helpers";
 
-const projetoColumns: CSVColumn[] = [
+const projetoColumns: XlsxColumn[] = [
   { key: "titulo",          label: "Nome do Projeto" },
   { key: "_artista",        label: "Artista Responsável" },
   { key: "tipo",            label: "Tipo de Lançamento" },
@@ -174,10 +174,10 @@ export default function Projetos() {
         });
       }
     }
-    exportToCSV(enriched, projetoColumns, "projetos");
+    exportToXlsx(enriched, projetoColumns, "projetos");
   };
 
-  const handleImport = () => importCSV(async (data) => {
+  const handleImport = () => importXlsx(async (data) => {
     const artistaByNome: Record<string, string> = {};
     artistas.forEach(a => { if (a.nome_artistico) artistaByNome[a.nome_artistico.toLowerCase()] = a.id; });
 
@@ -337,7 +337,15 @@ export default function Projetos() {
 
   const headerActions = (
     <>
+      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExport} data-testid="button-export-projetos">
+        <Download className="h-3.5 w-3.5" />
+        Exportar XLSX
+      </Button>
       <RequirePermission module="projects" action="write">
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleImport} data-testid="button-import-projetos">
+          <Upload className="h-3.5 w-3.5" />
+          Importar XLSX
+        </Button>
         <Button
           size="sm"
           className="h-8 text-xs gap-1.5"

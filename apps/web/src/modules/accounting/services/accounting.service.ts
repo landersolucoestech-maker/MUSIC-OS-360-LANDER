@@ -48,21 +48,4 @@ export const accountingService = {
   async updateNotaFiscal(id: string, patch: Record<string, unknown>) {
     return storage.update("notas_fiscais", id, patch);
   },
-
-  // ── Regras de Transação ────────────────────────────────────────────────────
-  async listRegrasTransacao() {
-    return storage.list("regras_transacao", { orderBy: { column: "prioridade", ascending: true } });
-  },
-
-  async createRegraTransacao(data: Record<string, unknown>) {
-    return storage.create("regras_transacao", data as never);
-  },
-
-  async updateRegraTransacao(id: string, patch: Record<string, unknown>) {
-    return storage.update("regras_transacao", id, patch);
-  },
-
-  async deleteRegraTransacao(id: string) {
-    return storage.delete("regras_transacao", id);
-  },
 };

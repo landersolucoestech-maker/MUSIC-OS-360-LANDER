@@ -332,7 +332,7 @@ export const FLOW_FINANCEIRO: OperationalFlow = {
     { step: 6, actor: "Gestor Financeiro", action: "Gerar relatórios financeiros",
       module: "accounting", entitiesAffected: [], integrations: [],
       uiElement: "RelatoriosPage",
-      notes: "Exportação CSV/PDF (futura integração com R2 para armazenamento)." },
+      notes: "Exportação XLSX/PDF (futura integração com R2 para armazenamento)." },
   ],
   successCriteria: [
     "Todas as transações do período registadas",
