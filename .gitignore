@@ -2,6 +2,10 @@
 dist/
 build/
 
+# Playwright test artifacts
+test-results/
+playwright-report/
+
 # Local scratch/state directories
 .local/
 

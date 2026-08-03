@@ -1,0 +1,153 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * p84-product-walkthrough.spec.ts  (Parte 84)
+ *
+ * Varredura funcional real via navegador: login → percorre os módulos
+ * visíveis no menu → registra erro de console, request 5xx e corpo vazio
+ * por rota. Não substitui os specs focados (crm-timeline-persistence etc.);
+ * o valor aqui é achar regressões visuais/funcionais amplas rapidamente.
+ *
+ * Credenciais só via variáveis de ambiente, nunca hardcoded — ausentes ⇒
+ * suíte pulada (mesmo padrão dos demais specs em e2e/).
+ *   E2E_QA_EMAIL / E2E_QA_PASSWORD — conta sintética descartável (não a
+ *   institucional).
+ */
+const EMAIL = process.env.E2E_QA_EMAIL;
+const PASSWORD = process.env.E2E_QA_PASSWORD;
+
+const MODULES: Array<{ name: string; path: string }> = [
+  { name: 'Dashboard', path: '/dashboard' },
+  { name: 'Artistas', path: '/artistas' },
+  { name: 'Catálogo (Obras/Fonogramas)', path: '/registro-musicas' },
+  { name: 'Lançamentos', path: '/lancamentos' },
+  { name: 'Contratos', path: '/contratos' },
+  { name: 'Audiovisual', path: '/audiovisual' },
+  { name: 'Financeiro', path: '/accounting' },
+  { name: 'Contabilidade', path: '/accounting/contabilidade' },
+  { name: 'Agenda', path: '/agenda' },
+  { name: 'Inventário', path: '/inventario' },
+  { name: 'MusicChat', path: '/chat' },
+  { name: 'CRM (Leads/Contatos)', path: '/leads' },
+  { name: 'RH', path: '/rh' },
+  { name: 'Marketing', path: '/marketing' },
+  { name: 'Relatórios', path: '/relatorios' },
+  { name: 'Suporte', path: '/support' },
+  { name: 'Configurações', path: '/configuracoes' },
+];
+
+interface ModuleFinding {
+  name: string;
+  path: string;
+  consoleErrors: string[];
+  pageErrors: string[];
+  failedRequests: string[];
+  bodyEmpty: boolean;
+}
+
+test.describe('Parte 84 — varredura funcional de produto', () => {
+  test.skip(!EMAIL || !PASSWORD, 'E2E_QA_EMAIL/E2E_QA_PASSWORD ausentes — pulando varredura real.');
+
+  test('login real + percorre todos os módulos visíveis, registrando bugs reais', async ({ page }) => {
+    test.setTimeout(5 * 60_000); // 17 módulos com networkidle — 30s default é curto demais
+
+    await test.step('login com conta sintética', async () => {
+      await page.goto('/auth', { waitUntil: 'networkidle' });
+      await page.getByPlaceholder('Digite seu e-mail').fill(EMAIL!);
+      await page.getByPlaceholder('Digite sua senha').fill(PASSWORD!);
+      await page.getByRole('button', { name: /acessar o sistema/i }).click();
+      await page.waitForURL(/\/(dashboard|onboarding|change-required-password)/, { timeout: 15_000 });
+    });
+
+    if (page.url().includes('/change-required-password') || page.url().includes('/onboarding')) {
+      throw new Error(`Login desviou para fluxo inesperado: ${page.url()}`);
+    }
+
+    const findings: ModuleFinding[] = [];
+
+    for (const mod of MODULES) {
+      const consoleErrors: string[] = [];
+      const pageErrors: string[] = [];
+      const failedRequests: string[] = [];
+
+      const onConsole = (msg: import('@playwright/test').ConsoleMessage) => {
+        if (msg.type() === 'error') consoleErrors.push(msg.text().slice(0, 300));
+      };
+      const onPageError = (err: Error) => pageErrors.push((err.stack ?? err.message).slice(0, 1500));
+      const onResponse = (res: import('@playwright/test').Response) => {
+        if (res.status() >= 500) failedRequests.push(`${res.status()} ${res.request().method()} ${res.url()}`);
+      };
+
+      page.on('console', onConsole);
+      page.on('pageerror', onPageError);
+      page.on('response', onResponse);
+
+      let bodyEmpty = false;
+      try {
+        await page.goto(mod.path, { waitUntil: 'networkidle', timeout: 20_000 });
+        await page.waitForTimeout(800); // deixa requests tardios/skeletons resolverem
+        const bodyText = (await page.locator('body').innerText()).trim();
+        bodyEmpty = bodyText.length < 10;
+      } catch (err) {
+        pageErrors.push(`goto/timeout: ${(err as Error).message.slice(0, 300)}`);
+      }
+
+      page.off('console', onConsole);
+      page.off('pageerror', onPageError);
+      page.off('response', onResponse);
+
+      findings.push({ name: mod.name, path: mod.path, consoleErrors, pageErrors, failedRequests, bodyEmpty });
+    }
+
+    await page.evaluate(() => localStorage.clear());
+
+    const broken = findings.filter(
+      (f) => f.pageErrors.length > 0 || f.failedRequests.length > 0 || f.bodyEmpty,
+    );
+
+    console.log('\n=== P84 WALKTHROUGH REPORT ===');
+    for (const f of findings) {
+      const status = f.pageErrors.length || f.failedRequests.length || f.bodyEmpty ? 'BROKEN' : 'OK';
+      console.log(`[${status}] ${f.name} (${f.path})`);
+      if (f.pageErrors.length) console.log(`  pageErrors: ${JSON.stringify(f.pageErrors)}`);
+      if (f.failedRequests.length) console.log(`  failedRequests: ${JSON.stringify(f.failedRequests)}`);
+      if (f.bodyEmpty) console.log(`  bodyEmpty: true`);
+      if (f.consoleErrors.length) console.log(`  consoleErrors (${f.consoleErrors.length}): ${JSON.stringify(f.consoleErrors.slice(0, 3))}`);
+    }
+    console.log('=== END REPORT ===\n');
+
+    expect(broken, `Módulos com bug real reproduzido: ${JSON.stringify(broken.map((b) => b.name))}`).toEqual([]);
+  });
+
+  test('criar artista sintético, recarregar, confirmar persistência real', async ({ page }) => {
+    test.setTimeout(60_000);
+    const nome = `QA P84 Artista ${Date.now()}`;
+
+    await page.goto('/auth', { waitUntil: 'networkidle' });
+    await page.getByPlaceholder('Digite seu e-mail').fill(EMAIL!);
+    await page.getByPlaceholder('Digite sua senha').fill(PASSWORD!);
+    await page.getByRole('button', { name: /acessar o sistema/i }).click();
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+
+    let created400Body: string | null = null;
+    page.on('response', async (res) => {
+      if (res.url().includes('/api/v1/artists') && res.request().method() === 'POST' && res.status() === 400) {
+        created400Body = await res.text().catch(() => null);
+      }
+    });
+
+    await page.goto('/artistas', { waitUntil: 'networkidle' });
+    await page.getByTestId('button-novo-artista').click();
+    await page.getByTestId('input-nome-artistico').fill(nome);
+    await page.getByTestId('input-nome-civil').fill(nome);
+    await page.getByTestId('button-salvar-modal').click();
+    await page.waitForTimeout(1000);
+    if (created400Body) throw new Error(`POST /artists 400: ${created400Body}`);
+    await expect(page.getByText(nome).first()).toBeVisible({ timeout: 10_000 });
+
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.getByText(nome).first()).toBeVisible({ timeout: 10_000 });
+
+    await page.evaluate(() => localStorage.clear());
+  });
+});
