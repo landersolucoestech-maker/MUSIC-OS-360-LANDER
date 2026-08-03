@@ -62,6 +62,7 @@ export class CompanySettingsService {
       tradeName: (config['tradeName'] as string) ?? null,
       cnpj: org.cnpj_encrypted ? this.encryption.decrypt(org.cnpj_encrypted) : null,
       stateRegistration: (config['ie'] as string) ?? null,
+      contactName: (config['contactName'] as string) ?? null,
       address: org.address ?? {},
       phone: org.phone,
       whatsapp: (config['whatsapp'] as string) ?? null,
@@ -71,6 +72,7 @@ export class CompanySettingsService {
       logoUrl: (config['logoUrl'] as string) ?? null,
       faviconUrl: (config['faviconUrl'] as string) ?? null,
       colors: (config['colors'] as Record<string, unknown>) ?? {},
+      banking: (config['banking'] as Record<string, unknown>) ?? {},
       timezone: (settings['timezone'] as string) ?? null,
       currency: (settings['currency'] as string) ?? null,
       language: (settings['language'] as string) ?? null,
@@ -90,6 +92,7 @@ export class CompanySettingsService {
       const mergedConfig: Record<string, unknown> = { ...(orgRow.config ?? {}) };
       if (dto.tradeName !== undefined) mergedConfig['tradeName'] = dto.tradeName;
       if (dto.stateRegistration !== undefined) mergedConfig['ie'] = dto.stateRegistration;
+      if (dto.contactName !== undefined) mergedConfig['contactName'] = dto.contactName;
       if (dto.whatsapp !== undefined) mergedConfig['whatsapp'] = dto.whatsapp;
       if (dto.contactEmail !== undefined) mergedConfig['contactEmail'] = dto.contactEmail;
       if (dto.website !== undefined) mergedConfig['website'] = dto.website;
@@ -97,6 +100,7 @@ export class CompanySettingsService {
       if (dto.logoUrl !== undefined) mergedConfig['logoUrl'] = dto.logoUrl;
       if (dto.faviconUrl !== undefined) mergedConfig['faviconUrl'] = dto.faviconUrl;
       if (dto.colors !== undefined) mergedConfig['colors'] = { ...(mergedConfig['colors'] as object ?? {}), ...dto.colors };
+      if (dto.banking !== undefined) mergedConfig['banking'] = { ...(mergedConfig['banking'] as object ?? {}), ...dto.banking };
 
       const mergedAddress = dto.address !== undefined
         ? { ...(orgRow.address ?? {}), ...dto.address }

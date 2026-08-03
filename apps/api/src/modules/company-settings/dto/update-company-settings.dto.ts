@@ -14,6 +14,8 @@ import {
 export class CompanyAddressDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(9) zipCode?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) street?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) number?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) complement?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) city?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2) state?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2) country?: string;
@@ -22,6 +24,12 @@ export class CompanyAddressDto {
 export class CompanyColorsDto {
   @ApiPropertyOptional() @IsOptional() @IsHexColor() primary?: string;
   @ApiPropertyOptional() @IsOptional() @IsHexColor() secondary?: string;
+}
+
+export class CompanyBankingDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) bankName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) agency?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) account?: string;
 }
 
 export class UpdateCompanySettingsDto {
@@ -40,6 +48,10 @@ export class UpdateCompanySettingsDto {
   @ApiPropertyOptional({ description: 'Inscrição Estadual' })
   @IsOptional() @IsString() @MaxLength(20)
   stateRegistration?: string;
+
+  @ApiPropertyOptional({ description: 'Nome do responsável pela empresa' })
+  @IsOptional() @IsString() @MaxLength(255)
+  contactName?: string;
 
   @ApiPropertyOptional()
   @IsOptional() @IsObject() @ValidateNested() @Type(() => CompanyAddressDto)
@@ -72,6 +84,10 @@ export class UpdateCompanySettingsDto {
   @ApiPropertyOptional()
   @IsOptional() @IsObject() @ValidateNested() @Type(() => CompanyColorsDto)
   colors?: CompanyColorsDto;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => CompanyBankingDto)
+  banking?: CompanyBankingDto;
 
   @ApiPropertyOptional({ description: 'IANA timezone, ex.: America/Sao_Paulo' })
   @IsOptional() @IsString() @MaxLength(64)

@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/app/providers/AuthContext";
 import { useTenant } from "@/app/providers/TenantContext";
 import { useUserSettings } from "@/modules/settings/hooks/useUserSettings";
+import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings";
 import { useUsuarios, Usuario } from "@/modules/settings/hooks/useUsuarios";
 import { useRoles, Role, RoleDetail } from "@/modules/settings/hooks/useRoles";
 import { UsuarioFormModal } from "@/modules/settings/components/UsuarioFormModal";
@@ -109,18 +110,23 @@ export default function Configuracoes() {
     staleTime: 60_000,
   });
   const { user, updatePassword } = useAuth();
-  const { 
-    userSettings, 
-    companySettings, 
+  const {
+    userSettings,
     orgSlug,
-    loading, 
+    loading,
     saving,
-    setUserSettings, 
-    setCompanySettings,
+    setUserSettings,
     setOrgSlug,
-    saveUserSettings, 
-    saveCompanySettings,
+    saveUserSettings,
+    saveOrgSlug,
   } = useUserSettings();
+  const {
+    companySettings,
+    isLoading: companyLoading,
+    saving: companySaving,
+    setCompanySettings,
+    saveCompanySettings,
+  } = useCompanySettings();
   const [slugError, setSlugError] = useState<string>("");
   const [isEditingCompany, setIsEditingCompany] = useState(false);
   const [companySnapshot, setCompanySnapshot] = useState<typeof companySettings | null>(null);
@@ -694,22 +700,18 @@ export default function Configuracoes() {
   };
 
   const handleSaveCompany = async () => {
-    let normalizedSlug: string | undefined;
     if (orgSlug) {
-      normalizedSlug = orgSlug.trim().toLowerCase();
+      const normalizedSlug = orgSlug.trim().toLowerCase();
       const slugRegex = /^[a-z0-9-]+$/;
       if (!slugRegex.test(normalizedSlug)) {
         setSlugError("Use apenas letras minúsculas, números e hífens.");
         return;
       }
       setSlugError("");
-      if (normalizedSlug !== orgSlug) setOrgSlug(normalizedSlug);
+      if (!saveOrgSlug(normalizedSlug)) return;
     }
 
-    const saved = await saveCompanySettings(
-      companySettings,
-      normalizedSlug,
-    );
+    const saved = await saveCompanySettings(companySettings);
     if (!saved) return;
 
     // Sincroniza o nome da organização na sidebar e no TenantContext
@@ -754,7 +756,7 @@ export default function Configuracoes() {
     }
   };
 
-  if (loading) {
+  if (loading || companyLoading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
@@ -970,16 +972,16 @@ export default function Configuracoes() {
                     <Button
                       className="bg-primary hover:bg-primary/90"
                       onClick={handleSaveCompany}
-                      disabled={saving}
+                      disabled={companySaving}
                       data-testid="button-save-company"
                     >
-                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      {companySaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                       Salvar Configurações
                     </Button>
                     <Button
                       variant="outline"
                       onClick={handleCancelCompany}
-                      disabled={saving}
+                      disabled={companySaving}
                     >
                       Cancelar
                     </Button>

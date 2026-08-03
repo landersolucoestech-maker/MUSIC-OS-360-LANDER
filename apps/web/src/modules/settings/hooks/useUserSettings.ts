@@ -4,11 +4,13 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { toast } from "sonner";
 
 /**
- * Configurações do usuário e da empresa em localStorage.
+ * Configurações pessoais do usuário (notificações/automação) em localStorage,
+ * e o slug de cadastro público da organização.
  *
- * Persiste em localStorage por usuário (chave `musicos360_user_settings:<id>` etc).
- * Quando o backend NestJS estiver integrado, substituir pelo endpoint
- * PATCH /settings/organization e GET /users/:id.
+ * Persiste em localStorage por usuário (chave `musicos360_user_settings:<id>`).
+ * Dados cadastrais da empresa (razão social, CNPJ, endereço…) NÃO vivem aqui —
+ * ver useCompanySettings.ts, que fala com o backend real (GET/PATCH
+ * /company-settings).
  */
 
 export interface UserSettings {
@@ -40,27 +42,6 @@ export interface UserSettings {
   }>;
 }
 
-export interface CompanySettings {
-  id?: string;
-  user_id?: string;
-  org_id?: string;
-  company_name: string;
-  fantasy_name: string;
-  cnpj: string;
-  inscricao_estadual: string;
-  cep: string;
-  logradouro: string;
-  numero: string;
-  complemento: string;
-  cidade: string;
-  estado: string;
-  telefone: string;
-  responsavel: string;
-  banco: string;
-  agencia: string;
-  conta: string;
-}
-
 const defaultUserSettings: UserSettings = {
   full_name: "",
   phone: "",
@@ -81,26 +62,7 @@ const defaultUserSettings: UserSettings = {
   automation_preferences: {},
 };
 
-const defaultCompanySettings: CompanySettings = {
-  company_name: "",
-  fantasy_name: "",
-  cnpj: "",
-  inscricao_estadual: "",
-  cep: "",
-  logradouro: "",
-  numero: "",
-  complemento: "",
-  cidade: "",
-  estado: "",
-  telefone: "",
-  responsavel: "",
-  banco: "",
-  agencia: "",
-  conta: "",
-};
-
 const userKey = (id: string) => `musicos360_user_settings:${id}`;
-const companyKey = (id: string) => `musicos360_company_settings:${id}`;
 const orgSlugKey = (id: string) => `musicos360_org_slug:${id}`;
 
 function readJSON<T extends object>(key: string, fallback: T): T {
@@ -131,7 +93,6 @@ function writeJSON<T>(key: string, value: T) {
 export function useUserSettings() {
   const { user } = useAuth();
   const [userSettings, setUserSettings] = useState<UserSettings>(defaultUserSettings);
-  const [companySettings, setCompanySettings] = useState<CompanySettings>(defaultCompanySettings);
   const [orgSlug, setOrgSlug] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -144,9 +105,6 @@ export function useUserSettings() {
     setLoading(true);
     try {
       setUserSettings(readJSON<UserSettings>(userKey(user.id), defaultUserSettings));
-      setCompanySettings(
-        readJSON<CompanySettings>(companyKey(user.id), defaultCompanySettings),
-      );
       try {
         setOrgSlug(localStorage.getItem(orgSlugKey(user.id)) ?? "");
       } catch {
@@ -186,50 +144,30 @@ export function useUserSettings() {
     }
   };
 
-  const saveCompanySettings = async (
-    company: Partial<CompanySettings>,
-    slug?: string,
-  ): Promise<boolean> => {
+  const saveOrgSlug = (slug: string): boolean => {
     if (!user) return false;
-
-    if (slug && !/^[a-z0-9-]+$/.test(slug)) {
+    if (!/^[a-z0-9-]+$/.test(slug)) {
       toast.error("O slug deve conter apenas letras minúsculas, números e hífens.");
       return false;
     }
-
-    setSaving(true);
     try {
-      const updatedCompany = { ...companySettings, ...company, user_id: user.id };
-
-      writeJSON(companyKey(user.id), updatedCompany);
-      if (slug) {
-        try {
-          localStorage.setItem(orgSlugKey(user.id), slug);
-        } catch {
-          // ignora falha de quota
-        }
-      }
-
-      setCompanySettings(updatedCompany);
-      if (slug) setOrgSlug(slug);
-      toast.success("Configurações da empresa salvas com sucesso!");
-      return true;
-    } finally {
-      setSaving(false);
+      localStorage.setItem(orgSlugKey(user.id), slug);
+    } catch {
+      // ignora falha de quota
     }
+    setOrgSlug(slug);
+    return true;
   };
 
   return {
     userSettings,
-    companySettings,
     orgSlug,
     loading,
     saving,
     setUserSettings,
-    setCompanySettings,
     setOrgSlug,
     saveUserSettings,
-    saveCompanySettings,
+    saveOrgSlug,
     refreshSettings: loadSettings,
   };
 }

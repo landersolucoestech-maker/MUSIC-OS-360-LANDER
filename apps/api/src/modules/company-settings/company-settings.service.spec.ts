@@ -123,6 +123,27 @@ describe('CompanySettingsService', () => {
     expect(call.after.cnpj).toBe('[REDACTED]');
   });
 
+  it('update() mescla banking e contactName sem apagar campos irmãos do config', async () => {
+    const seed = seedRow();
+    seed.organizations.config = { tradeName: 'Nome Fantasia', banking: { bankName: 'Banco Antigo' } };
+    const { ds, state } = buildFakeDataSource(seed);
+    const audit = { log: jest.fn() };
+    const svc = new CompanySettingsService(ds as any, fakeEncryption, audit as any);
+
+    await svc.update(TENANT_ID, ORG_ID, 'user-1', 'owner', {
+      contactName: 'Fulano de Tal',
+      banking: { agency: '0001', account: '12345-6' },
+    });
+
+    expect((state.organizations.config as any).contactName).toBe('Fulano de Tal');
+    expect((state.organizations.config as any).banking).toEqual({
+      bankName: 'Banco Antigo',
+      agency: '0001',
+      account: '12345-6',
+    });
+    expect((state.organizations.config as any).tradeName).toBe('Nome Fantasia'); // preservado
+  });
+
   it('update() só toca tenants.settings quando timezone/currency/language são fornecidos', async () => {
     const { ds, state } = buildFakeDataSource(seedRow());
     const audit = { log: jest.fn() };

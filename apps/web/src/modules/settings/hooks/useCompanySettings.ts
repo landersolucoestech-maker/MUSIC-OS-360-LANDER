@@ -1,35 +1,149 @@
-import { useQuery } from "@tanstack/react-query";
-import { IS_PROD } from "@/shared/lib/env";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api } from "@/shared/lib/api-client";
 
+/**
+ * Configuração cadastral da empresa — persistida no backend real
+ * (GET/PATCH /company-settings, tenant-scoped, RLS + CNPJ criptografado).
+ * Mantém o mesmo shape plano em pt-BR usado pela tela de Configurações e pelo
+ * formulário de Nota Fiscal, mapeando de/para o DTO aninhado do backend.
+ */
 export interface CompanySettings {
-  id: string;
-  user_id: string;
-  org_id: string;
-  company_name: string | null;
-  fantasy_name: string | null;
+  id?: string;
+  user_id?: string;
+  org_id?: string;
+  company_name: string;
+  fantasy_name: string;
+  cnpj: string;
+  inscricao_estadual: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  cidade: string;
+  estado: string;
+  telefone: string;
+  responsavel: string;
+  banco: string;
+  agencia: string;
+  conta: string;
+}
+
+interface CompanySettingsResponse {
+  legalName: string | null;
+  tradeName: string | null;
   cnpj: string | null;
-  inscricao_estadual: string | null;
-  inscricao_municipal?: string | null;
-  logradouro: string | null;
-  numero: string | null;
-  complemento: string | null;
-  cep: string | null;
-  cidade: string | null;
-  estado: string | null;
-  banco: string | null;
-  agencia: string | null;
-  conta: string | null;
+  stateRegistration: string | null;
+  contactName: string | null;
+  address: {
+    zipCode?: string; street?: string; number?: string; complement?: string;
+    city?: string; state?: string; country?: string;
+  };
+  phone: string | null;
+  banking: { bankName?: string; agency?: string; account?: string };
+}
+
+const defaultCompanySettings: CompanySettings = {
+  company_name: "",
+  fantasy_name: "",
+  cnpj: "",
+  inscricao_estadual: "",
+  cep: "",
+  logradouro: "",
+  numero: "",
+  complemento: "",
+  cidade: "",
+  estado: "",
+  telefone: "",
+  responsavel: "",
+  banco: "",
+  agencia: "",
+  conta: "",
+};
+
+function toCompanySettings(res: CompanySettingsResponse): CompanySettings {
+  const address = res.address ?? {};
+  const banking = res.banking ?? {};
+  return {
+    company_name: res.legalName ?? "",
+    fantasy_name: res.tradeName ?? "",
+    cnpj: res.cnpj ?? "",
+    inscricao_estadual: res.stateRegistration ?? "",
+    cep: address.zipCode ?? "",
+    logradouro: address.street ?? "",
+    numero: address.number ?? "",
+    complemento: address.complement ?? "",
+    cidade: address.city ?? "",
+    estado: address.state ?? "",
+    telefone: res.phone ?? "",
+    responsavel: res.contactName ?? "",
+    banco: banking.bankName ?? "",
+    agencia: banking.agency ?? "",
+    conta: banking.account ?? "",
+  };
+}
+
+function toUpdateDto(company: Partial<CompanySettings>) {
+  return {
+    legalName: company.company_name,
+    tradeName: company.fantasy_name,
+    cnpj: company.cnpj || undefined,
+    stateRegistration: company.inscricao_estadual,
+    contactName: company.responsavel,
+    address: {
+      zipCode: company.cep,
+      street: company.logradouro,
+      number: company.numero,
+      complement: company.complemento,
+      city: company.cidade,
+      state: company.estado,
+    },
+    phone: company.telefone,
+    banking: {
+      bankName: company.banco,
+      agency: company.agencia,
+      account: company.conta,
+    },
+  };
 }
 
 export function useCompanySettings() {
-  const { data, isLoading, error } = useQuery({
+  const queryClient = useQueryClient();
+  const [companySettings, setCompanySettings] = useState<CompanySettings>(defaultCompanySettings);
+  const [saving, setSaving] = useState(false);
+
+  const query = useQuery({
     queryKey: ["company_settings"],
-    // Backend não expõe ainda um endpoint real de dados cadastrais da empresa
-    // (CNPJ/razão social/endereço). Em produção, retornar null em vez de dados
-    // fictícios — a Nota Fiscal deve exibir campos vazios para preenchimento
-    // manual, nunca um CNPJ inventado.
-    queryFn: async () => null as CompanySettings | null,
+    queryFn: () => api.get<CompanySettingsResponse>("/company-settings"),
   });
 
-  return { companySettings: data, isLoading, error };
+  useEffect(() => {
+    if (query.data) setCompanySettings(toCompanySettings(query.data));
+  }, [query.data]);
+
+  const saveCompanySettings = async (company: Partial<CompanySettings>): Promise<boolean> => {
+    setSaving(true);
+    try {
+      const updated = await api.patch<CompanySettingsResponse>("/company-settings", toUpdateDto(company));
+      setCompanySettings(toCompanySettings(updated));
+      queryClient.setQueryData(["company_settings"], updated);
+      toast.success("Configurações da empresa salvas com sucesso!");
+      return true;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar configurações da empresa");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return {
+    companySettings,
+    isLoading: query.isLoading,
+    error: query.error,
+    saving,
+    setCompanySettings,
+    saveCompanySettings,
+  };
 }
