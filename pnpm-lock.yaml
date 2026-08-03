@@ -17,6 +17,7 @@ overrides:
   express>body-parser: '>=2.3.0'
   '@nestjs/platform-express>body-parser': '>=1.20.6 <2.0.0'
   '@nestjs/typeorm>uuid': '>=11.1.1'
+  socket.io-parser@>=4.0.0 <4.2.7: '>=4.2.7'
 
 importers:
 
@@ -6100,8 +6101,8 @@ packages:
   socket.io-adapter@2.5.6:
     resolution: {integrity: sha512-DkkO/dz7MGln0dHn5bmN3pPy+JmywNICWrJqVWiVOyvXjWQFIv9c2h24JrQLLFJ2aQVQf/Cvl1vblnd4r2apLQ==}
 
-  socket.io-parser@4.2.6:
-    resolution: {integrity: sha512-asJqbVBDsBCJx0pTqw3WfesSY0iRX+2xzWEWzrpcH7L6fLzrhyF8WPI8UaeM4YCuDfpwA/cgsdugMsmtz8EJeg==}
+  socket.io-parser@4.2.7:
+    resolution: {integrity: sha512-IH/iSeO9T6gz1KkFleGDWkG9N3dl4jXVYUtMhIqH10Md0ttMer8nUNWiP1DKuNrybD2xBrixLJdCC9J6ECoYkg==}
     engines: {node: '>=10.0.0'}
 
   socket.io@4.8.1:
@@ -13062,7 +13063,7 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  socket.io-parser@4.2.6:
+  socket.io-parser@4.2.7:
     dependencies:
       '@socket.io/component-emitter': 3.1.2
       debug: 4.4.3
@@ -13078,7 +13079,7 @@ snapshots:
       debug: 4.3.7
       engine.io: 6.6.7
       socket.io-adapter: 2.5.6
-      socket.io-parser: 4.2.6
+      socket.io-parser: 4.2.7
     transitivePeerDependencies:
       - bufferutil
       - supports-color
