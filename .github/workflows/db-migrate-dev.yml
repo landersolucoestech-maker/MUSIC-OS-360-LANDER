@@ -1,0 +1,77 @@
+name: DB Migrate — Apply Application Migrations — DEV
+
+# Human-triggered only — never runs on push/PR. Applies pending APPLICATION
+# migrations (see apps/api/src/database/migration-classification.ts) to the
+# real Supabase DEV database. EXTERNAL_MANAGED/PRIVILEGED migrations are
+# always skipped by db:migrate:application itself, never touched here.
+#
+# Trigger from the Actions tab (or `gh workflow run "DB Migrate — Apply
+# Application Migrations — DEV" --ref dev -f confirm=APPLY`), typing APPLY
+# in the confirmation input. Uses the same `development` GitHub Environment
+# (and its DATABASE_URL secret / required-reviewer protection, if any) as the
+# existing read-only "DB Verify — Application Migrations — DEV" job.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type APPLY to confirm you want to mutate the live DEV database'
+        required: true
+
+env:
+  NODE_VERSION: 20
+  PNPM_VERSION: 10.11.0
+
+jobs:
+  db-migrate-application-dev:
+    name: DB Migrate — Apply Application Migrations — DEV
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev'
+    environment: development
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DB_VERIFY_ENABLED: ${{ vars.DB_VERIFY_ENABLED }}
+    steps:
+      - name: Require explicit confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "APPLY" ]; then
+            echo "::error::confirm input must be exactly 'APPLY' — aborting without touching the database."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Check DB verification gate
+        id: gate
+        run: node scripts/db-verify-gate.mjs
+
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Supabase project ref is DEV (never MAIN/STAGING/prod) before any query
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm --filter @music-os-360/api exec tsx scripts/verify-supabase-dev-ref.ts
+
+      - name: db:migrate:application — apply pending APPLICATION migrations only
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm --filter @music-os-360/api db:migrate:application
+
+      - name: db:check:application — confirm zero APPLICATION migrations pending
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm --filter @music-os-360/api db:check:application
+
+      - name: verify:rls — confirm all tenant tables have RLS + policies
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm --filter @music-os-360/api verify:rls
