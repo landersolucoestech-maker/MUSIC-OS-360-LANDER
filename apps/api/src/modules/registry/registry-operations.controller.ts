@@ -81,9 +81,9 @@ export class RegistryOperationsController {
     res.send(out.content);
   }
 
-  @Get('submissions/:id/export/csv') @RequireRole('viewer') @ApiOperation({ summary: 'Exportar payload (CSV)' })
-  async exportCsv(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
-    const out = await this.svc.exportSubmission(t.id, id, 'csv');
+  @Get('submissions/:id/export/xlsx') @RequireRole('viewer') @ApiOperation({ summary: 'Exportar payload (XLSX)' })
+  async exportXlsx(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
+    const out = await this.svc.exportSubmission(t.id, id, 'xlsx');
     res.setHeader('Content-Type', out.mimeType);
     res.setHeader('Content-Disposition', `attachment; filename="${out.fileName}"`);
     res.send(out.content);

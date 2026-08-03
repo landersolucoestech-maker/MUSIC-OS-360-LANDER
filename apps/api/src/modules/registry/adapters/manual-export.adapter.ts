@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import * as XLSX from 'xlsx';
 import { SocietyDriver } from '@music-os-360/types';
 import type {
   ExportFormat,
@@ -8,7 +9,7 @@ import type {
   SocietySubmissionStatusResult,
 } from './society-adapter.contract';
 
-/** Flatten a nested object into dot-path rows for a simple, valid CSV. */
+/** Flatten a nested object into dot-path rows for a simple, valid two-column workbook. */
 function flatten(value: unknown, prefix = '', out: Array<[string, string]> = []): Array<[string, string]> {
   if (value === null || value === undefined) {
     out.push([prefix, '']);
@@ -25,10 +26,6 @@ function flatten(value: unknown, prefix = '', out: Array<[string, string]> = [])
   return out;
 }
 
-function csvEscape(s: string): string {
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
 /**
  * MANUAL_EXPORT — the only functional driver. It does NOT contact any society;
  * it serialises the payload so an operator downloads it and submits it through
@@ -40,10 +37,18 @@ export class ManualExportAdapter implements SocietyAdapter {
   readonly enabled = true;
 
   async exportPayload(payload: Record<string, unknown>, format: ExportFormat, baseName: string): Promise<ExportResult> {
-    if (format === 'csv') {
+    if (format === 'xlsx') {
       const rows = flatten(payload);
-      const content = ['field,value', ...rows.map(([k, v]) => `${csvEscape(k)},${csvEscape(v)}`)].join('\n');
-      return { format, content, mimeType: 'text/csv; charset=utf-8', fileName: `${baseName}.csv` };
+      const ws = XLSX.utils.aoa_to_sheet([['field', 'value'], ...rows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'submission');
+      const content = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+      return {
+        format,
+        content,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        fileName: `${baseName}.xlsx`,
+      };
     }
     return {
       format: 'json',
@@ -74,7 +79,7 @@ export class ManualExportAdapter implements SocietyAdapter {
       accepted: false,
       externalId: null,
       protocol: null,
-      message: 'Exportação manual: baixe o arquivo (JSON/CSV) e submeta no portal oficial da sociedade. Depois registre o protocolo manualmente.',
+      message: 'Exportação manual: baixe o arquivo (JSON/XLSX) e submeta no portal oficial da sociedade. Depois registre o protocolo manualmente.',
     };
   }
 }

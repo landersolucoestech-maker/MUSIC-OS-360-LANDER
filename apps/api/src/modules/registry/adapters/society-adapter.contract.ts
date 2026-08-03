@@ -21,11 +21,11 @@ export interface SocietySubmissionStatusResult {
   message: string;
 }
 
-export type ExportFormat = 'json' | 'csv';
+export type ExportFormat = 'json' | 'xlsx';
 
 export interface ExportResult {
   format: ExportFormat;
-  content: string;
+  content: string | Buffer;
   mimeType: string;
   fileName: string;
 }
