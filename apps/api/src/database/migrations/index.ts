@@ -153,6 +153,7 @@ import { GrantMusicosAppOnAllTables20260802000001 } from './20260802000001_Grant
 import { GrantMusicosAppAuthenticatedMembership20260802000002 } from './20260802000002_GrantMusicosAppAuthenticatedMembership';
 import { CreateClientAttachments20260803000001 } from './20260803000001_CreateClientAttachments';
 import { FixDefaultPrivilegesCreatorRole20260803000002 } from './20260803000002_FixDefaultPrivilegesCreatorRole';
+import { CreateContractServiceTypes20260803000003 } from './20260803000003_CreateContractServiceTypes';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -294,4 +295,5 @@ export const ALL_MIGRATIONS = [
   GrantMusicosAppAuthenticatedMembership20260802000002,
   CreateClientAttachments20260803000001,
   FixDefaultPrivilegesCreatorRole20260803000002,
+  CreateContractServiceTypes20260803000003,
 ] as const;

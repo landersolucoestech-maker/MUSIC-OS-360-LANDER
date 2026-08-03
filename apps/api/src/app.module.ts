@@ -40,6 +40,7 @@ import { RealtimeModule }       from './core/realtime/realtime.module';
 import { NotificationsModule }     from './modules/notifications/notifications.module';
 import { UploadsModule }           from './modules/uploads/uploads.module';
 import { ContractTemplatesModule } from './modules/contract-templates/contract-templates.module';
+import { ContractServiceTypesModule } from './modules/contract-service-types/contract-service-types.module';
 import { InvoicesModule }          from './modules/invoices/invoices.module';
 import { ClientsModule }           from './modules/clients/clients.module';
 import { LeadsModule }             from './modules/leads/leads.module';
@@ -147,6 +148,7 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
 
     // ── Módulos FASE 3 ────────────────────────────────────────────────────────
     ContractTemplatesModule,
+    ContractServiceTypesModule,
     InvoicesModule,
     ClientsModule,
     LeadsModule,

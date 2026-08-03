@@ -87,6 +87,7 @@ export const TABLE_ENDPOINT: Record<string, string> = {
   regras_financeiras: "/financial-rules",
   financial_categories: "/financial-categories",
   categorias_financeiras: "/financial-categories",
+  contract_service_types: "/contract-service-types",
 };
 
 export const PENDING_TABLES: Record<string, string> = {
@@ -96,8 +97,6 @@ export const PENDING_TABLES: Record<string, string> = {
   roles: "RBAC is currently exposed through /users and auth context, not a /roles CRUD",
   permissions: "Permissions are computed server-side, not exposed as a /permissions CRUD",
   integrations: "Integrations are exposed via sub-routes (integrations/autentique, integrations/external-data), not a flat /integrations CRUD",
-  regras_transacao: "Transaction-categorization rules have no backend controller yet",
-  contract_service_types: "Contract service types have no dedicated backend controller",
 };
 
 async function mapError(res: Response): Promise<never> {

@@ -804,6 +804,45 @@ export class ContractTemplateEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
 }
 
+// ─── Contract Service Types ───────────────────────────────────────────────────
+@Entity('contract_service_types')
+@Index(['tenant_id'])
+@Index(['tenant_id', 'active', 'sort_order'])
+export class ContractServiceTypeEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 255 }) name: string;
+  @Column({ type: 'varchar', length: 255 }) slug: string;
+  @Column({ type: 'text', nullable: true }) description: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) category: string | null;
+  @Column({ type: 'jsonb', default: [] }) client_types: string[];
+  @Column({ type: 'varchar', length: 50, default: 'valor_fixo' }) financial_model: string;
+  @Column({ type: 'boolean', default: false }) requires_external_rights_terms: boolean;
+  @Column({ type: 'boolean', default: false }) requires_fixed_value: boolean;
+  @Column({ type: 'boolean', default: false }) requires_advance: boolean;
+  @Column({ type: 'boolean', default: false }) requires_financial_support: boolean;
+  @Column({ type: 'boolean', default: false }) allow_installments: boolean;
+  @Column({ type: 'varchar', length: 100, nullable: true }) default_financial_category: string | null;
+  @Column({ type: 'boolean', default: true }) active: boolean;
+  @Column({ type: 'int', default: 0 }) sort_order: number;
+  @Column({ type: 'text', nullable: true }) header_image_url: string | null;
+  @Column({ type: 'text', nullable: true }) footer_image_url: string | null;
+  @Column({ type: 'text', default: '' }) conteudo: string;
+  @Column({ type: 'jsonb', default: [] }) participants: unknown;
+  @Column({ type: 'jsonb', default: [] }) variables: unknown;
+  @Column({ type: 'jsonb', nullable: true }) music_work: unknown;
+  @Column({ type: 'jsonb', nullable: true }) signature_settings: unknown;
+  @Column({ type: 'jsonb', nullable: true }) branding_settings: unknown;
+  @Column({ type: 'varchar', length: 10, default: 'BRL' }) financial_currency: string;
+  @Column({ type: 'varchar', length: 50, default: 'unico' }) financial_payment_frequency: string;
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true }) financial_penalty_percentage: string | null;
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true }) financial_interest_percentage: string | null;
+  @Column({ type: 'int', nullable: true }) financial_due_days: number | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+}
+
 // ─── Transactions ─────────────────────────────────────────────────────────────
 @Entity('transactions')
 @Index(['tenant_id'])
@@ -3185,6 +3224,7 @@ export const ALL_ENTITIES = [
   PhonogramEntity,
   ContractEntity,
   ContractTemplateEntity,
+  ContractServiceTypeEntity,
   TransactionEntity,
   InvoiceEntity,
   ClientEntity,

@@ -108,6 +108,10 @@ const CONTRACT_PERMISSION_GRANTS: Record<string, string[]> = {
   'contract_template:create': EDITOR_PLUS,
   'contract_template:update': EDITOR_PLUS,
   'contract_template:archive': MANAGER_PLUS,
+  'contract_service_type:read': VIEWER_PLUS,
+  'contract_service_type:create': EDITOR_PLUS,
+  'contract_service_type:update': EDITOR_PLUS,
+  'contract_service_type:archive': MANAGER_PLUS,
 };
 
 // FASE 8.5: fecha o GAP crítico catálogo×controller. CRUD granular dos controllers já migrados

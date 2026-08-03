@@ -32,6 +32,7 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   phonograms: EntityCategory.REPORTABLE,
   contracts: EntityCategory.REPORTABLE,
   contract_templates: EntityCategory.REPORTABLE,
+  contract_service_types: EntityCategory.REPORTABLE,
   transactions: EntityCategory.REPORTABLE,
   invoices: EntityCategory.REPORTABLE,
   clients: EntityCategory.REPORTABLE,

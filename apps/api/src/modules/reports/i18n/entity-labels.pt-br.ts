@@ -17,6 +17,7 @@ export const ENTITY_LABELS_PT_BR: Readonly<Record<string, string>> = {
   phonograms: 'Fonogramas',
   contracts: 'Contratos',
   contract_templates: 'Modelos de contrato',
+  contract_service_types: 'Tipos de serviço de contrato',
   transactions: 'Transações financeiras',
   invoices: 'Faturas',
   clients: 'Clientes',
