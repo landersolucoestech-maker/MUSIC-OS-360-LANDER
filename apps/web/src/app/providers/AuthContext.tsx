@@ -24,7 +24,7 @@ import {
   setAccessToken,
   setTenantId,
 } from "@/shared/lib/api-client";
-import { IS_DEV } from "@/shared/lib/env";
+import { IS_DEV, AUTH_DISABLED } from "@/shared/lib/env";
 import { normalizeEmail } from "@/shared/lib/normalize-email";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -170,14 +170,30 @@ function ensureWorkspaceProvisioned(
   return activeProvisioning;
 }
 
+// Espelha, só para exibição, o owner sintético do tenant-zero (LANDER
+// RECORDS) que o backend já usa sob AUTH_DISABLED — fonte de verdade é
+// apps/api/src/database/tenant-zero.constants.ts
+// (TENANT_ZERO_SYNTHETIC_OWNER_*), congelado e coberto por snapshot lá.
+// Nunca chama Supabase Auth: sob AUTH_DISABLED o backend não valida token
+// nenhum, então não há sessão real para buscar.
+const AUTH_DISABLED_USER: User = {
+  id: "c600dbbd-84ea-5910-8655-eb94389bb224",
+  email: "owner@lander-records.example.com",
+  role: "owner",
+  org_id: "724f035f-3034-5ea3-9b53-0785b558d4ec",
+  mustChangePassword: false,
+  user_metadata: { full_name: "LANDER RECORDS (Owner Sintético — DEV/STAGING)", role: "owner" },
+};
+
 function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(AUTH_DISABLED ? AUTH_DISABLED_USER : null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!AUTH_DISABLED);
   const initDone = useRef(false);
 
   useEffect(() => {
+    if (AUTH_DISABLED) return;
     if (initDone.current) return;
     initDone.current = true;
 

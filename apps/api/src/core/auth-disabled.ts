@@ -10,6 +10,13 @@
 // AUTH_DISABLED=true in production.
 // ─────────────────────────────────────────────────────────────────────────────
 import { isProdLike } from './config/runtime-environment';
+import {
+  TENANT_ZERO_AUTH_DISABLED_IDENTITY,
+  TENANT_ZERO_NAME,
+  TENANT_ZERO_SLUG,
+  TENANT_ZERO_SYNTHETIC_OWNER_EMAIL,
+  TENANT_ZERO_SYNTHETIC_OWNER_NAME,
+} from '../database/tenant-zero.constants';
 
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
 const IS_DEVELOPMENT = NODE_ENV === 'development' && !isProdLike(NODE_ENV);
@@ -25,23 +32,23 @@ if (AUTH_DISABLED) {
   );
 }
 
-// Tenant/org usados pelo bypass. Sobrescritíveis via env (DEV_TENANT_ID /
-// DEV_ORG_ID) para apontar o dev local a um tenant COM dados reais (ex.: o
-// tenant de seed/demo). Sem override, mantém o sentinela histórico — um
-// workspace vazio, sem linhas no banco. Honrados apenas fora de produção,
-// pelas mesmas condições de AUTH_DISABLED acima.
-const DEV_TENANT_ID =
-  process.env.DEV_TENANT_ID ?? '00000000-0000-4000-8000-000000000001';
-const DEV_ORG_ID =
-  process.env.DEV_ORG_ID ?? '00000000-0000-4000-8000-000000000001';
+// Tenant/org usados pelo bypass. Por padrão apontam para o tenant-zero real
+// (LANDER RECORDS — única fonte de verdade: tenant-zero.constants.ts), para
+// que AUTH_DISABLED opere sobre dados reais em vez de um workspace vazio.
+// Sobrescritíveis via env (DEV_TENANT_ID / DEV_ORG_ID) quando algum dev
+// precisar apontar para outro tenant local. Honrados apenas fora de
+// produção, pelas mesmas condições de AUTH_DISABLED acima.
+const DEV_TENANT_ID = process.env.DEV_TENANT_ID ?? TENANT_ZERO_AUTH_DISABLED_IDENTITY.tenantId;
+const DEV_ORG_ID = process.env.DEV_ORG_ID ?? TENANT_ZERO_AUTH_DISABLED_IDENTITY.orgId;
+const DEV_USER_ID = TENANT_ZERO_AUTH_DISABLED_IDENTITY.syntheticOwnerAuthUserId;
 
 export const DEV_AUTH = {
-  userId: "dev-auth-disabled-user",
+  userId: DEV_USER_ID,
   sessionId: "dev-auth-disabled-session",
   orgId: DEV_ORG_ID,
   orgRole: "owner",
   claims: {
-    sub: "dev-auth-disabled-user",
+    sub: DEV_USER_ID,
     app_metadata: {
       org_id: DEV_ORG_ID,
       role: "owner",
@@ -53,8 +60,8 @@ export const DEV_TENANT = {
   id: DEV_TENANT_ID,
   org_id: DEV_ORG_ID,
   external_auth_org_id: DEV_ORG_ID,
-  name: "Auth Disabled Workspace",
-  slug: "auth-disabled",
+  name: TENANT_ZERO_NAME,
+  slug: TENANT_ZERO_SLUG,
   active: true,
   plan: "enterprise",
 };
@@ -64,8 +71,8 @@ export const DEV_MEMBER = {
   tenant_id: DEV_TENANT.id,
   org_id: DEV_TENANT.org_id,
   auth_user_id: DEV_AUTH.userId,
-  email: "dev@musicos360.local",
-  full_name: "Dev Auth Disabled",
+  email: TENANT_ZERO_SYNTHETIC_OWNER_EMAIL,
+  full_name: TENANT_ZERO_SYNTHETIC_OWNER_NAME,
   role: "owner",
   is_active: true,
 };

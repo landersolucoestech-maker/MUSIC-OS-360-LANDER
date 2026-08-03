@@ -184,8 +184,25 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
+// Espelha, só para exibição, o tenant-zero real (LANDER RECORDS) que o
+// backend já usa sob AUTH_DISABLED — fonte de verdade é
+// apps/api/src/database/tenant-zero.constants.ts (TENANT_ZERO_TENANT_ID),
+// congelado e coberto por snapshot lá. Não é usado para autorização: o
+// backend nunca confia no tenant.id enviado pelo cliente sob AUTH_DISABLED,
+// ele já injeta o tenant-zero real via guard independentemente do que a UI
+// mostra aqui.
+const AUTH_DISABLED_TENANT_ID = "a900b3a8-fa1c-5a6b-a852-1b0689e27fe3";
+
 function buildInitialTenant(): Tenant {
-  if (AUTH_DISABLED) return { ...BASE_TENANT, name: "Desenvolvimento (auth desativada)", permissions: ROLE_PERMISSIONS.owner };
+  if (AUTH_DISABLED) {
+    return {
+      ...BASE_TENANT,
+      id: AUTH_DISABLED_TENANT_ID,
+      name: "LANDER RECORDS",
+      slug: "lander-records",
+      permissions: ROLE_PERMISSIONS.owner,
+    };
+  }
   return {
     ...BASE_TENANT,
     id:          "",

@@ -27,8 +27,11 @@
  * Estas constantes identificam QUAL linha é o tenant-zero — elas não
  * concedem, por si só, nenhum privilégio. Nenhuma policy de RLS, nenhum
  * guard de RBAC e nenhuma regra de billing deve comparar contra estes
- * valores; a única leitora legítima é o bootstrap
- * (`bootstrap-tenant-zero.ts`), que os usa para criar/validar a linha.
+ * valores; os únicos leitores legítimos dos três símbolos de ID brutos são o
+ * bootstrap (`bootstrap-tenant-zero.ts`, que os usa para criar/validar a
+ * linha) e este próprio módulo, que os reempacota em
+ * TENANT_ZERO_AUTH_DISABLED_IDENTITY para o bypass dev-only de autenticação
+ * (`core/auth-disabled.ts`) — nunca uma comparação de autorização.
  */
 import { v5 as uuidv5 } from 'uuid';
 
@@ -51,6 +54,21 @@ export const TENANT_ZERO_TENANT_ID = uuidv5(`${TENANT_ZERO_SLUG}:tenant`, MUSICO
 export const TENANT_ZERO_SYNTHETIC_OWNER_AUTH_USER_ID = uuidv5(`${TENANT_ZERO_SLUG}:synthetic-owner`, MUSICOS360_NAMESPACE_UUID);
 export const TENANT_ZERO_SYNTHETIC_OWNER_EMAIL = 'owner@lander-records.example.com';
 export const TENANT_ZERO_SYNTHETIC_OWNER_NAME = 'LANDER RECORDS (Owner Sintético — DEV/STAGING)';
+
+/**
+ * Identidade empacotada para o modo AUTH_DISABLED (bypass dev-only de
+ * autenticação — ver core/auth-disabled.ts). Existe como objeto separado, e
+ * não como export direto dos três símbolos brutos acima, para que
+ * `tenant-zero-no-special-case.spec.ts` continue garantindo que nenhum outro
+ * arquivo do sistema (RLS, RBAC, billing, guards) referencie
+ * TENANT_ZERO_ORG_ID/TENANT_ZERO_TENANT_ID/TENANT_ZERO_SYNTHETIC_OWNER_AUTH_USER_ID
+ * diretamente — só o bootstrap e este pacote os leem.
+ */
+export const TENANT_ZERO_AUTH_DISABLED_IDENTITY = {
+  orgId: TENANT_ZERO_ORG_ID,
+  tenantId: TENANT_ZERO_TENANT_ID,
+  syntheticOwnerAuthUserId: TENANT_ZERO_SYNTHETIC_OWNER_AUTH_USER_ID,
+};
 
 /** Motivo de auditoria registrado em todo evento de bootstrap do tenant-zero. */
 export const TENANT_ZERO_AUDIT_ACTION_CREATED = 'tenant.bootstrap.system_tenant_created';
