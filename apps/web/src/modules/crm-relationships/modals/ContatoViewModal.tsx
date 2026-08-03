@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,13 +9,15 @@ import {
 } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Badge }  from "@/shared/ui/badge";
+import { Input } from "@/shared/ui/input";
 import {
-  Briefcase, Building2, FileText,
-  Flag, Hash, Instagram, Mail, MapPin,
+  Briefcase, Building2, Clock, FileText,
+  Flag, Hash, Instagram, Loader2, Mail, MapPin,
   MessageSquare, Pencil, Phone, Star, Tag, User,
 } from "lucide-react";
 import { contactPriorityOptions, contactStatusOptions, contactTypeOptions, labelFor } from "../constants";
 import { getPerfis, type ContatoTipoPessoa } from "../constants/contact-classification";
+import { useClientTimeline } from "../hooks/useClientTimeline";
 import { TIPO_INTERACAO_OPTIONS } from "../shared/interacoes";
 import type { Contact } from "../types";
 
@@ -77,7 +80,23 @@ function Row({
 // Componente principal
 // ─────────────────────────────────────────────
 export function ContatoViewModal({ open, onOpenChange, contact, onEdit }: ContatoViewModalProps) {
+  const timeline = useClientTimeline(open && contact ? contact.id : null);
+  const [newNote, setNewNote] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
   if (!contact) return null;
+
+  const handleAddNote = async () => {
+    const description = newNote.trim();
+    if (!description) return;
+    setIsSavingNote(true);
+    try {
+      await timeline.addEntry("nota", description);
+      setNewNote("");
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
 
   const po = (contact.payloadOperacional ?? {}) as Record<string, unknown>;
   const str = (k: string): string => (typeof po[k] === "string" ? (po[k] as string) : "");
@@ -251,6 +270,69 @@ export function ContatoViewModal({ open, onOpenChange, contact, onEdit }: Contat
                     </p>
                     <p className="whitespace-pre-wrap text-sm text-foreground">
                       {it.descricao || "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ══ TIMELINE (real, persistida em activity_logs) ══ */}
+          <section className="space-y-3" data-testid="contato-view-timeline">
+            <h3 className="border-b pb-1 text-sm font-semibold tracking-wider text-muted-foreground">
+              Timeline
+            </h3>
+
+            <div className="flex gap-2">
+              <Input
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Registrar uma nota na timeline…"
+                disabled={isSavingNote}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void handleAddNote();
+                  }
+                }}
+                data-testid="contato-view-timeline-input"
+              />
+              <Button
+                type="button"
+                onClick={() => void handleAddNote()}
+                disabled={isSavingNote || !newNote.trim()}
+                data-testid="contato-view-timeline-add"
+              >
+                {isSavingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : "Registrar"}
+              </Button>
+            </div>
+
+            {timeline.isLoading ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando timeline…
+              </p>
+            ) : timeline.error ? (
+              <p className="text-sm text-destructive">
+                Não foi possível carregar a timeline.
+              </p>
+            ) : timeline.entries.length === 0 ? (
+              <p className="text-sm italic text-muted-foreground">
+                Nenhum evento registrado ainda.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {timeline.entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="space-y-1 rounded-md border bg-muted/20 p-3"
+                    data-testid={`contato-view-timeline-entry-${entry.id}`}
+                  >
+                    <p className="flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" />
+                      {entry.action} · {entry.user_name ?? "Sistema"} · {new Date(entry.created_at).toLocaleString("pt-BR")}
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm text-foreground">
+                      {entry.description || "—"}
                     </p>
                   </div>
                 ))}

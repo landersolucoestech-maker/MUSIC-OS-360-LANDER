@@ -69,6 +69,42 @@ export interface ListApiClientsResult {
   meta: { total: number; offset: number; limit: number };
 }
 
+export interface ClientTimelineEntry {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  description: string;
+  metadata: Record<string, unknown>;
+  user_id: string;
+  user_name: string | null;
+  created_at: string;
+}
+
+export interface ClientContractSummary {
+  id: string;
+  titulo: string;
+  tipo: string;
+  status: string;
+  valor: string | null;
+  data_inicio: string | null;
+  data_fim: string | null;
+  created_at: string;
+}
+
+export interface ClientAttachment {
+  id: string;
+  tenant_id: string;
+  client_id: string;
+  storage_key: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  checksum: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
 export const clientsService = {
   async list(params?: { search?: string; status?: string; category?: string; limit?: number; offset?: number }): Promise<ApiClient[]> {
     const query = new URLSearchParams();
@@ -88,5 +124,26 @@ export const clientsService = {
   },
   async remove(id: string): Promise<void> {
     await api.delete(`/clients/${id}`);
+  },
+
+  // ── Timeline real (persistida em activity_logs) ───────────────────────────
+  async getTimeline(clientId: string): Promise<ClientTimelineEntry[]> {
+    return api.get<ClientTimelineEntry[]>(`/clients/${clientId}/timeline`);
+  },
+  async addTimelineEntry(clientId: string, data: { type: string; description: string }): Promise<ClientTimelineEntry> {
+    return api.post<ClientTimelineEntry>(`/clients/${clientId}/timeline`, data);
+  },
+
+  // ── Contratos vinculados (relação real contracts.cliente_id) ──────────────
+  async getContracts(clientId: string): Promise<ClientContractSummary[]> {
+    return api.get<ClientContractSummary[]>(`/clients/${clientId}/contracts`);
+  },
+
+  // ── Anexos reais (metadata em client_attachments; binário no R2) ──────────
+  async listAttachments(clientId: string): Promise<ClientAttachment[]> {
+    return api.get<ClientAttachment[]>(`/clients/${clientId}/attachments`);
+  },
+  async removeAttachment(clientId: string, attachmentId: string): Promise<void> {
+    await api.delete(`/clients/${clientId}/attachments/${attachmentId}`);
   },
 };
