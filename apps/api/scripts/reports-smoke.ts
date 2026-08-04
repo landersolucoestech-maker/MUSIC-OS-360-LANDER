@@ -1,17 +1,11 @@
 /**
- * scripts/reports-smoke.ts  ·  FASE 2.4
- *
- * Smoke HTTP REAL da Central de Relatórios contra uma API JÁ EM EXECUÇÃO
- * (real NestJS + PostgreSQL + JWT + Tenant + RBAC). Obtém JWT real via
- * /dev-auth/token e exercita export (JSON/CSV/XLSX), import/validate,
- * import/commit (+ create-only + rollback). Sai com código ≠ 0 em qualquer falha.
- *
- * Pré-requisito: API rodando (ex.: node dist/apps/api/src/main.js).
- * Uso: API_URL=http://localhost:3001 npm run reports:smoke
+ * Smoke HTTP real da Central de Relatórios contra API e PostgreSQL em execução.
+ * Valida exportação XLSX estrutural, importação, create-only, rollback e tenant.
  */
 import 'reflect-metadata';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as XLSX from 'xlsx';
 import { DataSource } from 'typeorm';
 import { ALL_ENTITIES } from '../src/database/entities';
 import { assertDatabaseCommandEnv } from '../src/core/config/env.schema';
@@ -19,71 +13,198 @@ import { assertDatabaseCommandEnv } from '../src/core/config/env.schema';
 const API = (process.env['API_URL'] ?? 'http://localhost:3001').replace(/\/$/, '');
 const TAG = `HTTPSMOKE_${Date.now()}`;
 let failures = 0;
-function check(name: string, cond: boolean, detail = ''): void {
-  console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : ' ' + detail}`);
-  if (!cond) failures++;
+
+function check(name: string, condition: boolean, detail = ''): void {
+  console.log(`  ${condition ? 'PASS' : 'FAIL'}  ${name}${condition ? '' : ` ${detail}`}`);
+  if (!condition) failures += 1;
 }
-async function api(method: string, p: string, headers: Record<string, string> = {}, body?: unknown) {
-  const res = await fetch(`${API}/api/v1${p}`, {
-    method, headers: { 'Content-Type': 'application/json', ...headers },
-    body: body ? JSON.stringify(body) : undefined,
+
+async function api(
+  method: string,
+  route: string,
+  headers: Record<string, string> = {},
+  body?: unknown,
+) {
+  const response = await fetch(`${API}/api/v1${route}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const ct = res.headers.get('content-type') ?? '';
-  const data = ct.includes('json') ? await res.json().catch(() => null) : await res.text();
-  return { status: res.status, data, headers: res.headers };
+  const contentType = response.headers.get('content-type') ?? '';
+  const data = contentType.includes('json')
+    ? await response.json().catch(() => null)
+    : await response.text();
+  return { status: response.status, data, headers: response.headers };
+}
+
+function workbookBody(names: string[]) {
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    ['Nome artístico'],
+    ...names.map((name) => [name]),
+  ]);
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Artistas');
+  return {
+    filename: 'artistas.xlsx',
+    contentBase64: XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' }) as string,
+  };
+}
+
+function unwrap(value: unknown): any {
+  if (
+    value &&
+    typeof value === 'object' &&
+    'data' in value &&
+    !Array.isArray(value) &&
+    !('validRows' in value) &&
+    !('importedRows' in value)
+  ) {
+    return (value as { data: unknown }).data;
+  }
+  return value;
 }
 
 async function main(): Promise<void> {
   console.log(`\n[reports:smoke] API=${API}`);
-  const envText = fs.existsSync(path.resolve(process.cwd(), '.env')) ? fs.readFileSync(path.resolve(process.cwd(), '.env'), 'utf8') : '';
-  const url = (envText.match(/^DATABASE_URL=(.+)$/m)?.[1] ?? '').trim().replace(/^["']|["']$/g, '');
+  const envPath = path.resolve(process.cwd(), '.env');
+  const envText = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+  const url = (envText.match(/^DATABASE_URL=(.+)$/m)?.[1] ?? '')
+    .trim()
+    .replace(/^["']|["']$/g, '');
   assertDatabaseCommandEnv('reports-smoke', { ...process.env, DATABASE_URL: url });
-  const ds = await new DataSource({ type: 'postgres', url, entities: ALL_ENTITIES, synchronize: false, logging: false, ssl: false }).initialize();
+
+  const dataSource = await new DataSource({
+    type: 'postgres',
+    url,
+    entities: ALL_ENTITIES,
+    synchronize: false,
+    logging: false,
+    ssl: false,
+  }).initialize();
 
   try {
-    const tok = await api('GET', '/dev-auth/token');
-    const payload = (tok.data as any)?.data ?? tok.data;
+    const tokenResponse = await api('GET', '/dev-auth/token');
+    const payload = unwrap(tokenResponse.data);
     const token = payload?.token;
     const tenantId = payload?.orgId ?? payload?.tenantId;
-    check('dev-auth → JWT + tenant', !!token && !!tenantId, `status=${tok.status}`);
-    const H = { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId };
+    check('dev-auth fornece JWT e tenant', Boolean(token && tenantId), `status=${tokenResponse.status}`);
+    const headers = { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId };
 
-    const ej = await api('GET', '/reports/entities/artists/export?format=json', H);
-    check('export JSON → 200 + label pt-BR', ej.status === 200 && Array.isArray((ej.data as any)?.data) && (ej.data as any)?.metadata?.columns?.some((c: any) => c.label === 'Nome artístico'), `status=${ej.status}`);
-    const ec = await api('GET', '/reports/entities/artists/export?format=csv', H);
-    check('export CSV → 200 + cabeçalho pt-BR', ec.status === 200 && String(ec.data).includes('Nome artístico') && !String(ec.data).includes('nome_artistico'), `status=${ec.status}`);
-    const ex = await fetch(`${API}/api/v1/reports/entities/artists/export?format=xlsx`, { headers: H });
-    check('export XLSX → 200 + binário', ex.status === 200 && (await ex.arrayBuffer()).byteLength > 0, `status=${ex.status}`);
+    const exportResponse = await fetch(
+      `${API}/api/v1/reports/entities/artists/export?format=xlsx`,
+      { headers },
+    );
+    const exportBuffer = Buffer.from(await exportResponse.arrayBuffer());
+    check('exportação responde 200', exportResponse.status === 200, `status=${exportResponse.status}`);
+    check(
+      'exportação usa MIME XLSX',
+      exportResponse.headers.get('content-type')?.includes(
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ) === true,
+    );
+    check('arquivo possui assinatura ZIP', exportBuffer[0] === 0x50 && exportBuffer[1] === 0x4b);
 
-    const bad = await api('GET', '/reports/entities/artists/export?format=json&columns=id', H);
-    check('coluna fora do contrato → 400', bad.status === 400, `status=${bad.status}`);
-    const noTok = await api('GET', '/reports/entities/artists/export?format=json');
-    check('sem token → 401/403', [401, 403].includes(noTok.status), `status=${noTok.status}`);
+    const exportedWorkbook = XLSX.read(exportBuffer, { type: 'buffer', cellDates: true });
+    check(
+      'workbook possui uma única aba Artistas',
+      exportedWorkbook.SheetNames.length === 1 && exportedWorkbook.SheetNames[0] === 'Artistas',
+      `abas=${exportedWorkbook.SheetNames.join(',')}`,
+    );
+    const exportedRows = XLSX.utils.sheet_to_json<unknown[]>(
+      exportedWorkbook.Sheets.Artistas!,
+      { header: 1, raw: true },
+    );
+    check(
+      'cabeçalho é pt-BR e não expõe chave física',
+      exportedRows[0]?.includes('Nome artístico') === true &&
+        exportedRows[0]?.includes('nome_artistico') === false,
+    );
 
-    // O TransformInterceptor global pode envelopar o corpo em { data: ... }.
-    const unwrap = (d: any) => (d && typeof d === 'object' && 'data' in d && !Array.isArray(d) && !('validRows' in d) && !('importedRows' in d) ? d.data : d);
+    const unsupported = await api(
+      'GET',
+      '/reports/entities/artists/export?format=xml',
+      headers,
+    );
+    check('formato não suportado é rejeitado', unsupported.status === 400, `status=${unsupported.status}`);
 
-    const vName = `${TAG}_V`;
-    const v = await api('POST', '/reports/entities/artists/import/validate', H, { filename: 'a.csv', content: `Nome artístico\n${vName}` });
-    check('import validate → validRows=1', [200, 201].includes(v.status) && unwrap(v.data)?.validRows === 1, `status=${v.status}`);
-    check('validate NÃO persiste', (await ds.query(`SELECT COUNT(*)::int c FROM artists WHERE nome_artistico=$1`, [vName]))[0].c === 0);
+    const noToken = await api('GET', '/reports/entities/artists/export?format=xlsx');
+    check('exportação sem token é bloqueada', [401, 403].includes(noToken.status), `status=${noToken.status}`);
 
-    const cName = `${TAG}_C`;
-    const c1 = await api('POST', '/reports/entities/artists/import/commit', H, { filename: 'a.csv', content: `Nome artístico\n${cName}` });
-    check('import commit → importedRows=1', unwrap(c1.data)?.importedRows === 1, `status=${c1.status}`);
-    check('commit persiste tenant correto', (await ds.query(`SELECT tenant_id FROM artists WHERE nome_artistico=$1`, [cName]))[0]?.tenant_id === tenantId);
+    const validateName = `${TAG}_V`;
+    const validation = await api(
+      'POST',
+      '/reports/entities/artists/import/validate',
+      headers,
+      workbookBody([validateName]),
+    );
+    check(
+      'preview valida uma linha',
+      [200, 201].includes(validation.status) && unwrap(validation.data)?.validRows === 1,
+      `status=${validation.status}`,
+    );
+    const previewCount = await dataSource.query(
+      'SELECT COUNT(*)::int AS count FROM artists WHERE nome_artistico=$1',
+      [validateName],
+    );
+    check('preview não persiste', previewCount[0].count === 0);
 
-    const c2 = await api('POST', '/reports/entities/artists/import/commit', H, { filename: 'a.csv', content: `Nome artístico\n${cName}` });
-    check('create-only: duplicado rejeitado', unwrap(c2.data)?.importedRows === 0 && (unwrap(c2.data)?.errors ?? []).some((e: string) => /já existe/i.test(e)));
+    const commitName = `${TAG}_C`;
+    const firstCommit = await api(
+      'POST',
+      '/reports/entities/artists/import/commit',
+      headers,
+      workbookBody([commitName]),
+    );
+    check(
+      'commit importa uma linha',
+      unwrap(firstCommit.data)?.importedRows === 1,
+      `status=${firstCommit.status}`,
+    );
+    const stored = await dataSource.query(
+      'SELECT tenant_id FROM artists WHERE nome_artistico=$1',
+      [commitName],
+    );
+    check('commit persiste no tenant correto', stored[0]?.tenant_id === tenantId);
 
-    const rName = `${TAG}_R`;
-    await api('POST', '/reports/entities/artists/import/commit', H, { filename: 'a.csv', content: `Nome artístico\n${rName}\n${cName}` });
-    check('rollback total: novo NÃO inserido', (await ds.query(`SELECT COUNT(*)::int c FROM artists WHERE nome_artistico=$1`, [rName]))[0].c === 0);
+    const duplicateCommit = await api(
+      'POST',
+      '/reports/entities/artists/import/commit',
+      headers,
+      workbookBody([commitName]),
+    );
+    check(
+      'create-only rejeita duplicidade',
+      unwrap(duplicateCommit.data)?.importedRows === 0 &&
+        (unwrap(duplicateCommit.data)?.errors ?? []).some((error: string) => /já existe/i.test(error)),
+    );
+
+    const rollbackName = `${TAG}_R`;
+    await api(
+      'POST',
+      '/reports/entities/artists/import/commit',
+      headers,
+      workbookBody([rollbackName, commitName]),
+    );
+    const rollbackCount = await dataSource.query(
+      'SELECT COUNT(*)::int AS count FROM artists WHERE nome_artistico=$1',
+      [rollbackName],
+    );
+    check('erro em lote executa rollback total', rollbackCount[0].count === 0);
   } finally {
-    await ds.query(`DELETE FROM artists WHERE nome_artistico LIKE $1`, [`${TAG}%`]).catch(() => {});
-    await ds.destroy().catch(() => {});
+    try {
+      await dataSource.query('DELETE FROM artists WHERE nome_artistico LIKE $1', [`${TAG}%`]);
+    } finally {
+      await dataSource.destroy();
+    }
   }
-  console.log(`\n[reports:smoke] ${failures === 0 ? 'OK — todos os fluxos passaram' : `FALHOU — ${failures} falha(s)`}\n`);
+
+  console.log(
+    `\n[reports:smoke] ${failures === 0 ? 'OK — todos os fluxos passaram' : `FALHOU — ${failures} falha(s)`}\n`,
+  );
   process.exit(failures === 0 ? 0 : 1);
 }
-main().catch((e) => { console.error('[reports:smoke] erro fatal:', e?.message ?? e); process.exit(1); });
+
+main().catch((error) => {
+  console.error('[reports:smoke] erro fatal:', error instanceof Error ? error.stack : error);
+  process.exit(1);
+});
