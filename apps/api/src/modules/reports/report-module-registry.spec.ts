@@ -3,8 +3,7 @@
  *
  * Guarda permanente: a Central de Relatórios deve listar EXATAMENTE os 22
  * módulos autorizados, nesta ordem — nem um a mais, nem um a menos, nunca
- * fora de ordem. Falha se um item faltar, surgir item extra, a ordem mudar,
- * ou Pipeline/Formulários reaparecerem.
+ * fora de ordem.
  */
 import { EntityMetadataService } from './entity-metadata.service';
 import { REPORT_MODULE_ORDERED_LABELS, REPORT_MODULE_REGISTRY } from './report-module-registry';
@@ -26,8 +25,8 @@ const EXPECTED_ORDERED_LABELS = [
   'Nota Fiscal',
   'Agenda',
   'Inventário',
-  'CRM — Contatos',
-  'CRM — Leads',
+  'Contatos',
+  'Leads',
   'RH',
   'Tarefas',
   'Calendário de Conteúdo',
@@ -80,7 +79,7 @@ describe('REPORT_MODULE_REGISTRY — lista fechada e ordem exata (Bloco 31)', ()
       ];
       for (const table of explicitlyRemoved) {
         const e = inv.entities.find((x) => x.tableName === table);
-        if (!e) continue; // tabela pode não existir (nome inválido de propósito acima)
+        if (!e) continue;
         expect(e.reportable).toBe(false);
       }
     });
