@@ -24,6 +24,15 @@ export interface AuditEntry {
   version_after?: number;
 }
 
+interface ListEnvelope<T> {
+  data: T[];
+  meta?: {
+    total?: number;
+    limit?: number;
+    offset?: number;
+  };
+}
+
 interface StoragePort {
   runInTransaction<T>(callback: () => Promise<T>): Promise<T>;
   list<T extends StorageRow>(table: string, options?: ListOptions): Promise<T[]>;
@@ -76,6 +85,15 @@ function unavailableTable(table: string, reason: string): never {
   );
 }
 
+function unwrapList<T>(response: T[] | ListEnvelope<T>, table: string): T[] {
+  if (Array.isArray(response)) return response;
+  if (response && Array.isArray(response.data)) return response.data;
+  throw new IntegrationError(
+    "storage",
+    `Resposta inválida ao listar "${table}": esperado array ou envelope paginado { data, meta }.\`,
+  );
+}
+
 const httpStorage: StoragePort = {
   async runInTransaction<T>(callback: () => Promise<T>): Promise<T> {
     return callback();
@@ -97,7 +115,8 @@ const httpStorage: StoragePort = {
     if (options?.limit !== undefined) params.set("limit", String(options.limit));
     if (options?.offset !== undefined) params.set("offset", String(options.offset));
     const qs = params.toString();
-    return api.get<T[]>(`${resolved.ep}${qs ? `?${qs}` : ""}`);
+    const response = await api.get<T[] | ListEnvelope<T>>(`${resolved.ep}${qs ? `?${qs}` : ""}`);
+    return unwrapList(response, table);
   },
 
   async findById<T extends StorageRow>(table: string, id: string): Promise<T | undefined> {
@@ -157,7 +176,8 @@ const httpStorage: StoragePort = {
     if (filters?.action) params.set("action", filters.action);
     if (filters?.limit) params.set("limit", String(filters.limit));
     const qs = params.toString();
-    return api.get<AuditEntry[]>(`/audit-log${qs ? `?${qs}` : ""}`);
+    const response = await api.get<AuditEntry[] | ListEnvelope<AuditEntry>>(`/audit-log${qs ? `?${qs}` : ""}`);
+    return unwrapList(response, "audit-log");
   },
 
   raw(): never {
