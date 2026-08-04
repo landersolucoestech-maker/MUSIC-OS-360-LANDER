@@ -154,8 +154,9 @@ import { GrantMusicosAppAuthenticatedMembership20260802000002 } from './20260802
 import { CreateClientAttachments20260803000001 } from './20260803000001_CreateClientAttachments';
 import { FixDefaultPrivilegesCreatorRole20260803000002 } from './20260803000002_FixDefaultPrivilegesCreatorRole';
 import { CreateContractServiceTypes20260803000003 } from './20260803000003_CreateContractServiceTypes';
-
 import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicensePercentage';
+import { HardenRbacDecisionLogPartitions20260804000002 } from './20260804000002_HardenRbacDecisionLogPartitions';
+
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
   WorkflowTransitions20240601000001,
@@ -298,4 +299,5 @@ export const ALL_MIGRATIONS = [
   FixDefaultPrivilegesCreatorRole20260803000002,
   CreateContractServiceTypes20260803000003,
   AddLicensePercentage20260804000001,
+  HardenRbacDecisionLogPartitions20260804000002,
 ] as const;
