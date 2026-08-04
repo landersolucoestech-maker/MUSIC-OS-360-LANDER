@@ -68,6 +68,7 @@ export function useSimpleContacts() {
  * financeiro/nota fiscal/dashboard. */
 function apiClientToCliente(c: ApiClient): Cliente {
   const isPF = c.tipo_pessoa === "pessoa_fisica";
+  const enderecoCompleto = c.endereco_completo ?? c.address ?? null;
   return {
     id: c.id,
     nome: c.nome ?? c.name,
@@ -77,7 +78,8 @@ function apiClientToCliente(c: ApiClient): Cliente {
     empresa: c.razao_social ?? c.nome_fantasia ?? null,
     cidade: c.cidade ?? null,
     estado: c.estado ?? null,
-    endereco: c.endereco_completo ?? c.address ?? null,
+    endereco: enderecoCompleto,
+    endereco_completo: enderecoCompleto,
     cep: c.cep ?? null,
     status: c.status ?? null,
     cpf: isPF ? c.document ?? null : null,
