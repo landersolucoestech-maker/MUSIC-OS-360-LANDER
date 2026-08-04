@@ -73,7 +73,9 @@ export class HardenRbacDecisionLogPartitions20260804000002
             target_name
           );
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+        IF EXISTS (
+          SELECT 1 FROM pg_roles WHERE rolname = 'authenticated'
+        ) THEN
           EXECUTE format(
             'REVOKE ALL PRIVILEGES ON TABLE %I.%I FROM authenticated',
             target_schema,
@@ -81,6 +83,11 @@ export class HardenRbacDecisionLogPartitions20260804000002
           );
         END IF;
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'musicos_app') THEN
+          EXECUTE format(
+            'REVOKE ALL PRIVILEGES ON TABLE %I.%I FROM musicos_app',
+            target_schema,
+            target_name
+          );
           EXECUTE format(
             'GRANT SELECT, INSERT ON TABLE %I.%I TO musicos_app',
             target_schema,
