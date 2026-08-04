@@ -1,12 +1,13 @@
 /**
- * pipeline-forms-not-reportable.guard.spec.ts  ·  Parte 87
+ * pipeline-forms-not-reportable.guard.spec.ts  ·  Parte 87 (atualizado Parte 88)
  *
- * Guarda permanente: "forms" (Formulários) e "pipelines" (Pipelines) nunca
- * podem aparecer na Central de Relatórios — nem no inventário de entidades,
- * nem em /definitions, nem via export/import/template diretos. Continuam
- * existindo normalmente em seus próprios módulos (FormEntity/PipelineEntity),
- * apenas fora do escopo de Relatórios. `pipeline_opportunities` (entidade de
- * negócio distinta do CRM) permanece reportável — não confundir.
+ * Guarda permanente: "forms" (Formulários), "pipelines" (Pipelines) e
+ * "pipeline_opportunities" (Oportunidades de Pipeline) nunca podem aparecer
+ * na Central de Relatórios — nem no inventário de entidades, nem em
+ * /definitions, nem via export/import/template diretos. Continuam existindo
+ * normalmente em seus próprios módulos, apenas fora do escopo de Relatórios.
+ * Parte 88: pipeline_opportunities removida explicitamente do registry
+ * (ainda sem contrato explícito auditado) — deixou de ser exceção.
  */
 import { EntityMetadataService } from './entity-metadata.service';
 import { ReportEntityDefinitionService } from './definitions/report-entity-definition.service';
@@ -19,7 +20,7 @@ import { ImportMapperService } from './import/import-mapper.service';
 import { ImportValidationService } from './import/import-validation.service';
 import { ReportTableGuardService } from './report-table-guard.service';
 
-const BLOCKED_TABLES = ['forms', 'pipelines'];
+const BLOCKED_TABLES = ['forms', 'pipelines', 'pipeline_opportunities'];
 
 describe('Guarda permanente: forms/pipelines nunca reportáveis (Parte 87)', () => {
   const metadata = new EntityMetadataService();
@@ -30,11 +31,6 @@ describe('Guarda permanente: forms/pipelines nunca reportáveis (Parte 87)', () 
     expect(entity).toBeDefined();
     expect(entity!.reportable).toBe(false);
     expect(entity!.category).toBe('NOT_REPORTABLE');
-  });
-
-  it('pipeline_opportunities (CRM) permanece reportável — não é a mesma entidade que "pipelines"', () => {
-    const entity = inv.entities.find((e) => e.tableName === 'pipeline_opportunities');
-    expect(entity?.reportable).toBe(true);
   });
 
   it.each(BLOCKED_TABLES)('%s: ausente de ReportEntityDefinitionService.getDefinitions()', (table) => {

@@ -55,6 +55,30 @@ test.describe('Parte 86 — centralização de Importar/Exportar em Relatórios'
     expect(bodyText).not.toMatch(/\bPipelines?\b/);
   });
 
+  test('Relatórios: entidades sem contrato explícito de relatório (Parte 88) NÃO aparecem — nenhum fallback heurístico', async ({ page }) => {
+    await page.goto('/relatorios', { waitUntil: 'networkidle' });
+    await expect(page.locator('[data-testid="entity-row-projects"]')).toBeVisible({ timeout: 10_000 });
+
+    const removedTables = [
+      'artist_goals', 'assets', 'audiovisual_assets', 'audiovisual_deliverables',
+      'audiovisual_tasks', 'lead_interactions', 'marketing_assets', 'marketing_content_posts',
+      'marketing_projects', 'marketing_strategies', 'marketing_tasks', 'operational_tasks',
+      'pipeline_opportunities', 'support_tickets',
+    ];
+    for (const table of removedTables) {
+      await expect(page.locator(`[data-testid="entity-row-${table}"]`)).toHaveCount(0);
+    }
+
+    const removedLabels = [
+      'Metas de artistas', 'Ativos digitais', 'Ativos audiovisuais', 'Entregáveis audiovisuais',
+      'Tarefas audiovisuais', 'Interações de leads', 'Ativos de marketing', 'Publicações de conteúdo',
+      'Projetos de marketing', 'Estratégias de marketing', 'Tarefas de marketing', 'Tarefas operacionais',
+      'Oportunidades de pipeline', 'Chamados de suporte',
+    ];
+    const bodyText = await page.locator('body').innerText();
+    for (const label of removedLabels) expect(bodyText).not.toContain(label);
+  });
+
   test('Relatórios: Projetos aparece como entidade reportável com Importar/Exportar funcionais', async ({ page }) => {
     await page.goto('/relatorios', { waitUntil: 'networkidle' });
     const row = page.locator('[data-testid="entity-row-projects"]');

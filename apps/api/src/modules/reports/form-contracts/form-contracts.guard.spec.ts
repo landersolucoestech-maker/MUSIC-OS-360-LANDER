@@ -28,7 +28,6 @@ import { CreatePhonogramDto } from '../../phonograms/dto/create-phonogram.dto';
 import { CreateContractDto } from '../../contracts/dto/create-contract.dto';
 import { CreateContractTemplateDto } from '../../contract-templates/dto/create-contract-template.dto';
 import { CreateEmployeeDto } from '../../hr/dto/create-employee.dto';
-import { CreateArtistGoalDto } from '../../artist-goals/dto/create-artist-goal.dto';
 import { CreateClientDto } from '../../clients/dto/clients.dto';
 import { CreateProjectDto } from '../../projects/dto/projects.dto';
 
@@ -40,7 +39,6 @@ const FORM_DTO_BY_TABLE: Record<string, new () => object> = {
   contracts: CreateContractDto,
   contract_templates: CreateContractTemplateDto,
   employees: CreateEmployeeDto,
-  artist_goals: CreateArtistGoalDto,
   clients: CreateClientDto,
   projects: CreateProjectDto,
 };

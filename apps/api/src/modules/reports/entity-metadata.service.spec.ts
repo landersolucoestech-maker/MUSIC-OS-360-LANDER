@@ -68,13 +68,24 @@ describe('EntityMetadataService — inventário entity-driven', () => {
     }
   });
 
+  // Parte 88: núcleo reportável restrito às entidades com ReportFormContract
+  // explícito (nenhum fallback heurístico) — ver form-contracts/report-form-contracts.ts.
   it('entidades operacionais núcleo são reportáveis (com tenant_id)', () => {
-    for (const table of ['artists', 'contracts', 'transactions', 'invoices', 'crm_contacts', 'leads']) {
+    for (const table of ['artists', 'works', 'phonograms', 'contracts', 'contract_templates', 'clients', 'employees', 'projects']) {
       const e = byTable.get(table);
       if (!e) continue;
       expect(e.category).toBe(EntityCategory.REPORTABLE);
       expect(e.hasTenantId).toBe(true);
       expect(e.reportable).toBe(true);
+    }
+  });
+
+  it('entidades sem contrato explícito de relatório (Parte 88) são NOT_REPORTABLE', () => {
+    for (const table of ['transactions', 'invoices', 'leads']) {
+      const e = byTable.get(table);
+      if (!e) continue;
+      expect(e.category).toBe(EntityCategory.NOT_REPORTABLE);
+      expect(e.reportable).toBe(false);
     }
   });
 

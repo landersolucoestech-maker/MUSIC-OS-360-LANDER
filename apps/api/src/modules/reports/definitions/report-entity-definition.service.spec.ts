@@ -119,7 +119,13 @@ describe('ReportEntityDefinitionService — contratos', () => {
     expect(artists.requiredImportColumns.length).toBeGreaterThan(0);
   });
 
-  describe('exclusão genérica de campos fora do formulário (todas as entidades, sem exceção)', () => {
+  // Parte 88: o antigo fallback heurístico (que inferia colunas exportáveis a
+  // partir de tipo/nome de coluna) foi removido por completo — ver Bloco 2.
+  // Uma entidade REPORTABLE sem ReportFormContract explícito não recebe mais
+  // uma definição "filtrada por heurística": ela simplesmente NÃO aparece em
+  // getDefinitions() nenhuma. Esta é a garantia estritamente mais forte que
+  // substitui os antigos testes de exclusão-por-heurística.
+  describe('entidade REPORTABLE sem contrato explícito nunca aparece (nenhum fallback heurístico)', () => {
     function defsFor(columns: Array<Partial<import('../entity-metadata.types').ColumnMeta> & { name: string }>) {
       const fakeMetadata = {
         scan: () => ({
@@ -137,62 +143,15 @@ describe('ReportEntityDefinitionService — contratos', () => {
       return new ReportEntityDefinitionService(fakeMetadata).getDefinitions();
     }
 
-    it('coluna tipo simple-array (lista serializada por vírgula) nunca é exportável/importável', () => {
-      const [def] = defsFor([
+    it('fake_table (reportable=true, sem contrato registrado) produz ZERO definições', () => {
+      const defs = defsFor([
         { name: 'nome', type: 'varchar' },
         { name: 'tags', type: 'simple-array' },
-      ]);
-      expect(def.exportableColumns).not.toContain('tags');
-      expect(def.importableColumns).not.toContain('tags');
-    });
-
-    it('coluna com nome sugerindo blob técnico (html/raw/payload/snapshot/xml/dump/debug) é excluída', () => {
-      const [def] = defsFor([
-        { name: 'nome', type: 'varchar' },
         { name: 'conteudo_html', type: 'text' },
-        { name: 'raw_response', type: 'text' },
-        { name: 'sync_payload', type: 'text' },
-        { name: 'audit_snapshot', type: 'text' },
-        { name: 'import_xml', type: 'text' },
-        { name: 'debug_trace', type: 'text' },
-        { name: 'legacy_dump', type: 'text' },
-      ]);
-      for (const col of [
-        'conteudo_html', 'raw_response', 'sync_payload', 'audit_snapshot',
-        'import_xml', 'debug_trace', 'legacy_dump',
-      ]) {
-        expect(def.exportableColumns).not.toContain(col);
-        expect(def.importableColumns).not.toContain(col);
-      }
-    });
-
-    it('coluna tipo json/jsonb (qualquer nome) é sempre excluída', () => {
-      const [def] = defsFor([
-        { name: 'nome', type: 'varchar' },
         { name: 'preferencias', type: 'json' },
-        { name: 'configuracoes', type: 'jsonb' },
-      ]);
-      expect(def.exportableColumns).not.toContain('preferencias');
-      expect(def.exportableColumns).not.toContain('configuracoes');
-    });
-
-    it('anotação interna (notas_internas/observacoes_internas) é excluída, mas observação de formulário permanece', () => {
-      const [def] = defsFor([
-        { name: 'nome', type: 'varchar' },
         { name: 'observacoes', type: 'text' },
-        { name: 'notas_internas', type: 'text' },
       ]);
-      expect(def.exportableColumns).toContain('observacoes');
-      expect(def.exportableColumns).not.toContain('notas_internas');
-    });
-
-    it('campo de texto longo legítimo do formulário (ex.: corpo de contrato) permanece exportável', () => {
-      const [def] = defsFor([
-        { name: 'titulo', type: 'varchar' },
-        { name: 'conteudo', type: 'text' },
-      ]);
-      expect(def.exportableColumns).toContain('conteudo');
-      expect(def.importableColumns).toContain('conteudo');
+      expect(defs).toEqual([]);
     });
   });
 });
