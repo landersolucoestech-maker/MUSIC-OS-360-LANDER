@@ -20,12 +20,6 @@ export interface MusicaFieldItem {
   letra: string | null;
   arquivosAudio: string | null;
   ordem: number;
-  /** aliases temporários para contratos legados */
-  nome: string;
-  duracao: string;
-  genero: string | null;
-  idioma: string | null;
-  audioUrl: string | null;
 }
 
 type TrackRole = 'compositor' | 'interprete' | 'produtor';
@@ -52,25 +46,9 @@ interface ParticipantRow {
   role: TrackRole;
 }
 
-function formatDuration(minutes: string | null, seconds: string | null): string {
-  if (!minutes && !seconds) return '';
-  return `${minutes ?? '0'}:${(seconds ?? '0').padStart(2, '0')}`;
-}
-
-function parseDuration(
-  item: Record<string, unknown>,
-): { minutes: string | null; seconds: string | null } {
-  const explicitMinutes = String(item.duracaoMinutos ?? '').trim();
-  const explicitSeconds = String(item.duracaoSegundos ?? '').trim();
-  if (explicitMinutes || explicitSeconds) {
-    return {
-      minutes: explicitMinutes || null,
-      seconds: explicitSeconds || null,
-    };
-  }
-  const legacy = String(item.duracao ?? '').trim();
-  if (!legacy) return { minutes: null, seconds: null };
-  const [minutes, seconds] = legacy.split(':').map((part) => part.trim());
+function parseDuration(item: Record<string, unknown>): { minutes: string | null; seconds: string | null } {
+  const minutes = String(item.duracaoMinutos ?? '').trim();
+  const seconds = String(item.duracaoSegundos ?? '').trim();
   return { minutes: minutes || null, seconds: seconds || null };
 }
 
@@ -128,11 +106,6 @@ export async function fetchProjectsMusicasForExport(
       letra: track.letra,
       arquivosAudio: track.audio_url,
       ordem: track.ordem,
-      nome: track.nome,
-      duracao: formatDuration(track.duracao_min, track.duracao_seg),
-      genero: track.genero,
-      idioma: track.idioma,
-      audioUrl: track.audio_url,
     });
     output.set(track.project_id, list);
   }
@@ -152,13 +125,13 @@ export async function insertProjectsMusicasForImport(
   for (const raw of musicas) {
     if (raw === null || typeof raw !== 'object') continue;
     const item = raw as Record<string, unknown>;
-    const trackId = randomUUID();
-    const duration = parseDuration(item);
-    const name = String(item.nome_musica ?? item.nome ?? '').trim();
+    const name = String(item.nome_musica ?? '').trim();
     if (!name) continue;
 
-    const orderValue = Number(item.ordem);
-    const order = Number.isFinite(orderValue) ? orderValue : fallbackOrder;
+    const trackId = randomUUID();
+    const duration = parseDuration(item);
+    const numericOrder = Number(item.ordem);
+    const order = Number.isFinite(numericOrder) ? numericOrder : fallbackOrder;
     fallbackOrder += 1;
 
     await qr.query(
@@ -177,10 +150,10 @@ export async function insertProjectsMusicasForImport(
         (item.instrumental as string) || null,
         duration.minutes,
         duration.seconds,
-        (item.generoMusical as string) || (item.genero as string) || null,
-        (item.idiomaMusica as string) || (item.idioma as string) || null,
+        (item.generoMusical as string) || null,
+        (item.idiomaMusica as string) || null,
         (item.letra as string) || null,
-        (item.arquivosAudio as string) || (item.audioUrl as string) || null,
+        (item.arquivosAudio as string) || null,
         order,
       ],
     );
