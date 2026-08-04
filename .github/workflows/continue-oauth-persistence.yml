@@ -1,0 +1,885 @@
+name: Continue OAuth persistence hardening
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/continue-oauth-persistence.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: continue-oauth-persistence-dev
+  cancel-in-progress: false
+
+jobs:
+  patch-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Apply OAuth token-boundary patch
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              return text.replace(old, new, 1)
+          
+          controller_path = Path("apps/api/src/modules/integrations/integrations.controller.ts")
+          controller = controller_path.read_text()
+          
+          controller = replace_once(
+              controller,
+              "import { AbramusService }     from './abramus/abramus.service';\n",
+              "import { AbramusService }     from './abramus/abramus.service';\n"
+              "import { IntegrationBaseService } from './integration-base.service';\n",
+              "controller import",
+          )
+          
+          controller = replace_once(
+              controller,
+              "import {\n  ConfigureAutentiqueDto,\n",
+              "const GENERIC_OAUTH_PLATFORMS = new Set([\n"
+              "  'corp_instagram', 'meta_business', 'meta_ads',\n"
+              "  'corp_tiktok', 'tiktok_business', 'tiktok_ads',\n"
+              "  'corp_youtube', 'youtube_business', 'google_business', 'google_ads', 'youtube_ads',\n"
+              "  'docusign', 'stripe_connect',\n"
+              "]);\n\n"
+              "const OAUTH_PROVIDER_ALIASES: Readonly<Record<string, string>> = {\n"
+              "  corp_spotify: 'spotify',\n"
+              "  spotify_ads: 'spotify',\n"
+              "};\n\n"
+              "import {\n  ConfigureAutentiqueDto,\n",
+              "controller constants",
+          )
+          
+          controller = replace_once(
+              controller,
+              "    private readonly abramus:     AbramusService,\n"
+              "    private readonly config:      ConfigService,\n",
+              "    private readonly abramus:     AbramusService,\n"
+              "    private readonly integrationBase: IntegrationBaseService,\n"
+              "    private readonly config:      ConfigService,\n",
+              "controller injection",
+          )
+          
+          new_oauth_block = r'''  @Post('oauth/exchange')
+          @Public()
+          @HttpCode(HttpStatus.OK)
+          @ApiOperation({ summary: 'Troca código OAuth e persiste credenciais criptografadas no servidor' })
+          async oauthExchange(@Body() dto: OAuthExchangeDto): Promise<{ connected: true; platform: string }> {
+            const { code, platform, exchange_token } = dto;
+          
+            if (!GENERIC_OAUTH_PLATFORMS.has(platform)) {
+              throw new BadRequestException(`Plataforma não suportada para troca OAuth: ${platform}`);
+            }
+          
+            const cacheKey = `oauth_exchange:${exchange_token}`;
+            const entry = this.cache.get<{ platform: string; tenantId?: string; userId?: string }>(cacheKey);
+            if (!entry) {
+              throw new BadRequestException('exchange_token inválido ou expirado. Inicie a autorização novamente.');
+            }
+            if (entry.platform !== platform) {
+              throw new BadRequestException('exchange_token não corresponde à plataforma solicitada.');
+            }
+            this.cache.delete(cacheKey);
+          
+            if (!entry.tenantId || !entry.userId) {
+              throw new BadRequestException('Contexto autenticado ausente para persistir a conexão OAuth.');
+            }
+          
+            const appUrl = this.config.get<string>('APP_URL') ?? 'http://localhost:5000';
+            const redirect_uri = `${appUrl}/oauth/callback`;
+          
+            const isInstagram = platform === 'corp_instagram' || platform === 'meta_business' || platform === 'meta_ads';
+            const isTikTok = platform === 'corp_tiktok' || platform === 'tiktok_business' || platform === 'tiktok_ads';
+            const isYouTube = platform === 'corp_youtube' || platform === 'youtube_business' || platform === 'google_business' || platform === 'google_ads' || platform === 'youtube_ads';
+          
+            const asString = (value: unknown): string | undefined =>
+              typeof value === 'string' && value.length > 0 ? value : undefined;
+            const asNumber = (value: unknown): number | undefined =>
+              typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+          
+            const persist = async (params: {
+              accessToken: string;
+              refreshToken?: string;
+              expiresIn?: number;
+              scopes?: string;
+            }): Promise<{ connected: true; platform: string }> => {
+              await this.integrationBase.saveOAuthTokens({
+                tenantId: entry.tenantId!,
+                userId: entry.userId!,
+                provider: platform,
+                accessToken: params.accessToken,
+                refreshToken: params.refreshToken,
+                expiresIn: params.expiresIn,
+                scopes: params.scopes,
+              });
+              return { connected: true, platform };
+            };
+          
+            try {
+              if (isInstagram) {
+                const appId = this.config.get<string>('META_APP_ID') ?? '';
+                const appSecret = this.config.get<string>('META_APP_SECRET') ?? '';
+                if (!appId || !appSecret) {
+                  throw new BadRequestException('META_APP_ID / META_APP_SECRET não configurados');
+                }
+          
+                const url = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirect_uri)}&client_secret=${appSecret}&code=${code}`;
+                const res = await fetch(url);
+                const json = await res.json() as Record<string, unknown>;
+                if (!res.ok || json['error']) {
+                  const errObj = json['error'] as Record<string, unknown> | undefined;
+                  throw new BadRequestException(
+                    (errObj?.['message'] as string | undefined) ?? 'Meta OAuth error',
+                  );
+                }
+          
+                const shortToken = asString(json['access_token']);
+                if (!shortToken) throw new BadRequestException('Meta não retornou access_token');
+          
+                const longRes = await fetch(
+                  `https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortToken}`,
+                );
+                const longJson = await longRes.json() as Record<string, unknown>;
+                const accessToken = longRes.ok && !longJson['error']
+                  ? asString(longJson['access_token']) ?? shortToken
+                  : shortToken;
+                const expiresIn = longRes.ok && !longJson['error']
+                  ? asNumber(longJson['expires_in'])
+                  : undefined;
+          
+                return persist({
+                  accessToken,
+                  expiresIn: expiresIn ?? 5_184_000,
+                  scopes: 'pages_show_list,ads_management,business_management,read_insights,instagram_basic',
+                });
+              }
+          
+              if (isTikTok) {
+                const clientKey = this.config.get<string>('TIKTOK_CLIENT_KEY') ?? '';
+                const clientSecret = this.config.get<string>('TIKTOK_CLIENT_SECRET') ?? '';
+                if (!clientKey || !clientSecret) {
+                  throw new BadRequestException('TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET não configurados');
+                }
+          
+                const res = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: new URLSearchParams({
+                    client_key: clientKey,
+                    client_secret: clientSecret,
+                    code,
+                    grant_type: 'authorization_code',
+                    redirect_uri,
+                  }),
+                });
+                const json = await res.json() as Record<string, unknown>;
+                if (!res.ok || json['error']) {
+                  throw new BadRequestException(
+                    (json['error_description'] as string | undefined) ??
+                    (json['error'] as string | undefined) ??
+                    'TikTok OAuth error',
+                  );
+                }
+          
+                const accessToken = asString(json['access_token']);
+                if (!accessToken) throw new BadRequestException('TikTok não retornou access_token');
+                return persist({
+                  accessToken,
+                  refreshToken: asString(json['refresh_token']),
+                  expiresIn: asNumber(json['expires_in']),
+                  scopes: asString(json['scope']),
+                });
+              }
+          
+              if (isYouTube) {
+                const clientId = this.config.get<string>('GOOGLE_CLIENT_ID') ??
+                  this.config.get<string>('GOOGLE_ADS_CLIENT_ID') ?? '';
+                const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ??
+                  this.config.get<string>('GOOGLE_ADS_CLIENT_SECRET') ?? '';
+                if (!clientId || !clientSecret) {
+                  throw new BadRequestException('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET não configurados');
+                }
+          
+                const res = await fetch('https://oauth2.googleapis.com/token', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: new URLSearchParams({
+                    code,
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    redirect_uri,
+                    grant_type: 'authorization_code',
+                  }),
+                });
+                const json = await res.json() as Record<string, unknown>;
+                if (!res.ok || json['error']) {
+                  throw new BadRequestException(
+                    (json['error_description'] as string | undefined) ??
+                    (json['error'] as string | undefined) ??
+                    'Google OAuth error',
+                  );
+                }
+          
+                const accessToken = asString(json['access_token']);
+                if (!accessToken) throw new BadRequestException('Google não retornou access_token');
+                return persist({
+                  accessToken,
+                  refreshToken: asString(json['refresh_token']),
+                  expiresIn: asNumber(json['expires_in']),
+                  scopes: asString(json['scope']),
+                });
+              }
+          
+              if (platform === 'docusign') {
+                const integrationKey = this.config.get<string>('DOCUSIGN_INTEGRATION_KEY') ?? '';
+                const clientSecret = this.config.get<string>('DOCUSIGN_CLIENT_SECRET') ?? '';
+                const authBaseUrl = this.config.get<string>('DOCUSIGN_AUTH_BASE_URL') ??
+                  'https://account-d.docusign.com';
+                if (!integrationKey || !clientSecret) {
+                  throw new BadRequestException(
+                    'DOCUSIGN_INTEGRATION_KEY / DOCUSIGN_CLIENT_SECRET não configurados',
+                  );
+                }
+          
+                const basic = Buffer.from(`${integrationKey}:${clientSecret}`).toString('base64');
+                const res = await fetch(`${authBaseUrl}/oauth/token`, {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Basic ${basic}`,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                  },
+                  body: new URLSearchParams({
+                    code,
+                    grant_type: 'authorization_code',
+                    redirect_uri,
+                  }),
+                });
+                const json = await res.json() as Record<string, unknown>;
+                if (!res.ok || json['error']) {
+                  throw new BadRequestException(
+                    (json['error_description'] as string | undefined) ??
+                    (json['error'] as string | undefined) ??
+                    'DocuSign OAuth error',
+                  );
+                }
+          
+                const accessToken = asString(json['access_token']);
+                if (!accessToken) throw new BadRequestException('DocuSign não retornou access_token');
+                return persist({
+                  accessToken,
+                  refreshToken: asString(json['refresh_token']),
+                  expiresIn: asNumber(json['expires_in']),
+                  scopes: asString(json['scope']),
+                });
+              }
+          
+              if (platform === 'stripe_connect') {
+                const clientSecret = this.config.get<string>('STRIPE_SECRET_KEY') ?? '';
+                const clientId = this.config.get<string>('STRIPE_CONNECT_CLIENT_ID') ?? '';
+                if (!clientSecret || !clientId) {
+                  throw new BadRequestException(
+                    'STRIPE_SECRET_KEY / STRIPE_CONNECT_CLIENT_ID não configurados',
+                  );
+                }
+          
+                const res = await fetch('https://connect.stripe.com/oauth/token', {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Basic ${Buffer.from(`${clientSecret}:`).toString('base64')}`,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                  },
+                  body: new URLSearchParams({ code, grant_type: 'authorization_code' }),
+                });
+                const json = await res.json() as Record<string, unknown>;
+                if (!res.ok || json['error']) {
+                  throw new BadRequestException(
+                    (json['error_description'] as string | undefined) ??
+                    (json['error'] as string | undefined) ??
+                    'Stripe Connect OAuth error',
+                  );
+                }
+          
+                const accessToken = asString(json['access_token']);
+                if (!accessToken) throw new BadRequestException('Stripe não retornou access_token');
+                return persist({
+                  accessToken,
+                  refreshToken: asString(json['refresh_token']),
+                  scopes: asString(json['scope']),
+                });
+              }
+          
+              throw new BadRequestException(`Plataforma não suportada para troca OAuth: ${platform}`);
+            } catch (err) {
+              if (err instanceof BadRequestException) throw err;
+              throw new InternalServerErrorException(`Falha na troca OAuth: ${(err as Error).message}`);
+            }
+          }
+          
+          @Get('oauth/status')
+          @RequireRole('viewer')
+          @ApiOperation({ summary: 'Consulta conexão OAuth persistida sem expor credenciais' })
+          oauthStatus(@Query('platform') platform: string, @Request() req: any) {
+            const provider = this.resolveOAuthProvider(platform);
+            return this.integrationBase.getOAuthStatus(
+              req.tenant?.id ?? req.tenantId,
+              req.auth?.userId ?? req.userId,
+              provider,
+            );
+          }
+          
+          @Delete('oauth/disconnect')
+          @RequireRole('admin')
+          @Audit('integration.disconnected')
+          @ApiOperation({ summary: 'Remove conexão OAuth persistida (admin+)' })
+          @HttpCode(HttpStatus.NO_CONTENT)
+          oauthDisconnect(@Query('platform') platform: string, @Request() req: any) {
+            const provider = this.resolveOAuthProvider(platform);
+            return this.integrationBase.disconnectOAuth(
+              req.tenant?.id ?? req.tenantId,
+              req.auth?.userId ?? req.userId,
+              provider,
+            );
+          }
+          
+          private resolveOAuthProvider(platform: string): string {
+            const alias = OAUTH_PROVIDER_ALIASES[platform];
+            if (alias) return alias;
+            if (!GENERIC_OAUTH_PLATFORMS.has(platform)) {
+              throw new BadRequestException(`Plataforma OAuth não suportada: ${platform}`);
+            }
+            return platform;
+          }'''
+          
+          pattern = re.compile(
+              r"  @Post\('oauth/exchange'\).*?\n  // ─── Status geral",
+              re.DOTALL,
+          )
+          controller, count = pattern.subn(
+              new_oauth_block + "\n\n  // ─── Status geral",
+              controller,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f"controller OAuth block: expected one match, found {count}")
+          
+          controller_path.write_text(controller)
+          
+          hook_path = Path("apps/web/src/modules/integrations/hooks/useMarketingOAuth.ts")
+          hook_path.write_text(r'''/**
+           * OAuth state for corporate marketing integrations.
+           *
+           * Tokens never cross the browser boundary. The backend exchanges authorization
+           * codes, encrypts credentials in oauth_connections and exposes only status and
+           * disconnect operations to the authenticated frontend.
+           */
+          
+          import { useState, useEffect, useCallback } from "react";
+          import { api } from "@/shared/lib/api-client";
+          import type {
+            MarketingPlatformId,
+            MarketingCategory,
+            IMarketingOAuthConnection,
+          } from "@/shared/integrations/contracts/marketing.contract";
+          
+          export type { MarketingPlatformId };
+          
+          export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingCategory> = {
+            meta_business: "corporate_metrics",
+            youtube_business: "corporate_metrics",
+            tiktok_business: "corporate_metrics",
+            google_business: "corporate_metrics",
+            corp_spotify: "corporate_metrics",
+            corp_deezer: "corporate_metrics",
+            corp_soundcloud: "corporate_metrics",
+            corp_apple_music: "corporate_metrics",
+            corp_instagram: "corporate_metrics",
+            corp_tiktok: "corporate_metrics",
+            corp_youtube: "corporate_metrics",
+            meta_ads: "paid_ads",
+            google_ads: "paid_ads",
+            tiktok_ads: "paid_ads",
+            youtube_ads: "paid_ads",
+            spotify_ads: "paid_ads",
+            deezer_ads: "paid_ads",
+            apple_music_ads: "paid_ads",
+            soundcloud_ads: "paid_ads",
+          };
+          
+          const SERVER_OAUTH_PLATFORMS: readonly MarketingPlatformId[] = [
+            "corp_instagram",
+            "meta_business",
+            "meta_ads",
+            "corp_tiktok",
+            "tiktok_business",
+            "tiktok_ads",
+            "corp_youtube",
+            "youtube_business",
+            "google_business",
+            "google_ads",
+            "youtube_ads",
+            "corp_spotify",
+            "spotify_ads",
+          ];
+          
+          const SERVER_OAUTH_PLATFORM_SET = new Set<MarketingPlatformId>(SERVER_OAUTH_PLATFORMS);
+          
+          type ConnectionMap = Partial<Record<MarketingPlatformId, IMarketingOAuthConnection>>;
+          type OAuthStatus = { connected: boolean; needs_reauth?: boolean };
+          
+          function toConnection(
+            platform: MarketingPlatformId,
+            status: OAuthStatus,
+            scopes: string[] = [],
+          ): IMarketingOAuthConnection {
+            return {
+              platform,
+              connected: status.connected,
+              scopes,
+              category: MARKETING_PLATFORM_CATEGORY[platform],
+            };
+          }
+          
+          export function useMarketingOAuth() {
+            const [connections, setConnections] = useState<ConnectionMap>({});
+          
+            const refreshConnection = useCallback(
+              async (platform: MarketingPlatformId, scopes: string[] = []): Promise<boolean> => {
+                if (!SERVER_OAUTH_PLATFORM_SET.has(platform)) return false;
+          
+                const status = await api.get<OAuthStatus>(
+                  `/integrations/oauth/status?platform=${encodeURIComponent(platform)}`,
+                );
+          
+                setConnections((previous) => {
+                  const next = { ...previous };
+                  if (status.connected) next[platform] = toConnection(platform, status, scopes);
+                  else delete next[platform];
+                  return next;
+                });
+          
+                return status.connected;
+              },
+              [],
+            );
+          
+            useEffect(() => {
+              let cancelled = false;
+          
+              void Promise.allSettled(
+                SERVER_OAUTH_PLATFORMS.map(async (platform) => {
+                  const status = await api.get<OAuthStatus>(
+                    `/integrations/oauth/status?platform=${encodeURIComponent(platform)}`,
+                  );
+                  if (cancelled) return;
+                  setConnections((previous) => {
+                    const next = { ...previous };
+                    if (status.connected) next[platform] = toConnection(platform, status);
+                    else delete next[platform];
+                    return next;
+                  });
+                }),
+              );
+          
+              return () => {
+                cancelled = true;
+              };
+            }, []);
+          
+            const connect = useCallback(
+              async (platform: MarketingPlatformId, scopes: string[]): Promise<void> => {
+                if (!SERVER_OAUTH_PLATFORM_SET.has(platform)) {
+                  throw new Error(`OAuth server-side ainda não implementado para ${platform}.`);
+                }
+                const connected = await refreshConnection(platform, scopes);
+                if (!connected) {
+                  throw new Error(`A plataforma ${platform} não confirmou a conexão persistida.`);
+                }
+              },
+              [refreshConnection],
+            );
+          
+            const disconnect = useCallback(async (platform: MarketingPlatformId): Promise<void> => {
+              if (!SERVER_OAUTH_PLATFORM_SET.has(platform)) {
+                setConnections((previous) => {
+                  const next = { ...previous };
+                  delete next[platform];
+                  return next;
+                });
+                return;
+              }
+          
+              await api.delete(
+                `/integrations/oauth/disconnect?platform=${encodeURIComponent(platform)}`,
+              );
+              setConnections((previous) => {
+                const next = { ...previous };
+                delete next[platform];
+                return next;
+              });
+            }, []);
+          
+            const getConnection = useCallback(
+              (platform: MarketingPlatformId): IMarketingOAuthConnection | undefined =>
+                connections[platform],
+              [connections],
+            );
+          
+            const isConnected = useCallback(
+              (platform: MarketingPlatformId): boolean =>
+                connections[platform]?.connected === true,
+              [connections],
+            );
+          
+            const getConnectionsByCategory = useCallback(
+              (category: MarketingCategory): IMarketingOAuthConnection[] =>
+                Object.values(connections).filter(
+                  (connection): connection is IMarketingOAuthConnection =>
+                    connection !== undefined && connection.category === category,
+                ),
+              [connections],
+            );
+          
+            const connectedCountByCategory = useCallback(
+              (category: MarketingCategory): number =>
+                Object.values(connections).filter(
+                  (connection) => connection?.category === category && connection.connected,
+                ).length,
+              [connections],
+            );
+          
+            const totalConnected = useCallback(
+              (): number =>
+                Object.values(connections).filter((connection) => connection?.connected).length,
+              [connections],
+            );
+          
+            return {
+              connections,
+              connect,
+              disconnect,
+              refreshConnection,
+              getConnection,
+              isConnected,
+              getConnectionsByCategory,
+              connectedCountByCategory,
+              totalConnected,
+            };
+          }
+          ''')
+          
+          callback_path = Path("apps/web/src/modules/integrations/pages/OAuthCallbackPage.tsx")
+          callback = callback_path.read_text()
+          callback = callback.replace(
+              " *      Backend holds client secrets, exchanges code → access_token.\n"
+              " *   4. postMessage({ type, platform, access_token }) → opener (same origin).\n",
+              " *      Backend holds client secrets, exchanges the code and persists encrypted tokens.\n"
+              " *   4. postMessage({ type, platform }) → opener (same origin); no token enters the browser.\n",
+          )
+          callback = replace_once(
+              callback,
+              "        const data = (await res.json()) as { access_token: string; platform: string };\n\n"
+              "        // Post real token to opener window (MarketingOAuthDialog postMessage listener).\n"
+              "        // Target origin locked to same origin — never \"*\".\n"
+              "        if (window.opener) {\n"
+              "          (window.opener as Window).postMessage(\n"
+              "            { type: \"musicos360_oauth_success\", platform: data.platform ?? platform, access_token: data.access_token },\n"
+              "            window.location.origin,\n"
+              "          );\n"
+              "        }\n\n"
+              "        setState({ status: \"success\", platform: data.platform ?? platform });\n",
+              "        const payload = (await res.json()) as {\n"
+              "          data?: { connected: boolean; platform: string };\n"
+              "          connected?: boolean;\n"
+              "          platform?: string;\n"
+              "        };\n"
+              "        const data = payload.data ?? payload;\n"
+              "        if (data.connected !== true) {\n"
+              "          setState({ status: \"error\", message: \"O backend não confirmou a persistência da conexão OAuth.\" });\n"
+              "          return;\n"
+              "        }\n\n"
+              "        // Notify only the connection result. OAuth credentials remain server-side.\n"
+              "        if (window.opener) {\n"
+              "          (window.opener as Window).postMessage(\n"
+              "            { type: \"musicos360_oauth_success\", platform: data.platform ?? platform },\n"
+              "            window.location.origin,\n"
+              "          );\n"
+              "        }\n\n"
+              "        setState({ status: \"success\", platform: data.platform ?? platform });\n",
+              "callback token removal",
+          )
+          callback_path.write_text(callback)
+          
+          dialog_path = Path("apps/web/src/modules/integrations/components/MarketingOAuthDialog.tsx")
+          dialog = dialog_path.read_text()
+          dialog = replace_once(
+              dialog,
+              "interface OAuthMessage {\n"
+              "  type: \"musicos360_oauth_success\";\n"
+              "  platform: string;\n"
+              "  /** OAuth access token returned by the platform OAuth callback page. */\n"
+              "  access_token?: string;\n"
+              "}\n",
+              "interface OAuthMessage {\n"
+              "  type: \"musicos360_oauth_success\";\n"
+              "  platform: string;\n"
+              "}\n",
+              "dialog message type",
+          )
+          dialog = replace_once(
+              dialog,
+              "  onConnect: (platform: MarketingPlatformId, scopes: string[], access_token?: string) => Promise<void>;\n",
+              "  onConnect: (platform: MarketingPlatformId, scopes: string[]) => Promise<void>;\n",
+              "dialog prop",
+          )
+          dialog = replace_once(
+              dialog,
+              "  const pendingTokenRef = useRef<string | undefined>(undefined);\n\n"
+              "  const handleSuccess = useCallback(async () => {\n"
+              "    setStep(\"success\");\n"
+              "    await onConnect(platform, meta?.scopes ?? [], pendingTokenRef.current);\n"
+              "    pendingTokenRef.current = undefined;\n"
+              "    setTimeout(() => {\n"
+              "      onOpenChange(false);\n"
+              "      setTimeout(() => setStep(\"permissions\"), 300);\n"
+              "    }, 1800);\n"
+              "  }, [platform, meta, onConnect, onOpenChange]);\n",
+              "  const handleSuccess = useCallback(async () => {\n"
+              "    try {\n"
+              "      await onConnect(platform, meta?.scopes ?? []);\n"
+              "      setStep(\"success\");\n"
+              "      setTimeout(() => {\n"
+              "        onOpenChange(false);\n"
+              "        setTimeout(() => setStep(\"permissions\"), 300);\n"
+              "      }, 1800);\n"
+              "    } catch (error) {\n"
+              "      setStep(\"permissions\");\n"
+              "      const message = error instanceof Error ? error.message : \"Falha ao confirmar a conexão OAuth.\";\n"
+              "      toast.error(message);\n"
+              "    }\n"
+              "  }, [platform, meta, onConnect, onOpenChange]);\n",
+              "dialog success handler",
+          )
+          dialog = replace_once(
+              dialog,
+              "        popupRef.current = null;\n"
+              "        pendingTokenRef.current = event.data.access_token;\n"
+              "        handleSuccess();\n",
+              "        popupRef.current = null;\n"
+              "        void handleSuccess();\n",
+              "dialog event handler",
+          )
+          dialog = dialog.replace("            handleSuccess();\n", "            void handleSuccess();\n")
+          dialog_path.write_text(dialog)
+          
+          contract_path = Path("apps/web/src/shared/integrations/contracts/marketing.contract.ts")
+          contract = contract_path.read_text()
+          contract = replace_once(
+              contract,
+              "  /** OAuth access token obtained from the platform OAuth flow. Present only after a real OAuth handshake. */\n"
+              "  access_token?: string;\n",
+              "  /** Tokens are encrypted and retained exclusively by the backend. */\n",
+              "marketing contract token field",
+          )
+          contract_path.write_text(contract)
+          
+          api_test_path = Path(
+              "apps/api/src/modules/integrations/integrations.oauth-security.spec.ts",
+          )
+          api_test_path.write_text(r'''import { IntegrationsController } from './integrations.controller';
+          
+          describe('IntegrationsController OAuth token boundary', () => {
+            const buildController = () => {
+              const cache = {
+                get: jest.fn().mockReturnValue({
+                  platform: 'tiktok_business',
+                  tenantId: 'tenant-1',
+                  userId: 'user-1',
+                }),
+                delete: jest.fn(),
+                set: jest.fn(),
+              };
+              const integrationBase = {
+                saveOAuthTokens: jest.fn().mockResolvedValue(undefined),
+                getOAuthStatus: jest.fn().mockResolvedValue({ connected: true }),
+                disconnectOAuth: jest.fn().mockResolvedValue(undefined),
+              };
+              const config = {
+                get: jest.fn((key: string) => ({
+                  APP_URL: 'https://app.example.test',
+                  TIKTOK_CLIENT_KEY: 'client-key',
+                  TIKTOK_CLIENT_SECRET: 'client-secret',
+                })[key]),
+              };
+          
+              const noop = {};
+              const controller = new IntegrationsController(
+                noop as never,
+                noop as never,
+                noop as never,
+                noop as never,
+                noop as never,
+                noop as never,
+                noop as never,
+                noop as never,
+                noop as never,
+                noop as never,
+                noop as never,
+                integrationBase as never,
+                config as never,
+                cache as never,
+              );
+          
+              return { controller, cache, integrationBase };
+            };
+          
+            afterEach(() => {
+              jest.restoreAllMocks();
+            });
+          
+            it('persists TikTok tokens server-side and returns no credential', async () => {
+              const { controller, integrationBase, cache } = buildController();
+              jest.spyOn(global, 'fetch').mockResolvedValue({
+                ok: true,
+                json: async () => ({
+                  access_token: 'browser-must-never-see-this',
+                  refresh_token: 'encrypted-server-side',
+                  expires_in: 3600,
+                  scope: 'user.info.basic,video.list',
+                }),
+              } as Response);
+          
+              const result = await controller.oauthExchange({
+                code: 'authorization-code',
+                platform: 'tiktok_business',
+                exchange_token: 'single-use-token',
+              });
+          
+              expect(result).toEqual({ connected: true, platform: 'tiktok_business' });
+              expect(JSON.stringify(result)).not.toContain('browser-must-never-see-this');
+              expect(cache.delete).toHaveBeenCalledWith('oauth_exchange:single-use-token');
+              expect(integrationBase.saveOAuthTokens).toHaveBeenCalledWith({
+                tenantId: 'tenant-1',
+                userId: 'user-1',
+                provider: 'tiktok_business',
+                accessToken: 'browser-must-never-see-this',
+                refreshToken: 'encrypted-server-side',
+                expiresIn: 3600,
+                scopes: 'user.info.basic,video.list',
+              });
+            });
+          
+            it('uses the persisted provider alias for Spotify status and disconnect', async () => {
+              const { controller, integrationBase } = buildController();
+              const request = {
+                tenant: { id: 'tenant-1' },
+                auth: { userId: 'user-1' },
+              };
+          
+              await controller.oauthStatus('corp_spotify', request);
+              await controller.oauthDisconnect('spotify_ads', request);
+          
+              expect(integrationBase.getOAuthStatus).toHaveBeenCalledWith(
+                'tenant-1',
+                'user-1',
+                'spotify',
+              );
+              expect(integrationBase.disconnectOAuth).toHaveBeenCalledWith(
+                'tenant-1',
+                'user-1',
+                'spotify',
+              );
+            });
+          });
+          ''')
+          
+          web_test_path = Path(
+              "apps/web/src/modules/integrations/pages/oauth-token-boundary.test.ts",
+          )
+          web_test_path.write_text(r'''import { readFileSync } from "node:fs";
+          import { describe, expect, it } from "vitest";
+          
+          const readSource = (relativePath: string) =>
+            readFileSync(new URL(relativePath, import.meta.url), "utf8");
+          
+          describe("OAuth browser token boundary", () => {
+            it("does not forward OAuth credentials from the callback to the opener", () => {
+              const source = readSource("./OAuthCallbackPage.tsx");
+              expect(source).not.toContain("data.access_token");
+              expect(source).not.toContain("access_token: data");
+              expect(source).toContain('type: "musicos360_oauth_success"');
+            });
+          
+            it("does not persist OAuth connections or tokens in sessionStorage", () => {
+              const source = readSource("../hooks/useMarketingOAuth.ts");
+              expect(source).not.toContain("sessionStorage");
+              expect(source).not.toContain("safeSessionSet");
+              expect(source).toContain("/integrations/oauth/status");
+              expect(source).toContain("/integrations/oauth/disconnect");
+            });
+          });
+          ''')
+          PY
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.10.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: API typecheck
+        run: pnpm --filter @music-os-360/api typecheck
+
+      - name: Web typecheck
+        run: pnpm --filter @music-os-360/web typecheck
+
+      - name: API OAuth security tests
+        run: pnpm --filter @music-os-360/api exec jest --config jest.config.ts --runInBand src/modules/integrations/integrations.oauth-security.spec.ts
+
+      - name: Web OAuth security tests
+        run: pnpm --filter @music-os-360/web exec vitest run --config vitest.config.mjs src/modules/integrations/pages/oauth-token-boundary.test.ts
+
+      - name: Lint API and web
+        run: |
+          pnpm --filter @music-os-360/api lint
+          pnpm --filter @music-os-360/web lint
+
+      - name: Build API and web
+        run: |
+          pnpm --filter @music-os-360/api build
+          pnpm --filter @music-os-360/web build
+
+      - name: Commit validated patch and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/continue-oauth-persistence.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix(integrations): keep OAuth credentials server-side"
+          git push origin HEAD:dev
