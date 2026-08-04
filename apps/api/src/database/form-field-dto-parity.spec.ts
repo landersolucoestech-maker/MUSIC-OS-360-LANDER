@@ -16,18 +16,22 @@ function entityBlock(entityClassName: string): string {
   return entitiesSrc.slice(start, start + closingBrace.index);
 }
 
-function dtoSrc(relativePath: string): string {
+function source(relativePath: string): string {
   return fs.readFileSync(path.resolve(__dirname, relativePath), 'utf8');
 }
 
-function expectFields(source: string, fields: readonly string[], pattern = (field: string) => `\\b${field}\\??:`) {
-  for (const field of fields) expect(source).toMatch(new RegExp(pattern(field)));
+function expectFields(
+  text: string,
+  fields: readonly string[],
+  pattern = (field: string) => `\\b${field}(?:\\?|!)?:`,
+): void {
+  for (const field of fields) expect(text).toMatch(new RegExp(pattern(field)));
 }
 
 describe('Colunas dedicadas de formulário sempre expostas no DTO correspondente', () => {
   it('EventEntity mantém os campos do formulário em CreateEventDto', () => {
     const block = entityBlock('EventEntity');
-    const dto = dtoSrc('../modules/events/dto/events.dto.ts');
+    const dto = source('../modules/events/dto/events.dto.ts');
     const fields = [
       'endereco', 'contato_local', 'valor_cache', 'publico_esperado',
       'descricao', 'observacoes', 'participantes',
@@ -38,7 +42,7 @@ describe('Colunas dedicadas de formulário sempre expostas no DTO correspondente
 
   it('ReleaseEntity mantém os campos do formulário em CreateReleaseDto', () => {
     const block = entityBlock('ReleaseEntity');
-    const dto = dtoSrc('../modules/releases/dto/releases.dto.ts');
+    const dto = source('../modules/releases/dto/releases.dto.ts');
     const fields = [
       'isrc_global', 'notas_internas', 'observacoes', 'gravadora',
       'copyright', 'genero', 'idioma', 'assets', 'cronograma',
@@ -49,7 +53,7 @@ describe('Colunas dedicadas de formulário sempre expostas no DTO correspondente
 
   it('TakedownEntity e CreateTakedownDto refletem integralmente o modal real', () => {
     const block = entityBlock('TakedownEntity');
-    const dto = dtoSrc('../modules/takedowns/dto/takedowns.dto.ts');
+    const dto = source('../modules/takedowns/dto/takedowns.dto.ts');
     const fields = [
       'titulo', 'tipo', 'obra_afetada', 'artista', 'plataforma',
       'prioridade', 'url_infracao', 'motivo', 'descricao', 'evidencias',
@@ -61,7 +65,7 @@ describe('Colunas dedicadas de formulário sempre expostas no DTO correspondente
 
   it('InvoiceEntity e CreateInvoiceDto refletem os dados e tributos da Nota Fiscal', () => {
     const block = entityBlock('InvoiceEntity');
-    const dto = dtoSrc('../modules/invoices/dto/invoices.dto.ts');
+    const dto = source('../modules/invoices/dto/invoices.dto.ts');
     const fields = [
       'numero', 'serie', 'tipo_nota', 'cliente_id', 'natureza_operacao',
       'codigo_servico_municipal', 'codigo_municipio', 'cfop',
@@ -78,12 +82,13 @@ describe('Colunas dedicadas de formulário sempre expostas no DTO correspondente
     expectFields(dto, fields);
   });
 
-  it('Licenciamento aceita todos os campos condicionais de remuneração do modal', () => {
-    const dto = dtoSrc('../modules/licensing/dto/licensing.dto.ts');
-    const service = dtoSrc('../modules/licensing/licensing.service.ts');
+  it('Licenciamento aceita e preserva os campos condicionais de remuneração', () => {
+    const dto = source('../modules/licensing/dto/licensing.dto.ts');
+    const service = source('../modules/licensing/licensing.service.ts');
     expectFields(dto, ['remuneration_type', 'currency', 'amount', 'percentage']);
-    expect(service).toContain('payload.valor =');
-    expect(service).toContain('payload.moeda =');
-    expect(service).toContain("metadata['percentage']");
+    expect(service).toContain('{ valor: amount ?? valor ?? null }');
+    expect(service).toContain('{ moeda: currency ?? moeda ?? null }');
+    expect(service).toContain("metadata['percentage'] = percentage");
+    expect(service).toContain("percentage: metadata['percentage'] ?? null");
   });
 });
