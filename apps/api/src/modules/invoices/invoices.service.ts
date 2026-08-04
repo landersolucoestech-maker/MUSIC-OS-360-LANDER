@@ -29,11 +29,6 @@ export class InvoicesService {
     return this.repo;
   }
 
-  /**
-   * Mantém compatibilidade de leitura com registros antigos, sem expor a coluna
-   * cifrada. O formulário canônico usa `tomador_cnpj`; quando só existir o
-   * legado cifrado, o valor é recuperado para o mesmo campo lógico.
-   */
   private mapInvoice(entity: InvoiceEntity): Record<string, unknown> {
     const raw = entity as unknown as Record<string, unknown>;
     const encrypted = raw['tomador_doc_encrypted'];
@@ -47,11 +42,6 @@ export class InvoicesService {
     return mapped;
   }
 
-  /**
-   * O formulário usa nomes pt-BR. Algumas rotinas/eventos antigos ainda leem
-   * `tipo`, `valor` e `data_vencimento`; estes campos são espelhados aqui de
-   * forma explícita, sem substituir as colunas canônicas do formulário.
-   */
   private normalizePayload(dto: CreateInvoiceDto | UpdateInvoiceDto): Record<string, unknown> {
     const input = dto as unknown as Record<string, unknown>;
     const payload: Record<string, unknown> = { ...input };
@@ -117,7 +107,6 @@ export class InvoicesService {
       tenant_id: tenantId,
       ...payload,
       created_by: userId,
-      updated_by: userId,
     } as Partial<InvoiceEntity>);
     const saved = await this.repository.save(entity as InvoiceEntity);
     const mapped = this.mapInvoice(saved);
@@ -166,7 +155,6 @@ export class InvoicesService {
     const updates = {
       ...this.normalizePayload(dto),
       updated_at: new Date(),
-      updated_by: userId,
     };
     await this.repository.update({ id, tenant_id: tenantId } as never, updates as never);
     const updated = await this.findById(tenantId, id);
@@ -182,7 +170,7 @@ export class InvoicesService {
     const current = await this.findById(tenantId, id);
     await this.repository.update(
       { id, tenant_id: tenantId } as never,
-      { deleted_at: new Date(), updated_at: new Date(), updated_by: userId } as never,
+      { deleted_at: new Date(), updated_at: new Date() } as never,
     );
 
     if (this.activityLogs) {
