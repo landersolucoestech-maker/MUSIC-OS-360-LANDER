@@ -10,17 +10,32 @@ export class AddLicensePercentage20260804000001 implements MigrationInterface {
       ADD COLUMN IF NOT EXISTS "percentage" numeric(7,4)
     `);
 
-    // Preserve values written by the legacy implementation in metadata.
-    // Invalid, non-numeric or out-of-range values remain untouched in metadata
-    // instead of aborting the migration.
+    // Some legacy databases stored the value inside a JSON/JSONB metadata
+    // column, while clean installations do not have that column. Dynamic SQL
+    // avoids resolving a missing column and preserves valid legacy values when
+    // the column is available.
     await queryRunner.query(`
-      UPDATE "licenses"
-      SET "percentage" = TRIM("metadata"->>'percentage')::numeric
-      WHERE "percentage" IS NULL
-        AND "metadata" IS NOT NULL
-        AND "metadata" ? 'percentage'
-        AND TRIM("metadata"->>'percentage') ~ '^[0-9]+([.][0-9]+)?$'
-        AND TRIM("metadata"->>'percentage')::numeric BETWEEN 0 AND 100
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'licenses'
+            AND column_name = 'metadata'
+            AND data_type IN ('json', 'jsonb')
+        ) THEN
+          EXECUTE $backfill$
+            UPDATE "licenses"
+            SET "percentage" = TRIM(("metadata"::jsonb)->>'percentage')::numeric
+            WHERE "percentage" IS NULL
+              AND "metadata" IS NOT NULL
+              AND ("metadata"::jsonb) ? 'percentage'
+              AND TRIM(("metadata"::jsonb)->>'percentage') ~ '^[0-9]+([.][0-9]+)?$'
+              AND TRIM(("metadata"::jsonb)->>'percentage')::numeric BETWEEN 0 AND 100
+          $backfill$;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
