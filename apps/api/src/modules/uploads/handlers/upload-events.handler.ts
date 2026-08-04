@@ -1,15 +1,7 @@
 /**
- * upload-events.handler.ts
- *
- * Concrete automations triggered by upload domain events.
- *
- * AssetUploaded →
- *   1. Query UploadEntity to obtain size_bytes for validation.
- *   2. Validate MIME type against allowed list; reject if unsupported.
- *   3. Validate file size; reject if exceeds per-category limit.
- *   4. Keep UploadEntity.status = 'confirmed' after validation.
+ * Automações acionadas por eventos de upload.
+ * Valida MIME e tamanho no contexto do tenant antes de marcar o arquivo pronto.
  */
-
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { DataSource, EntityManager, Repository } from 'typeorm';
@@ -21,9 +13,8 @@ import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { DomainEvent } from '../../../core/events/events.service';
 import type { AssetUploadedPayload } from '../../../core/events/domain-events.types';
 
-// ── Validation configuration ─────────────────────────────────────────────────
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-/** MIME types accepted by the platform */
 const ALLOWED_MIME_TYPES = new Set([
   'audio/mpeg', 'audio/wav', 'audio/flac', 'audio/aac', 'audio/ogg',
   'audio/x-m4a', 'audio/mp4',
@@ -31,27 +22,23 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml',
   'application/pdf',
   'text/plain',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  XLSX_MIME,
 ]);
 
-/** Max file size per MIME category (bytes) */
 const MAX_SIZE_BYTES: Record<string, number> = {
-  'audio/':       500 * 1024 * 1024,   // 500 MB
-  'video/':       2   * 1024 * 1024 * 1024, // 2 GB
-  'image/':       50  * 1024 * 1024,   // 50 MB
-  'application/': 100 * 1024 * 1024,   // 100 MB
-  'text/':        10  * 1024 * 1024,   // 10 MB
+  'audio/': 500 * 1024 * 1024,
+  'video/': 2 * 1024 * 1024 * 1024,
+  'image/': 50 * 1024 * 1024,
+  'application/': 100 * 1024 * 1024,
+  'text/': 10 * 1024 * 1024,
 };
 
 function getMaxSize(mimeType: string): number {
   for (const [prefix, limit] of Object.entries(MAX_SIZE_BYTES)) {
     if (mimeType.startsWith(prefix)) return limit;
   }
-  return 10 * 1024 * 1024; // 10 MB fallback
+  throw new Error(`Categoria MIME sem limite explícito: ${mimeType}`);
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class UploadEventsHandler {
@@ -59,91 +46,99 @@ export class UploadEventsHandler {
   private readonly uploadRepo: Repository<UploadEntity> | null = null;
 
   constructor(
-    @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
+    @Inject(DATA_SOURCE) @Optional() dataSource: DataSource | null,
     @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
-    if (ds) this.uploadRepo = ds.getRepository(UploadEntity);
+    if (dataSource) this.uploadRepo = dataSource.getRepository(UploadEntity);
+  }
+
+  private async markRejected(
+    repository: Repository<UploadEntity>,
+    uploadId: string,
+    tenantId: string,
+    reason: string,
+  ): Promise<void> {
+    const result = await repository.update(
+      { id: uploadId, tenant_id: tenantId },
+      { status: UploadStatus.ERROR, metadata: { rejectionReason: reason } },
+    );
+    if (result.affected !== 1) {
+      throw new Error(
+        `Upload rejeitado não pôde ser atualizado: upload=${uploadId} tenant=${tenantId} affected=${result.affected ?? 0}`,
+      );
+    }
   }
 
   @OnEvent(DOMAIN_EVENTS.ASSET_UPLOADED)
   async onAssetUploaded(event: DomainEvent<AssetUploadedPayload>): Promise<void> {
     const { uploadId, tenantId, fileName, mimeType } = event.payload;
-
-    // Fail-closed: an async handler without a tenant must not touch tenant data.
     if (!tenantId) {
-      this.logger.warn('UploadEventsHandler: evento sem tenantId — abortado (fail-closed)');
-      return;
+      throw new Error(`UploadEventsHandler recebeu evento sem tenant: upload=${uploadId}`);
     }
 
-    const runInContext = <T>(work: (m: EntityManager | undefined) => Promise<T>): Promise<T> =>
+    const runInContext = <T>(work: (manager: EntityManager | undefined) => Promise<T>): Promise<T> =>
       this.dbContext
         ? this.dbContext.runInTenantContext({ tenantId, orgId: null, role: null }, work)
         : work(undefined);
 
     await runInContext(async (manager) => {
-      const uploadRepo = manager ? manager.getRepository(UploadEntity) : this.uploadRepo;
-
-      // 1. Fetch entity for authoritative size_bytes
-      let sizeBytes = 0;
-      if (uploadRepo) {
-        try {
-          const record = await uploadRepo.findOne({
-            where: { id: uploadId, tenant_id: tenantId },
-            select: ['size_bytes', 'mime_type'],
-          });
-          sizeBytes = record?.size_bytes ?? 0;
-        } catch (err) {
-          this.logger.warn(`UploadEventsHandler: could not fetch upload record "${uploadId}" — ${String(err)}`);
-        }
+      const repository = manager ? manager.getRepository(UploadEntity) : this.uploadRepo;
+      if (!repository) {
+        throw new Error(
+          `UploadEventsHandler sem repositório disponível: upload=${uploadId} tenant=${tenantId}`,
+        );
       }
 
-      // 2. Validate MIME type
+      const record = await repository.findOne({
+        where: { id: uploadId, tenant_id: tenantId },
+        select: ['size_bytes', 'mime_type'],
+      });
+      if (!record) {
+        throw new Error(`Upload não encontrado no tenant: upload=${uploadId} tenant=${tenantId}`);
+      }
+      if (record.mime_type && record.mime_type !== mimeType) {
+        const reason = `MIME do evento diverge do registro persistido`;
+        await this.markRejected(repository, uploadId, tenantId, reason);
+        this.logger.warn(
+          `${reason}: upload=${uploadId} tenant=${tenantId} event=${mimeType} stored=${record.mime_type}`,
+        );
+        return;
+      }
+
       if (!ALLOWED_MIME_TYPES.has(mimeType)) {
-        this.logger.warn(
-          `UploadEventsHandler: REJECTED upload "${uploadId}" — unsupported MIME type "${mimeType}"`,
-        );
-        if (uploadRepo) {
-          await uploadRepo.update(
-            { id: uploadId, tenant_id: tenantId },
-            { status: UploadStatus.ERROR, metadata: { rejectionReason: `MIME type "${mimeType}" not allowed` } },
-          ).catch(() => {/* ignore */});
-        }
+        const reason = `MIME não permitido: ${mimeType}`;
+        await this.markRejected(repository, uploadId, tenantId, reason);
+        this.logger.warn(`${reason}: upload=${uploadId} tenant=${tenantId}`);
         return;
       }
 
-      // 3. Validate file size
       const maxBytes = getMaxSize(mimeType);
-      if (sizeBytes > 0 && sizeBytes > maxBytes) {
-        const maxMb = Math.round(maxBytes / 1024 / 1024);
-        const sizeMb = Math.round(sizeBytes / 1024 / 1024);
-        this.logger.warn(
-          `UploadEventsHandler: REJECTED upload "${uploadId}" — size ${sizeMb} MB exceeds limit ${maxMb} MB for ${mimeType}`,
-        );
-        if (uploadRepo) {
-          await uploadRepo.update(
-            { id: uploadId, tenant_id: tenantId },
-            { status: UploadStatus.ERROR, metadata: { rejectionReason: `File size ${sizeMb} MB exceeds limit ${maxMb} MB` } },
-          ).catch(() => {/* ignore */});
-        }
+      const sizeBytes = record.size_bytes ?? 0;
+      if (sizeBytes <= 0) {
+        const reason = 'Tamanho de arquivo ausente ou inválido';
+        await this.markRejected(repository, uploadId, tenantId, reason);
+        this.logger.warn(`${reason}: upload=${uploadId} tenant=${tenantId}`);
+        return;
+      }
+      if (sizeBytes > maxBytes) {
+        const reason = `Tamanho ${sizeBytes} excede o limite ${maxBytes} para ${mimeType}`;
+        await this.markRejected(repository, uploadId, tenantId, reason);
+        this.logger.warn(`${reason}: upload=${uploadId} tenant=${tenantId}`);
         return;
       }
 
-      // 4. Keep confirmed as the durable upload state after validation.
-      if (uploadRepo) {
-        try {
-          await uploadRepo.update(
-            { id: uploadId, tenant_id: tenantId },
-            { status: 'confirmed' as any },
-          );
-          this.logger.log(
-            `UploadEventsHandler: upload "${uploadId}" ("${fileName}") → status=confirmed tenant=${tenantId}`,
-          );
-        } catch (err) {
-          this.logger.error(
-            `UploadEventsHandler: failed to update upload status for "${uploadId}" — ${String(err)}`,
-          );
-        }
+      const result = await repository.update(
+        { id: uploadId, tenant_id: tenantId },
+        { status: UploadStatus.READY },
+      );
+      if (result.affected !== 1) {
+        throw new Error(
+          `Falha ao confirmar upload: upload=${uploadId} tenant=${tenantId} affected=${result.affected ?? 0}`,
+        );
       }
+      this.logger.log(
+        `Upload validado: upload=${uploadId} tenant=${tenantId} file=${fileName} status=${UploadStatus.READY}`,
+      );
     });
   }
 }
