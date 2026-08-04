@@ -59,11 +59,11 @@ jobs:
               'licensing percentage documentation',
           )
 
-          normalize_pattern = re.compile(
-              r"  private normalizePayload\(.*?\n  private mapLicense",
+          methods_pattern = re.compile(
+              r"  private normalizePayload\(.*?\n  async list",
               re.DOTALL,
           )
-          normalize_replacement = '''  private normalizePayload(
+          methods_replacement = '''  private normalizePayload(
             dto: CreateLicenseDto | UpdateLicenseDto,
           ): Record<string, unknown> {
             const {
@@ -83,16 +83,7 @@ jobs:
             };
           }
 
-          private mapLicense'''
-          licensing, count = normalize_pattern.subn(normalize_replacement, licensing, count=1)
-          if count != 1:
-              raise SystemExit(f'licensing normalizePayload boundary: found {count}')
-
-          map_pattern = re.compile(
-              r"  private mapLicense\(.*?\n  async list",
-              re.DOTALL,
-          )
-          map_replacement = '''  private mapLicense(entity: LicenseEntity): Record<string, unknown> {
+          private mapLicense(entity: LicenseEntity): Record<string, unknown> {
             const raw = entity as unknown as Record<string, unknown>;
             return {
               ...raw,
@@ -103,9 +94,9 @@ jobs:
           }
 
           async list'''
-          licensing, count = map_pattern.subn(map_replacement, licensing, count=1)
+          licensing, count = methods_pattern.subn(methods_replacement, licensing, count=1)
           if count != 1:
-              raise SystemExit(f'licensing mapLicense boundary: found {count}')
+              raise SystemExit(f'licensing method boundary: found {count}')
 
           licensing = require_replace(
               licensing,
