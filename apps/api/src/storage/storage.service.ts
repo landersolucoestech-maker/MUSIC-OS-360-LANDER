@@ -1,7 +1,7 @@
 /**
  * storage/storage.service.ts
  *
- * Serviço de abstracção sobre Cloudflare R2.
+ * Serviço de abstração sobre Cloudflare R2.
  * Operações: upload, presigned URL, delete, exists, list.
  */
 
@@ -15,10 +15,10 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { randomUUID }    from 'crypto';
+import { randomUUID } from 'crypto';
 import { R2_CLIENT, R2_BUCKET, R2_PUBLIC_URL } from './storage.tokens';
 
-// ─── MIME validation ──────────────────────────────────────────────────────────
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 const ALLOWED_MIMES = {
   documents: [
@@ -26,38 +26,32 @@ const ALLOWED_MIMES = {
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   ],
-  images:       ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-  audio:        ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/mp4'],
-  spreadsheets: [
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  ],
+  images: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  audio: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/mp4'],
+  spreadsheets: [XLSX_MIME],
 } as const;
 
 const MAX_SIZES_MB: Record<UploadCategory, number> = {
-  documents:    50,
-  images:       10,
-  audio:        500,
+  documents: 50,
+  images: 10,
+  audio: 500,
   spreadsheets: 20,
 };
 
-// Allowlist of extensions per MIME type. Validation rejects mismatches even when
-// the MIME is in ALLOWED_MIMES — defends against MIME-spoof (e.g. malware.exe + application/pdf).
 const MIME_TO_EXTENSIONS: Record<string, readonly string[]> = {
   'application/pdf': ['pdf'],
   'application/msword': ['doc'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['docx'],
   'image/jpeg': ['jpg', 'jpeg'],
-  'image/png':  ['png'],
+  'image/png': ['png'],
   'image/webp': ['webp'],
-  'image/gif':  ['gif'],
+  'image/gif': ['gif'],
   'audio/mpeg': ['mp3'],
-  'audio/wav':  ['wav'],
-  'audio/ogg':  ['ogg'],
+  'audio/wav': ['wav'],
+  'audio/ogg': ['ogg'],
   'audio/flac': ['flac'],
-  'audio/mp4':  ['m4a', 'mp4'],
-  'application/vnd.ms-excel': ['xls'],
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['xlsx'],
+  'audio/mp4': ['m4a', 'mp4'],
+  [XLSX_MIME]: ['xlsx'],
 };
 
 function extractExtension(fileName: string): string | null {
@@ -69,14 +63,14 @@ function extractExtension(fileName: string): string | null {
 export type UploadCategory = keyof typeof ALLOWED_MIMES;
 
 export interface UploadOptions {
-  key:         string;
-  body:        Buffer | Uint8Array | string;
+  key: string;
+  body: Buffer | Uint8Array | string;
   contentType?: string;
-  metadata?:   Record<string, string>;
+  metadata?: Record<string, string>;
 }
 
 export interface PresignedUrlOptions {
-  key:        string;
+  key: string;
   expiresIn?: number;
 }
 
@@ -85,15 +79,11 @@ export class StorageService {
   private readonly logger = new Logger(StorageService.name);
 
   constructor(
-    @Optional() @Inject(R2_CLIENT)     private readonly r2Client: S3Client | null,
-    @Optional() @Inject(R2_BUCKET)     private readonly r2Bucket: string,
+    @Optional() @Inject(R2_CLIENT) private readonly r2Client: S3Client | null,
+    @Optional() @Inject(R2_BUCKET) private readonly r2Bucket: string,
     @Optional() @Inject(R2_PUBLIC_URL) private readonly r2PublicUrl: string | null,
   ) {}
 
-  /**
-   * Indica se o R2 está configurado e operacional. UI/serviços podem usar
-   * para evitar oferecer upload quando o backend não tem credenciais.
-   */
   isConfigured(): boolean {
     return this.r2Client !== null;
   }
@@ -103,7 +93,7 @@ export class StorageService {
       throw new ServiceUnavailableException({
         statusCode: 503,
         error: 'Service Unavailable',
-        code:    'R2_NOT_CONFIGURED',
+        code: 'R2_NOT_CONFIGURED',
         message:
           'Upload indisponível — armazenamento R2 não configurado no servidor. ' +
           'Contate o administrador para configurar R2_ACCOUNT_ID, R2_ACCESS_KEY e R2_SECRET_KEY.',
@@ -116,11 +106,11 @@ export class StorageService {
     const client = this.getClient();
     await client.send(
       new PutObjectCommand({
-        Bucket:      this.r2Bucket,
-        Key:         options.key,
-        Body:        options.body,
+        Bucket: this.r2Bucket,
+        Key: options.key,
+        Body: options.body,
         ContentType: options.contentType ?? 'application/octet-stream',
-        Metadata:    options.metadata,
+        Metadata: options.metadata,
       }),
     );
     const url = this.r2PublicUrl
@@ -131,24 +121,22 @@ export class StorageService {
   }
 
   async createPresignedUpload(params: {
-    tenantId:   string;
-    userId:     string;
-    category:   UploadCategory;
-    fileName:   string;
-    mimeType:   string;
-    sizeBytes:  number;
-    entity?:    string;
-    entityId?:  string;
+    tenantId: string;
+    userId: string;
+    category: UploadCategory;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    entity?: string;
+    entityId?: string;
   }): Promise<{ presignedUrl: string; key: string; fileId: string; publicUrl: string }> {
     const client = this.getClient();
 
-    // Validação MIME
     const allowedList = ALLOWED_MIMES[params.category] as readonly string[];
     if (!allowedList.includes(params.mimeType)) {
       throw new BadRequestException(`Tipo de arquivo não permitido: ${params.mimeType}`);
     }
 
-    // Validação extensão vs MIME (defende contra MIME spoofing)
     const ext = extractExtension(params.fileName);
     if (!ext) {
       throw new BadRequestException(`Arquivo sem extensão: ${params.fileName}`);
@@ -160,30 +148,31 @@ export class StorageService {
       );
     }
 
-    // Validação tamanho
     const maxBytes = MAX_SIZES_MB[params.category] * 1024 * 1024;
+    if (params.sizeBytes <= 0) {
+      throw new BadRequestException('O tamanho do arquivo deve ser maior que zero.');
+    }
     if (params.sizeBytes > maxBytes) {
       throw new BadRequestException(
         `Arquivo muito grande. Máximo: ${MAX_SIZES_MB[params.category]}MB`,
       );
     }
 
-    // Path com isolamento de tenant
-    const fileId       = randomUUID();
+    const fileId = randomUUID();
     const safeFileName = params.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const key          = `tenants/${params.tenantId}/${params.category}/${fileId}/${safeFileName}`;
+    const key = `tenants/${params.tenantId}/${params.category}/${fileId}/${safeFileName}`;
 
     const command = new PutObjectCommand({
-      Bucket:        this.r2Bucket,
-      Key:           key,
-      ContentType:   params.mimeType,
+      Bucket: this.r2Bucket,
+      Key: key,
+      ContentType: params.mimeType,
       ContentLength: params.sizeBytes,
       Metadata: {
-        tenant_id:     params.tenantId,
-        user_id:       params.userId,
+        tenant_id: params.tenantId,
+        user_id: params.userId,
         original_name: params.fileName,
-        entity:        params.entity   ?? '',
-        entity_id:     params.entityId ?? '',
+        entity: params.entity ?? '',
+        entity_id: params.entityId ?? '',
       },
     });
 
@@ -203,7 +192,7 @@ export class StorageService {
     const client = this.getClient();
     const cmd = new GetObjectCommand({
       Bucket: this.r2Bucket,
-      Key:    options.key,
+      Key: options.key,
     });
     return getSignedUrl(client, cmd, {
       expiresIn: options.expiresIn ?? 3600,
@@ -225,8 +214,11 @@ export class StorageService {
         new HeadObjectCommand({ Bucket: this.r2Bucket, Key: key }),
       );
       return true;
-    } catch {
-      return false;
+    } catch (error) {
+      const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+      if (status === 404) return false;
+      this.logger.error(`Falha ao verificar objeto R2: ${key}`, error instanceof Error ? error.stack : String(error));
+      throw error;
     }
   }
 
