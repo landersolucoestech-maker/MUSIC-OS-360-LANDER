@@ -1,8 +1,8 @@
 from pathlib import Path
 import re
 
-path = Path('apps/api/src/modules/reports/form-contracts/report-form-contracts.ts')
-text = path.read_text(encoding='utf-8')
+contract_path = Path('apps/api/src/modules/reports/form-contracts/report-form-contracts.ts')
+text = contract_path.read_text(encoding='utf-8')
 
 text = text.replace(
     "const col = (key: string): ReportFieldSpec => ({ key, storage: 'column' });",
@@ -65,6 +65,28 @@ pattern = re.compile(
 text, count = pattern.subn(replacement, text, count=1)
 if count != 1:
     raise SystemExit('PROJECTS_CONTRACT block not found exactly once')
+contract_path.write_text(text, encoding='utf-8')
 
-path.write_text(text, encoding='utf-8')
-print('project report contract repaired')
+labels_path = Path('apps/api/src/modules/reports/i18n/field-labels.pt-br.ts')
+labels = labels_path.read_text(encoding='utf-8')
+required = {
+    'tipoLancamento': 'Tipo de Lançamento',
+    'nomeEpAlbum': 'Nome do EP/Álbum',
+    'statusProjeto': 'Status',
+    'nomeMusica': 'Nome da Música',
+    'duracaoMinutos': 'Duração — Minutos',
+    'duracaoSegundos': 'Duração — Segundos',
+    'generoMusical': 'Gênero Musical',
+    'idiomaMusica': 'Idioma da Música',
+    'arquivosAudio': 'Arquivos de Áudio (MP3/WAV)',
+}
+missing = [(key, value) for key, value in required.items() if re.search(rf'^\s*{re.escape(key)}\s*:', labels, re.M) is None]
+if missing:
+    marker = "  // ── Parte 89 — Contabilidade (relatório computado)"
+    insertion = ''.join(f"  {key}: {value!r},\n" for key, value in missing) + "\n"
+    if marker not in labels:
+        raise SystemExit('label insertion marker not found')
+    labels = labels.replace(marker, insertion + marker, 1)
+    labels_path.write_text(labels, encoding='utf-8')
+
+print('project report contract and labels repaired')
