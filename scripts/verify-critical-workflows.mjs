@@ -70,3 +70,7 @@ console.log(
   `✓ verify:critical-workflows — ${REQUIRED.length} workflows presentes, não vazios` +
     `${yaml ? " e com YAML válido" : ""} no working tree atual.`,
 );
+
+// O mesmo gate barato também garante que nenhum formato de planilha legado
+// reapareça em código, configuração, documentação ou dependências.
+await import("./verify-xlsx-only.mjs");
