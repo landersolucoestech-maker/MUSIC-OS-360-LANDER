@@ -26,6 +26,7 @@ interface ApiUser {
   role?: string | null;
   role_slug?: string | null;
   cargo?: string | null;
+  status?: "active" | "inactive" | "suspended" | "invited";
   is_active: boolean;
   created_at: string;
 }
@@ -39,6 +40,15 @@ interface UsersPage {
   };
 }
 
+export interface UpdateUsuarioInput {
+  id: string;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  status?: "ativo" | "inativo";
+  role?: string;
+}
+
 function mapUser(user: ApiUser): Usuario {
   return {
     id: user.id,
@@ -48,7 +58,7 @@ function mapUser(user: ApiUser): Usuario {
     avatar_url: user.avatar_url ?? null,
     role: user.role_slug ?? user.role ?? "viewer",
     cargo: user.cargo ?? null,
-    status: user.is_active ? "ativo" : "inativo",
+    status: user.is_active && user.status !== "inactive" ? "ativo" : "inativo",
     created_at: user.created_at,
   };
 }
@@ -66,26 +76,31 @@ export function useUsuarios() {
   });
 
   const updateUsuario = useMutation({
-    mutationFn: async ({
-      id,
-      full_name,
-      phone,
-      cargo,
-    }: {
-      id: string;
-      full_name?: string;
-      phone?: string;
-      cargo?: string;
-    }) => {
-      await api.patch(`/users/${id}`, {
+    mutationFn: async ({ id, full_name, email, phone, status, role }: UpdateUsuarioInput) => {
+      const profilePayload = {
         ...(full_name !== undefined && { fullName: full_name }),
+        ...(email !== undefined && { email }),
         ...(phone !== undefined && { phone }),
-        ...(cargo !== undefined && { role: cargo }),
-      });
+        ...(status !== undefined && { status: status === "ativo" ? "active" : "inactive" }),
+      };
+
+      if (Object.keys(profilePayload).length > 0) {
+        await api.patch(`/users/${id}`, profilePayload);
+      }
+
+      // Alteração de papel possui endpoint, autorização e auditoria próprios.
+      // Enviar `role` pelo PATCH genérico contornava a hierarquia do RBAC e
+      // não garantia atualização de role_id.
+      if (role !== undefined) {
+        await api.patch(`/users/${id}/role`, { role });
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.USUARIOS] });
-      queryClient.invalidateQueries({ queryKey: ["team_members"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.USUARIOS] }),
+        queryClient.invalidateQueries({ queryKey: ["team_members"] }),
+        queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.ROLES] }),
+      ]);
       toast.success("Usuário atualizado com sucesso!");
     },
     onError: (mutationError: Error) => {
