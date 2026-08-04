@@ -12,8 +12,8 @@
  *   2. Validate nonce: compare against opener's sessionStorage
  *      (`musicos360_oauth_nonce_${platform}`) — prevents CSRF / account-linking.
  *   3. POST to /api/integrations/oauth/exchange (NestJS, no auth required).
- *      Backend holds client secrets, exchanges code → access_token.
- *   4. postMessage({ type, platform, access_token }) → opener (same origin).
+ *      Backend holds client secrets, exchanges the code and persists encrypted tokens.
+ *   4. postMessage({ type, platform }) → opener (same origin); no token enters the browser.
  *   5. Close the popup.
  *
  */
@@ -103,13 +103,21 @@ export default function OAuthCallbackPage() {
           return;
         }
 
-        const data = (await res.json()) as { access_token: string; platform: string };
+        const payload = (await res.json()) as {
+          data?: { connected: boolean; platform: string };
+          connected?: boolean;
+          platform?: string;
+        };
+        const data = payload.data ?? payload;
+        if (data.connected !== true) {
+          setState({ status: "error", message: "O backend não confirmou a persistência da conexão OAuth." });
+          return;
+        }
 
-        // Post real token to opener window (MarketingOAuthDialog postMessage listener).
-        // Target origin locked to same origin — never "*".
+        // Notify only the connection result. OAuth credentials remain server-side.
         if (window.opener) {
           (window.opener as Window).postMessage(
-            { type: "musicos360_oauth_success", platform: data.platform ?? platform, access_token: data.access_token },
+            { type: "musicos360_oauth_success", platform: data.platform ?? platform },
             window.location.origin,
           );
         }

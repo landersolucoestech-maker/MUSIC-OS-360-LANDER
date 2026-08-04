@@ -20,6 +20,7 @@ import { InstagramService }   from './instagram/instagram.service';
 import { TikTokService }      from './tiktok/tiktok.service';
 import { GoogleAdsService }   from './google-ads/google-ads.service';
 import { AbramusService }     from './abramus/abramus.service';
+import { IntegrationBaseService } from './integration-base.service';
 import {
   ConfigureAutentiqueDto,
   SendForSignatureDto,
@@ -29,6 +30,19 @@ import {
   OAuthInitDto,
   OAuthExchangeDto,
 } from './dto/integrations.dto';
+
+const GENERIC_OAUTH_PLATFORMS = new Set([
+  'corp_instagram', 'meta_business', 'meta_ads',
+  'corp_tiktok', 'tiktok_business', 'tiktok_ads',
+  'corp_youtube', 'youtube_business', 'google_business', 'google_ads', 'youtube_ads',
+  'docusign', 'stripe_connect',
+]);
+
+const OAUTH_PROVIDER_ALIASES: Readonly<Record<string, string>> = {
+  corp_spotify: 'spotify',
+  spotify_ads: 'spotify',
+};
+
 
 @ApiTags('Integrations')
 @ApiBearerAuth()
@@ -47,6 +61,7 @@ export class IntegrationsController {
     private readonly tiktok:      TikTokService,
     private readonly googleAds:   GoogleAdsService,
     private readonly abramus:     AbramusService,
+    private readonly integrationBase: IntegrationBaseService,
     private readonly config:      ConfigService,
     private readonly cache:       CacheService,
   ) {}
@@ -96,11 +111,14 @@ export class IntegrationsController {
   @Post('oauth/exchange')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Troca código de autorização OAuth por access_token' })
-  async oauthExchange(@Body() dto: OAuthExchangeDto): Promise<{ access_token: string; platform: string }> {
+  @ApiOperation({ summary: 'Troca código OAuth e persiste credenciais criptografadas no servidor' })
+  async oauthExchange(@Body() dto: OAuthExchangeDto): Promise<{ connected: true; platform: string }> {
     const { code, platform, exchange_token } = dto;
 
-    // Validate and consume the server-issued exchange token.
+    if (!GENERIC_OAUTH_PLATFORMS.has(platform)) {
+      throw new BadRequestException(`Plataforma não suportada para troca OAuth: ${platform}`);
+    }
+
     const cacheKey = `oauth_exchange:${exchange_token}`;
     const entry = this.cache.get<{ platform: string; tenantId?: string; userId?: string }>(cacheKey);
     if (!entry) {
@@ -109,93 +127,166 @@ export class IntegrationsController {
     if (entry.platform !== platform) {
       throw new BadRequestException('exchange_token não corresponde à plataforma solicitada.');
     }
-    // Single-use: delete immediately after validation.
     this.cache.delete(cacheKey);
 
-    // Construct redirect_uri from server config — never trust the client value.
-    const appUrl      = this.config.get<string>('APP_URL') ?? 'http://localhost:5000';
+    if (!entry.tenantId || !entry.userId) {
+      throw new BadRequestException('Contexto autenticado ausente para persistir a conexão OAuth.');
+    }
+
+    const appUrl = this.config.get<string>('APP_URL') ?? 'http://localhost:5000';
     const redirect_uri = `${appUrl}/oauth/callback`;
 
     const isInstagram = platform === 'corp_instagram' || platform === 'meta_business' || platform === 'meta_ads';
-    const isTikTok    = platform === 'corp_tiktok'    || platform === 'tiktok_business' || platform === 'tiktok_ads';
-    const isYouTube   = platform === 'corp_youtube'   || platform === 'youtube_business' || platform === 'google_business' || platform === 'google_ads' || platform === 'youtube_ads';
+    const isTikTok = platform === 'corp_tiktok' || platform === 'tiktok_business' || platform === 'tiktok_ads';
+    const isYouTube = platform === 'corp_youtube' || platform === 'youtube_business' || platform === 'google_business' || platform === 'google_ads' || platform === 'youtube_ads';
+
+    const asString = (value: unknown): string | undefined =>
+      typeof value === 'string' && value.length > 0 ? value : undefined;
+    const asNumber = (value: unknown): number | undefined =>
+      typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+    const persist = async (params: {
+      accessToken: string;
+      refreshToken?: string;
+      expiresIn?: number;
+      scopes?: string;
+    }): Promise<{ connected: true; platform: string }> => {
+      await this.integrationBase.saveOAuthTokens({
+        tenantId: entry.tenantId!,
+        userId: entry.userId!,
+        provider: platform,
+        accessToken: params.accessToken,
+        refreshToken: params.refreshToken,
+        expiresIn: params.expiresIn,
+        scopes: params.scopes,
+      });
+      return { connected: true, platform };
+    };
 
     try {
       if (isInstagram) {
-        const appId     = this.config.get<string>('META_APP_ID')     ?? '';
+        const appId = this.config.get<string>('META_APP_ID') ?? '';
         const appSecret = this.config.get<string>('META_APP_SECRET') ?? '';
-        if (!appId || !appSecret) throw new BadRequestException('META_APP_ID / META_APP_SECRET não configurados');
+        if (!appId || !appSecret) {
+          throw new BadRequestException('META_APP_ID / META_APP_SECRET não configurados');
+        }
 
         const url = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirect_uri)}&client_secret=${appSecret}&code=${code}`;
-        const res  = await fetch(url);
+        const res = await fetch(url);
         const json = await res.json() as Record<string, unknown>;
-        if (json['error']) {
-          const errObj = json['error'] as Record<string, unknown>;
-          throw new BadRequestException((errObj['message'] as string | undefined) ?? 'Meta OAuth error');
+        if (!res.ok || json['error']) {
+          const errObj = json['error'] as Record<string, unknown> | undefined;
+          throw new BadRequestException(
+            (errObj?.['message'] as string | undefined) ?? 'Meta OAuth error',
+          );
         }
 
-        // Troca o token curto pelo de longa duração (~60 dias) — o mesmo grant
-        // usado pelo fluxo orgânico do Instagram (instagram.service.ts). Sem
-        // isto, o token corporativo expiraria em ~1-2h e seria inútil para
-        // qualquer sincronização de métricas fora do popup OAuth.
-        const longRes  = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${json['access_token']}`);
+        const shortToken = asString(json['access_token']);
+        if (!shortToken) throw new BadRequestException('Meta não retornou access_token');
+
+        const longRes = await fetch(
+          `https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortToken}`,
+        );
         const longJson = await longRes.json() as Record<string, unknown>;
-        const accessToken = (longJson['error'] ? json['access_token'] : longJson['access_token']) as string;
-        const expiresIn    = (longJson['error'] ? undefined : longJson['expires_in']) as number | undefined;
+        const accessToken = longRes.ok && !longJson['error']
+          ? asString(longJson['access_token']) ?? shortToken
+          : shortToken;
+        const expiresIn = longRes.ok && !longJson['error']
+          ? asNumber(longJson['expires_in'])
+          : undefined;
 
-        // Persiste (criptografado, associado ao tenant/utilizador que iniciou o
-        // fluxo em oauth/init) em vez de devolver o token só para a resposta —
-        // sem isto a conexão corporativa desaparecia ao fechar o popup.
-        // entry.tenantId/userId vêm de oauth/init, chamado por uma rota
-        // autenticada (@RequireRole('editor')) — ausentes só em cache
-        // corrompido/expirado, caso já coberto pelo `if (!entry)` acima.
-        if (entry.tenantId && entry.userId) {
-          await this.instagram.saveOAuthTokens({
-            tenantId: entry.tenantId, userId: entry.userId, provider: platform,
-            accessToken, expiresIn: expiresIn ?? 5_184_000,
-            scopes: 'pages_show_list,ads_management,business_management,read_insights,instagram_basic',
-          });
-        }
-
-        return { access_token: accessToken, platform };
+        return persist({
+          accessToken,
+          expiresIn: expiresIn ?? 5_184_000,
+          scopes: 'pages_show_list,ads_management,business_management,read_insights,instagram_basic',
+        });
       }
 
       if (isTikTok) {
-        const clientKey    = this.config.get<string>('TIKTOK_CLIENT_KEY')    ?? '';
+        const clientKey = this.config.get<string>('TIKTOK_CLIENT_KEY') ?? '';
         const clientSecret = this.config.get<string>('TIKTOK_CLIENT_SECRET') ?? '';
-        if (!clientKey || !clientSecret) throw new BadRequestException('TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET não configurados');
+        if (!clientKey || !clientSecret) {
+          throw new BadRequestException('TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET não configurados');
+        }
 
-        const res  = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
-          method:  'POST',
+        const res = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body:    new URLSearchParams({ client_key: clientKey, client_secret: clientSecret, code, grant_type: 'authorization_code', redirect_uri }),
+          body: new URLSearchParams({
+            client_key: clientKey,
+            client_secret: clientSecret,
+            code,
+            grant_type: 'authorization_code',
+            redirect_uri,
+          }),
         });
         const json = await res.json() as Record<string, unknown>;
-        if (json['error']) throw new BadRequestException((json['error_description'] as string | undefined) ?? (json['error'] as string));
-        return { access_token: json['access_token'] as string, platform };
+        if (!res.ok || json['error']) {
+          throw new BadRequestException(
+            (json['error_description'] as string | undefined) ??
+            (json['error'] as string | undefined) ??
+            'TikTok OAuth error',
+          );
+        }
+
+        const accessToken = asString(json['access_token']);
+        if (!accessToken) throw new BadRequestException('TikTok não retornou access_token');
+        return persist({
+          accessToken,
+          refreshToken: asString(json['refresh_token']),
+          expiresIn: asNumber(json['expires_in']),
+          scopes: asString(json['scope']),
+        });
       }
 
       if (isYouTube) {
-        const clientId     = this.config.get<string>('GOOGLE_CLIENT_ID')     ?? this.config.get<string>('GOOGLE_ADS_CLIENT_ID')     ?? '';
-        const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? this.config.get<string>('GOOGLE_ADS_CLIENT_SECRET') ?? '';
-        if (!clientId || !clientSecret) throw new BadRequestException('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET não configurados');
+        const clientId = this.config.get<string>('GOOGLE_CLIENT_ID') ??
+          this.config.get<string>('GOOGLE_ADS_CLIENT_ID') ?? '';
+        const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ??
+          this.config.get<string>('GOOGLE_ADS_CLIENT_SECRET') ?? '';
+        if (!clientId || !clientSecret) {
+          throw new BadRequestException('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET não configurados');
+        }
 
-        const res  = await fetch('https://oauth2.googleapis.com/token', {
-          method:  'POST',
+        const res = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body:    new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri, grant_type: 'authorization_code' }),
+          body: new URLSearchParams({
+            code,
+            client_id: clientId,
+            client_secret: clientSecret,
+            redirect_uri,
+            grant_type: 'authorization_code',
+          }),
         });
         const json = await res.json() as Record<string, unknown>;
-        if (json['error']) throw new BadRequestException((json['error_description'] as string | undefined) ?? (json['error'] as string));
-        return { access_token: json['access_token'] as string, platform };
+        if (!res.ok || json['error']) {
+          throw new BadRequestException(
+            (json['error_description'] as string | undefined) ??
+            (json['error'] as string | undefined) ??
+            'Google OAuth error',
+          );
+        }
+
+        const accessToken = asString(json['access_token']);
+        if (!accessToken) throw new BadRequestException('Google não retornou access_token');
+        return persist({
+          accessToken,
+          refreshToken: asString(json['refresh_token']),
+          expiresIn: asNumber(json['expires_in']),
+          scopes: asString(json['scope']),
+        });
       }
 
       if (platform === 'docusign') {
         const integrationKey = this.config.get<string>('DOCUSIGN_INTEGRATION_KEY') ?? '';
         const clientSecret = this.config.get<string>('DOCUSIGN_CLIENT_SECRET') ?? '';
-        const authBaseUrl = this.config.get<string>('DOCUSIGN_AUTH_BASE_URL') ?? 'https://account-d.docusign.com';
+        const authBaseUrl = this.config.get<string>('DOCUSIGN_AUTH_BASE_URL') ??
+          'https://account-d.docusign.com';
         if (!integrationKey || !clientSecret) {
-          throw new BadRequestException('DOCUSIGN_INTEGRATION_KEY / DOCUSIGN_CLIENT_SECRET não configurados');
+          throw new BadRequestException(
+            'DOCUSIGN_INTEGRATION_KEY / DOCUSIGN_CLIENT_SECRET não configurados',
+          );
         }
 
         const basic = Buffer.from(`${integrationKey}:${clientSecret}`).toString('base64');
@@ -205,7 +296,11 @@ export class IntegrationsController {
             Authorization: `Basic ${basic}`,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: new URLSearchParams({ code, grant_type: 'authorization_code' }),
+          body: new URLSearchParams({
+            code,
+            grant_type: 'authorization_code',
+            redirect_uri,
+          }),
         });
         const json = await res.json() as Record<string, unknown>;
         if (!res.ok || json['error']) {
@@ -215,14 +310,24 @@ export class IntegrationsController {
             'DocuSign OAuth error',
           );
         }
-        return { access_token: json['access_token'] as string, platform };
+
+        const accessToken = asString(json['access_token']);
+        if (!accessToken) throw new BadRequestException('DocuSign não retornou access_token');
+        return persist({
+          accessToken,
+          refreshToken: asString(json['refresh_token']),
+          expiresIn: asNumber(json['expires_in']),
+          scopes: asString(json['scope']),
+        });
       }
 
       if (platform === 'stripe_connect') {
         const clientSecret = this.config.get<string>('STRIPE_SECRET_KEY') ?? '';
         const clientId = this.config.get<string>('STRIPE_CONNECT_CLIENT_ID') ?? '';
         if (!clientSecret || !clientId) {
-          throw new BadRequestException('STRIPE_SECRET_KEY / STRIPE_CONNECT_CLIENT_ID não configurados');
+          throw new BadRequestException(
+            'STRIPE_SECRET_KEY / STRIPE_CONNECT_CLIENT_ID não configurados',
+          );
         }
 
         const res = await fetch('https://connect.stripe.com/oauth/token', {
@@ -241,7 +346,14 @@ export class IntegrationsController {
             'Stripe Connect OAuth error',
           );
         }
-        return { access_token: json['access_token'] as string, platform };
+
+        const accessToken = asString(json['access_token']);
+        if (!accessToken) throw new BadRequestException('Stripe não retornou access_token');
+        return persist({
+          accessToken,
+          refreshToken: asString(json['refresh_token']),
+          scopes: asString(json['scope']),
+        });
       }
 
       throw new BadRequestException(`Plataforma não suportada para troca OAuth: ${platform}`);
@@ -249,6 +361,41 @@ export class IntegrationsController {
       if (err instanceof BadRequestException) throw err;
       throw new InternalServerErrorException(`Falha na troca OAuth: ${(err as Error).message}`);
     }
+  }
+
+  @Get('oauth/status')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Consulta conexão OAuth persistida sem expor credenciais' })
+  oauthStatus(@Query('platform') platform: string, @Request() req: any) {
+    const provider = this.resolveOAuthProvider(platform);
+    return this.integrationBase.getOAuthStatus(
+      req.tenant?.id ?? req.tenantId,
+      req.auth?.userId ?? req.userId,
+      provider,
+    );
+  }
+
+  @Delete('oauth/disconnect')
+  @RequireRole('admin')
+  @Audit('integration.disconnected')
+  @ApiOperation({ summary: 'Remove conexão OAuth persistida (admin+)' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  oauthDisconnect(@Query('platform') platform: string, @Request() req: any) {
+    const provider = this.resolveOAuthProvider(platform);
+    return this.integrationBase.disconnectOAuth(
+      req.tenant?.id ?? req.tenantId,
+      req.auth?.userId ?? req.userId,
+      provider,
+    );
+  }
+
+  private resolveOAuthProvider(platform: string): string {
+    const alias = OAUTH_PROVIDER_ALIASES[platform];
+    if (alias) return alias;
+    if (!GENERIC_OAUTH_PLATFORMS.has(platform)) {
+      throw new BadRequestException(`Plataforma OAuth não suportada: ${platform}`);
+    }
+    return platform;
   }
 
   // ─── Status geral ──────────────────────────────────────────────────────────
