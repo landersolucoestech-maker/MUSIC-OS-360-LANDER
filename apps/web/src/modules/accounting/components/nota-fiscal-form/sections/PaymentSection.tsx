@@ -20,11 +20,7 @@ const formaPagamentoOptions = [
 interface PaymentSectionProps {
   formData: NfFormData;
   disabled: boolean;
-  /** Props legadas mantidas temporariamente para compatibilidade do hook pai. */
-  selectedFile: File | null;
   updateField: <K extends keyof NfFormData>(field: K, value: NfFormData[K]) => void;
-  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  setSelectedFile: (f: File | null) => void;
 }
 
 function currentPdf(url: string): UploadedFile[] {
@@ -38,11 +34,7 @@ function currentPdf(url: string): UploadedFile[] {
   }];
 }
 
-export function PaymentSection({
-  formData,
-  disabled,
-  updateField,
-}: PaymentSectionProps) {
+export function PaymentSection({ formData, disabled, updateField }: PaymentSectionProps) {
   return (
     <section className="space-y-4" data-testid="section-pagamento">
       <h3 className="text-base font-semibold border-b pb-1">Pagamento</h3>
@@ -52,7 +44,7 @@ export function PaymentSection({
           <Label>Forma de Pagamento</Label>
           <Select
             value={formData.forma_pagamento}
-            onValueChange={(v) => updateField("forma_pagamento", v)}
+            onValueChange={(value) => updateField("forma_pagamento", value)}
             disabled={disabled}
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
