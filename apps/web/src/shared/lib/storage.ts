@@ -90,7 +90,7 @@ function unwrapList<T>(response: T[] | ListEnvelope<T>, table: string): T[] {
   if (response && Array.isArray(response.data)) return response.data;
   throw new IntegrationError(
     "storage",
-    `Resposta inválida ao listar "${table}": esperado array ou envelope paginado { data, meta }.\`,
+    `Resposta inválida ao listar "${table}": esperado array ou envelope paginado { data, meta }.`,
   );
 }
 
