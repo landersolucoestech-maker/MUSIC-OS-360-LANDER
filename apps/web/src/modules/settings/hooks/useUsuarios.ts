@@ -43,7 +43,6 @@ interface UsersPage {
 export interface UpdateUsuarioInput {
   id: string;
   full_name?: string;
-  email?: string;
   phone?: string;
   status?: "ativo" | "inativo";
   role?: string;
@@ -78,10 +77,9 @@ export function useUsuarios() {
   });
 
   const updateUsuario = useMutation({
-    mutationFn: async ({ id, full_name, email, phone, status, role, cargo }: UpdateUsuarioInput) => {
+    mutationFn: async ({ id, full_name, phone, status, role, cargo }: UpdateUsuarioInput) => {
       const profilePayload = {
         ...(full_name !== undefined && { fullName: full_name }),
-        ...(email !== undefined && { email }),
         ...(phone !== undefined && { phone }),
         ...(status !== undefined && { status: status === "ativo" ? "active" : "inactive" }),
       };
