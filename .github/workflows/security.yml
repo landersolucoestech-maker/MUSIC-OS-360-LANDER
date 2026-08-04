@@ -13,7 +13,7 @@ on:
     - cron: "0 8 * * 1"
 
 permissions:
-  contents: write
+  contents: read
   security-events: write # required for CodeQL / Sarif upload
 
 env:
@@ -21,95 +21,6 @@ env:
   PNPM_VERSION: "10.11.0"
 
 jobs:
-  repair-oauth-web-types:
-    name: Repair OAuth web types
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'fix/oauth-token-boundary'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout feature branch
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
-          token: ${{ github.token }}
-
-      - name: Align canonical client and OAuth types
-        shell: bash
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-
-          def replace_or_verify(path: Path, old: str, new: str, label: str) -> None:
-              text = path.read_text()
-              if old in text:
-                  path.write_text(text.replace(old, new, 1))
-                  return
-              if new in text:
-                  return
-              raise SystemExit(f'{label}: neither old nor expected new content found')
-
-          replace_or_verify(
-              Path('apps/web/src/modules/settings/pages/Configuracoes.tsx'),
-              '''                onConnect={async (platform, scopes, access_token) => {
-                  await connectMarketing(platform, scopes, access_token);
-''',
-              '''                onConnect={async (platform, scopes) => {
-                  await connectMarketing(platform, scopes);
-''',
-              'MarketingOAuthDialog callback signature',
-          )
-
-          replace_or_verify(
-              Path('apps/web/src/modules/crm-relationships/types/index.ts'),
-              '''  endereco?: string | null;
-  status?: string | null;
-''',
-              '''  endereco?: string | null;
-  cep?: string | null;
-  status?: string | null;
-''',
-              'Cliente CEP field',
-          )
-
-          replace_or_verify(
-              Path('apps/web/src/modules/crm-relationships/hooks/useContacts.ts'),
-              '''    endereco: c.endereco_completo ?? c.address ?? null,
-    status: c.status ?? null,
-''',
-              '''    endereco: c.endereco_completo ?? c.address ?? null,
-    cep: c.cep ?? null,
-    status: c.status ?? null,
-''',
-              'ApiClient to Cliente CEP mapping',
-          )
-
-          replace_or_verify(
-              Path('apps/web/src/modules/accounting/components/nota-fiscal-form/hooks/useNotaFiscalForm.ts'),
-              '      tomador_endereco: cliente.endereco || cliente.endereco_completo || "",\n',
-              '      tomador_endereco: cliente.endereco || "",\n',
-              'Nota fiscal canonical client address',
-          )
-
-          Path('.github/web-repair-trigger.txt').unlink(missing_ok=True)
-          Path('.github/workflows/fix-dev-typecheck-blockers.yml').unlink(missing_ok=True)
-          PY
-
-      - name: Commit reviewed web fixes
-        shell: bash
-        run: |
-          if git diff --quiet; then
-            echo "Web types already aligned"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          git commit -m "fix(web): align OAuth and client invoice types"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-
   # ─── Dependency vulnerability scan ───────────────────────────────────────────
   dependency-audit:
     name: Dependency Audit
