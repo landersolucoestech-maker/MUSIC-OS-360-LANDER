@@ -1,13 +1,12 @@
 /**
- * modules/reports/services/reports-api.ts
- *
- * Cliente da Central de Relatórios. Consome exclusivamente os endpoints reais
- * do backend, sem fallback local.
+ * Cliente da Central de Relatórios. Consome exclusivamente os endpoints reais.
  */
 import { api, getAccessToken, getTenantId } from "@/shared/lib/api-client";
 import { API_BASE_URL } from "@/shared/lib/env";
 
 export type ExportFormat = "xlsx";
+export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+export const IMPORT_MAX_BYTES = 1024 * 1024;
 
 export interface ReportColumnMeta {
   name: string;
@@ -22,7 +21,6 @@ export interface ReportColumnMeta {
 export interface ReportEntity {
   entityName: string;
   tableName: string;
-  /** Label pt-BR da entidade resolvido pelo backend (camada i18n central). */
   label: string | null;
   category: string;
   reportable: boolean;
@@ -100,122 +98,145 @@ export interface ExportParams {
   pageSize?: number;
 }
 
-function buildExportQuery(params: ExportParams): string {
-  const q = new URLSearchParams();
-  q.set("format", params.format);
-  if (params.columns?.length) q.set("columns", params.columns.join(","));
-  if (params.sort) q.set("sort", params.sort);
-  if (params.order) q.set("order", params.order);
-  if (params.page) q.set("page", String(params.page));
-  if (params.pageSize) q.set("pageSize", String(params.pageSize));
-  for (const [k, v] of Object.entries(params.filters ?? {})) {
-    if (v !== "" && v != null) q.set(k, v);
-  }
-  return q.toString();
-}
-
-export const reportsApi = {
-  /** GET /reports/entities — inventário classificado. */
-  entities: () => api.get<EntitiesInventory>("/reports/entities"),
-
-  /** GET /reports/definitions — contratos das entidades reportáveis. */
-  definitions: () => api.get<ReportEntityDefinition[]>("/reports/definitions"),
-
-  /**
-   * GET /reports/entities/:entity/export — XLSX como Blob (download).
-   * Usa fetch direto (o api client desserializa JSON), reaproveitando token+tenant.
-   */
-  exportBlob: async (entity: string, params: ExportParams): Promise<{ blob: Blob; filename: string }> => {
-    const headers: Record<string, string> = {};
-    const token = getAccessToken();
-    const tenant = getTenantId();
-
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    if (tenant) headers["X-Tenant-ID"] = tenant;
-
-    const res = await fetch(
-      `${API_BASE_URL}/api/v1/reports/entities/${entity}/export?${buildExportQuery(params)}`,
-      {
-        headers,
-        credentials: "include",
-      },
-    );
-
-    if (!res.ok) {
-      const message = await res.text().catch(() => "");
-      throw new Error(`Exportação falhou (${res.status})${message ? `: ${message}` : ""}`);
-    }
-
-    const cd = res.headers.get("content-disposition") ?? "";
-    const filename = /filename="?([^"]+)"?/.exec(cd)?.[1] ?? `${entity}.${params.format}`;
-
-    return {
-      blob: await res.blob(),
-      filename,
-    };
-  },
-
-  /**
-   * GET /reports/entities/:entity/import/template — XLSX só com cabeçalho
-   * (colunas importáveis do contrato) como Blob (download).
-   */
-  importTemplateBlob: async (entity: string): Promise<{ blob: Blob; filename: string }> => {
-    const headers: Record<string, string> = {};
-    const token = getAccessToken();
-    const tenant = getTenantId();
-
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    if (tenant) headers["X-Tenant-ID"] = tenant;
-
-    const res = await fetch(
-      `${API_BASE_URL}/api/v1/reports/entities/${entity}/import/template`,
-      { headers, credentials: "include" },
-    );
-
-    if (!res.ok) {
-      const message = await res.text().catch(() => "");
-      throw new Error(`Download do template falhou (${res.status})${message ? `: ${message}` : ""}`);
-    }
-
-    const cd = res.headers.get("content-disposition") ?? "";
-    const filename = /filename="?([^"]+)"?/.exec(cd)?.[1] ?? `${entity}_template.xlsx`;
-
-    return { blob: await res.blob(), filename };
-  },
-
-  /** POST /reports/entities/:entity/import/validate — preview, sem persistência. */
-  importValidate: (entity: string, body: ImportUploadBody) =>
-    api.post<ImportValidationResult>(`/reports/entities/${entity}/import/validate`, body),
-
-  /** POST /reports/entities/:entity/import/commit — commit transacional create-only. */
-  importCommit: (entity: string, body: ImportUploadBody) =>
-    api.post<ImportCommitResult>(`/reports/entities/${entity}/import/commit`, body),
-};
-
 export interface ImportUploadBody {
   filename: string;
+  mimeType: typeof XLSX_MIME;
   contentBase64: string;
 }
 
-/** Lê um arquivo XLSX para o body de importação (base64). */
-export async function fileToImportBody(file: File): Promise<ImportUploadBody> {
-  const buf = await file.arrayBuffer();
-  let binary = "";
-  const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return { filename: file.name, contentBase64: btoa(binary) };
+function buildExportQuery(params: ExportParams): string {
+  const query = new URLSearchParams();
+  query.set("format", params.format);
+  if (params.columns?.length) query.set("columns", params.columns.join(","));
+  if (params.sort) query.set("sort", params.sort);
+  if (params.order) query.set("order", params.order);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+  for (const [key, value] of Object.entries(params.filters ?? {})) {
+    if (value !== "" && value != null) query.set(key, value);
+  }
+  return query.toString();
 }
 
-/** Dispara o download de um Blob no navegador. */
+function authenticatedHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const token = getAccessToken();
+  const tenant = getTenantId();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (tenant) headers["X-Tenant-ID"] = tenant;
+  return headers;
+}
+
+async function responseError(response: Response, operation: string): Promise<Error> {
+  const raw = await response.text().catch(() => "");
+  let message = raw;
+  try {
+    const parsed = JSON.parse(raw) as { message?: string; error?: string };
+    message = parsed.message ?? parsed.error ?? raw;
+  } catch {
+    // Texto não estruturado é preservado somente para diagnóstico do status.
+  }
+  return new Error(`${operation} falhou (${response.status})${message ? `: ${message}` : ""}`);
+}
+
+export const reportsApi = {
+  entities: () => api.get<EntitiesInventory>("/reports/entities"),
+  definitions: () => api.get<ReportEntityDefinition[]>("/reports/definitions"),
+
+  exportBlob: async (
+    entity: string,
+    params: ExportParams,
+  ): Promise<{ blob: Blob; filename: string }> => {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/reports/entities/${encodeURIComponent(entity)}/export?${buildExportQuery(params)}`,
+      { headers: authenticatedHeaders(), credentials: "include" },
+    );
+    if (!response.ok) throw await responseError(response, "Exportação");
+
+    const contentType = response.headers.get("content-type")?.split(";")[0].trim();
+    if (contentType !== XLSX_MIME) {
+      throw new Error(`Exportação retornou MIME inesperado: ${contentType ?? "ausente"}.`);
+    }
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? `${entity}.xlsx`;
+    if (!/\.xlsx$/i.test(filename)) {
+      throw new Error(`Exportação retornou nome de arquivo inválido: ${filename}.`);
+    }
+
+    const blob = await response.blob();
+    const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+    if (signature[0] !== 0x50 || signature[1] !== 0x4b || signature[2] !== 0x03 || signature[3] !== 0x04) {
+      throw new Error("Exportação retornou conteúdo que não é um workbook OpenXML válido.");
+    }
+    return { blob, filename };
+  },
+
+  importTemplateBlob: async (entity: string): Promise<{ blob: Blob; filename: string }> => {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/reports/entities/${encodeURIComponent(entity)}/import/template`,
+      { headers: authenticatedHeaders(), credentials: "include" },
+    );
+    if (!response.ok) throw await responseError(response, "Download do template");
+    if (response.headers.get("content-type")?.split(";")[0].trim() !== XLSX_MIME) {
+      throw new Error("Template retornou MIME incompatível com XLSX.");
+    }
+
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? `${entity}_template.xlsx`;
+    const blob = await response.blob();
+    const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+    if (signature[0] !== 0x50 || signature[1] !== 0x4b || signature[2] !== 0x03 || signature[3] !== 0x04) {
+      throw new Error("Template retornou conteúdo OpenXML inválido.");
+    }
+    return { blob, filename };
+  },
+
+  importValidate: (entity: string, body: ImportUploadBody) =>
+    api.post<ImportValidationResult>(
+      `/reports/entities/${encodeURIComponent(entity)}/import/validate`,
+      body,
+    ),
+
+  importCommit: (entity: string, body: ImportUploadBody) =>
+    api.post<ImportCommitResult>(
+      `/reports/entities/${encodeURIComponent(entity)}/import/commit`,
+      body,
+    ),
+};
+
+export async function fileToImportBody(file: File): Promise<ImportUploadBody> {
+  if (!/^[^/\\]+\.xlsx$/i.test(file.name)) {
+    throw new Error("Selecione um arquivo com extensão .xlsx.");
+  }
+  if (file.type !== XLSX_MIME) {
+    throw new Error(`MIME inválido. Esperado: ${XLSX_MIME}.`);
+  }
+  if (file.size <= 0 || file.size > IMPORT_MAX_BYTES) {
+    throw new Error(`O arquivo deve possuir entre 1 e ${IMPORT_MAX_BYTES} bytes.`);
+  }
+
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] !== 0x50 || bytes[1] !== 0x4b || bytes[2] !== 0x03 || bytes[3] !== 0x04) {
+    throw new Error("O conteúdo não possui assinatura OpenXML válida.");
+  }
+
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return { filename: file.name, mimeType: XLSX_MIME, contentBase64: btoa(binary) };
+}
+
 export function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  // Revogar imediatamente após click() é uma corrida real: em arquivos maiores
-  // ou navegadores mais lentos para iniciar o download, a URL pode ser
-  // invalidada antes do browser terminar de lê-la. Adia a revogação para o
-  // próximo tick, dando tempo do download começar de fato.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
