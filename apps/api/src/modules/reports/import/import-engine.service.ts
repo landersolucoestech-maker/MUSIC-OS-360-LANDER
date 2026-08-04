@@ -94,16 +94,7 @@ export class ImportEngineService {
 
     const parsed = this.parser.parse(file.filename, file.content);
     const headerMapping = this.mapper.build(def, parsed.headers);
-    const contract = getReportFormContract(entity) as CompatibleContract | null;
-    const repeatingGroup = contract?.repeatingGroup ?? contract?.childSheets?.[0];
-    return this.validator.validate(
-      def,
-      typeMap,
-      headerMapping,
-      parsed.rows,
-      entity,
-      Boolean(repeatingGroup),
-    );
+    return this.validator.validate(def, typeMap, headerMapping, parsed.rows, entity);
   }
 
   async buildTemplate(entity: string, tenantId: string | undefined): Promise<ImportTemplateResult> {
