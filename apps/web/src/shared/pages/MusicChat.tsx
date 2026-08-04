@@ -37,6 +37,7 @@ import { contatoPayloadToContactData } from "@/modules/crm-relationships/service
 import { SchedulerFormModal } from "@/modules/events/components/SchedulerFormModal";
 import { useMusicChatAutomationSettings } from "@/modules/musicchat/hooks/useMusicChatAutomationSettings";
 import { useMusicChatTriageRules } from "@/modules/musicchat/hooks/useMusicChatTriageRules";
+import { musicChatConversationsService } from "@/modules/musicchat/services/conversations.service";
 import { useTenant } from "@/app/providers/TenantContext";
 import {
   Archive,
@@ -173,221 +174,6 @@ const deadlineProgressStyles: Record<DeadlineState, string> = {
   at_risk: "bg-amber-500",
   overdue: "bg-red-500",
 };
-
-const supportConversations: SupportConversation[] = [
-  {
-    id: "conv-001",
-    customer: "Marina Costa",
-    handle: "+55 11 94002-1820",
-    phone: "+55 11 94002-1820",
-    instagram: "@marinacosta",
-    email: "marina.costa@email.com",
-    originLabel: "WhatsApp",
-    channel: "whatsapp",
-    queue: "Comercial",
-    sector: "Atendimento",
-    status: "em_atendimento",
-    assignee: "Ana Mendes",
-    protocol: "MC-2026-000124",
-    sla: 72,
-    remainingTimeLabel: "Restam 43 minutos",
-    deadlineState: "on_track",
-    tags: ["Lead quente", "Show"],
-    lastMessage: "Gostaria de receber uma proposta para gestão de carreira.",
-    lastMessageAt: "14:28",
-    createdAt: "04/06/2026 14:18",
-    lastReplyAt: "04/06/2026 14:28",
-    unread: 2,
-    value: "R$ 18.500",
-    crmSummary: {
-      existingCustomer: false,
-      lead: "Lead quente",
-      openDeal: "R$ 18.500",
-      stage: "Diagnostico inicial",
-    },
-    auditTrail: [
-      "Criado automaticamente via WhatsApp",
-      "Encaminhado para fila Comercial",
-      "Responsável: Ana Mendes",
-    ],
-  },
-  {
-    id: "conv-002",
-    customer: "DJ Stay",
-    handle: "@djstay",
-    phone: "+55 11 98220-4431",
-    instagram: "@djstay",
-    email: "contato@djstay.com",
-    originLabel: "Instagram DM",
-    channel: "instagram",
-    queue: "Artistas",
-    sector: "A&R",
-    status: "aguardando_cliente",
-    assignee: "Lucas Araujo",
-    protocol: "MC-2026-000123",
-    sla: 38,
-    remainingTimeLabel: "Restam 22 minutos",
-    deadlineState: "at_risk",
-    tags: ["Contrato", "Catalogo"],
-    lastMessage: "Enviei os arquivos pelo drive, consegue validar?",
-    lastMessageAt: "13:05",
-    createdAt: "04/06/2026 12:32",
-    lastReplyAt: "04/06/2026 13:05",
-    unread: 0,
-    value: "R$ 7.200",
-    crmSummary: {
-      existingCustomer: true,
-      lead: "Lead quente",
-      openDeal: "R$ 7.200",
-      stage: "Proposta enviada",
-    },
-    auditTrail: [
-      "Criado automaticamente via Instagram",
-      "Transferido para fila Artistas",
-      "Responsável: Lucas Araujo",
-    ],
-  },
-  {
-    id: "conv-003",
-    customer: "Produtora Lume",
-    handle: "facebook.com/produtoralume",
-    phone: "+55 21 97110-2200",
-    instagram: "@produtoralume",
-    email: "parcerias@produtoralume.com",
-    originLabel: "Facebook DM",
-    channel: "facebook",
-    queue: "Parcerias",
-    sector: "Marketing",
-    status: "aguardando_atendimento",
-    assignee: "Sem responsável",
-    protocol: "MC-2026-000122",
-    sla: 21,
-    remainingTimeLabel: "Restam 8 minutos",
-    deadlineState: "at_risk",
-    tags: ["Parceria"],
-    lastMessage: "Temos interesse em uma campanha com o elenco da gravadora.",
-    lastMessageAt: "11:42",
-    createdAt: "04/06/2026 11:20",
-    lastReplyAt: "04/06/2026 11:42",
-    unread: 1,
-    value: "R$ 4.800",
-    crmSummary: {
-      existingCustomer: false,
-      lead: "Parceria",
-      openDeal: "R$ 4.800",
-      stage: "Triagem",
-    },
-    auditTrail: [
-      "Criado automaticamente via Facebook",
-      "Aguardando distribuição",
-      "Responsável: Sem responsável",
-    ],
-  },
-  {
-    id: "conv-004",
-    customer: "MC Levin",
-    handle: "@mclevin",
-    phone: "+55 11 98810-1144",
-    instagram: "@mclevin",
-    email: "agenda@mclevin.com",
-    originLabel: "TikTok DM",
-    channel: "tiktok",
-    queue: "Suporte",
-    sector: "Operacoes",
-    status: "nova",
-    assignee: "Sem responsável",
-    protocol: "MC-2026-000121",
-    sla: 12,
-    remainingTimeLabel: "Prazo vencido ha 5 minutos",
-    deadlineState: "overdue",
-    tags: ["Lancamento"],
-    lastMessage: "Preciso ajustar a data do pre-save.",
-    lastMessageAt: "10:16",
-    createdAt: "04/06/2026 09:44",
-    lastReplyAt: "04/06/2026 10:16",
-    unread: 3,
-    value: "R$ 1.400",
-    crmSummary: {
-      existingCustomer: true,
-      lead: "Lancamento",
-      openDeal: "R$ 1.400",
-      stage: "Suporte operacional",
-    },
-    auditTrail: [
-      "Criado automaticamente via TikTok",
-      "Marcado como prioridade de lançamento",
-      "Responsável: Sem responsável",
-    ],
-  },
-  {
-    id: "conv-005",
-    customer: "Helena Prado",
-    handle: "helena.prado@email.com",
-    phone: "+55 11 95551-7788",
-    instagram: "",
-    email: "helena.prado@email.com",
-    originLabel: "Site",
-    channel: "site",
-    queue: "Comercial",
-    sector: "Atendimento",
-    status: "nova",
-    assignee: "Sem responsável",
-    protocol: "MC-2026-000125",
-    sla: 80,
-    remainingTimeLabel: "Restam 2 horas",
-    deadlineState: "on_track",
-    tags: ["Formulario do site"],
-    assunto: "Orçamento para produção de single",
-    lastMessage: "Gostaria de um orçamento para produzir e distribuir um single.",
-    lastMessageAt: "09:05",
-    createdAt: "05/06/2026 09:05",
-    lastReplyAt: "05/06/2026 09:05",
-    unread: 1,
-    value: "R$ 0",
-    crmSummary: {
-      existingCustomer: false,
-      lead: "Formulario do site",
-      openDeal: "—",
-      stage: "Triagem",
-    },
-    auditTrail: [
-      "Criado automaticamente via Formulário do Site",
-      "Aguardando distribuição",
-      "Responsável: Sem responsável",
-    ],
-  },
-];
-
-const supportMessages: SupportMessage[] = [
-  {
-    id: "msg-001",
-    sender: "system",
-    author: "Sistema",
-    body: "Conversa criada pelo canal WhatsApp e encaminhada para a fila Comercial.",
-    time: "14:18",
-  },
-  {
-    id: "msg-002",
-    sender: "customer",
-    author: "Marina Costa",
-    body: "Boa tarde! Gostaria de receber uma proposta para gestão de carreira.",
-    time: "14:20",
-  },
-  {
-    id: "msg-003",
-    sender: "agent",
-    author: "Ana Mendes",
-    body: "Boa tarde, Marina. Consigo sim. Vou confirmar algumas informações e já te encaminho o melhor fluxo.",
-    time: "14:23",
-  },
-  {
-    id: "msg-004",
-    sender: "customer",
-    author: "Marina Costa",
-    body: "Perfeito. O artista tem agenda de lançamento para julho e precisamos integrar marketing, shows e catálogo.",
-    time: "14:28",
-  },
-];
 
 function getInitials(name: string) {
   return name
@@ -706,11 +492,10 @@ function SupportCenterView() {
   const { createContact } = useContacts();
   const { settings: automationSettings } = useMusicChatAutomationSettings();
   const { runEscalations } = useMusicChatTriageRules();
-  const [conversations, setConversations] = useState<SupportConversation[]>(supportConversations);
-  const [messagesByConv, setMessagesByConv] = useState<Record<string, SupportMessage[]>>({
-    [supportConversations[0]?.id ?? ""]: supportMessages,
-  });
-  const [selectedId, setSelectedId] = useState(supportConversations[0]?.id ?? "");
+  const [conversations, setConversations] = useState<SupportConversation[]>([]);
+  const [messagesByConv, setMessagesByConv] = useState<Record<string, SupportMessage[]>>({});
+  const [selectedId, setSelectedId] = useState("");
+  const [loadingConversations, setLoadingConversations] = useState(true);
   const [channelFilter, setChannelFilter] = useState<string>("todos");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [draft, setDraft] = useState("");
@@ -739,6 +524,38 @@ function SupportCenterView() {
     () => (automationSettings?.templates?.length ? automationSettings.templates.slice(0, 3).map((template) => template.body) : quickReplies),
     [automationSettings?.templates],
   );
+
+
+  useEffect(() => {
+    let active = true;
+    setLoadingConversations(true);
+    void musicChatConversationsService.list()
+      .then((rows) => {
+        if (!active) return;
+        setConversations(rows);
+        setSelectedId((current) => current || rows[0]?.id || "");
+      })
+      .catch(() => {
+        if (active) toast.error("Não foi possível carregar as conversas do MusicChat.");
+      })
+      .finally(() => {
+        if (active) setLoadingConversations(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId || messagesByConv[selectedId]) return;
+    let active = true;
+    void musicChatConversationsService.messages(selectedId)
+      .then((rows) => {
+        if (active) setMessagesByConv((previous) => ({ ...previous, [selectedId]: rows }));
+      })
+      .catch(() => {
+        if (active) toast.error("Não foi possível carregar as mensagens desta conversa.");
+      });
+    return () => { active = false; };
+  }, [selectedId, messagesByConv]);
 
   useEffect(() => {
     if (!isRecording || !recordingStartedAt) return undefined;
@@ -795,46 +612,54 @@ function SupportCenterView() {
     setMessagesByConv((prev) => ({ ...prev, [id]: [...(prev[id] ?? []), message] }));
   };
 
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
     if (!selectedConversation || !transferTarget) return;
-    updateConversation(
-      selectedConversation.id,
-      (conversation) => ({ ...conversation, assignee: transferTarget, status: "em_atendimento" }),
-      `Transferido para ${transferTarget}`,
-    );
-    toast.success(`Conversa transferida para ${transferTarget}.`);
-    setTransferOpen(false);
-    setTransferTarget("");
+    try {
+      const updated = await musicChatConversationsService.update(selectedConversation.id, {
+        metadata: { assignee_name: transferTarget },
+        service_status: "em_atendimento",
+      });
+      setConversations((previous) => previous.map((item) => item.id === updated.id ? updated : item));
+      toast.success(`Conversa transferida para ${transferTarget}.`);
+      setTransferOpen(false);
+      setTransferTarget("");
+    } catch {
+      toast.error("Não foi possível transferir a conversa.");
+    }
   };
 
-  const handleFinalize = () => {
+  const handleFinalize = async () => {
     if (!selectedConversation) return;
-    updateConversation(
-      selectedConversation.id,
-      (conversation) => ({ ...conversation, status: "resolvida" }),
-      "Conversa finalizada",
-    );
-    toast.success("Conversa finalizada.");
+    try {
+      const updated = await musicChatConversationsService.close(selectedConversation.id);
+      setConversations((previous) => previous.map((item) => item.id === updated.id ? updated : item));
+      toast.success("Conversa finalizada.");
+    } catch {
+      toast.error("Não foi possível finalizar a conversa.");
+    }
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     if (!selectedConversation) return;
-    updateConversation(
-      selectedConversation.id,
-      (conversation) => ({ ...conversation, status: "arquivada" }),
-      "Conversa arquivada",
-    );
-    toast.success("Conversa arquivada.");
+    try {
+      await musicChatConversationsService.archive(selectedConversation.id);
+      setConversations((previous) => previous.filter((item) => item.id !== selectedConversation.id));
+      setSelectedId("");
+      toast.success("Conversa arquivada.");
+    } catch {
+      toast.error("Não foi possível arquivar a conversa.");
+    }
   };
 
-  const handleReopen = () => {
+  const handleReopen = async () => {
     if (!selectedConversation) return;
-    updateConversation(
-      selectedConversation.id,
-      (conversation) => ({ ...conversation, status: "em_atendimento" }),
-      "Conversa reaberta",
-    );
-    toast.success("Conversa reaberta.");
+    try {
+      const updated = await musicChatConversationsService.reopen(selectedConversation.id);
+      setConversations((previous) => previous.map((item) => item.id === updated.id ? updated : item));
+      toast.success("Conversa reaberta.");
+    } catch {
+      toast.error("Não foi possível reabrir a conversa.");
+    }
   };
 
   const handleAddTag = () => {
@@ -1030,43 +855,50 @@ function SupportCenterView() {
     setDraft(text);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!selectedConversation) return;
     const body = draft.trim();
     if (!body && pendingAttachments.length === 0) return;
     const sentAt = currentTimeLabel();
     const attachments = pendingAttachments;
     const fallbackBody = attachments.length === 1 ? "Anexo enviado." : `${attachments.length} anexos enviados.`;
-    appendMessage(selectedConversation.id, {
-      id: `msg-${Date.now()}`,
-      sender: "agent",
-      author: selectedConversation.assignee,
-      body: body || fallbackBody,
-      time: sentAt,
-      attachments,
-    });
-    updateConversation(selectedConversation.id, (conversation) => ({
-      ...conversation,
-      lastMessage: body || fallbackBody,
-      lastMessageAt: sentAt,
-    }));
-    setDraft("");
-    setPendingAttachments([]);
+    try {
+      const saved = await musicChatConversationsService.sendMessage(
+        selectedConversation.id,
+        body || fallbackBody,
+        attachments,
+      );
+      appendMessage(selectedConversation.id, saved);
+      updateConversation(selectedConversation.id, (conversation) => ({
+        ...conversation,
+        lastMessage: body || fallbackBody,
+        lastMessageAt: sentAt,
+      }));
+      setDraft("");
+      setPendingAttachments([]);
+    } catch {
+      toast.error("Não foi possível enviar a mensagem.");
+    }
   };
 
-  const handleInternalNote = () => {
+  const handleInternalNote = async () => {
     if (!selectedConversation) return;
     const body = draft.trim();
     if (!body) return;
-    appendMessage(selectedConversation.id, {
-      id: `note-${Date.now()}`,
-      sender: "system",
-      author: "Nota interna",
-      body,
-      time: currentTimeLabel(),
-    });
-    toast.success("Nota interna registrada.");
-    setDraft("");
+    try {
+      await musicChatConversationsService.addNote(selectedConversation.id, body);
+      appendMessage(selectedConversation.id, {
+        id: `note-${Date.now()}`,
+        sender: "system",
+        author: "Nota interna",
+        body,
+        time: currentTimeLabel(),
+      });
+      toast.success("Nota interna registrada.");
+      setDraft("");
+    } catch {
+      toast.error("Não foi possível registrar a nota interna.");
+    }
   };
 
   return (
@@ -1083,7 +915,7 @@ function SupportCenterView() {
               <p className="mt-1 text-xs text-muted-foreground">Filas, canais e conversas multicanal.</p>
             </div>
             <Badge variant="secondary" className="text-[11px]">
-              {filteredConversations.length} abertas
+              {loadingConversations ? "Carregando" : `${filteredConversations.length} abertas`}
             </Badge>
           </div>
           <div className="rounded-md border border-border bg-muted/20 p-2">
