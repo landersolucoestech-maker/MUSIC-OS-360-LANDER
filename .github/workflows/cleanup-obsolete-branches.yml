@@ -1,0 +1,59 @@
+name: Cleanup Obsolete Branches
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/cleanup-obsolete-branches.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    name: Delete audited obsolete branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete branches and verify repository topology
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          branches=(
+            "fix/api-typecheck-baseline"
+            "fix/license-percentage-from-pr5"
+            "fix/oauth-token-boundary"
+            "fix/oauth-token-boundary-clean"
+            "fix/rbac-decision-log-historical-partitions"
+            "fix/rbac-decision-log-partition-rls"
+            "fix/reports-test-baseline"
+            "wip/pr5-mixed-scope-backup"
+          )
+
+          for branch in "${branches[@]}"; do
+            case "$branch" in
+              main|dev)
+                echo "::error::Protected permanent branch in deletion list: $branch"
+                exit 1
+                ;;
+            esac
+
+            if gh api "repos/${REPOSITORY}/git/ref/heads/${branch}" >/dev/null 2>&1; then
+              echo "Deleting ${branch}"
+              gh api --method DELETE "repos/${REPOSITORY}/git/refs/heads/${branch}"
+            else
+              echo "Already absent: ${branch}"
+            fi
+          done
+
+          remaining=$(gh api --paginate "repos/${REPOSITORY}/branches?per_page=100" --jq '.[].name' | sort)
+          printf 'Remaining branches:\n%s\n' "$remaining"
+
+          expected=$'dev\nmain'
+          if [[ "$remaining" != "$expected" ]]; then
+            echo "::error::Unexpected branch topology after cleanup"
+            exit 1
+          fi
