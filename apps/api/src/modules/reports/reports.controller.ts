@@ -1,11 +1,9 @@
 /**
- * modules/reports/reports.controller.ts
- *
- * FASE 1 — expõe o inventário entity-driven da Central de Relatórios.
- * Apenas LEITURA de metadados (sem import/export ainda).
+ * Endpoints entity-driven da Central de Relatórios.
  */
 import { BadRequestException, Body, Controller, Get, Param, Post, Query, Res } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Equals, IsNotEmpty, IsString, Matches, MaxLength } from 'class-validator';
 import type { Response } from 'express';
 import { RequireRole } from '../../core/decorators/roles.decorator';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
@@ -18,34 +16,97 @@ import { REPORT_MODULE_REGISTRY_BY_TABLE } from './report-module-registry';
 import { ExportEngineService } from './export/export-engine.service';
 import { ImportEngineService } from './import/import-engine.service';
 import { ImportCommitService, type ImportCommitResult } from './import/import-commit.service';
-import { EXPORT_DEFAULT_PAGE_SIZE, EXPORT_FORMATS, type ExportFormat, type ExportQueryParams } from './export/export.types';
-import type { ImportValidationResult } from './import/import.types';
+import {
+  EXPORT_DEFAULT_PAGE_SIZE,
+  EXPORT_FORMATS,
+  EXPORT_MAX_PAGE_SIZE,
+  type ExportFormat,
+  type ExportQueryParams,
+} from './export/export.types';
+import { IMPORT_MAX_BYTES, type ImportValidationResult } from './import/import.types';
 import type { EntitiesInventory } from './entity-metadata.types';
 import type { ReportEntityDefinition } from './definitions/report-entity-definition.types';
 import { isSafeKey } from '../../core/security/safe-object';
 
-interface ImportValidateBody {
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const MAX_BASE64_LENGTH = Math.ceil(IMPORT_MAX_BYTES / 3) * 4 + 4;
+const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+
+export class ImportUploadDto {
+  @IsString()
+  @Matches(/^[^/\\]+\.xlsx$/i, { message: 'filename deve terminar em .xlsx e não pode conter caminho.' })
   filename: string;
+
+  @IsString()
+  @Equals(XLSX_MIME, { message: `mimeType deve ser ${XLSX_MIME}.` })
+  mimeType: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(MAX_BASE64_LENGTH)
+  @Matches(BASE64_PATTERN, { message: 'contentBase64 inválido.' })
   contentBase64: string;
 }
 
 const RESERVED_QUERY_KEYS = new Set(['format', 'columns', 'sort', 'order', 'page', 'pageSize']);
 
-export function parseExportParams(query: Record<string, string | string[] | undefined>): ExportQueryParams {
-  const str = (v: string | string[] | undefined): string | undefined =>
-    Array.isArray(v) ? v[0] : v;
-  // Chave de filtro vem da query string (controlada pelo cliente): null-proto +
-  // isSafeKey impedem property injection / prototype pollution (CWE-915).
-  const filters: Record<string, string> = Object.create(null);
-  for (const [k, v] of Object.entries(query)) {
-    if (RESERVED_QUERY_KEYS.has(k) || !isSafeKey(k)) continue;
-    const val = str(v);
-    if (val !== undefined) filters[k] = val;
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function positiveInteger(
+  name: string,
+  value: string | undefined,
+  fallback: number,
+  maximum?: number,
+): number {
+  if (value === undefined || value === '') return fallback;
+  if (!/^\d+$/.test(value)) {
+    throw new BadRequestException({
+      error: 'INVALID_REPORT_PAGINATION',
+      message: `${name} deve ser um número inteiro positivo.`,
+    });
   }
-  // Formato é lido de verdade da query string — nunca hardcoded. Um cliente
-  // pedindo ?format=csv (ou qualquer formato fora de EXPORT_FORMATS) é
-  // rejeitado explicitamente aqui, nunca silenciosamente convertido/ignorado.
-  const formatRaw = str(query['format']) ?? 'xlsx';
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || (maximum !== undefined && parsed > maximum)) {
+    throw new BadRequestException({
+      error: 'INVALID_REPORT_PAGINATION',
+      message: `${name} fora do intervalo permitido${maximum ? ` (1-${maximum})` : ''}.`,
+    });
+  }
+  return parsed;
+}
+
+function decodeImportBody(body: ImportUploadDto): Buffer {
+  const content = Buffer.from(body.contentBase64, 'base64');
+  const normalizedInput = body.contentBase64.replace(/=+$/, '');
+  const normalizedDecoded = content.toString('base64').replace(/=+$/, '');
+  if (normalizedInput !== normalizedDecoded) {
+    throw new BadRequestException({
+      error: 'INVALID_IMPORT_ENCODING',
+      message: 'contentBase64 não representa um arquivo válido.',
+    });
+  }
+  if (content.length === 0 || content.length > IMPORT_MAX_BYTES) {
+    throw new BadRequestException({
+      error: 'INVALID_IMPORT_SIZE',
+      message: `Arquivo deve possuir entre 1 e ${IMPORT_MAX_BYTES} bytes.`,
+    });
+  }
+  return content;
+}
+
+export function parseExportParams(
+  query: Record<string, string | string[] | undefined>,
+): ExportQueryParams {
+  const filters: Record<string, string> = Object.create(null);
+  for (const [key, rawValue] of Object.entries(query)) {
+    if (RESERVED_QUERY_KEYS.has(key) || !isSafeKey(key)) continue;
+    const value = first(rawValue);
+    if (value !== undefined) filters[key] = value;
+  }
+
+  const formatRaw = first(query.format) ?? 'xlsx';
   if (!EXPORT_FORMATS.includes(formatRaw as ExportFormat)) {
     throw new BadRequestException({
       error: 'UNSUPPORTED_EXPORT_FORMAT',
@@ -53,15 +114,23 @@ export function parseExportParams(query: Record<string, string | string[] | unde
     });
   }
 
-  const columnsRaw = str(query['columns']);
+  const columnsRaw = first(query.columns);
+  const columns = columnsRaw
+    ? Array.from(new Set(columnsRaw.split(',').map((column) => column.trim()).filter(Boolean)))
+    : undefined;
   return {
     format: formatRaw as ExportFormat,
-    columns: columnsRaw ? columnsRaw.split(',').map((c) => c.trim()).filter(Boolean) : undefined,
+    columns,
     filters: Object.keys(filters).length ? filters : undefined,
-    sort: str(query['sort']),
-    order: str(query['order'])?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
-    page: Number(str(query['page']) ?? 1),
-    pageSize: Number(str(query['pageSize']) ?? EXPORT_DEFAULT_PAGE_SIZE),
+    sort: first(query.sort),
+    order: first(query.order)?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
+    page: positiveInteger('page', first(query.page), 1),
+    pageSize: positiveInteger(
+      'pageSize',
+      first(query.pageSize),
+      EXPORT_DEFAULT_PAGE_SIZE,
+      EXPORT_MAX_PAGE_SIZE,
+    ),
   };
 }
 
@@ -80,107 +149,115 @@ export class ReportsController {
 
   @Get('entities')
   @RequireRole('admin')
-  @ApiOperation({ summary: 'Inventário classificado das entidades persistidas (metadata)' })
+  @ApiOperation({ summary: 'Inventário classificado das entidades persistidas' })
   async entities(): Promise<EntitiesInventory> {
     const inventory = this.entityMetadata.scan();
     const tables = await this.tableGuard.existingTables();
-    if (!tables) return inventory; // sem verificação de banco — devolve metadata pura
+    if (!tables) return inventory;
 
-    // Overlay de disponibilidade: entidade sem tabela física nunca é reportável
-    // (evita export/import 500). Mantida no inventário com available=false + risco.
-    // Relatórios computados (ex.: accounting_summary) não têm tabela física
-    // própria — sempre "disponíveis" (dependem apenas da tabela que agregam).
-    for (const e of inventory.entities) {
-      if (REPORT_MODULE_REGISTRY_BY_TABLE.get(e.tableName)?.computed) {
-        e.available = true;
+    for (const entity of inventory.entities) {
+      if (REPORT_MODULE_REGISTRY_BY_TABLE.get(entity.tableName)?.computed) {
+        entity.available = true;
         continue;
       }
-      const available = tables.has(e.tableName);
-      e.available = available;
+      const available = tables.has(entity.tableName);
+      entity.available = available;
       if (!available) {
-        if (e.reportable) e.reportable = false;
-        if (!e.risks.includes('TABLE_NOT_AVAILABLE')) e.risks.push('TABLE_NOT_AVAILABLE');
+        if (entity.reportable) entity.reportable = false;
+        if (!entity.risks.includes('TABLE_NOT_AVAILABLE')) {
+          entity.risks.push('TABLE_NOT_AVAILABLE');
+        }
       }
     }
-    inventory.reportableEntities = inventory.entities.filter((e) => e.reportable).length;
+    inventory.reportableEntities = inventory.entities.filter((entity) => entity.reportable).length;
     inventory.nonReportableEntities = inventory.entities.length - inventory.reportableEntities;
     return inventory;
   }
 
   @Get('definitions')
   @RequireRole('admin')
-  @ApiOperation({ summary: 'Contratos ReportEntityDefinition das entidades reportáveis' })
+  @ApiOperation({ summary: 'Contratos das entidades reportáveis' })
   async reportDefinitions(): Promise<ReportEntityDefinition[]> {
-    const defs = this.definitions.getDefinitions();
+    const definitions = this.definitions.getDefinitions();
     const tables = await this.tableGuard.existingTables();
-    if (!tables) return defs;
-    // Só expõe contrato de entidade com tabela física (não oferece export/import
-    // 500) — exceto relatórios computados, que não têm tabela física própria.
-    return defs.filter((d) => REPORT_MODULE_REGISTRY_BY_TABLE.get(d.tableName)?.computed || tables.has(d.tableName));
+    if (!tables) return definitions;
+    return definitions.filter(
+      (definition) =>
+        REPORT_MODULE_REGISTRY_BY_TABLE.get(definition.tableName)?.computed ||
+        tables.has(definition.tableName),
+    );
   }
 
   @Get('entities/:entity/export')
   @RequireRole('manager')
   @Audit('report.exported')
-  @ApiOperation({ summary: 'Exporta uma entidade reportável (XLSX) — entity-driven, tenant-safe' })
+  @ApiOperation({ summary: 'Exporta uma entidade reportável em XLSX' })
   async export(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: { userId: string },
     @Param('entity') entity: string,
     @Query() query: Record<string, string | string[] | undefined>,
-    @Res() res: Response,
+    @Res() response: Response,
   ): Promise<void> {
     const params = parseExportParams(query);
-    const result = await this.exportEngine.export(entity, params, tenant?.id, user?.userId ?? 'unknown');
+    const result = await this.exportEngine.export(
+      entity,
+      params,
+      tenant?.id,
+      user?.userId ?? 'unknown',
+    );
 
-    res.setHeader('Content-Type', result.contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
-    res.status(200).send(result.body);
+    response.setHeader('Content-Type', result.contentType);
+    response.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.status(200).send(result.body);
   }
 
   @Get('entities/:entity/import/template')
   @RequireRole('manager')
-  @ApiOperation({ summary: 'Baixa o template XLSX de importação (colunas do contrato, sem dados)' })
+  @ApiOperation({ summary: 'Baixa o template XLSX de importação' })
   async importTemplate(
     @CurrentTenant() tenant: { id: string },
     @Param('entity') entity: string,
-    @Res() res: Response,
+    @Res() response: Response,
   ): Promise<void> {
     const result = await this.importEngine.buildTemplate(entity, tenant?.id);
-    res.setHeader('Content-Type', result.contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
-    res.status(200).send(result.body);
+    response.setHeader('Content-Type', result.contentType);
+    response.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.status(200).send(result.body);
   }
 
   @Post('entities/:entity/import/validate')
   @RequireRole('manager')
-  @ApiOperation({ summary: 'Valida um arquivo de importação (preview) — SEM persistir (FASE 2.3A)' })
+  @ApiOperation({ summary: 'Valida arquivo XLSX sem persistir' })
   importValidate(
     @CurrentTenant() tenant: { id: string },
     @Param('entity') entity: string,
-    @Body() body: ImportValidateBody,
+    @Body() body: ImportUploadDto,
   ): Promise<ImportValidationResult> {
-    if (!body?.filename || !body.contentBase64) {
-      throw new BadRequestException('Envie filename e contentBase64 (arquivo XLSX).');
-    }
-    const content = Buffer.from(body.contentBase64, 'base64');
-    return this.importEngine.validateFile(entity, { filename: body.filename, content }, tenant?.id);
+    return this.importEngine.validateFile(
+      entity,
+      { filename: body.filename, content: decodeImportBody(body) },
+      tenant?.id,
+    );
   }
 
   @Post('entities/:entity/import/commit')
   @RequireRole('manager')
   @Audit('report.import.committed')
-  @ApiOperation({ summary: 'Commit transacional da importação (create-only, tudo-ou-nada) — FASE 2.3B' })
-  async importCommitEndpoint(
+  @ApiOperation({ summary: 'Commit transacional e create-only da importação XLSX' })
+  importCommitEndpoint(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: { userId: string },
     @Param('entity') entity: string,
-    @Body() body: ImportValidateBody,
+    @Body() body: ImportUploadDto,
   ): Promise<ImportCommitResult> {
-    if (!body?.filename || !body.contentBase64) {
-      throw new BadRequestException('Envie filename e contentBase64 (arquivo XLSX).');
-    }
-    const content = Buffer.from(body.contentBase64, 'base64');
-    return this.importCommit.commit(entity, { filename: body.filename, content }, tenant?.id, user?.userId ?? 'unknown');
+    return this.importCommit.commit(
+      entity,
+      { filename: body.filename, content: decodeImportBody(body) },
+      tenant?.id,
+      user?.userId ?? 'unknown',
+    );
   }
 }
