@@ -50,7 +50,6 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   licenses: EntityCategory.REPORTABLE,
   inventory_items: EntityCategory.REPORTABLE,
   content_detections: EntityCategory.REPORTABLE,
-  forms: EntityCategory.REPORTABLE,
   conversations: EntityCategory.REPORTABLE,
   operational_tasks: EntityCategory.REPORTABLE,
   financial_categories: EntityCategory.REPORTABLE,
@@ -71,12 +70,19 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   audiovisual_tasks: EntityCategory.REPORTABLE,
   audiovisual_assets: EntityCategory.REPORTABLE,
   audiovisual_deliverables: EntityCategory.REPORTABLE,
-  pipelines: EntityCategory.REPORTABLE,
   pipeline_opportunities: EntityCategory.REPORTABLE,
   society_submissions: EntityCategory.REPORTABLE,
   society_accounts: EntityCategory.REPORTABLE,
 
   // ── Operacionais NÃO reportáveis (sub-entidades / ruído) ──────────────────
+  // Parte 87: "forms" e "pipelines" (features de formulário/pipeline musical
+  // — FormEntity/PipelineEntity) nunca podem aparecer na Central de
+  // Relatórios (nem export, nem import, nem no inventário de entidades) —
+  // seguem existindo normalmente em suas próprias telas/módulos, fora de
+  // Relatórios. Não confundir com `pipeline_opportunities` (CRM, entidade
+  // de negócio distinta, permanece reportável).
+  forms: EntityCategory.NOT_REPORTABLE,
+  pipelines: EntityCategory.NOT_REPORTABLE,
   // work_participants: relação normalizada de autoria de works (migration
   // 20260718000011) — reportável separadamente, como shares/rights_holders.
   work_participants: EntityCategory.NOT_REPORTABLE,
