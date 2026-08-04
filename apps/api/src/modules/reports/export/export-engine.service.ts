@@ -26,6 +26,8 @@ import {
   type ReportChildSheetSpec,
 } from '../form-contracts/report-form-contracts';
 import { CHILD_SHEET_EXPORT_RESOLVERS } from '../computed-fields/registry';
+import { REPORT_MODULE_REGISTRY_BY_TABLE, ACCOUNTING_SUMMARY_TABLE_NAME } from '../report-module-registry';
+import { fetchAccountingSummaryRows } from '../computed-fields/accounting-summary.report';
 import { EXPORT_FORMATS, type ExportFormat, type ExportQueryParams, type ExportResult } from './export.types';
 
 @Injectable()
@@ -74,6 +76,26 @@ export class ExportEngineService {
     }
     if (!def.supportsExport) throw new BadRequestException(`Entidade nao suporta exportacao: ${entity}`);
 
+    // Relatório computado (Bloco 19): sem tabela física, sem query builder
+    // genérico — a origem dos dados é um resolver dedicado (ver
+    // computed-fields/*.report.ts), nunca SQL "FROM <entity>".
+    if (REPORT_MODULE_REGISTRY_BY_TABLE.get(entity)?.computed) {
+      if (!this.ds) throw new ServiceUnavailableException('Banco de dados indisponivel');
+      let computedRows: Record<string, unknown>[];
+      try {
+        computedRows = await this.resolveComputedReport(entity, tenantId);
+      } catch (err) {
+        this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: 0, status: 'failed', error: String(err) });
+        throw err;
+      }
+      const columns = params.columns?.length
+        ? params.columns.filter((c) => def.exportableColumns.includes(c))
+        : def.exportableColumns;
+      const result = this.serialize(entity, params.format, columns, computedRows);
+      this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: computedRows.length, status: 'success' });
+      return result;
+    }
+
     const softDeleteColumn = report.hasSoftDelete
       ? report.columns.find((c) => c.isDeletedAt)?.name
       : undefined;
@@ -114,6 +136,14 @@ export class ExportEngineService {
     const result = this.serialize(entity, params.format, query.columns, rows);
     this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: rows.length, status: 'success' });
     return result;
+  }
+
+  /** Roteia relatórios computados (Bloco 19) para o resolver dedicado da entidade. */
+  private async resolveComputedReport(entity: string, tenantId: string): Promise<Record<string, unknown>[]> {
+    if (entity === ACCOUNTING_SUMMARY_TABLE_NAME) {
+      return fetchAccountingSummaryRows(this.ds!, tenantId) as unknown as Record<string, unknown>[];
+    }
+    throw new Error(`[reports-export] relatório computado sem resolver registrado: ${entity}`);
   }
 
   private async serializeWithChildSheets(

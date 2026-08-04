@@ -12,6 +12,14 @@ import {
   fetchProjectsMusicasForExport,
   insertProjectsMusicasForImport,
 } from './projects-musicas.field';
+import {
+  fetchReleasesFaixasForExport,
+  writeReleasesFaixasForImport,
+} from './releases-faixas.field';
+import {
+  makeRowEmbeddedChildSheetExportResolver,
+  makeRowEmbeddedChildSheetImportWriter,
+} from './row-embedded-child-sheet';
 
 export type ChildSheetExportResolver = (
   ds: DataSource,
@@ -26,10 +34,19 @@ export type ChildSheetImportWriter = (
   rows: unknown,
 ) => Promise<void>;
 
+const invoicesItens = { tableName: 'invoices', jsonColumn: 'itens', arrayKey: null } as const;
+const eventsParticipantes = { tableName: 'events', jsonColumn: 'participantes', arrayKey: null } as const;
+
 export const CHILD_SHEET_EXPORT_RESOLVERS: Record<string, ChildSheetExportResolver> = {
   'projects.musicas': fetchProjectsMusicasForExport as unknown as ChildSheetExportResolver,
+  'releases.faixas': fetchReleasesFaixasForExport as unknown as ChildSheetExportResolver,
+  'invoices.itens': makeRowEmbeddedChildSheetExportResolver(invoicesItens),
+  'events.participantes': makeRowEmbeddedChildSheetExportResolver(eventsParticipantes),
 };
 
 export const CHILD_SHEET_IMPORT_WRITERS: Record<string, ChildSheetImportWriter> = {
   'projects.musicas': insertProjectsMusicasForImport,
+  'releases.faixas': writeReleasesFaixasForImport,
+  'invoices.itens': makeRowEmbeddedChildSheetImportWriter(invoicesItens),
+  'events.participantes': makeRowEmbeddedChildSheetImportWriter(eventsParticipantes),
 };

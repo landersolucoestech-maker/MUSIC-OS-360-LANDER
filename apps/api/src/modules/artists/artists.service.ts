@@ -38,7 +38,7 @@ const JSONB_LIST_COLUMNS = ['galeria_urls', 'documentos', 'especialidades'] as c
 const ENCRYPTED_FIELDS = new Set(Object.keys(contractEncryptedFields(REPORT_FORM_CONTRACTS.artists)));
 
 const METADATA_FIELDS = new Set([
-  ...contractMetadataFields(REPORT_FORM_CONTRACTS.artists),
+  ...Object.keys(contractMetadataFields(REPORT_FORM_CONTRACTS.artists)),
   // Campo de formulário persistível porém NUNCA exportado (interno por política).
   'notas_internas',
 ]);

@@ -20,7 +20,7 @@ export const ARTIST_DIRECT_COLUMNS: Set<string> = contractDirectColumns(ARTISTS)
 
 export const ARTIST_ENCRYPTED_FIELDS: Record<string, string> = contractEncryptedFields(ARTISTS);
 
-const ARTIST_METADATA_FIELDS: Set<string> = contractMetadataFields(ARTISTS);
+const ARTIST_METADATA_FIELDS: Set<string> = new Set(Object.keys(contractMetadataFields(ARTISTS)));
 
 export function isArtistFormField(field: string): boolean {
   return (ARTIST_FORM_FIELDS as readonly string[]).includes(field);

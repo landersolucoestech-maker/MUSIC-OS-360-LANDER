@@ -258,13 +258,17 @@ export class ImportCommitService {
     // escritas após o INSERT principal via CHILD_SHEET_IMPORT_WRITERS).
     const contract = getReportFormContract(def.tableName);
     const encryptedFields = contract ? contractEncryptedFields(contract) : {};
-    const metadataFields = contract ? contractMetadataFields(contract) : new Set<string>();
+    const metadataFields = contract ? contractMetadataFields(contract) : {}; // key -> coluna jsonb física
     const refKeys = new Set(contract?.fields.filter((f) => f.storage === 'ref').map((f) => f.key) ?? []);
 
     const cols: string[] = [];
     const values: unknown[] = [];
-    const metadata: Record<string, unknown> = {};
-    let hasMetadataField = false;
+    // Uma tabela pode ter mais de uma coluna jsonb de destino (ex.: leads tem
+    // payload_servico E dados_internos_crm) — agrupa por coluna física.
+    const metadataByColumn: Record<string, Record<string, unknown>> = {};
+    for (const physicalCol of new Set(Object.values(metadataFields))) {
+      metadataByColumn[physicalCol] = {};
+    }
 
     for (const col of def.importableColumns) {
       if (!(col in row.data)) continue;
@@ -287,9 +291,9 @@ export class ImportCommitService {
         continue;
       }
 
-      if (metadataFields.has(col)) {
-        metadata[col] = rawValue;
-        hasMetadataField = true;
+      const metadataColumn = metadataFields[col];
+      if (metadataColumn) {
+        metadataByColumn[metadataColumn][col] = rawValue;
         continue;
       }
 
@@ -297,9 +301,9 @@ export class ImportCommitService {
       values.push(rawValue);
     }
 
-    if (contract && (hasMetadataField || metadataFields.size > 0)) {
-      cols.push('metadata');
-      values.push(metadata);
+    for (const [physicalCol, obj] of Object.entries(metadataByColumn)) {
+      cols.push(physicalCol);
+      values.push(obj);
     }
 
     cols.push('tenant_id');

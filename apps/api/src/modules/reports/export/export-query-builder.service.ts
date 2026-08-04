@@ -23,9 +23,9 @@ function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
-function metadataSelectExpression(column: string): string {
+function metadataSelectExpression(column: string, physicalJsonColumn: string): string {
   const safeJsonKey = column.replace(/'/g, "''");
-  return `${quote('metadata')} ->> '${safeJsonKey}' AS ${quote(column)}`;
+  return `${quote(physicalJsonColumn)} ->> '${safeJsonKey}' AS ${quote(column)}`;
 }
 
 @Injectable()
@@ -60,7 +60,7 @@ export class ExportQueryBuilderService {
     // pela chave lógica, apontando para uma coluna física via `physical`).
     const contract = getReportFormContract(def.tableName);
     const encryptedFields = contract ? contractEncryptedFields(contract) : {};
-    const metadataFields = contract ? contractMetadataFields(contract) : new Set<string>();
+    const metadataFields = contract ? contractMetadataFields(contract) : {};
     const refFields = contract ? contractRefFields(contract) : {};
     const physicalAliasFields: Record<string, string> = { ...encryptedFields, ...refFields };
 
@@ -69,8 +69,8 @@ export class ExportQueryBuilderService {
       if (physicalColumn) {
         return `${quote(physicalColumn)} AS ${quote(column)}`;
       }
-      if (metadataFields.has(column)) {
-        return metadataSelectExpression(column);
+      if (metadataFields[column]) {
+        return metadataSelectExpression(column, metadataFields[column]);
       }
       return quote(column);
     });

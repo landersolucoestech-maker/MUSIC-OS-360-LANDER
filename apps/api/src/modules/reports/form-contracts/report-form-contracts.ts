@@ -22,6 +22,7 @@
  *   - `formFieldAliases` mapeia campos legados/EN do DTO para a chave física
  *     canônica (ex.: `title` → `titulo`).
  */
+import { ACCOUNTING_SUMMARY_TABLE_NAME } from '../report-module-registry';
 
 export type ReportFieldStorage = 'column' | 'metadata' | 'encrypted' | 'ref';
 
@@ -75,7 +76,14 @@ export interface ReportFormContract {
 
 const col = (key: string): ReportFieldSpec => ({ key, storage: 'column' });
 const ro = (key: string): ReportFieldSpec => ({ key, storage: 'column', importable: false });
-const meta = (key: string): ReportFieldSpec => ({ key, storage: 'metadata' });
+/**
+ * Campo residente num jsonb. `physical` indica QUAL coluna jsonb (default
+ * `'metadata'`, a coluna genérica presente na maioria das tabelas) — use o
+ * segundo parâmetro quando o formulário guarda o campo numa coluna jsonb
+ * NOMEADA própria (ex.: leads.payload_servico, leads.dados_internos_crm),
+ * não na coluna `metadata` genérica.
+ */
+const meta = (key: string, physical: string = 'metadata'): ReportFieldSpec => ({ key, storage: 'metadata', physical });
 const enc = (key: string, physical: string): ReportFieldSpec => ({ key, storage: 'encrypted', physical });
 /**
  * Coluna de correlação entre a linha principal e suas abas filhas
@@ -184,24 +192,6 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
     startsAt: 'data_inicio',
     expiresAt: 'data_fim',
     artistId: 'artista_id',
-  },
-};
-
-// ─── Templates de contrato ────────────────────────────────────────────────────
-const CONTRACT_TEMPLATES_CONTRACT: ReportFormContract = {
-  tableName: 'contract_templates',
-  identityColumn: 'titulo',
-  fields: [
-    col('titulo'), col('tipo'), col('conteudo'), col('ativo'), col('variaveis'),
-  ],
-  excludedFormFields: {
-    metadata: 'não persistido em coluna própria (campo legado do DTO)',
-  },
-  formFieldAliases: {
-    title: 'titulo',
-    type: 'tipo',
-    content: 'conteudo',
-    variables: 'variaveis',
   },
 };
 
@@ -372,15 +362,447 @@ const PROJECTS_CONTRACT: ReportFormContract = {
   ],
 };
 
+// ─── Monitoramento (content_detections) ───────────────────────────────────────
+// Parte 89, Bloco 11: não existe formulário Criar/Editar real (a tela é uma
+// listagem read-only de detecções geradas automaticamente pela plataforma —
+// os hooks addDeteccao/updateDeteccao/deleteDeteccao existem mas nunca são
+// chamados por nenhuma UI). Contrato export-only, refletindo as colunas
+// físicas reais (não os campos "periodo"/"quantidade" que a tela referencia
+// mas não existem na entidade — bug de UI pré-existente, não reproduzido aqui).
+const CONTENT_DETECTIONS_CONTRACT: ReportFormContract = {
+  tableName: 'content_detections',
+  identityColumn: 'titulo_detectado',
+  fields: [
+    ro('titulo_detectado'), ro('plataforma'), ro('tipo'), ro('status'),
+    ro('url'), ro('score'), ro('detectado_em'), ro('obra_id'), ro('artista_id'),
+  ],
+  excludedFormFields: {},
+};
+
+// ─── Licenciamento ──────────────────────────────────────────────────────────
+// `amount`/`percentage`/`currency` são enviados pelo formulário mas NÃO
+// existem no CreateLicenseDto (nem na entidade) — nunca persistem. `valor`/
+// `moeda` são as colunas reais correspondentes. `remuneration_type`, embora
+// exista fisicamente na entidade, também não está no DTO — excluído.
+const LICENSES_CONTRACT: ReportFormContract = {
+  tableName: 'licenses',
+  identityColumn: 'titulo',
+  fields: [
+    col('titulo'), col('tipo'), col('obra_id'), col('obra_musical'), col('artista'),
+    col('cliente_id'), col('cliente'), col('projeto'), col('tipo_uso'),
+    col('midia_destino'), col('territorio'), col('status'),
+    col('data_inicio'), col('data_fim'), col('valor'), col('moeda'), col('observacoes'),
+  ],
+  excludedFormFields: {},
+  filterableColumns: ['status', 'tipo', 'territorio'],
+  searchableColumns: ['titulo', 'obra_musical', 'artista', 'cliente', 'projeto'],
+};
+
+// ─── Takedowns ────────────────────────────────────────────────────────────────
+// CreateTakedownDto (platform/trackId/reason/requestedAt) diverge por completo
+// dos nomes reais de coluna e do formulário real (TakedownFormModal.tsx, que
+// usa titulo/tipo/obra_afetada/artista/.../observacoes) — bug pré-existente
+// de mismatch DTO↔form, fora do escopo desta Parte. O contrato usa as colunas
+// físicas reais que o formulário de fato grava; não é checado contra o DTO
+// quebrado (ausente de FORM_DTO_BY_TABLE no guard test).
+const TAKEDOWNS_CONTRACT: ReportFormContract = {
+  tableName: 'takedowns',
+  identityColumn: 'titulo',
+  fields: [
+    col('titulo'), col('tipo'), col('obra_afetada'), col('artista'), col('status'),
+    col('prioridade'), col('plataforma'), col('url_infracao'), col('motivo'),
+    col('data_identificacao'), col('descricao'), col('evidencias'), col('observacoes'),
+  ],
+  excludedFormFields: {},
+  filterableColumns: ['status', 'tipo', 'prioridade', 'plataforma'],
+  searchableColumns: ['titulo', 'obra_afetada', 'artista', 'motivo'],
+};
+
+// ─── Distribuição (releases) ───────────────────────────────────────────────────
+// Fonte canônica: LancamentoFormModal.tsx (wizard de 5 etapas). A maioria dos
+// campos avançados (Step 0/3) vive na coluna `metadata` genérica
+// (extraFields.* → metadata.*); `faixas[]` (Step 1) vive em
+// metadata.faixas — aba filha própria (ver releases-faixas.field.ts).
+// `platforms`/`assets`/`cronograma` não têm input de UI identificável
+// (platforms: sem seletor multi-plataforma no wizard atual; assets: sem
+// upload dedicado além da capa; cronograma: sem inputs no modal) — excluídos/
+// somente leitura.
+const RELEASES_CONTRACT: ReportFormContract = {
+  tableName: 'releases',
+  identityColumn: 'titulo',
+  fields: [
+    ref('lancamento_ref', 'id'), // correlação com a aba "Faixas do Lançamento"
+    col('titulo'), col('tipo'), col('artista_id'), col('upc'), col('distribuidora'),
+    col('data_lancamento'), col('capa_url'), col('isrc_global'), col('notas_internas'),
+    col('observacoes'), col('gravadora'), col('copyright'), col('genero'), col('idioma'),
+    ro('status'), ro('cronograma'),
+    meta('variosArtistas'), meta('generoSecundario'),
+    meta('copyrightDataLancamento'), meta('copyrightDataGravacao'),
+    meta('ownUpc'), meta('territory'), meta('releaseTime'), meta('releaseTimezone'),
+    meta('preOrder'), meta('noPreviewsDuringPreOrder'), meta('pricing'),
+    meta('artistasAdicionaisAlbum'),
+  ],
+  excludedFormFields: {
+    platforms: 'aceito pelo DTO mas sem seletor multi-plataforma identificado no wizard atual',
+    metadata: 'objeto jsonb interno bruto — os campos individuais já são colunas do contrato',
+    assets: 'sem inputs de upload dedicados além da capa (coverUrl → capa_url, já tem coluna própria)',
+    faixas: 'representada em aba filha própria ("Faixas do Lançamento", childSheets) — nunca compactada numa única célula',
+  },
+  formFieldAliases: {
+    title: 'titulo',
+    type: 'tipo',
+    artistId: 'artista_id',
+    distributor: 'distribuidora',
+    releasedAt: 'data_lancamento',
+    coverUrl: 'capa_url',
+  },
+  childSheets: [
+    {
+      key: 'faixas',
+      sheetName: 'Faixas do Lançamento',
+      fields: [
+        { key: 'nome' }, { key: 'isVersionAlternativa' }, { key: 'tipoVersao' },
+        { key: 'versionCustomName' }, { key: 'compositores', multi: true },
+        { key: 'aiAssistanceLevel' }, { key: 'instrumental' }, { key: 'faixa_idioma' },
+        { key: 'letra' }, { key: 'explicit' }, { key: 'isrc' }, { key: 'artista' },
+      ],
+    },
+  ],
+};
+
+// ─── Shares ───────────────────────────────────────────────────────────────────
+// `historico[]` é uma trilha de auditoria gerada automaticamente pelo sistema
+// a cada edição (nunca digitada pelo usuário) — exportada somente leitura como
+// coluna direta (mesmo padrão já usado por contracts.versoes), sem virar aba
+// filha própria.
+const SHARES_CONTRACT: ReportFormContract = {
+  tableName: 'shares',
+  identityColumn: 'nome_musica',
+  fields: [
+    col('share_type'), col('percentual'), col('status'), col('direcao'),
+    col('lancamento_id'), col('nome_musica'), col('detentor'), col('destinatario'),
+    col('tipo'), col('artista_externo'), col('artista_projeto_id'), col('artista_id'),
+    col('pagador'), col('pagador_contato'), col('origem_acordo'), col('data_prevista'),
+    col('documentos'), col('acordo_notas'), col('acordo_url'), col('observacoes'),
+    ro('versao'), ro('historico'),
+  ],
+  excludedFormFields: {
+    holderName: 'alias legado em inglês (registro ABRAMUS/ECAD) mapeado para titular_nome — não é a tela real de Shares',
+    role: 'alias legado em inglês mapeado para papel — idem',
+    percentage: 'alias legado em inglês mapeado para percentual — chave canônica já coberta por percentual',
+    workId: 'alias legado em inglês mapeado para obra_id — idem',
+    trackId: 'alias legado em inglês mapeado para fonograma_id — idem',
+    holderDoc: 'alias legado em inglês mapeado para titular_doc — idem',
+    metadata: 'objeto jsonb interno bruto',
+  },
+};
+
+// ─── Projetos Audiovisuais ──────────────────────────────────────────────────────
+const AUDIOVISUAL_PROJECTS_CONTRACT: ReportFormContract = {
+  tableName: 'audiovisual_projects',
+  identityColumn: 'music_title',
+  fields: [
+    col('music_title'), ro('artist_name'), col('type'), col('format'),
+    col('director'), col('videomaker'), col('editor'),
+    col('shooting_date'), col('location'),
+    col('capture_status'), col('editing_status'), col('approval_status'),
+    col('pre_release_date'), col('release_date'),
+    col('budget_estimated'), col('budget_actual'),
+    col('concept'), col('observations'),
+    ro('status'), ro('final_status'), ro('completed_at'),
+  ],
+  excludedFormFields: {
+    title: 'duplicata automática de music_title — mesma coluna do formulário, sem input próprio',
+    slug: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    description: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    objective: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    priority: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    stage: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    production_company: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    producer: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    start_date: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    recording_date: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    delivery_date: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    publish_date: 'aceito pelo DTO mas sem input no modal Criar/Editar',
+    artist_id: 'relação técnica sem seletor próprio no modal',
+    release_id: 'relação técnica sem seletor próprio no modal',
+    phonogram_id: 'vínculo automático da busca de música — music_title já representa o mesmo vínculo de forma legível',
+    campaign_id: 'relação técnica sem seletor próprio no modal',
+    event_id: 'relação técnica sem seletor próprio no modal',
+    metadata: 'objeto jsonb interno bruto',
+  },
+};
+
+// ─── Transações Financeiras ─────────────────────────────────────────────────────
+// Colunas de formulário (regra 2026-07-12) usadas como canônicas em vez das
+// colunas legadas duplicadas (tipo/categoria/descricao/valor/data também
+// existem, escritas em paralelo — dual-write). Validação real é Zod
+// (transacao.validator.ts), não um DTO class-validator — não checado contra
+// FORM_DTO_BY_TABLE.
+const TRANSACTIONS_CONTRACT: ReportFormContract = {
+  tableName: 'transactions',
+  identityColumn: 'descricao',
+  fields: [
+    col('tipo_transacao'), col('tipo_cliente'), col('categoria'), col('subcategoria'),
+    col('descricao'), col('valor'), col('data_transacao'), col('status'),
+    col('artista_id'), col('projeto_id'), col('contrato_id'), col('evento_id'),
+    col('fornecedor_cliente'), col('orgao_arrecadador'), col('centro_custo'), col('competencia'),
+    col('conta_origem'), col('conta_destino'), col('item_investimento'), col('motivo_viagem'),
+    col('nome_publicidade'), col('forma_pagamento'), col('tipo_pagamento'),
+    col('quantidade_parcelas'), col('intervalo_parcelas'), col('data_primeira_parcela'),
+    col('anexo_url'), col('anexo_nome'), col('observacoes'),
+  ],
+  excludedFormFields: {},
+  filterableColumns: ['status', 'tipo_transacao', 'categoria'],
+  searchableColumns: ['descricao', 'categoria', 'fornecedor_cliente'],
+};
+
+// ─── Nota Fiscal (invoices) ───────────────────────────────────────────────────
+// CreateInvoiceDto declara um schema inglês/Stripe (type/amount/number/...)
+// totalmente diferente das colunas reais que o formulário NotaFiscalFormModal
+// grava — bug pré-existente de mismatch DTO↔form (mesmo padrão de Takedowns),
+// fora do escopo desta Parte. O contrato usa as colunas físicas reais; não é
+// checado contra o DTO quebrado.
+const INVOICES_CONTRACT: ReportFormContract = {
+  tableName: 'invoices',
+  identityColumn: 'numero',
+  fields: [
+    ref('nota_fiscal_ref', 'id'), // correlação com a aba "Itens da Nota"
+    col('numero'), col('serie'), col('tipo_nota'), col('data_emissao'), col('status'),
+    col('natureza_operacao'), col('cfop'), col('codigo_servico_municipal'), col('codigo_municipio'),
+    col('cliente_id'), col('tomador_cnpj'), col('tomador_razao_social'),
+    col('tomador_inscricao_estadual'), col('tomador_inscricao_municipal'), col('tomador_email'),
+    col('tomador_endereco'), col('tomador_cidade'), col('tomador_uf'), col('tomador_cep'),
+    col('descricao_servicos'), col('valor_servicos'), col('valor_deducoes'), col('base_calculo'),
+    col('aliquota_iss'), col('valor_iss'), col('iss_retido'), col('valor_pis'), col('valor_cofins'),
+    col('valor_ir'), col('valor_csll'), col('valor_inss'), col('valor_liquido'),
+    col('forma_pagamento'), col('condicao_pagamento'), col('vencimento'), col('url_pdf'),
+    col('observacoes'),
+  ],
+  excludedFormFields: {},
+  childSheets: [
+    {
+      key: 'itens',
+      sheetName: 'Itens da Nota',
+      fields: [
+        { key: 'descricao' }, { key: 'codigo_servico' }, { key: 'quantidade' },
+        { key: 'valor_unitario' }, { key: 'valor_total' },
+      ],
+    },
+  ],
+};
+
+// ─── Agenda (events) ────────────────────────────────────────────────────────────
+const EVENTS_CONTRACT: ReportFormContract = {
+  tableName: 'events',
+  identityColumn: 'titulo',
+  fields: [
+    ref('evento_ref', 'id'), // correlação com a aba "Participantes do Evento"
+    col('titulo'), col('tipo'), col('data'), col('data_fim'), col('local'),
+    col('contato_local'), col('endereco'), col('valor_cache'), col('publico_esperado'),
+    col('descricao'), col('observacoes'), col('status'),
+  ],
+  excludedFormFields: {
+    city: 'aceito pelo DTO mas sem coluna física nem input no modal',
+    country: 'aceito pelo DTO mas sem coluna física nem input no modal',
+    capacity: 'aceito pelo DTO mas descartado no servidor — sem coluna física (ver publico_esperado)',
+    ticketUrl: 'aceito pelo DTO mas sem coluna física nem input no modal',
+    metadata: 'objeto jsonb interno bruto',
+    artistId: 'vínculo técnico preenchido indiretamente pelo primeiro participante do tipo artista — sem input próprio',
+    participantes: 'representada em aba filha própria ("Participantes do Evento", childSheets) — nunca compactada numa única célula',
+  },
+  formFieldAliases: {
+    title: 'titulo',
+    type: 'tipo',
+    venue: 'local',
+    startsAt: 'data',
+    endsAt: 'data_fim',
+  },
+  childSheets: [
+    {
+      key: 'participantes',
+      sheetName: 'Participantes do Evento',
+      fields: [
+        { key: 'source' }, { key: 'label' }, { key: 'email' }, { key: 'phone' }, { key: 'category' },
+      ],
+    },
+  ],
+};
+
+// ─── Inventário ───────────────────────────────────────────────────────────────
+const INVENTORY_ITEMS_CONTRACT: ReportFormContract = {
+  tableName: 'inventory_items',
+  identityColumn: 'nome',
+  fields: [
+    col('nome'), col('categoria'), col('quantidade'), col('valor_unitario'),
+    col('localizacao'), col('status'), col('responsavel'), col('setor'),
+    col('data_entrada'), col('local_compra'), col('numero_nota_fiscal'), col('observacoes'),
+  ],
+  excludedFormFields: {},
+};
+
+// ─── CRM — Leads ──────────────────────────────────────────────────────────────
+// A maioria dos campos "avançados" do formulário (LeadFormModal.tsx) vive em
+// duas colunas jsonb NOMEADAS — payload_servico e dados_internos_crm — não na
+// coluna `metadata` genérica (por isso `meta(key, physical)` com o segundo
+// argumento explícito). Os 4 blocos condicionais aninhados (evento/campanha/
+// influenciador/empresario, cada um sob payload_servico.<bloco>.*) e o
+// histórico de interações (payload_servico.interacoes[]) ficam FORA desta
+// Parte — são objetos aninhados dentro de payload_servico, não suportados
+// pelo mecanismo atual de 1 nível (coluna jsonb → chave), documentado como
+// divergência no relatório final.
+const LEADS_CONTRACT: ReportFormContract = {
+  tableName: 'leads',
+  identityColumn: 'nome',
+  fields: [
+    col('nome'), col('empresa'), enc('email', 'email_encrypted'), col('whatsapp'),
+    col('instagram'), col('cidade'), col('estado'), col('tipo_cliente'), col('tipo_servico'),
+    meta('cargo', 'payload_servico'), meta('website', 'payload_servico'),
+    meta('endereco', 'payload_servico'), meta('tipo_lead', 'payload_servico'),
+    meta('servico', 'payload_servico'), meta('nome_artista_servico', 'payload_servico'),
+    meta('descricao', 'payload_servico'), meta('data_entrada', 'payload_servico'),
+    meta('origemLead', 'dados_internos_crm'), meta('campanha_marketing', 'dados_internos_crm'),
+    meta('responsavel', 'dados_internos_crm'), meta('prioridade', 'dados_internos_crm'),
+    meta('proximoFollowUp', 'dados_internos_crm'), meta('valorEstimado', 'dados_internos_crm'),
+    meta('temperatura', 'dados_internos_crm'), meta('statusLead', 'dados_internos_crm'),
+    ro('uploads'),
+  ],
+  excludedFormFields: {
+    phone: 'campo legado do DTO sem input no formulário real (telefone/WhatsApp usa o campo whatsapp)',
+    source: 'campo legado do DTO (pipeline genérico) sem input no formulário real',
+    stage: 'campo legado do DTO (pipeline genérico) sem input no formulário real',
+    value: 'campo legado do DTO (pipeline genérico) sem input no formulário real',
+    assignedTo: 'campo legado do DTO (pipeline genérico) sem input no formulário real',
+    notes: 'campo legado do DTO (pipeline genérico) sem input no formulário real',
+    metadata: 'objeto jsonb legado (pipeline genérico) sem input no formulário real',
+    nomeArtistico: 'aceito pelo DTO mas sem input no formulário real de Leads',
+    payloadServico: 'objeto jsonb bruto — os campos individuais já são colunas do contrato',
+    dadosInternosCRM: 'objeto jsonb bruto — os campos individuais já são colunas do contrato',
+    pais: 'fixado em "Brasil" pelo formulário — não é um input do usuário',
+  },
+  formFieldAliases: {
+    name: 'nome',
+    tipoCliente: 'tipo_cliente',
+    tipoServico: 'tipo_servico',
+  },
+};
+
+// ─── Tarefas (marketing_tasks) ───────────────────────────────────────────────
+// A única tela real de Criar/Editar/Visualizar de tarefas é Marketing >
+// Tarefas — ver nota em report-module-registry.ts sobre por que "Tarefas"
+// aponta para marketing_tasks e não operational_tasks (que não tem tela).
+const MARKETING_TASKS_CONTRACT: ReportFormContract = {
+  tableName: 'marketing_tasks',
+  identityColumn: 'title',
+  fields: [
+    col('title'), col('marketing_project_id'), meta('targetType'), meta('targetName'),
+    meta('sector'), col('kind'), col('assigned_to'), col('priority'), col('due_date'),
+    col('status'), col('description'),
+  ],
+  excludedFormFields: {
+    dependencies: 'aceito pelo DTO mas sem input no formulário (Tarefas.tsx)',
+    metrics: 'aceito pelo DTO mas sem input no formulário',
+    metadata: 'objeto jsonb bruto — os campos individuais (targetType/targetName/sector) já são colunas do contrato',
+  },
+  formFieldAliases: {
+    marketingProjectId: 'marketing_project_id',
+    assignedTo: 'assigned_to',
+    dueDate: 'due_date',
+  },
+};
+
+// ─── Calendário de Conteúdo (marketing_content_posts) ────────────────────────
+const MARKETING_CONTENT_POSTS_CONTRACT: ReportFormContract = {
+  tableName: 'marketing_content_posts',
+  identityColumn: 'title',
+  fields: [
+    col('title'), col('target_type'), col('target_name'), col('channel'),
+    col('content_type'), col('status'), col('publish_date'), col('publish_time'),
+    col('copy'), col('notes'), col('campaign_id'), ro('files'),
+  ],
+  excludedFormFields: {
+    owner: 'valor fixo "Marketing" definido pelo formulário — não é um input do usuário',
+    format: 'derivado automaticamente de plataforma+tipo — não é um input do usuário',
+    releaseId: 'aceito pelo DTO mas sem controle de UI nesta tela',
+    metadata: 'objeto jsonb interno — hashtags/localização são mescladas em notes pelo próprio formulário, sem colunas próprias',
+  },
+  formFieldAliases: {
+    targetType: 'target_type',
+    targetName: 'target_name',
+    type: 'content_type',
+    publishDate: 'publish_date',
+    publishTime: 'publish_time',
+    campaignId: 'campaign_id',
+  },
+};
+
+// ─── Briefing (genérico, marketing) ──────────────────────────────────────────
+// Correção Parte 89 (briefings.service.ts): o DTO usava nomes em inglês
+// (title/content/campaignId/dueAt) que nunca chegavam às colunas físicas reais
+// (titulo/descricao/campanha_id/prazo) — bug de mapeamento corrigido para que
+// este contrato seja utilizável. Os campos "avançados" (objetivo, contexto,
+// público-alvo etc., presentes só no Editar) vivem na coluna `metadata`
+// genérica.
+const BRIEFINGS_CONTRACT: ReportFormContract = {
+  tableName: 'briefings',
+  identityColumn: 'titulo',
+  fields: [
+    col('titulo'), col('descricao'), col('campanha_id'), col('prazo'), col('status'),
+    meta('type'), meta('owners'), meta('objective'), meta('context'), meta('audience'),
+    meta('positioning'), meta('tone'), meta('requirements'), meta('creativeDirection'),
+    meta('references'), meta('visualGuidelines'), meta('textGuidelines'), meta('market'),
+    meta('competitors'), meta('trends'), meta('channels'), meta('restrictions'),
+    meta('resources'), meta('expectations'), meta('deliverables'), meta('timeline'),
+    meta('executionPlan'), meta('aiRecommendations'),
+  ],
+  excludedFormFields: {
+    objectives: 'aceito pelo DTO mas sem input em nenhuma tela do formulário',
+    metadata: 'objeto jsonb interno bruto — os campos individuais (objective, context, audience, etc.) já são colunas do contrato',
+  },
+  formFieldAliases: {
+    title: 'titulo',
+    content: 'descricao',
+    campaignId: 'campanha_id',
+    dueAt: 'prazo',
+  },
+};
+
+// ─── Contabilidade (relatório computado, sem tabela física — Bloco 19) ────────
+// P&L por artista, agregado sobre `transactions` — mesma lógica da aba
+// "P&L por Artista" de Contabilidade.tsx. Export-only (nenhum campo
+// importável): não é um formulário editável, é um relatório calculado.
+const ACCOUNTING_SUMMARY_CONTRACT: ReportFormContract = {
+  tableName: ACCOUNTING_SUMMARY_TABLE_NAME,
+  identityColumn: 'artista',
+  fields: [
+    ro('artista'), ro('receitas'), ro('despesas'), ro('resultado'), ro('margem'),
+  ],
+  excludedFormFields: {},
+};
+
 export const REPORT_FORM_CONTRACTS: Record<string, ReportFormContract> = {
   artists: ARTISTS_CONTRACT,
   employees: EMPLOYEES_CONTRACT,
   contracts: CONTRACTS_CONTRACT,
-  contract_templates: CONTRACT_TEMPLATES_CONTRACT,
   works: WORKS_CONTRACT,
   phonograms: PHONOGRAMS_CONTRACT,
   clients: CLIENTS_CONTRACT,
   projects: PROJECTS_CONTRACT,
+  content_detections: CONTENT_DETECTIONS_CONTRACT,
+  licenses: LICENSES_CONTRACT,
+  takedowns: TAKEDOWNS_CONTRACT,
+  releases: RELEASES_CONTRACT,
+  shares: SHARES_CONTRACT,
+  audiovisual_projects: AUDIOVISUAL_PROJECTS_CONTRACT,
+  transactions: TRANSACTIONS_CONTRACT,
+  invoices: INVOICES_CONTRACT,
+  events: EVENTS_CONTRACT,
+  inventory_items: INVENTORY_ITEMS_CONTRACT,
+  leads: LEADS_CONTRACT,
+  marketing_tasks: MARKETING_TASKS_CONTRACT,
+  marketing_content_posts: MARKETING_CONTENT_POSTS_CONTRACT,
+  briefings: BRIEFINGS_CONTRACT,
+  [ACCOUNTING_SUMMARY_TABLE_NAME]: ACCOUNTING_SUMMARY_CONTRACT,
 };
 
 export function getReportFormContract(tableName: string): ReportFormContract | null {
@@ -413,8 +835,13 @@ export function contractEncryptedFields(contract: ReportFormContract): Record<st
   return out;
 }
 
-export function contractMetadataFields(contract: ReportFormContract): Set<string> {
-  return new Set(contract.fields.filter((f) => f.storage === 'metadata').map((f) => f.key));
+/** key → coluna jsonb física onde vive (default 'metadata' quando `physical` não foi informado). */
+export function contractMetadataFields(contract: ReportFormContract): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of contract.fields) {
+    if (f.storage === 'metadata') out[f.key] = f.physical ?? 'metadata';
+  }
+  return out;
 }
 
 export function contractRefFields(contract: ReportFormContract): Record<string, string> {

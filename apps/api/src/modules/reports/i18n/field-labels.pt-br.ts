@@ -543,6 +543,99 @@ export const FIELD_LABELS_PT_BR = {
   // Distinto de `copyrightOwner` (linha acima, "Titular do direito autoral")
   // — campo técnico diferente, rótulo real confirmado em LancamentoViewModal.
   copyright: 'Titular do copyright',
+
+  // ── Parte 89 — Monitoramento (content_detections) ──────────────────────────
+  tituloDetectado: 'Título detectado',
+  detectadoEm: 'Detectado em',
+
+  // ── Parte 89 — Distribuição (releases) ──────────────────────────────────────
+  lancamentoRef: 'Lançamento (ID de referência)',
+  cronograma: 'Cronograma',
+  variosArtistas: 'Vários artistas',
+  generoSecundario: 'Gênero secundário',
+  copyrightDataLancamento: 'Ano de copyright (lançamento)',
+  copyrightDataGravacao: 'Ano de copyright (gravação)',
+  ownUpc: 'UPC próprio',
+  territory: 'Território',
+  releaseTime: 'Horário de lançamento',
+  releaseTimezone: 'Fuso horário de lançamento',
+  preOrder: 'Pré-venda',
+  noPreviewsDuringPreOrder: 'Sem prévias durante a pré-venda',
+  pricing: 'Precificação',
+  artistasAdicionaisAlbum: 'Artistas adicionais do álbum',
+  isVersionAlternativa: 'É versão alternativa',
+  tipoVersao: 'Tipo de versão',
+  versionCustomName: 'Descrição da versão customizada',
+  aiAssistanceLevel: 'Nível de assistência de IA',
+  explicit: 'Conteúdo explícito',
+  faixaIdioma: 'Idioma da faixa',
+
+  // ── Parte 89 — Shares ────────────────────────────────────────────────────────
+  shareType: 'Tipo de share',
+  percentual: 'Percentual',
+  direcao: 'Direção',
+  nomeMusica: 'Nome da música',
+  detentor: 'Detentor',
+  destinatario: 'Destinatário',
+  artistaExterno: 'Artista externo',
+  artistaProjetoId: 'Artista/projeto vinculado',
+  pagador: 'Responsável pagador',
+  pagadorContato: 'Contato do pagador',
+  origemAcordo: 'Origem do acordo',
+  dataPrevista: 'Data prevista',
+  acordoNotas: 'Notas do acordo',
+  acordoUrl: 'Link do documento',
+  versao: 'Versão',
+  historico: 'Histórico de versões',
+
+  // ── Parte 89 — Transações Financeiras / Nota Fiscal / Agenda ────────────────
+  eventoId: 'Evento vinculado',
+  notaFiscalRef: 'Nota fiscal (ID de referência)',
+  codigoServico: 'Código do serviço',
+  valorTotal: 'Valor total',
+  eventoRef: 'Evento (ID de referência)',
+  label: 'Nome',
+
+  // ── Parte 89 — CRM: Leads ────────────────────────────────────────────────────
+  tipoLead: 'Tipo de lead',
+  servico: 'Serviço',
+  nomeArtistaServico: 'Nome do artista/banda',
+  campanhaMarketing: 'Campanha de marketing',
+  statusLead: 'Status do lead',
+  uploads: 'Anexos',
+
+  // ── Parte 89 — Tarefas (marketing_tasks) / Calendário de Conteúdo ───────────
+  marketingProjectId: 'Projeto de marketing vinculado',
+  sector: 'Setor',
+  campaignId: 'Campanha',
+
+  // ── Parte 89 — Briefing ──────────────────────────────────────────────────────
+  campanhaId: 'Campanha vinculada',
+  owners: 'Responsáveis',
+  audience: 'Público-alvo / personas',
+  positioning: 'Posicionamento',
+  tone: 'Tom de comunicação',
+  requirements: 'Requisitos',
+  creativeDirection: 'Direcionamento criativo',
+  references: 'Referências',
+  visualGuidelines: 'Diretrizes visuais',
+  textGuidelines: 'Diretrizes textuais',
+  market: 'Mercado / oportunidades',
+  competitors: 'Concorrentes',
+  trends: 'Tendências',
+  channels: 'Canais',
+  restrictions: 'Restrições',
+  resources: 'Recursos disponíveis',
+  expectations: 'Expectativas',
+  deliverables: 'Entregáveis',
+  executionPlan: 'Plano de ação operacional',
+  aiRecommendations: 'Recomendações da IA',
+
+  // ── Parte 89 — Contabilidade (relatório computado) ──────────────────────────
+  receitas: 'Receitas',
+  despesas: 'Despesas',
+  resultado: 'Resultado',
+  margem: 'Margem (%)',
 } as const satisfies Record<string, string>;
 
 export type FieldLabelKey = keyof typeof FIELD_LABELS_PT_BR;
