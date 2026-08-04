@@ -1,8 +1,8 @@
 /**
- * modules/reports/export/export-engine.service.ts  ·  uma única aba, sempre
+ * modules/reports/export/export-engine.service.ts
  *
- * Orquestra a exportação entity-driven. Grupos repetíveis são achatados em
- * linhas da mesma aba; nunca são criadas worksheets adicionais.
+ * Exportação entity-driven em uma única aba. Estruturas repetíveis, inclusive
+ * contratos legados ainda declarados como childSheets, são achatadas em linhas.
  */
 import {
   BadRequestException, ForbiddenException, Inject, Injectable,
@@ -21,12 +21,22 @@ import { EncryptionService } from '../../../core/security/encryption.service';
 import {
   contractEncryptedFields,
   getReportFormContract,
-  REPORT_MULTI_VALUE_SEPARATOR,
+  type ReportChildSheetSpec,
+  type ReportFieldSpec,
 } from '../form-contracts/report-form-contracts';
 import { REPEATING_GROUP_EXPORT_RESOLVERS } from '../computed-fields/registry';
 import { REPORT_MODULE_REGISTRY_BY_TABLE, ACCOUNTING_SUMMARY_TABLE_NAME } from '../report-module-registry';
 import { fetchAccountingSummaryRows } from '../computed-fields/accounting-summary.report';
 import { EXPORT_FORMATS, type ExportQueryParams, type ExportResult } from './export.types';
+
+const REPORT_MULTI_VALUE_SEPARATOR = ' | ';
+
+type RepeatingField = { key: string; multi?: boolean };
+type RepeatingGroup = { key: string; fields: RepeatingField[] };
+type CompatibleContract = NonNullable<ReturnType<typeof getReportFormContract>> & {
+  repeatingGroup?: RepeatingGroup;
+  childSheets?: ReportChildSheetSpec[];
+};
 
 @Injectable()
 export class ExportEngineService {
@@ -93,17 +103,18 @@ export class ExportEngineService {
       return result;
     }
 
-    const contract = getReportFormContract(entity);
+    const contract = getReportFormContract(entity) as CompatibleContract | undefined;
     const softDeleteColumn = report.hasSoftDelete
       ? report.columns.find((c) => c.isDeletedAt)?.name
       : undefined;
 
     if (!this.ds) throw new ServiceUnavailableException('Banco de dados indisponivel');
 
-    if (contract?.repeatingGroup) {
+    const repeatingGroup = contract?.repeatingGroup ?? contract?.childSheets?.[0];
+    if (contract && repeatingGroup) {
       let result: ExportResult;
       try {
-        result = await this.exportWithRepeatingGroup(entity, sheetName, params, tenantId, def, contract, softDeleteColumn);
+        result = await this.exportWithRepeatingGroup(entity, sheetName, params, tenantId, def, contract, repeatingGroup, softDeleteColumn);
       } catch (err) {
         this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: 0, status: 'failed', error: String(err) });
         throw err;
@@ -113,7 +124,6 @@ export class ExportEngineService {
     }
 
     const query = this.queryBuilder.build(def, params, tenantId, { softDeleteColumn });
-
     let rows: Record<string, unknown>[];
     try {
       rows = (await this.ds.query(query.sql, query.parameters)) as Record<string, unknown>[];
@@ -123,7 +133,6 @@ export class ExportEngineService {
     }
 
     this.decryptEncryptedColumns(contract, query.columns, rows);
-
     const result = this.serialize(entity, sheetName, params.format, query.columns, rows);
     this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: rows.length, status: 'success' });
     return result;
@@ -136,11 +145,12 @@ export class ExportEngineService {
   ): void {
     const encryptedFields = Object.keys(contract ? contractEncryptedFields(contract) : {})
       .filter((k) => columns.includes(k));
-    if (encryptedFields.length === 0) return;
     for (const row of rows) {
       for (const key of encryptedFields) {
-        const v = row[key];
-        row[key] = typeof v === 'string' && v.length > 0 ? this.encryption.decryptNullable(v) : null;
+        const value = row[key];
+        row[key] = typeof value === 'string' && value.length > 0
+          ? this.encryption.decryptNullable(value)
+          : null;
       }
     }
   }
@@ -158,13 +168,14 @@ export class ExportEngineService {
     params: ExportQueryParams,
     tenantId: string,
     def: ReportEntityDefinition,
-    contract: NonNullable<ReturnType<typeof getReportFormContract>>,
+    contract: CompatibleContract,
+    group: RepeatingGroup,
     softDeleteColumn: string | undefined,
   ): Promise<ExportResult> {
     if (!this.ds) throw new ServiceUnavailableException('Banco de dados indisponivel');
-    const group = contract.repeatingGroup!;
 
-    const generalColumns = contract.fields.map((f) => f.key);
+    const generalFields = contract.fields.filter((field: ReportFieldSpec) => field.storage !== 'ref');
+    const generalColumns = generalFields.map((field) => field.key);
     const query = this.queryBuilder.build(
       def,
       { ...params, columns: generalColumns },
@@ -178,29 +189,32 @@ export class ExportEngineService {
     if (!resolver) {
       throw new Error(`[reports-export] grupo repetível sem resolver registrado: ${entity}.${group.key}`);
     }
-    const parentIds = rawRows.map((r) => String(r.__internal_id));
+    const parentIds = rawRows.map((row) => String(row.__internal_id));
     const itemsByParent = await resolver(this.ds, tenantId, parentIds);
 
-    const itemColumns = group.fields.map((f) => f.key);
+    const itemColumns = group.fields.map((field) => field.key);
     const allColumns = [...generalColumns, ...itemColumns];
     const flatRows: Record<string, unknown>[] = [];
 
     for (const row of rawRows) {
       const general: Record<string, unknown> = {};
-      for (const c of generalColumns) general[c] = row[c];
+      for (const column of generalColumns) general[column] = row[column];
 
       const items = itemsByParent.get(String(row.__internal_id)) ?? [];
       if (items.length === 0) {
         const blank: Record<string, unknown> = { ...general };
-        for (const c of itemColumns) blank[c] = '';
+        for (const column of itemColumns) blank[column] = '';
         flatRows.push(blank);
         continue;
       }
+
       for (const item of items) {
         const flat: Record<string, unknown> = { ...general };
-        for (const f of group.fields) {
-          const value = (item as Record<string, unknown>)[f.key];
-          flat[f.key] = f.multi && Array.isArray(value) ? value.join(REPORT_MULTI_VALUE_SEPARATOR) : value;
+        for (const field of group.fields) {
+          const value = item[field.key];
+          flat[field.key] = field.multi && Array.isArray(value)
+            ? value.join(REPORT_MULTI_VALUE_SEPARATOR)
+            : value;
         }
         flatRows.push(flat);
       }
@@ -217,9 +231,8 @@ export class ExportEngineService {
     rows: Record<string, unknown>[],
   ): ExportResult {
     const stamp = new Date().toISOString().slice(0, 10);
-    const base = `${entity}_${stamp}`;
     return {
-      filename: `${base}.xlsx`,
+      filename: `${entity}_${stamp}.xlsx`,
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       body: this.format.toXlsx(entity, sheetName, columns, rows),
       recordCount: rows.length,
