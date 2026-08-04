@@ -1,0 +1,17 @@
+name: Run Staging Once
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/run-staging-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    uses: landersolucoestech-maker/MUSIC-OS-360/.github/workflows/staging.yml@dev
+    with:
+      apply_migrations: true
+    secrets: inherit
