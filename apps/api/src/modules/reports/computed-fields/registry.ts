@@ -1,8 +1,7 @@
 /**
  * modules/reports/computed-fields/registry.ts
  *
- * Registro mínimo de resolvers para grupos repetíveis achatados em linhas da
- * mesma aba. A chave é "tableName.groupKey".
+ * Resolvers para grupos repetíveis achatados em linhas da mesma aba.
  */
 import type { DataSource, QueryRunner } from 'typeorm';
 import {
@@ -47,3 +46,7 @@ export const REPEATING_GROUP_IMPORT_WRITERS: Record<string, RepeatingGroupImport
   'invoices.itens': makeRowEmbeddedChildSheetImportWriter(invoicesItens),
   'events.participantes': makeRowEmbeddedChildSheetImportWriter(eventsParticipantes),
 };
+
+/** Compatibilidade temporária enquanto os contratos antigos childSheets são migrados. */
+export const CHILD_SHEET_EXPORT_RESOLVERS = REPEATING_GROUP_EXPORT_RESOLVERS;
+export const CHILD_SHEET_IMPORT_WRITERS = REPEATING_GROUP_IMPORT_WRITERS;
