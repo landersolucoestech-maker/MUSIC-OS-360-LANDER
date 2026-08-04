@@ -1,0 +1,219 @@
+name: Repair OAuth feature PR
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-oauth-feature-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.ref == 'fix/oauth-token-boundary'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Apply reviewed typed schema and staging fixes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def require_replace(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              return text.replace(old, new, 1)
+
+          invoices_path = Path('apps/api/src/modules/invoices/invoices.service.ts')
+          invoices = invoices_path.read_text()
+          invoices = require_replace(
+              invoices,
+              "          dataVencimento: after['vencimento'] ?? after['data_vencimento'] ?? nowIso,\n",
+              "          dataVencimento: String(after['vencimento'] ?? after['data_vencimento'] ?? nowIso),\n",
+              'invoice overdue date',
+          )
+          invoices_path.write_text(invoices)
+
+          licensing_path = Path('apps/api/src/modules/licensing/licensing.service.ts')
+          licensing = licensing_path.read_text()
+          licensing = require_replace(
+              licensing,
+              "   * `percentage` é preservado em metadata até existir coluna física canônica.\n",
+              "   * `percentage` corresponde à coluna física canônica `licenses.percentage`.\n",
+              'licensing percentage documentation',
+          )
+
+          normalize_pattern = re.compile(
+              r"  private normalizePayload\(.*?\n  private mapLicense",
+              re.DOTALL,
+          )
+          normalize_replacement = '''  private normalizePayload(
+            dto: CreateLicenseDto | UpdateLicenseDto,
+          ): Record<string, unknown> {
+            const {
+              amount,
+              currency,
+              percentage,
+              valor,
+              moeda,
+              ...rest
+            } = dto;
+
+            return {
+              ...rest,
+              ...(amount !== undefined || valor !== undefined ? { valor: amount ?? valor ?? null } : {}),
+              ...(currency !== undefined || moeda !== undefined ? { moeda: currency ?? moeda ?? null } : {}),
+              ...(percentage !== undefined ? { percentage } : {}),
+            };
+          }
+
+          private mapLicense'''
+          licensing, count = normalize_pattern.subn(normalize_replacement, licensing, count=1)
+          if count != 1:
+              raise SystemExit(f'licensing normalizePayload boundary: found {count}')
+
+          map_pattern = re.compile(
+              r"  private mapLicense\(.*?\n  async list",
+              re.DOTALL,
+          )
+          map_replacement = '''  private mapLicense(entity: LicenseEntity): Record<string, unknown> {
+            const raw = entity as unknown as Record<string, unknown>;
+            return {
+              ...raw,
+              amount: raw['valor'] ?? null,
+              currency: raw['moeda'] ?? 'BRL',
+              percentage: raw['percentage'] == null ? null : Number(raw['percentage']),
+            };
+          }
+
+          async list'''
+          licensing, count = map_pattern.subn(map_replacement, licensing, count=1)
+          if count != 1:
+              raise SystemExit(f'licensing mapLicense boundary: found {count}')
+
+          licensing = require_replace(
+              licensing,
+              "        ...this.normalizePayload(dto, current.metadata ?? {}),\n",
+              "        ...this.normalizePayload(dto),\n",
+              'licensing update payload',
+          )
+          licensing_path.write_text(licensing)
+
+          entities_path = Path('apps/api/src/database/entities.ts')
+          entities = entities_path.read_text()
+          entity_match = re.search(r"export class LicenseEntity \{.*?\n\}", entities, re.DOTALL)
+          if not entity_match:
+              raise SystemExit('LicenseEntity not found')
+          entity_block = entity_match.group(0)
+          if ' percentage:' in entity_block:
+              raise SystemExit('LicenseEntity percentage already exists unexpectedly')
+          entity_marker = "  @Column({ type: 'varchar', length: 50, nullable: true }) remuneration_type: string | null;\n"
+          if entity_block.count(entity_marker) != 1:
+              raise SystemExit('LicenseEntity remuneration_type marker mismatch')
+          entity_block = entity_block.replace(
+              entity_marker,
+              entity_marker + "  @Column({ type: 'decimal', precision: 7, scale: 4, nullable: true }) percentage: string | null;\n",
+              1,
+          )
+          entities_path.write_text(
+              entities[:entity_match.start()] + entity_block + entities[entity_match.end():],
+          )
+
+          migration_path = Path('apps/api/src/database/migrations/20260804000001_AddLicensePercentage.ts')
+          if migration_path.exists():
+              raise SystemExit('license percentage migration already exists unexpectedly')
+          migration_path.write_text('''import { MigrationInterface, QueryRunner } from 'typeorm';
+
+          /** Adds the canonical percentage field used by the licensing form. */
+          export class AddLicensePercentage20260804000001 implements MigrationInterface {
+            name = 'AddLicensePercentage20260804000001';
+
+            public async up(queryRunner: QueryRunner): Promise<void> {
+              await queryRunner.query(`
+                ALTER TABLE "licenses"
+                ADD COLUMN IF NOT EXISTS "percentage" numeric(7,4)
+              `);
+              await queryRunner.query(`
+                DO $$
+                BEGIN
+                  IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'CHK_licenses_percentage_range'
+                      AND conrelid = 'licenses'::regclass
+                  ) THEN
+                    ALTER TABLE "licenses"
+                    ADD CONSTRAINT "CHK_licenses_percentage_range"
+                    CHECK ("percentage" IS NULL OR ("percentage" >= 0 AND "percentage" <= 100));
+                  END IF;
+                END $$
+              `);
+            }
+
+            public async down(queryRunner: QueryRunner): Promise<void> {
+              await queryRunner.query(`
+                ALTER TABLE "licenses"
+                DROP CONSTRAINT IF EXISTS "CHK_licenses_percentage_range"
+              `);
+              await queryRunner.query(`
+                ALTER TABLE "licenses"
+                DROP COLUMN IF EXISTS "percentage"
+              `);
+            }
+          }
+          ''')
+
+          index_path = Path('apps/api/src/database/migrations/index.ts')
+          index = index_path.read_text()
+          import_line = "import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicensePercentage';\n"
+          if import_line in index:
+              raise SystemExit('license percentage migration import already exists unexpectedly')
+          registry_marker = 'export const ALL_MIGRATIONS = ['
+          registry_position = index.index(registry_marker)
+          index = index[:registry_position] + import_line + index[registry_position:]
+          index = require_replace(
+              index,
+              '  CreateContractServiceTypes20260803000003,\n] as const;',
+              '  CreateContractServiceTypes20260803000003,\n  AddLicensePercentage20260804000001,\n] as const;',
+              'canonical migration registry tail',
+          )
+          index_path.write_text(index)
+
+          staging_path = Path('.github/workflows/staging.yml')
+          staging = staging_path.read_text()
+          plain_checkout = '      - uses: actions/checkout@v4\n'
+          explicit_checkout = '      - uses: actions/checkout@v4\n        with:\n          ref: dev\n'
+          checkout_count = staging.count(plain_checkout)
+          if checkout_count != 3:
+              raise SystemExit(f'staging checkout count: expected 3, found {checkout_count}')
+          staging_path.write_text(staging.replace(plain_checkout, explicit_checkout))
+
+          Path('.github/workflows/fix-dev-typecheck-blockers.yml').unlink(missing_ok=True)
+          Path('.github/repair-trigger.txt').unlink(missing_ok=True)
+          PY
+
+      - name: Commit reviewed patch to feature branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix(api): align license schema and staging checkout"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
