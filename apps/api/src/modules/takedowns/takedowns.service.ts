@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { TakedownEntity } from '../../database/entities';
@@ -6,33 +6,43 @@ import type { CreateTakedownDto, UpdateTakedownDto, QueryTakedownDto } from './d
 
 @Injectable()
 export class TakedownsService {
-  private readonly repo: Repository<TakedownEntity> | null = null;
+  private readonly repo: Repository<TakedownEntity> | null;
 
   constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
-    if (ds) this.repo = ds.getRepository(TakedownEntity);
+    this.repo = ds?.getRepository(TakedownEntity) ?? null;
+  }
+
+  private get repository(): Repository<TakedownEntity> {
+    if (!this.repo) throw new ServiceUnavailableException('Database unavailable for takedowns');
+    return this.repo;
   }
 
   async list(tenantId: string, query: QueryTakedownDto) {
-    const qb = this.repo!
+    const qb = this.repository
       .createQueryBuilder('t')
       .where('t.tenant_id = :tenantId', { tenantId })
       .andWhere('t.deleted_at IS NULL');
 
-    if ((query as any).status)     qb.andWhere('t.status = :status',       { status:     (query as any).status });
-    if ((query as any).plataforma) qb.andWhere('t.plataforma = :plataforma', { plataforma: (query as any).plataforma });
-    if ((query as any).artista_id) qb.andWhere('t.artista_id = :artistaId', { artistaId: (query as any).artista_id });
-    if ((query as any).search)     qb.andWhere('t.titulo ILIKE :search',   { search: `%${(query as any).search}%` });
+    if (query.status) qb.andWhere('t.status = :status', { status: query.status });
+    if (query.plataforma) qb.andWhere('t.plataforma = :plataforma', { plataforma: query.plataforma });
+    if (query.artista_id) qb.andWhere('t.artista_id = :artistaId', { artistaId: query.artista_id });
+    if (query.search) {
+      qb.andWhere(
+        '(t.titulo ILIKE :search OR t.obra_afetada ILIKE :search OR t.artista ILIKE :search OR t.motivo ILIKE :search)',
+        { search: `%${query.search}%` },
+      );
+    }
 
-    qb.orderBy('t.created_at', (query as any).ascending ? 'ASC' : 'DESC')
-      .skip((query as any).offset ?? 0)
-      .take((query as any).limit ?? 50);
+    qb.orderBy('t.created_at', query.ascending ? 'ASC' : 'DESC')
+      .skip(query.offset ?? 0)
+      .take(query.limit ?? 50);
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
+    return { data, meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
   }
 
   async findById(tenantId: string, id: string): Promise<TakedownEntity> {
-    const result = await this.repo!
+    const result = await this.repository
       .createQueryBuilder('t')
       .where('t.id = :id AND t.tenant_id = :tenantId AND t.deleted_at IS NULL', { id, tenantId })
       .getOne();
@@ -41,21 +51,37 @@ export class TakedownsService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateTakedownDto): Promise<TakedownEntity> {
-    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId });
-    return this.repo!.save(entity as any) as any;
+    const entity = this.repository.create({
+      tenant_id: tenantId,
+      ...dto,
+      // Compatibilidade somente de leitura com consumidores antigos que ainda
+      // exibem `url`; o campo canônico do formulário é `url_infracao`.
+      url: dto.url_infracao ?? null,
+      created_by: userId,
+      updated_by: userId,
+    } as Partial<TakedownEntity>);
+    return this.repository.save(entity as TakedownEntity);
   }
 
-  async update(tenantId: string, id: string, dto: UpdateTakedownDto): Promise<TakedownEntity> {
+  async update(tenantId: string, userId: string, id: string, dto: UpdateTakedownDto): Promise<TakedownEntity> {
     await this.findById(tenantId, id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date() } as any);
+    const updates: Record<string, unknown> = {
+      ...dto,
+      updated_at: new Date(),
+      updated_by: userId,
+    };
+    if (dto.url_infracao !== undefined) updates['url'] = dto.url_infracao ?? null;
+
+    await this.repository.update({ id, tenant_id: tenantId } as never, updates as never);
     return this.findById(tenantId, id);
   }
 
-  async remove(tenantId: string, id: string) {
+  async remove(tenantId: string, userId: string, id: string) {
     await this.findById(tenantId, id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+    await this.repository.update(
+      { id, tenant_id: tenantId } as never,
+      { deleted_at: new Date(), updated_at: new Date(), updated_by: userId } as never,
+    );
     return { deleted: true };
   }
 }
