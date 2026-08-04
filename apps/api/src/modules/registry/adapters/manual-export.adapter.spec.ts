@@ -1,35 +1,36 @@
 import * as XLSX from 'xlsx';
 import { ManualExportAdapter } from './manual-export.adapter';
 
-/**
- * manual-export.adapter.spec.ts  (Parte 81)
- *
- * A exportação manual de submissões de registro (payload para sociedades
- * como ECAD) suportava 'json' | 'csv'. CSV foi eliminado da plataforma —
- * este teste confirma que o formato tabular agora é XLSX real (workbook
- * válido, MIME OpenXML), nunca texto delimitado por vírgula.
- */
-describe('ManualExportAdapter — exportPayload (Parte 81: XLSX substitui CSV)', () => {
+describe('ManualExportAdapter — exportPayload XLSX', () => {
   const adapter = new ManualExportAdapter();
 
-  it('formato xlsx produz um workbook OpenXML real (não texto CSV)', async () => {
-    const payload = { titulo: 'Minha Obra', autores: [{ nome: 'Fulano', percentual: 100 }], ano: 2026 };
+  it('produz workbook OpenXML real com estrutura e conteúdo íntegros', async () => {
+    const payload = {
+      titulo: 'Minha Obra',
+      autores: [{ nome: 'Fulano', percentual: 100 }],
+      ano: 2026,
+    };
     const result = await adapter.exportPayload(payload, 'xlsx', 'submission-test');
 
     expect(result.format).toBe('xlsx');
     expect(result.fileName).toBe('submission-test.xlsx');
-    expect(result.mimeType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(result.mimeType).toBe(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     expect(Buffer.isBuffer(result.content)).toBe(true);
+    expect((result.content as Buffer).subarray(0, 2).toString('hex')).toBe('504b');
 
-    const wb = XLSX.read(result.content as Buffer, { type: 'buffer' });
-    const sheet = wb.Sheets[wb.SheetNames[0]!]!;
-    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
+    const workbook = XLSX.read(result.content as Buffer, { type: 'buffer' });
+    expect(workbook.SheetNames).toHaveLength(1);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]!]!;
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true });
     expect(rows[0]).toEqual(['field', 'value']);
-    expect(rows.some((r) => r[0] === 'titulo' && r[1] === 'Minha Obra')).toBe(true);
-    expect(rows.some((r) => r[0] === 'autores[0].nome' && r[1] === 'Fulano')).toBe(true);
+    expect(rows.some((row) => row[0] === 'titulo' && row[1] === 'Minha Obra')).toBe(true);
+    expect(rows.some((row) => row[0] === 'autores[0].nome' && row[1] === 'Fulano')).toBe(true);
+    expect(rows.some((row) => row[0] === 'autores[0].percentual' && row[1] === 100)).toBe(true);
   });
 
-  it('formato json continua funcionando normalmente', async () => {
+  it('formato json continua disponível para integração técnica', async () => {
     const payload = { titulo: 'Outra Obra' };
     const result = await adapter.exportPayload(payload, 'json', 'submission-json');
     expect(result.format).toBe('json');
