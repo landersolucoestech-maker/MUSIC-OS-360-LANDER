@@ -1,39 +1,31 @@
 /**
- * modules/reports/computed-fields/projects-musicas.field.ts  ·  Parte 87
- *
- * Resolver dedicado para a aba filha "Músicas do Projeto"
- * (PROJECTS_CONTRACT.childSheets, report-form-contracts.ts). `musicas[]` não
- * tem coluna física em `projects` — é normalizada em `project_tracks` +
- * `project_track_participants` (migration
- * ProjectsFormFieldAlignment20260718000013). O motor genérico de export/
- * import (SQL direto sobre UMA tabela) não suporta essa relação 1:N; este
- * módulo é o único ponto de acesso a essas duas tabelas a partir do domínio
- * de Relatórios.
- *
- * Cada música vira UMA LINHA da aba "Músicas do Projeto" (nunca uma célula
- * JSON — Parte 87, Bloco 6). `duracao` combina duracao_min/duracao_seg no
- * mesmo formato "MIN:SEG" que o modal exibe sob um único Label.
- * compositores/interpretes/produtores são texto separado por ", " (campo
- * `multi` do childSheet) — mesma convenção já usada em outros contratos para
- * listas simples de nomes.
+ * Resolver dos campos repetíveis do formulário de Projetos.
+ * Cada música vira uma linha da única aba do XLSX.
  */
 import { randomUUID } from 'crypto';
 import type { DataSource, QueryRunner } from 'typeorm';
 
 export interface MusicaFieldItem {
-  nome: string;
+  nome_musica: string;
   soloFeat: string | null;
   originalRemix: string | null;
   instrumental: string | null;
-  duracao: string;
-  genero: string | null;
-  idioma: string | null;
+  duracaoMinutos: string | null;
+  duracaoSegundos: string | null;
+  generoMusical: string | null;
+  idiomaMusica: string | null;
   compositores: string[];
   interpretes: string[];
   produtores: string[];
   letra: string | null;
-  audioUrl: string | null;
+  arquivosAudio: string | null;
   ordem: number;
+  /** aliases temporários para contratos legados */
+  nome: string;
+  duracao: string;
+  genero: string | null;
+  idioma: string | null;
+  audioUrl: string | null;
 }
 
 type TrackRole = 'compositor' | 'interprete' | 'produtor';
@@ -60,26 +52,35 @@ interface ParticipantRow {
   role: TrackRole;
 }
 
-function formatDuracao(min: string | null, seg: string | null): string {
-  if (!min && !seg) return '';
-  return `${min ?? '0'}:${(seg ?? '0').padStart(2, '0')}`;
+function formatDuration(minutes: string | null, seconds: string | null): string {
+  if (!minutes && !seconds) return '';
+  return `${minutes ?? '0'}:${(seconds ?? '0').padStart(2, '0')}`;
 }
 
-function parseDuracao(value: string | null | undefined): { min: string | null; seg: string | null } {
-  const raw = (value ?? '').trim();
-  if (!raw) return { min: null, seg: null };
-  const [min, seg] = raw.split(':').map((s) => s.trim());
-  return { min: min || null, seg: seg || null };
+function parseDuration(
+  item: Record<string, unknown>,
+): { minutes: string | null; seconds: string | null } {
+  const explicitMinutes = String(item.duracaoMinutos ?? '').trim();
+  const explicitSeconds = String(item.duracaoSegundos ?? '').trim();
+  if (explicitMinutes || explicitSeconds) {
+    return {
+      minutes: explicitMinutes || null,
+      seconds: explicitSeconds || null,
+    };
+  }
+  const legacy = String(item.duracao ?? '').trim();
+  if (!legacy) return { minutes: null, seconds: null };
+  const [minutes, seconds] = legacy.split(':').map((part) => part.trim());
+  return { minutes: minutes || null, seconds: seconds || null };
 }
 
-/** Export: busca musicas[] de N projetos de uma vez (evita N+1), uma linha por música. */
 export async function fetchProjectsMusicasForExport(
   ds: DataSource,
   tenantId: string,
   projectIds: string[],
 ): Promise<Map<string, MusicaFieldItem[]>> {
-  const out = new Map<string, MusicaFieldItem[]>();
-  if (projectIds.length === 0) return out;
+  const output = new Map<string, MusicaFieldItem[]>();
+  if (projectIds.length === 0) return output;
 
   const tracks = (await ds.query(
     `SELECT "id", "project_id", "nome", "solo_feat", "original_remix", "instrumental",
@@ -90,7 +91,7 @@ export async function fetchProjectsMusicasForExport(
     [tenantId, projectIds],
   )) as TrackRow[];
 
-  const trackIds = tracks.map((t) => t.id);
+  const trackIds = tracks.map((track) => track.id);
   const participants: ParticipantRow[] = trackIds.length
     ? ((await ds.query(
         `SELECT "project_track_id", "nome", "role"
@@ -102,38 +103,43 @@ export async function fetchProjectsMusicasForExport(
     : [];
 
   const byTrack = new Map<string, ParticipantRow[]>();
-  for (const p of participants) {
-    const list = byTrack.get(p.project_track_id) ?? [];
-    list.push(p);
-    byTrack.set(p.project_track_id, list);
+  for (const participant of participants) {
+    const list = byTrack.get(participant.project_track_id) ?? [];
+    list.push(participant);
+    byTrack.set(participant.project_track_id, list);
   }
   const namesByRole = (trackId: string, role: TrackRole): string[] =>
-    (byTrack.get(trackId) ?? []).filter((p) => p.role === role).map((p) => p.nome);
+    (byTrack.get(trackId) ?? []).filter((participant) => participant.role === role).map((participant) => participant.nome);
 
-  for (const t of tracks) {
-    const list = out.get(t.project_id) ?? [];
+  for (const track of tracks) {
+    const list = output.get(track.project_id) ?? [];
     list.push({
-      nome: t.nome,
-      soloFeat: t.solo_feat,
-      originalRemix: t.original_remix,
-      instrumental: t.instrumental,
-      duracao: formatDuracao(t.duracao_min, t.duracao_seg),
-      genero: t.genero,
-      idioma: t.idioma,
-      compositores: namesByRole(t.id, 'compositor'),
-      interpretes: namesByRole(t.id, 'interprete'),
-      produtores: namesByRole(t.id, 'produtor'),
-      letra: t.letra,
-      audioUrl: t.audio_url,
-      ordem: t.ordem,
+      nome_musica: track.nome,
+      soloFeat: track.solo_feat,
+      originalRemix: track.original_remix,
+      instrumental: track.instrumental,
+      duracaoMinutos: track.duracao_min,
+      duracaoSegundos: track.duracao_seg,
+      generoMusical: track.genero,
+      idiomaMusica: track.idioma,
+      compositores: namesByRole(track.id, 'compositor'),
+      interpretes: namesByRole(track.id, 'interprete'),
+      produtores: namesByRole(track.id, 'produtor'),
+      letra: track.letra,
+      arquivosAudio: track.audio_url,
+      ordem: track.ordem,
+      nome: track.nome,
+      duracao: formatDuration(track.duracao_min, track.duracao_seg),
+      genero: track.genero,
+      idioma: track.idioma,
+      audioUrl: track.audio_url,
     });
-    out.set(t.project_id, list);
+    output.set(track.project_id, list);
   }
 
-  return out;
+  return output;
 }
 
-/** Import (create-only, dentro da transação do commit): insere musicas[] de UM projeto recém-criado. */
 export async function insertProjectsMusicasForImport(
   qr: QueryRunner,
   tenantId: string,
@@ -142,12 +148,18 @@ export async function insertProjectsMusicasForImport(
 ): Promise<void> {
   if (!Array.isArray(musicas)) return;
 
-  let ordem = 0;
+  let fallbackOrder = 0;
   for (const raw of musicas) {
     if (raw === null || typeof raw !== 'object') continue;
-    const m = raw as Record<string, unknown>;
+    const item = raw as Record<string, unknown>;
     const trackId = randomUUID();
-    const { min: duracaoMin, seg: duracaoSeg } = parseDuracao(m.duracao as string | undefined);
+    const duration = parseDuration(item);
+    const name = String(item.nome_musica ?? item.nome ?? '').trim();
+    if (!name) continue;
+
+    const orderValue = Number(item.ordem);
+    const order = Number.isFinite(orderValue) ? orderValue : fallbackOrder;
+    fallbackOrder += 1;
 
     await qr.query(
       `INSERT INTO "project_tracks"
@@ -156,34 +168,38 @@ export async function insertProjectsMusicasForImport(
           "audio_url", "ordem")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
-        trackId, tenantId, projectId,
-        String(m.nome ?? ''),
-        (m.soloFeat as string) || null,
-        (m.originalRemix as string) || null,
-        (m.instrumental as string) || null,
-        duracaoMin,
-        duracaoSeg,
-        (m.genero as string) || null,
-        (m.idioma as string) || null,
-        (m.letra as string) || null,
-        (m.audioUrl as string) || null,
-        ordem++,
+        trackId,
+        tenantId,
+        projectId,
+        name,
+        (item.soloFeat as string) || null,
+        (item.originalRemix as string) || null,
+        (item.instrumental as string) || null,
+        duration.minutes,
+        duration.seconds,
+        (item.generoMusical as string) || (item.genero as string) || null,
+        (item.idiomaMusica as string) || (item.idioma as string) || null,
+        (item.letra as string) || null,
+        (item.arquivosAudio as string) || (item.audioUrl as string) || null,
+        order,
       ],
     );
 
     const roleFields: Array<[TrackRole, unknown]> = [
-      ['compositor', m.compositores], ['interprete', m.interpretes], ['produtor', m.produtores],
+      ['compositor', item.compositores],
+      ['interprete', item.interpretes],
+      ['produtor', item.produtores],
     ];
-    for (const [role, list] of roleFields) {
-      if (!Array.isArray(list)) continue;
-      let pOrdem = 0;
-      for (const nome of list) {
-        if (typeof nome !== 'string' || nome.trim().length === 0) continue;
+    for (const [role, values] of roleFields) {
+      if (!Array.isArray(values)) continue;
+      let participantOrder = 0;
+      for (const value of values) {
+        if (typeof value !== 'string' || !value.trim()) continue;
         await qr.query(
           `INSERT INTO "project_track_participants"
              ("id", "tenant_id", "project_track_id", "nome", "role", "ordem")
            VALUES ($1, $2, $3, $4, $5, $6)`,
-          [randomUUID(), tenantId, trackId, nome.trim(), role, pOrdem++],
+          [randomUUID(), tenantId, trackId, value.trim(), role, participantOrder++],
         );
       }
     }
