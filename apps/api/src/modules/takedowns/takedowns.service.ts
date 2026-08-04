@@ -54,21 +54,17 @@ export class TakedownsService {
     const entity = this.repository.create({
       tenant_id: tenantId,
       ...dto,
-      // Compatibilidade somente de leitura com consumidores antigos que ainda
-      // exibem `url`; o campo canônico do formulário é `url_infracao`.
       url: dto.url_infracao ?? null,
       created_by: userId,
-      updated_by: userId,
     } as Partial<TakedownEntity>);
     return this.repository.save(entity as TakedownEntity);
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateTakedownDto): Promise<TakedownEntity> {
+  async update(tenantId: string, _userId: string, id: string, dto: UpdateTakedownDto): Promise<TakedownEntity> {
     await this.findById(tenantId, id);
     const updates: Record<string, unknown> = {
       ...dto,
       updated_at: new Date(),
-      updated_by: userId,
     };
     if (dto.url_infracao !== undefined) updates['url'] = dto.url_infracao ?? null;
 
@@ -76,11 +72,11 @@ export class TakedownsService {
     return this.findById(tenantId, id);
   }
 
-  async remove(tenantId: string, userId: string, id: string) {
+  async remove(tenantId: string, _userId: string, id: string) {
     await this.findById(tenantId, id);
     await this.repository.update(
       { id, tenant_id: tenantId } as never,
-      { deleted_at: new Date(), updated_at: new Date(), updated_by: userId } as never,
+      { deleted_at: new Date(), updated_at: new Date() } as never,
     );
     return { deleted: true };
   }
