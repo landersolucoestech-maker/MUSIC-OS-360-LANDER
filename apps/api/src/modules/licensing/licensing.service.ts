@@ -19,12 +19,11 @@ export class LicensingService {
 
   /**
    * `amount` e `currency` correspondem às colunas físicas legadas valor/moeda.
-   * `percentage` é preservado em metadata até existir coluna física canônica.
+   * `percentage` corresponde à coluna física canônica `licenses.percentage`.
    * O mapeamento é explícito e simétrico para criar, editar e reler o modal.
    */
   private normalizePayload(
     dto: CreateLicenseDto | UpdateLicenseDto,
-    currentMetadata: Record<string, unknown> = {},
   ): Record<string, unknown> {
     const {
       amount,
@@ -35,27 +34,21 @@ export class LicensingService {
       ...rest
     } = dto;
 
-    const metadata = { ...currentMetadata };
-    if (percentage !== undefined) metadata['percentage'] = percentage;
-
     return {
       ...rest,
       ...(amount !== undefined || valor !== undefined ? { valor: amount ?? valor ?? null } : {}),
       ...(currency !== undefined || moeda !== undefined ? { moeda: currency ?? moeda ?? null } : {}),
-      ...(percentage !== undefined ? { metadata } : {}),
+      ...(percentage !== undefined ? { percentage } : {}),
     };
   }
 
   private mapLicense(entity: LicenseEntity): Record<string, unknown> {
     const raw = entity as unknown as Record<string, unknown>;
-    const metadata = (raw['metadata'] && typeof raw['metadata'] === 'object')
-      ? raw['metadata'] as Record<string, unknown>
-      : {};
     return {
       ...raw,
       amount: raw['valor'] ?? null,
       currency: raw['moeda'] ?? 'BRL',
-      percentage: metadata['percentage'] ?? null,
+      percentage: raw['percentage'] == null ? null : Number(raw['percentage']),
     };
   }
 
@@ -94,7 +87,11 @@ export class LicensingService {
     return this.mapLicense(item);
   }
 
-  async create(tenantId: string, userId: string, dto: CreateLicenseDto): Promise<Record<string, unknown>> {
+  async create(
+    tenantId: string,
+    userId: string,
+    dto: CreateLicenseDto,
+  ): Promise<Record<string, unknown>> {
     const item = this.repository.create({
       tenant_id: tenantId,
       ...this.normalizePayload(dto),
@@ -116,15 +113,10 @@ export class LicensingService {
     });
     if (!current) throw new NotFoundException('Licença não encontrada');
 
-    const currentRaw = current as unknown as Record<string, unknown>;
-    const currentMetadata = currentRaw['metadata'] && typeof currentRaw['metadata'] === 'object'
-      ? currentRaw['metadata'] as Record<string, unknown>
-      : {};
-
     await this.repository.update(
       { id, tenant_id: tenantId } as never,
       {
-        ...this.normalizePayload(dto, currentMetadata),
+        ...this.normalizePayload(dto),
         updated_at: new Date(),
         updated_by: userId,
       } as never,
