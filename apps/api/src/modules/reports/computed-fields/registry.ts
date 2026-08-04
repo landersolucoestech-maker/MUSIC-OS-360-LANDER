@@ -1,11 +1,8 @@
 /**
- * modules/reports/computed-fields/registry.ts  ·  Parte 87
+ * modules/reports/computed-fields/registry.ts
  *
- * Registro mínimo de resolvers para abas filhas (`ReportFormContract.childSheets`,
- * report-form-contracts.ts) — chaveado por "tableName.childSheetKey". NÃO é
- * um framework de plugins: é um lookup direto, e uma aba filha declarada sem
- * resolver registrado aqui falha alto e cedo (ExportEngineService/
- * ImportCommitService lançam erro explícito), nunca silenciosamente.
+ * Registro mínimo de resolvers para grupos repetíveis achatados em linhas da
+ * mesma aba. A chave é "tableName.groupKey".
  */
 import type { DataSource, QueryRunner } from 'typeorm';
 import {
@@ -21,30 +18,30 @@ import {
   makeRowEmbeddedChildSheetImportWriter,
 } from './row-embedded-child-sheet';
 
-export type ChildSheetExportResolver = (
+export type RepeatingGroupExportResolver = (
   ds: DataSource,
   tenantId: string,
-  refIds: string[],
+  parentIds: string[],
 ) => Promise<Map<string, Record<string, unknown>[]>>;
 
-export type ChildSheetImportWriter = (
+export type RepeatingGroupImportWriter = (
   qr: QueryRunner,
   tenantId: string,
   parentId: string,
-  rows: unknown,
+  items: unknown,
 ) => Promise<void>;
 
 const invoicesItens = { tableName: 'invoices', jsonColumn: 'itens', arrayKey: null } as const;
 const eventsParticipantes = { tableName: 'events', jsonColumn: 'participantes', arrayKey: null } as const;
 
-export const CHILD_SHEET_EXPORT_RESOLVERS: Record<string, ChildSheetExportResolver> = {
-  'projects.musicas': fetchProjectsMusicasForExport as unknown as ChildSheetExportResolver,
-  'releases.faixas': fetchReleasesFaixasForExport as unknown as ChildSheetExportResolver,
+export const REPEATING_GROUP_EXPORT_RESOLVERS: Record<string, RepeatingGroupExportResolver> = {
+  'projects.musicas': fetchProjectsMusicasForExport as unknown as RepeatingGroupExportResolver,
+  'releases.faixas': fetchReleasesFaixasForExport as unknown as RepeatingGroupExportResolver,
   'invoices.itens': makeRowEmbeddedChildSheetExportResolver(invoicesItens),
   'events.participantes': makeRowEmbeddedChildSheetExportResolver(eventsParticipantes),
 };
 
-export const CHILD_SHEET_IMPORT_WRITERS: Record<string, ChildSheetImportWriter> = {
+export const REPEATING_GROUP_IMPORT_WRITERS: Record<string, RepeatingGroupImportWriter> = {
   'projects.musicas': insertProjectsMusicasForImport,
   'releases.faixas': writeReleasesFaixasForImport,
   'invoices.itens': makeRowEmbeddedChildSheetImportWriter(invoicesItens),
