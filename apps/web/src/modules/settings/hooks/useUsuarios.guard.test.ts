@@ -1,26 +1,34 @@
 /**
- * useUsuarios.guard.test.ts
+ * Guarda permanente para o contrato HTTP de atualização de usuários.
  *
- * Guarda permanente (auditoria 2026-07-18 — settings/usuários): o hook
- * enviava full_name/phone/cargo direto para PATCH /users/:id
- * (UpdateUserDto), que só aceita fullName/phone/role — full_name e cargo
- * eram sempre rejeitados pelo whitelist, e phone não tinha coluna nem campo
- * de DTO. Este teste falha se o hook voltar a enviar os nomes errados.
+ * Dados de perfil usam PATCH /users/:id. Alterações de papel devem usar o
+ * endpoint RBAC dedicado PATCH /users/:id/role, que possui autorização e
+ * auditoria próprias. O alias legado `cargo` pode alimentar o papel, mas nunca
+ * deve ser enviado como chave literal ao backend.
  */
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
 const FILE_PATH = path.resolve(__dirname, "useUsuarios.ts");
 const SOURCE = fs.readFileSync(FILE_PATH, "utf8");
 
-describe("useUsuarios — envia o contrato real do UpdateUserDto", () => {
-  it("traduz full_name/cargo para fullName/role antes de enviar ao backend", () => {
+describe("useUsuarios — contratos de perfil e RBAC", () => {
+  it("traduz full_name para fullName no PATCH de perfil", () => {
     expect(SOURCE).toMatch(/fullName:\s*full_name/);
-    expect(SOURCE).toMatch(/role:\s*cargo/);
+    expect(SOURCE).toMatch(/api\.patch\(`\/users\/\$\{id\}`,\s*profilePayload\)/);
   });
 
-  it("não envia mais full_name/cargo como chaves literais do payload HTTP", () => {
-    expect(SOURCE).not.toMatch(/storage\.update[\s\S]{0,200}\{\s*full_name,?\s*phone,?\s*cargo,?\s*\}/);
+  it("envia role ou o alias cargo pelo endpoint RBAC dedicado", () => {
+    expect(SOURCE).toMatch(/const effectiveRole = role \?\? cargo/);
+    expect(SOURCE).toMatch(
+      /api\.patch\(`\/users\/\$\{id\}\/role`,\s*\{\s*role:\s*effectiveRole\s*\}\)/,
+    );
+  });
+
+  it("não inclui role nem cargo no payload genérico de perfil", () => {
+    const profilePayload = SOURCE.match(/const profilePayload = \{[\s\S]*?\n\s*\};/)?.[0] ?? "";
+    expect(profilePayload).not.toMatch(/\brole\b|\bcargo\b/);
+    expect(SOURCE).not.toMatch(/\{\s*full_name,?\s*phone,?\s*cargo,?\s*\}/);
   });
 });

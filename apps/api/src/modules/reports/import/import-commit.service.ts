@@ -16,6 +16,7 @@ import {
   contractMetadataFields,
   getReportFormContract,
   type ReportFormContract,
+  type ReportRepeatingGroupSpec,
 } from '../form-contracts/report-form-contracts';
 import { REPEATING_GROUP_IMPORT_WRITERS } from '../computed-fields/registry';
 import { ImportAuditService } from './import-audit.service';
@@ -82,6 +83,29 @@ function groupRows(contract: ReportFormContract | null, rows: RowValidation[]): 
     current.itemRows.push(row);
   }
   return groups;
+}
+
+function deriveRepeatingItems(group: RowGroup, repeatingGroup: ReportRepeatingGroupSpec): unknown[] {
+  const explicitItems = group.itemRows.flatMap(
+    (row) => row.repeatingGroups?.[repeatingGroup.key] ?? [],
+  );
+  if (explicitItems.length > 0) return explicitItems;
+
+  return group.itemRows
+    .map((row) => {
+      const item: Record<string, unknown> = {};
+      for (const field of repeatingGroup.fields) {
+        const raw = row.data[field.key];
+        const text = raw === null || raw === undefined ? '' : String(raw);
+        item[field.key] = field.multi
+          ? text.split(MULTI_VALUE_SEPARATOR).map((part) => part.trim()).filter(Boolean)
+          : (text === '' ? null : text);
+      }
+      return item;
+    })
+    .filter((item) => Object.values(item).some(
+      (value) => Array.isArray(value) ? value.length > 0 : value !== null,
+    ));
 }
 
 @Injectable()
@@ -241,32 +265,20 @@ export class ImportCommitService {
     cols.push('tenant_id');
     values.push(tenantId);
 
-    const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
     const repeatingGroup = contract?.repeatingGroup;
+    const items = repeatingGroup ? deriveRepeatingItems(group, repeatingGroup) : [];
+    const hasRepeatingItems = items.length > 0;
+    const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
     const sql = `INSERT INTO ${quote(def.tableName)} (${cols.map(quote).join(', ')}) VALUES (${placeholders})` +
-      (repeatingGroup ? ` RETURNING ${quote('id')}` : '');
+      (hasRepeatingItems ? ` RETURNING ${quote('id')}` : '');
     const result = await qr.query(sql, values);
 
-    if (!repeatingGroup) return;
+    if (!repeatingGroup || !hasRepeatingItems) return;
     const insertedId = (result as Array<{ id: string }>)[0]?.id;
     if (!insertedId) throw new Error(`[reports-import] INSERT sem id retornado para grupo repetível: ${def.tableName}`);
 
     const writer = REPEATING_GROUP_IMPORT_WRITERS[`${def.tableName}.${repeatingGroup.key}`];
     if (!writer) throw new Error(`[reports-import] grupo repetível sem writer registrado: ${def.tableName}.${repeatingGroup.key}`);
-
-    const items = group.itemRows
-      .map((row) => {
-        const item: Record<string, unknown> = {};
-        for (const field of repeatingGroup.fields) {
-          const raw = row.data[field.key];
-          const text = raw === null || raw === undefined ? '' : String(raw);
-          item[field.key] = field.multi
-            ? text.split(MULTI_VALUE_SEPARATOR).map((part) => part.trim()).filter(Boolean)
-            : (text === '' ? null : text);
-        }
-        return item;
-      })
-      .filter((item) => Object.values(item).some((value) => Array.isArray(value) ? value.length > 0 : value !== null));
 
     await writer(qr, tenantId, insertedId, items);
   }

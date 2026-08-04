@@ -195,6 +195,8 @@ export type Cliente = {
   cidade?: string | null;
   estado?: string | null;
   endereco?: string | null;
+  endereco_completo?: string | null;
+  cep?: string | null;
   status?: string | null;
   cpf?: string | null;
   cnpj?: string | null;

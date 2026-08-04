@@ -155,6 +155,7 @@ import { CreateClientAttachments20260803000001 } from './20260803000001_CreateCl
 import { FixDefaultPrivilegesCreatorRole20260803000002 } from './20260803000002_FixDefaultPrivilegesCreatorRole';
 import { CreateContractServiceTypes20260803000003 } from './20260803000003_CreateContractServiceTypes';
 
+import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicensePercentage';
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
   WorkflowTransitions20240601000001,
@@ -296,4 +297,5 @@ export const ALL_MIGRATIONS = [
   CreateClientAttachments20260803000001,
   FixDefaultPrivilegesCreatorRole20260803000002,
   CreateContractServiceTypes20260803000003,
+  AddLicensePercentage20260804000001,
 ] as const;

@@ -54,9 +54,14 @@ describe('ImportEngineService — XLSX de aba única', () => {
   });
 
   it('rejeita coluna obrigatória ausente ou vazia', async () => {
-    const absent = await makeEngine().validateFile('artists', workbook('Artistas', [['Nome artístico'], ['Ana']]), 't');
+    const defWithRequiredCategory = { ...DEF, requiredImportColumns: ['nome_artistico', 'categoria'] };
+    const absent = await makeEngine({ def: defWithRequiredCategory }).validateFile(
+      'artists', workbook('Artistas', [['Nome artístico'], ['Ana']]), 't',
+    );
     expect(absent.errors.some((e) => e.includes('categoria'))).toBe(true);
-    const empty = await makeEngine().validateFile('artists', workbook('Artistas', [['Nome artístico', 'Categoria'], ['Ana', '']]), 't');
+    const empty = await makeEngine({ def: defWithRequiredCategory }).validateFile(
+      'artists', workbook('Artistas', [['Nome artístico', 'Categoria'], ['Ana', '']]), 't',
+    );
     expect(empty.rows[0].valid).toBe(false);
   });
 
@@ -121,7 +126,7 @@ describe('ImportEngineService — projetos em uma única aba', () => {
 
   it('mantém uma linha de preview por música; o commit agrupa linhas consecutivas pelo projeto', async () => {
     const file = workbook('Projetos', [
-      ['Tipo de Lançamento', 'Nome do EP/Álbum', 'Status', 'Nome da Música', 'Compositores'],
+      ['Tipo de Lançamento', 'Nome do EP/Álbum', 'Status', 'Nome da música', 'Compositores'],
       ['ep', 'Meu EP', 'planejamento', 'Faixa 1', 'Fulano | Ciclano'],
       ['ep', 'Meu EP', 'planejamento', 'Faixa 2', 'Beltrano'],
     ]);
@@ -144,7 +149,7 @@ describe('ImportEngineService — projetos em uma única aba', () => {
     const wb = XLSX.read(result.body, { type: 'buffer' });
     expect(wb.SheetNames).toEqual(['Projetos']);
     const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets.Projetos!, { header: 1 });
-    expect(rows[0]).toContain('Nome da Música');
+    expect(rows[0]).toContain('Nome da música');
     expect(rows[0]).toContain('Arquivos de Áudio (MP3/WAV)');
   });
 });

@@ -2271,6 +2271,7 @@ export class LicenseEntity {
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
   // Campos do formulário de Licença (regra 2026-07-12: 1 coluna por campo)
   @Column({ type: 'varchar', length: 50, nullable: true }) remuneration_type: string | null;
+  @Column({ type: 'decimal', precision: 7, scale: 4, nullable: true }) percentage: string | null;
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
