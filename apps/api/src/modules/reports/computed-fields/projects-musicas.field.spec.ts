@@ -1,6 +1,6 @@
 import { fetchProjectsMusicasForExport, insertProjectsMusicasForImport } from './projects-musicas.field';
 
-describe('projects-musicas.field — resolver da aba filha "Musicas do Projeto"', () => {
+describe('projects-musicas.field — grupo repetível "Músicas do Projeto"', () => {
   describe('fetchProjectsMusicasForExport', () => {
     it('lista vazia de projectIds → não consulta o banco, retorna mapa vazio', async () => {
       const query = jest.fn();
@@ -35,22 +35,29 @@ describe('projects-musicas.field — resolver da aba filha "Musicas do Projeto"'
       expect(query.mock.calls[1][0]).toContain('"project_track_participants"');
       expect(query.mock.calls[1][1]).toEqual(['tenant-1', ['track-1']]);
 
-      const musicas = result.get('proj-1');
-      expect(musicas).toHaveLength(1);
-      expect(musicas![0]).toEqual({
-        nome: 'Faixa 1', soloFeat: 'solo', originalRemix: 'original', instrumental: 'nao',
-        duracao: '3:30', genero: 'pop', idioma: 'portugues', letra: 'la la',
-        audioUrl: 'https://x/a.mp3', compositores: ['Fulano'], interpretes: ['Ciclano'], produtores: ['Beltrano'],
+      expect(result.get('proj-1')).toEqual([{
+        nome_musica: 'Faixa 1',
+        soloFeat: 'solo',
+        originalRemix: 'original',
+        instrumental: 'nao',
+        duracaoMinutos: '3',
+        duracaoSegundos: '30',
+        generoMusical: 'pop',
+        idiomaMusica: 'portugues',
+        compositores: ['Fulano'],
+        interpretes: ['Ciclano'],
+        produtores: ['Beltrano'],
+        letra: 'la la',
+        arquivosAudio: 'https://x/a.mp3',
         ordem: 0,
-      });
+      }]);
     });
 
-    it('projeto sem faixas → não aparece no mapa (export serializa como [])', async () => {
+    it('projeto sem faixas → não aparece no mapa', async () => {
       const query = jest.fn().mockResolvedValueOnce([]);
       const ds = { query } as any;
       const result = await fetchProjectsMusicasForExport(ds, 'tenant-1', ['proj-vazio']);
       expect(result.has('proj-vazio')).toBe(false);
-      // segunda query (participants) não deve rodar quando não há faixas
       expect(query).toHaveBeenCalledTimes(1);
     });
   });
@@ -62,7 +69,7 @@ describe('projects-musicas.field — resolver da aba filha "Musicas do Projeto"'
       return { qr, calls };
     }
 
-    it('valor não-array → no-op (nenhuma query)', async () => {
+    it('valor não-array → no-op', async () => {
       const { qr, calls } = makeQR();
       await insertProjectsMusicasForImport(qr, 'tenant-1', 'proj-1', 'não é array');
       expect(calls).toHaveLength(0);
@@ -70,13 +77,21 @@ describe('projects-musicas.field — resolver da aba filha "Musicas do Projeto"'
 
     it('insere uma project_track por música + participantes por papel, tenant forçado', async () => {
       const { qr, calls } = makeQR();
-      const musicas = [
-        {
-          nome: 'Faixa importada', soloFeat: 'feat', originalRemix: 'remix', instrumental: 'sim',
-          duracao: '4:12', genero: 'rock', idioma: 'ingles', letra: '',
-          audioUrl: '', compositores: ['A', ''], interpretes: ['B'], produtores: [],
-        },
-      ];
+      const musicas = [{
+        nome_musica: 'Faixa importada',
+        soloFeat: 'feat',
+        originalRemix: 'remix',
+        instrumental: 'sim',
+        duracaoMinutos: '4',
+        duracaoSegundos: '12',
+        generoMusical: 'rock',
+        idiomaMusica: 'ingles',
+        letra: '',
+        arquivosAudio: '',
+        compositores: ['A', ''],
+        interpretes: ['B'],
+        produtores: [],
+      }];
       await insertProjectsMusicasForImport(qr, 'tenant-1', 'proj-novo', musicas);
 
       const trackInsert = calls.find(([sql]) => sql.includes('"project_tracks"'));
@@ -86,17 +101,20 @@ describe('projects-musicas.field — resolver da aba filha "Musicas do Projeto"'
       );
 
       const participantInserts = calls.filter(([sql]) => sql.includes('"project_track_participants"'));
-      // "A" (compositor) + "" (filtrado) + "B" (interprete) = 2 inserts; produtores vazio = 0
       expect(participantInserts).toHaveLength(2);
       expect(participantInserts.map(([, params]) => params[3])).toEqual(['A', 'B']);
       expect(participantInserts.map(([, params]) => params[4])).toEqual(['compositor', 'interprete']);
-      // tenant sempre o do commit (nunca do arquivo)
       for (const [, params] of participantInserts) expect(params[1]).toBe('tenant-1');
     });
 
-    it('item não-objeto dentro do array é ignorado sem lançar', async () => {
+    it('item inválido é ignorado e item canônico válido é inserido', async () => {
       const { qr, calls } = makeQR();
-      await insertProjectsMusicasForImport(qr, 'tenant-1', 'proj-1', [null, 'string', 42, { nome: 'Válida' }]);
+      await insertProjectsMusicasForImport(qr, 'tenant-1', 'proj-1', [
+        null,
+        'string',
+        42,
+        { nome_musica: 'Válida' },
+      ]);
       const trackInserts = calls.filter(([sql]) => sql.includes('"project_tracks"'));
       expect(trackInserts).toHaveLength(1);
     });
