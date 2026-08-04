@@ -5,7 +5,6 @@
 export type ImportFormat = 'xlsx';
 export const IMPORT_MAX_ROWS = 5000;
 export const IMPORT_MAX_BYTES = 1024 * 1024;
-export const IMPORT_MAX_SHEETS = 1;
 
 export interface ParsedFile {
   format: ImportFormat;
@@ -32,6 +31,8 @@ export interface RowValidation {
   valid: boolean;
   errors: RowIssue[];
   warnings: RowIssue[];
+  /** Itens agrupados a partir de linhas consecutivas da mesma aba. */
+  repeatingGroups?: Record<string, unknown[]>;
 }
 
 export interface ImportValidationResult {
