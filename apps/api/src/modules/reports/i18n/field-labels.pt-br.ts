@@ -631,6 +631,14 @@ export const FIELD_LABELS_PT_BR = {
   executionPlan: 'Plano de ação operacional',
   aiRecommendations: 'Recomendações da IA',
 
+  tipoLancamento: 'Tipo de Lançamento',
+  nomeEpAlbum: 'Nome do EP/Álbum',
+  statusProjeto: 'Status',
+  duracaoMinutos: 'Duração — Minutos',
+  duracaoSegundos: 'Duração — Segundos',
+  idiomaMusica: 'Idioma da Música',
+  arquivosAudio: 'Arquivos de Áudio (MP3/WAV)',
+
   // ── Parte 89 — Contabilidade (relatório computado) ──────────────────────────
   receitas: 'Receitas',
   despesas: 'Despesas',
