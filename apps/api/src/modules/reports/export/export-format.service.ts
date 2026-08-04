@@ -14,24 +14,10 @@ export interface ExportColumnHeader {
   label: string;
 }
 
-// Limite real do Excel (OOXML) por célula é 32767 caracteres. Este é o ÚLTIMO
-// ponto antes de escrever qualquer valor no Excel — nenhuma célula chega ao
-// XLSX sem passar por sanitizeExcelCellValue. Nenhum campo de formulário
-// legítimo (ex.: corpo de contrato) pode estourar a célula e derrubar a
-// exportação inteira.
 export const EXCEL_CELL_MAX_CHARS = 32767;
 const EXCEL_CELL_SAFE_CHARS = 32000;
 const TRUNCATION_SUFFIX = '… [truncado: excede o limite de célula do Excel]';
 
-// Injeção de fórmula em planilha (OWASP): células iniciadas por =, +, -, @ (ou tab/CR)
-// são reinterpretadas como fórmula por Excel/LibreOffice ao abrir — um nome de
-// cliente como "=HYPERLINK(...)" vira execução, não texto. Prefixo com aspas
-// simples neutraliza sem apagar o valor visível.
-//
-// `+` e `-` também são o primeiro caractere de dados legítimos e comuns nesta
-// aplicação (telefone "+55...", valores monetários negativos "-42.50") — só
-// são neutralizados quando o restante da célula NÃO é um padrão plausível de
-// telefone/número, evitando falso-positivo em cima de dado real.
 const ALWAYS_DANGEROUS_PREFIXES = ['=', '@', '\t', '\r'];
 const PLAUSIBLE_PHONE = /^\+[\d\s()-]+$/;
 const PLAUSIBLE_NEGATIVE_NUMBER = /^-[\d.,]+$/;
@@ -50,14 +36,6 @@ export interface CellContext {
   column: string;
 }
 
-/**
- * Única função de sanitização de célula do caminho real (backend) de exportação.
- * - null/undefined → vazio
- * - objeto/array cru → NUNCA vira célula (blob técnico; já deveria ter sido
- *   excluído em ReportEntityDefinitionService, mas isto é defesa em profundidade)
- * - string acima do limite do Excel → truncada com marcador explícito
- * - garante que o resultado final nunca ultrapassa EXCEL_CELL_MAX_CHARS
- */
 export function sanitizeExcelCellValue(value: unknown, context: CellContext): string {
   if (value === null || value === undefined) return '';
   if (value instanceof Date) return value.toLocaleDateString('pt-BR');
@@ -67,7 +45,6 @@ export function sanitizeExcelCellValue(value: unknown, context: CellContext): st
     console.warn(`[reports-export] campo técnico ignorado (objeto/array cru): ${context.entity}.${context.column}`);
     return '';
   }
-  // Datas ISO em string → dd/mm/aaaa
   let text: string;
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T?/.test(value)) {
     const d = new Date(value);
@@ -88,12 +65,12 @@ export function sanitizeExcelCellValue(value: unknown, context: CellContext): st
 
 @Injectable()
 export class ExportFormatService {
-  /** Cabeçalhos pt-BR (chave técnica → label da camada i18n). */
   headers(columns: string[]): ExportColumnHeader[] {
     return columns.map((key) => ({ key, label: getFieldLabelPtBr(key) }));
   }
 
-  toXlsx(entity: string, columns: string[], rows: Record<string, unknown>[]): Buffer {
+  /** Todo workbook de relatório possui exatamente uma aba. */
+  toXlsx(entity: string, sheetName: string, columns: string[], rows: Record<string, unknown>[]): Buffer {
     const header = this.headers(columns).map((h) => h.label);
     const aoa: unknown[][] = [
       header,
@@ -101,31 +78,7 @@ export class ExportFormatService {
     ];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, entity.slice(0, 31) || 'Export');
-    return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
-  }
-
-  /**
-   * Workbook multi-aba (Parte 87, Bloco 6) — uma aba principal + N abas
-   * filhas para estruturas repetíveis do formulário, nunca compactadas numa
-   * única célula JSON. Nomes de aba truncados em 31 caracteres (limite do
-   * Excel/OOXML) — colisão entre abas truncadas é responsabilidade de quem
-   * declara o contrato (nomes de aba já curtos por design).
-   */
-  toXlsxMultiSheet(
-    entity: string,
-    sheets: Array<{ sheetName: string; columns: string[]; rows: Record<string, unknown>[] }>,
-  ): Buffer {
-    const wb = XLSX.utils.book_new();
-    for (const sheet of sheets) {
-      const header = this.headers(sheet.columns).map((h) => h.label);
-      const aoa: unknown[][] = [
-        header,
-        ...sheet.rows.map((r) => sheet.columns.map((c) => sanitizeExcelCellValue(r[c], { entity, column: c }))),
-      ];
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      XLSX.utils.book_append_sheet(wb, ws, sheet.sheetName.slice(0, 31));
-    }
+    XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31) || 'Export');
     return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
   }
 }
