@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 import { ImportParserService } from './import-parser.service';
-import { IMPORT_MAX_BYTES, IMPORT_MAX_ROWS, IMPORT_MAX_SHEETS } from './import.types';
+import { IMPORT_MAX_BYTES, IMPORT_MAX_ROWS } from './import.types';
 
 function xlsxBuffer(rows: string[][], sheetNames: string[] = ['Sheet1']): Buffer {
   const wb = XLSX.utils.book_new();
@@ -30,7 +30,7 @@ describe('ImportParserService — xlsx hardening (advisory GHSA-4r6h-8v6p-xvw6 /
     expect(() => svc.parse('artists.xlsx', Buffer.alloc(0))).toThrow(BadRequestException);
   });
 
-  it('rejeita extensão não suportada (arquivo separado por vírgula, nunca aceito) com o código UNSUPPORTED_IMPORT_FORMAT', () => {
+  it('rejeita extensão não suportada com o código UNSUPPORTED_IMPORT_FORMAT', () => {
     const content = xlsxBuffer([['a']]);
     try {
       svc.parse('artists.csv', content);
@@ -41,7 +41,7 @@ describe('ImportParserService — xlsx hardening (advisory GHSA-4r6h-8v6p-xvw6 /
     }
   });
 
-  it('rejeita arquivo separado por vírgula renomeado para .xlsx — assinatura ZIP/OLE2 ausente (Parte 81)', () => {
+  it('rejeita arquivo separado por vírgula renomeado para .xlsx', () => {
     const fakeContent = Buffer.from('nome,email\nAna,a@example.com\n', 'utf8');
     try {
       svc.parse('artists.xlsx', fakeContent);
@@ -57,10 +57,15 @@ describe('ImportParserService — xlsx hardening (advisory GHSA-4r6h-8v6p-xvw6 /
     expect(() => svc.parse('artists.xlsx', oversized)).toThrow(/limite de .* bytes/);
   });
 
-  it('rejeita planilha com mais de IMPORT_MAX_SHEETS abas', () => {
-    const names = Array.from({ length: IMPORT_MAX_SHEETS + 1 }, (_, i) => `S${i}`);
-    const content = xlsxBuffer([['a', 'b'], ['1', '2']], names);
-    expect(() => svc.parse('artists.xlsx', content)).toThrow(/limite de .* abas/);
+  it('rejeita workbook com mais de uma aba', () => {
+    const content = xlsxBuffer([['a', 'b'], ['1', '2']], ['Principal', 'Auxiliar']);
+    try {
+      svc.parse('artists.xlsx', content);
+      throw new Error('deveria ter lançado');
+    } catch (err) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).getResponse()).toMatchObject({ error: 'SINGLE_SHEET_REQUIRED' });
+    }
   });
 
   it('rejeita arquivo com mais linhas que IMPORT_MAX_ROWS (não trunca silenciosamente)', () => {
