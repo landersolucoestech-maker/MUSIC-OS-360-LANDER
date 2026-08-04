@@ -15,11 +15,13 @@ import { ReportEntityDefinitionService } from '../definitions/report-entity-defi
 import { tryGetFieldLabelPtBr } from '../i18n/field-labels.pt-br';
 import {
   REPORT_FORM_CONTRACTS,
+  contractComputedFields,
   contractEncryptedFields,
   contractExportableColumns,
   contractImportableColumns,
   contractMetadataFields,
 } from './report-form-contracts';
+import { COMPUTED_FIELD_EXPORT_RESOLVERS, COMPUTED_FIELD_IMPORT_WRITERS } from '../computed-fields/registry';
 
 import { CreateArtistDto } from '../../artists/dto/create-artist.dto';
 import { CreateWorkDto } from '../../works/dto/create-work.dto';
@@ -29,6 +31,7 @@ import { CreateContractTemplateDto } from '../../contract-templates/dto/create-c
 import { CreateEmployeeDto } from '../../hr/dto/create-employee.dto';
 import { CreateArtistGoalDto } from '../../artist-goals/dto/create-artist-goal.dto';
 import { CreateClientDto } from '../../clients/dto/clients.dto';
+import { CreateProjectDto } from '../../projects/dto/projects.dto';
 
 /** DTO do formulário (whitelist real da API) por tabela com contrato. */
 const FORM_DTO_BY_TABLE: Record<string, new () => object> = {
@@ -40,6 +43,7 @@ const FORM_DTO_BY_TABLE: Record<string, new () => object> = {
   employees: CreateEmployeeDto,
   artist_goals: CreateArtistGoalDto,
   clients: CreateClientDto,
+  projects: CreateProjectDto,
 };
 
 function dtoFields(dto: new () => object): string[] {
@@ -89,7 +93,7 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
     expect(offenders).toEqual([]);
   });
 
-  it('toda coluna do contrato tem lastro físico (direta, cifrada ou metadata jsonb)', () => {
+  it('toda coluna do contrato tem lastro físico (direta, cifrada, metadata jsonb ou computed com resolver registrado)', () => {
     const offenders: string[] = [];
     for (const [table, contract] of Object.entries(REPORT_FORM_CONTRACTS)) {
       const real = colsByTable.get(table);
@@ -100,11 +104,21 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
         const ok =
           (f.storage === 'column' && real!.has(f.key)) ||
           (f.storage === 'encrypted' && f.physical !== undefined && real!.has(f.physical)) ||
-          (f.storage === 'metadata' && real!.has('metadata'));
+          (f.storage === 'metadata' && real!.has('metadata')) ||
+          (f.storage === 'computed' && !real!.has(f.key));
         if (!ok) offenders.push(`${table}.${f.key} (${f.storage})`);
         // chave lógica de campo cifrado nunca pode colidir com coluna física
         if (f.storage === 'encrypted' && real!.has(f.key)) {
           offenders.push(`${table}.${f.key} (encrypted key colide com coluna física)`);
+        }
+        // campo computed precisa de resolver de export E writer de import registrados
+        if (f.storage === 'computed') {
+          if (!COMPUTED_FIELD_EXPORT_RESOLVERS[`${table}.${f.key}`]) {
+            offenders.push(`${table}.${f.key} (computed sem resolver de export registrado)`);
+          }
+          if (f.importable !== false && !COMPUTED_FIELD_IMPORT_WRITERS[`${table}.${f.key}`]) {
+            offenders.push(`${table}.${f.key} (computed sem writer de import registrado)`);
+          }
         }
       }
       // metadados: sem duplicidade de keys
@@ -112,6 +126,19 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
       if (new Set(keys).size !== keys.length) offenders.push(`${table} (keys duplicadas)`);
       void encrypted;
       void metaFields;
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('nenhum campo computed usa a mesma key de um campo já declarado como column/metadata/encrypted', () => {
+    const offenders: string[] = [];
+    for (const [table, contract] of Object.entries(REPORT_FORM_CONTRACTS)) {
+      const computedKeys = contractComputedFields(contract);
+      for (const f of contract.fields) {
+        if (f.storage !== 'computed' && computedKeys.has(f.key)) {
+          offenders.push(`${table}.${f.key}`);
+        }
+      }
     }
     expect(offenders).toEqual([]);
   });

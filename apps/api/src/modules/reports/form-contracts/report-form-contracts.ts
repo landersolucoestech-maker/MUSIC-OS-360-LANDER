@@ -23,7 +23,7 @@
  *     canônica (ex.: `title` → `titulo`).
  */
 
-export type ReportFieldStorage = 'column' | 'metadata' | 'encrypted';
+export type ReportFieldStorage = 'column' | 'metadata' | 'encrypted' | 'computed';
 
 export interface ReportFieldSpec {
   /** Chave lógica estável (coluna do arquivo e do formulário). */
@@ -54,6 +54,14 @@ const col = (key: string): ReportFieldSpec => ({ key, storage: 'column' });
 const ro = (key: string): ReportFieldSpec => ({ key, storage: 'column', importable: false });
 const meta = (key: string): ReportFieldSpec => ({ key, storage: 'metadata' });
 const enc = (key: string, physical: string): ReportFieldSpec => ({ key, storage: 'encrypted', physical });
+/**
+ * Campo sem coluna física própria, resolvido por um resolver dedicado fora do
+ * fluxo genérico de SQL direto (ver modules/reports/computed-fields/). Único
+ * uso hoje: `projects.musicas` (normalizada em project_tracks +
+ * project_track_participants — ver ProjectsService.hydrateMusicas/replaceMusicas,
+ * mesmo formato espelhado aqui para round-trip sem tradução).
+ */
+const computed = (key: string): ReportFieldSpec => ({ key, storage: 'computed' });
 
 // ─── Artistas (formulário completo — 68 campos) ──────────────────────────────
 const ARTISTS_CONTRACT: ReportFormContract = {
@@ -299,6 +307,40 @@ const CLIENTS_CONTRACT: ReportFormContract = {
   },
 };
 
+// ─── Projetos ─────────────────────────────────────────────────────────────────
+// Parte 86: fonte canônica é o modal Criar/Editar (ProjetoFormModal.tsx), não a
+// Entity. Campos aceitos pelo CreateProjectDto/UpdateProjectDto sem input
+// correspondente no modal real (artista_id, orcamento, descricao, genero — este
+// último é derivado automaticamente de musicas[0].genero, não é um campo próprio
+// do formulário) ficam de fora do arquivo, documentados em excludedFormFields.
+//
+// Nota sobre `titulo`: no modal seu rótulo é dinâmico ("Nome do EP"/"Nome do
+// Álbum" para álbum/EP; para single não há input próprio, herda o nome da
+// primeira música) — não há um rótulo único e fixo para reproduzir. A célula
+// usa o rótulo global de `titulo` ("Título", field-labels.pt-br.ts), o mesmo
+// já usado por contracts/works/phonograms/etc.: o dicionário de labels é uma
+// camada ÚNICA e centralizada por chave técnica (não por entidade), e criar
+// um mecanismo de override por entidade só para este caso seria uma peça de
+// arquitetura nova não pedida (Bloco 20) para uma única divergência textual.
+const PROJECTS_CONTRACT: ReportFormContract = {
+  tableName: 'projects',
+  identityColumn: 'titulo',
+  fields: [
+    col('tipo'),        // "Tipo de Lançamento"
+    col('titulo'),      // ver nota acima
+    computed('musicas'), // Cada música do projeto — ver computed-fields/projects-musicas.field.ts
+    col('observacoes'),
+    col('status'),
+  ],
+  excludedFormFields: {
+    metadata: 'objeto jsonb interno bruto — sem campos de formulário próprios',
+    artista_id: 'aceito pelo DTO mas sem campo correspondente no modal Criar/Editar (ProjetoFormModal.tsx) — vínculo com artista existe apenas por nome livre dentro de cada música (compositor/intérprete/produtor)',
+    orcamento: 'aceito pelo DTO mas sem campo correspondente no modal Criar/Editar',
+    descricao: 'aceito pelo DTO mas sem campo correspondente no modal Criar/Editar (distinto de observacoes, que tem input próprio)',
+    genero: 'calculado automaticamente a partir de musicas[0].genero (ProjetoFormModal.tsx) — não é um input próprio do formulário, já presente dentro de cada música',
+  },
+};
+
 export const REPORT_FORM_CONTRACTS: Record<string, ReportFormContract> = {
   artists: ARTISTS_CONTRACT,
   employees: EMPLOYEES_CONTRACT,
@@ -308,6 +350,7 @@ export const REPORT_FORM_CONTRACTS: Record<string, ReportFormContract> = {
   works: WORKS_CONTRACT,
   phonograms: PHONOGRAMS_CONTRACT,
   clients: CLIENTS_CONTRACT,
+  projects: PROJECTS_CONTRACT,
 };
 
 export function getReportFormContract(tableName: string): ReportFormContract | null {
@@ -342,4 +385,8 @@ export function contractEncryptedFields(contract: ReportFormContract): Record<st
 
 export function contractMetadataFields(contract: ReportFormContract): Set<string> {
   return new Set(contract.fields.filter((f) => f.storage === 'metadata').map((f) => f.key));
+}
+
+export function contractComputedFields(contract: ReportFormContract): Set<string> {
+  return new Set(contract.fields.filter((f) => f.storage === 'computed').map((f) => f.key));
 }

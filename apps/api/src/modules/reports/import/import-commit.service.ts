@@ -15,10 +15,12 @@ import type { ReportEntityDefinition } from '../definitions/report-entity-defini
 import type { RowValidation } from './import.types';
 import { EncryptionService } from '../../../core/security/encryption.service';
 import {
+  contractComputedFields,
   contractEncryptedFields,
   contractMetadataFields,
   getReportFormContract,
 } from '../form-contracts/report-form-contracts';
+import { COMPUTED_FIELD_IMPORT_WRITERS } from '../computed-fields/registry';
 
 export interface ImportCommitResult {
   entity: string;
@@ -252,15 +254,19 @@ export class ImportCommitService {
     tenantId: string,
   ): Promise<void> {
     // Persistência dirigida pelo contrato central (fonte única): coluna direta,
-    // campo cifrado (re-encriptado do valor plaintext) ou campo em metadata jsonb.
+    // campo cifrado (re-encriptado do valor plaintext), campo em metadata jsonb
+    // ou campo computed (sem coluna própria — escrito após o INSERT principal,
+    // ver COMPUTED_FIELD_IMPORT_WRITERS).
     const contract = getReportFormContract(def.tableName);
     const encryptedFields = contract ? contractEncryptedFields(contract) : {};
     const metadataFields = contract ? contractMetadataFields(contract) : new Set<string>();
+    const computedFields = contract ? contractComputedFields(contract) : new Set<string>();
 
     const cols: string[] = [];
     const values: unknown[] = [];
     const metadata: Record<string, unknown> = {};
     let hasMetadataField = false;
+    const computedValues: Array<[string, unknown]> = [];
 
     for (const col of def.importableColumns) {
       if (!(col in row.data)) continue;
@@ -270,6 +276,11 @@ export class ImportCommitService {
       // Célula vazia = AUSÊNCIA: a coluna é omitida do INSERT para o default do
       // schema valer (ex.: jsonb NOT NULL DEFAULT '[]'). Nunca convertida em null.
       if (contract && rawValue === null) continue;
+
+      if (computedFields.has(col)) {
+        computedValues.push([col, rawValue]);
+        continue;
+      }
 
       const encryptedColumn = encryptedFields[col];
       if (encryptedColumn) {
@@ -302,8 +313,25 @@ export class ImportCommitService {
 
     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
-    const sql = `INSERT INTO ${quote(def.tableName)} (${cols.map(quote).join(', ')}) VALUES (${placeholders})`;
+    const needsReturningId = computedValues.length > 0;
+    const sql =
+      `INSERT INTO ${quote(def.tableName)} (${cols.map(quote).join(', ')}) VALUES (${placeholders})` +
+      (needsReturningId ? ` RETURNING ${quote('id')}` : '');
 
-    await qr.query(sql, values);
+    const result = await qr.query(sql, values);
+
+    if (computedValues.length > 0) {
+      const insertedId = (result as Array<{ id: string }>)[0]?.id;
+      if (!insertedId) {
+        throw new Error(`[reports-import] INSERT sem id retornado para campo(s) computed: ${def.tableName}`);
+      }
+      for (const [col, value] of computedValues) {
+        const writer = COMPUTED_FIELD_IMPORT_WRITERS[`${def.tableName}.${col}`];
+        if (!writer) {
+          throw new Error(`[reports-import] campo computed sem writer registrado: ${def.tableName}.${col}`);
+        }
+        await writer(qr, tenantId, insertedId, value);
+      }
+    }
   }
 }

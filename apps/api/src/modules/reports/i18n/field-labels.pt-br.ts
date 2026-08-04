@@ -306,6 +306,12 @@ export const FIELD_LABELS_PT_BR = {
   metaValor: 'Meta de valor',
   metadata: 'Metadados',
   metrics: 'Métricas',
+  // Campo computed do contrato de Projetos (Parte 86) — ver
+  // computed-fields/projects-musicas.field.ts. Uma célula JSON por projeto,
+  // um item por música, mesmas chaves do modal (nome, soloFeat,
+  // originalRemix, instrumental, duracaoMin, duracaoSeg, genero, idioma,
+  // compositores, interpretes, produtores, letra, audioUrl).
+  musicas: 'Músicas',
   midiaDestino: 'Mídia de destino',
   mimeType: 'Tipo de arquivo',
   moeda: 'Moeda',

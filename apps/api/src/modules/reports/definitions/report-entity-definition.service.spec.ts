@@ -3,6 +3,7 @@ import { ReportEntityDefinitionService } from './report-entity-definition.servic
 import { tryGetFieldLabelPtBr } from '../i18n/field-labels.pt-br';
 import { EntityCategory } from '../entity-metadata.types';
 import {
+  contractComputedFields,
   contractEncryptedFields,
   contractMetadataFields,
   getReportFormContract,
@@ -34,14 +35,17 @@ describe('ReportEntityDefinitionService — contratos', () => {
         ...d.requiredImportColumns,
       ];
       // Coluna do contrato central pode ser: física, cifrada (coluna *_encrypted
-      // existente) ou residente em metadata jsonb (a tabela precisa ter metadata).
+      // existente), residente em metadata jsonb (a tabela precisa ter metadata),
+      // ou computed (sem coluna própria — resolvida via computed-fields/registry.ts).
       const contract = getReportFormContract(d.tableName);
       const encrypted = contract ? contractEncryptedFields(contract) : {};
       const metaFields = contract ? contractMetadataFields(contract) : new Set<string>();
+      const computedFields = contract ? contractComputedFields(contract) : new Set<string>();
       for (const col of all) {
         const backedByContract =
           (encrypted[col] !== undefined && real.has(encrypted[col])) ||
-          (metaFields.has(col) && real.has('metadata'));
+          (metaFields.has(col) && real.has('metadata')) ||
+          computedFields.has(col);
         if (!real.has(col) && !backedByContract) offenders.push(`${d.tableName}.${col}`);
       }
     }

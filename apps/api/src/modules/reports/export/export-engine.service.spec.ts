@@ -97,3 +97,55 @@ describe('ExportEngineService — orquestração entity-driven', () => {
     await expect(engine.export('artists', params({ columns: ['cpf_encrypted'] }), 't', 'u')).rejects.toBeInstanceOf(BadRequestException);
   });
 });
+
+describe('ExportEngineService — campo computed (projects.musicas, Parte 86)', () => {
+  const PROJECTS_DEF: ReportEntityDefinition = {
+    entityName: 'ProjectEntity', tableName: 'projects', category: EntityCategory.REPORTABLE,
+    identityColumn: 'titulo', displayColumn: 'titulo', dateColumn: 'created_at',
+    exportableColumns: ['tipo', 'titulo', 'musicas', 'observacoes', 'status'],
+    importableColumns: ['tipo', 'titulo', 'musicas', 'observacoes', 'status'],
+    filterableColumns: ['status'], sortableColumns: ['titulo', 'created_at'], searchableColumns: ['titulo'],
+    sensitiveColumns: [], requiredImportColumns: ['titulo'], supportsExport: true, supportsImport: true,
+  };
+
+  it('resolve musicas via resolver dedicado, serializa como JSON e remove a coluna interna de correlação', async () => {
+    const mainRows = [
+      { tipo: 'ep', titulo: 'Meu EP', observacoes: 'obs', status: 'em_andamento', __row_id: 'proj-1' },
+    ];
+    const ds = {
+      query: jest.fn()
+        .mockResolvedValueOnce(mainRows) // SELECT principal de "projects"
+        .mockResolvedValueOnce([{        // project_tracks
+          id: 'track-1', project_id: 'proj-1', nome: 'Faixa', solo_feat: 'solo',
+          original_remix: 'original', instrumental: 'nao', duracao_min: '3', duracao_seg: '0',
+          genero: 'pop', idioma: 'portugues', letra: null, audio_url: null,
+        }])
+        .mockResolvedValueOnce([]),      // project_track_participants
+    } as any;
+    const metadata = { scan: () => ({ entities: [{ tableName: 'projects', reportable: true, hasSoftDelete: false, columns: [] }] }) } as any;
+    const definitions = { getDefinition: () => PROJECTS_DEF } as any;
+    const audit = { record: jest.fn() } as any;
+    const tableGuard = { assertTableUsable: jest.fn().mockResolvedValue(undefined) } as any;
+    const encryption = { decryptNullable: jest.fn() } as any;
+    const engine = new ExportEngineService(ds, metadata, definitions, new ExportQueryBuilderService(), new ExportFormatService(), audit, tableGuard, encryption);
+
+    const res = await engine.export('projects', params(), 'tenant-1', 'user-1');
+
+    // SQL principal seleciona __row_id internamente para correlação
+    expect(ds.query.mock.calls[0][0]).toContain('AS "__row_id"');
+
+    const wb = XLSX.read(res.body as Buffer, { type: 'buffer' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
+    expect(rows[0]).not.toContain('__row_id'); // coluna interna nunca vaza pro arquivo
+
+    const musicasColIdx = (rows[0] as string[]).indexOf('Músicas');
+    expect(musicasColIdx).toBeGreaterThanOrEqual(0);
+    const parsed = JSON.parse((rows[1] as string[])[musicasColIdx]);
+    expect(parsed).toEqual([{
+      nome: 'Faixa', soloFeat: 'solo', originalRemix: 'original', instrumental: 'nao',
+      duracaoMin: '3', duracaoSeg: '0', genero: 'pop', idioma: 'portugues', letra: null,
+      audioUrl: null, compositores: [], interpretes: [], produtores: [],
+    }]);
+  });
+});

@@ -19,9 +19,11 @@ import { ExportAuditService } from './export-audit.service';
 import { ReportTableGuardService } from '../report-table-guard.service';
 import { EncryptionService } from '../../../core/security/encryption.service';
 import {
+  contractComputedFields,
   contractEncryptedFields,
   getReportFormContract,
 } from '../form-contracts/report-form-contracts';
+import { COMPUTED_FIELD_EXPORT_RESOLVERS } from '../computed-fields/registry';
 import { EXPORT_FORMATS, type ExportFormat, type ExportQueryParams, type ExportResult } from './export.types';
 
 @Injectable()
@@ -89,6 +91,32 @@ export class ExportEngineService {
           row[key] = typeof v === 'string' && v.length > 0 ? this.encryption.decryptNullable(v) : null;
         }
       }
+    }
+
+    // Campos computed (sem coluna própria, ex.: projects.musicas): resolvidos
+    // após o fetch principal, via resolver dedicado (registry.ts), e serializados
+    // como JSON em uma única célula (sanitizeExcelCellValue rejeita objeto/array
+    // cru — JSON.stringify aqui é obrigatório, não estético). A coluna interna
+    // de correlação (__row_id) nunca aparece no arquivo.
+    const contract = getReportFormContract(entity);
+    const computedFields = contract ? Array.from(contractComputedFields(contract)).filter((f) => query.columns.includes(f)) : [];
+    if (computedFields.length > 0) {
+      if (!query.internalIdColumn) {
+        throw new Error(`[reports-export] campo(s) computed sem internalIdColumn para correlação: ${entity}`);
+      }
+      const rowIds = rows.map((r) => String(r[query.internalIdColumn!]));
+      for (const field of computedFields) {
+        const resolver = COMPUTED_FIELD_EXPORT_RESOLVERS[`${entity}.${field}`];
+        if (!resolver) {
+          throw new Error(`[reports-export] campo computed sem resolver registrado: ${entity}.${field}`);
+        }
+        const valuesById = await resolver(this.ds, tenantId, rowIds);
+        for (const row of rows) {
+          const id = String(row[query.internalIdColumn!]);
+          row[field] = JSON.stringify(valuesById.get(id) ?? []);
+        }
+      }
+      for (const row of rows) delete row[query.internalIdColumn!];
     }
 
     const result = this.serialize(entity, params.format, query.columns, rows);

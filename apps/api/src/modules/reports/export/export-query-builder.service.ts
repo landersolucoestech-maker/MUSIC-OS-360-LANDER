@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
 import { EXPORT_MAX_PAGE_SIZE, type BuiltExportQuery, type ExportQueryParams } from './export.types';
 import {
+  contractComputedFields,
   contractEncryptedFields,
   contractMetadataFields,
   getReportFormContract,
@@ -55,23 +56,35 @@ export class ExportQueryBuilderService {
     const columns = [...requested];
 
     // Resolução física via contrato central (fonte única): coluna direta,
-    // campo em metadata jsonb ou coluna cifrada (exposta pela chave lógica).
+    // campo em metadata jsonb, coluna cifrada (exposta pela chave lógica) ou
+    // campo computed (sem coluna própria — resolvido fora desta query, ver
+    // ExportEngineService + modules/reports/computed-fields/).
     const contract = getReportFormContract(def.tableName);
     const encryptedFields = contract ? contractEncryptedFields(contract) : {};
     const metadataFields = contract ? contractMetadataFields(contract) : new Set<string>();
+    const computedFields = contract ? contractComputedFields(contract) : new Set<string>();
 
-    const selectList = columns
-      .map((column) => {
-        const encryptedPhysicalColumn = encryptedFields[column];
-        if (encryptedPhysicalColumn) {
-          return `${quote(encryptedPhysicalColumn)} AS ${quote(column)}`;
-        }
-        if (metadataFields.has(column)) {
-          return metadataSelectExpression(column);
-        }
-        return quote(column);
-      })
-      .join(', ');
+    const sqlColumns = columns.filter((c) => !computedFields.has(c));
+
+    const selectParts = sqlColumns.map((column) => {
+      const encryptedPhysicalColumn = encryptedFields[column];
+      if (encryptedPhysicalColumn) {
+        return `${quote(encryptedPhysicalColumn)} AS ${quote(column)}`;
+      }
+      if (metadataFields.has(column)) {
+        return metadataSelectExpression(column);
+      }
+      return quote(column);
+    });
+
+    // Campo computed presente ⇒ precisa da PK física para correlacionar linha
+    // → dado computed pós-fetch, mesmo que "id" não seja uma coluna exportável.
+    const internalIdColumn = computedFields.size > 0 ? '__row_id' : null;
+    if (internalIdColumn) {
+      selectParts.push(`${quote('id')} AS ${quote(internalIdColumn)}`);
+    }
+
+    const selectList = selectParts.join(', ');
 
     const where: string[] = [`${quote('tenant_id')} = $1`];
     const parameters: unknown[] = [tenantId];
@@ -116,6 +129,6 @@ export class ExportQueryBuilderService {
       `WHERE ${where.join(' AND ')}${orderBy} ` +
       `LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
 
-    return { sql, parameters, columns };
+    return { sql, parameters, columns, internalIdColumn };
   }
 }

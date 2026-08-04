@@ -105,3 +105,52 @@ describe('ImportCommitService — commit transacional (FASE 2.3B)', () => {
     await expect(svc.commit('artists', file, undefined, 'u')).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
+
+describe('ImportCommitService — campo computed (projects.musicas, Parte 86)', () => {
+  const PROJECTS_DEF: ReportEntityDefinition = {
+    entityName: 'ProjectEntity', tableName: 'projects', category: EntityCategory.REPORTABLE,
+    identityColumn: 'titulo', displayColumn: 'titulo', dateColumn: 'created_at',
+    exportableColumns: ['tipo', 'titulo', 'musicas'], importableColumns: ['tipo', 'titulo', 'musicas'],
+    filterableColumns: [], sortableColumns: ['titulo'], searchableColumns: ['titulo'],
+    sensitiveColumns: [], requiredImportColumns: ['titulo'], supportsExport: true, supportsImport: true,
+  };
+
+  function projectsValidation(musicasJson: string): ImportValidationResult {
+    return {
+      entity: 'projects', supportsImport: true, mapping: {}, unknownColumns: [], ignoredColumns: [],
+      totalRows: 1, validRows: 1, invalidRows: 0,
+      rows: [{ index: 0, data: { tipo: 'ep', titulo: 'Meu EP', musicas: musicasJson }, valid: true, errors: [], warnings: [] }],
+      errors: [], warnings: [],
+    };
+  }
+
+  it('INSERT de projects usa RETURNING id, e o writer registrado insere as musicas parseadas', async () => {
+    const musicas = JSON.stringify([{ nome: 'Faixa 1', compositores: ['Fulano'] }]);
+    const queryImpl = (sql: string) => {
+      if (sql.startsWith('INSERT INTO "projects"')) return [{ id: 'proj-gerado' }];
+      return [];
+    };
+    const { svc, qr } = makeSvc({ def: PROJECTS_DEF, validation: projectsValidation(musicas), queryImpl });
+
+    const res = await svc.commit('projects', { filename: 'projects.xlsx', content: Buffer.from('') }, 'tenant-1', 'user-1');
+
+    expect(res.importedRows).toBe(1);
+    const projectInsert = qr.query.mock.calls.find((c: any[]) => String(c[0]).startsWith('INSERT INTO "projects"'));
+    expect(projectInsert![0]).toContain('RETURNING "id"');
+    // "musicas" nunca vai como coluna direta do INSERT de projects (é computed)
+    expect(projectInsert![0]).not.toContain('"musicas"');
+
+    const trackInsert = qr.query.mock.calls.find((c: any[]) => String(c[0]).includes('"project_tracks"'));
+    expect(trackInsert).toBeDefined();
+    expect(trackInsert![1]).toEqual(expect.arrayContaining(['tenant-1', 'proj-gerado', 'Faixa 1']));
+  });
+
+  it('INSERT sem id retornado para campo computed → lança erro explícito (nunca falha silenciosamente)', async () => {
+    const musicas = JSON.stringify([{ nome: 'Faixa 1' }]);
+    const queryImpl = (sql: string) => (sql.startsWith('INSERT INTO "projects"') ? [] : []);
+    const { svc } = makeSvc({ def: PROJECTS_DEF, validation: projectsValidation(musicas), queryImpl });
+    await expect(
+      svc.commit('projects', { filename: 'projects.xlsx', content: Buffer.from('') }, 'tenant-1', 'user-1'),
+    ).rejects.toThrow(/sem id retornado/);
+  });
+});
