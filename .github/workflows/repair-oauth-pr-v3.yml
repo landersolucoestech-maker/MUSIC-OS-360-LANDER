@@ -1,0 +1,486 @@
+name: Repair OAuth PR v3
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/repair-oauth-pr-v3.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-oauth-pr
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/oauth-token-boundary
+          fetch-depth: 0
+
+      - name: Apply idempotent reviewed fixes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          import textwrap
+
+          def replace_if_present(text: str, old: str, new: str) -> str:
+              return text.replace(old, new) if old in text else text
+
+          invoices = Path('apps/api/src/modules/invoices/invoices.service.ts')
+          source = invoices.read_text()
+          source = replace_if_present(
+              source,
+              "dataVencimento: after['vencimento'] ?? after['data_vencimento'] ?? nowIso,",
+              "dataVencimento: String(after['vencimento'] ?? after['data_vencimento'] ?? nowIso),",
+          )
+          invoices.write_text(source)
+
+          licensing = Path('apps/api/src/modules/licensing/licensing.service.ts')
+          source = licensing.read_text()
+          source = source.replace(
+              '`percentage` é preservado em metadata até existir coluna física canônica.',
+              '`percentage` corresponde à coluna física canônica percentage.',
+          )
+          normalize = textwrap.dedent('''\
+            private normalizePayload(
+              dto: CreateLicenseDto | UpdateLicenseDto,
+            ): Record<string, unknown> {
+              const {
+                amount,
+                currency,
+                percentage,
+                valor,
+                moeda,
+                ...rest
+              } = dto;
+
+              return {
+                ...rest,
+                ...(amount !== undefined || valor !== undefined ? { valor: amount ?? valor ?? null } : {}),
+                ...(currency !== undefined || moeda !== undefined ? { moeda: currency ?? moeda ?? null } : {}),
+                ...(percentage !== undefined ? { percentage } : {}),
+              };
+            }
+
+          ''')
+          source, count = re.subn(
+              r"  private normalizePayload\(.*?\n  private mapLicense",
+              normalize + '  private mapLicense',
+              source,
+              count=1,
+              flags=re.DOTALL,
+          )
+          if count != 1:
+              raise SystemExit('normalizePayload method boundary not found')
+
+          mapper = textwrap.dedent('''\
+            private mapLicense(entity: LicenseEntity): Record<string, unknown> {
+              const raw = entity as unknown as Record<string, unknown>;
+              return {
+                ...raw,
+                amount: raw['valor'] ?? null,
+                currency: raw['moeda'] ?? 'BRL',
+                percentage: raw['percentage'] == null ? null : Number(raw['percentage']),
+              };
+            }
+
+          ''')
+          source, count = re.subn(
+              r"  private mapLicense\(.*?\n  async list",
+              mapper + '  async list',
+              source,
+              count=1,
+              flags=re.DOTALL,
+          )
+          if count != 1:
+              raise SystemExit('mapLicense method boundary not found')
+          source = re.sub(
+              r"this\.normalizePayload\(dto,\s*current\.metadata\s*\?\?\s*\{\}\)",
+              'this.normalizePayload(dto)',
+              source,
+          )
+          licensing.write_text(source)
+
+          entities = Path('apps/api/src/database/entities.ts')
+          source = entities.read_text()
+          match = re.search(r"export class LicenseEntity \{.*?\n\}", source, re.DOTALL)
+          if not match:
+              raise SystemExit('LicenseEntity not found')
+          block = match.group(0)
+          if ' percentage:' not in block:
+              marker = "  @Column({ type: 'varchar', length: 50, nullable: true }) remuneration_type: string | null;\n"
+              if marker not in block:
+                  raise SystemExit('LicenseEntity remuneration_type marker missing')
+              block = block.replace(
+                  marker,
+                  marker + "  @Column({ type: 'decimal', precision: 7, scale: 4, nullable: true }) percentage: string | null;\n",
+                  1,
+              )
+              source = source[:match.start()] + block + source[match.end():]
+          entities.write_text(source)
+
+          migration = Path('apps/api/src/database/migrations/20260804000001_AddLicensePercentage.ts')
+          migration.write_text(textwrap.dedent('''\
+            import { MigrationInterface, QueryRunner } from 'typeorm';
+
+            export class AddLicensePercentage20260804000001 implements MigrationInterface {
+              name = 'AddLicensePercentage20260804000001';
+
+              public async up(queryRunner: QueryRunner): Promise<void> {
+                await queryRunner.query(`
+                  ALTER TABLE "licenses"
+                  ADD COLUMN IF NOT EXISTS "percentage" numeric(7,4)
+                `);
+                await queryRunner.query(`
+                  DO $$
+                  BEGIN
+                    IF NOT EXISTS (
+                      SELECT 1 FROM pg_constraint
+                      WHERE conname = 'CHK_licenses_percentage_range'
+                        AND conrelid = 'licenses'::regclass
+                    ) THEN
+                      ALTER TABLE "licenses"
+                      ADD CONSTRAINT "CHK_licenses_percentage_range"
+                      CHECK ("percentage" IS NULL OR ("percentage" >= 0 AND "percentage" <= 100));
+                    END IF;
+                  END $$
+                `);
+              }
+
+              public async down(queryRunner: QueryRunner): Promise<void> {
+                await queryRunner.query(`
+                  ALTER TABLE "licenses"
+                  DROP CONSTRAINT IF EXISTS "CHK_licenses_percentage_range"
+                `);
+                await queryRunner.query(`
+                  ALTER TABLE "licenses"
+                  DROP COLUMN IF EXISTS "percentage"
+                `);
+              }
+            }
+          '''))
+
+          migration_index = Path('apps/api/src/database/migrations/index.ts')
+          source = migration_index.read_text()
+          import_line = "import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicensePercentage';\n"
+          if import_line not in source:
+              marker = "export const ALL_MIGRATIONS = ["
+              position = source.index(marker)
+              source = source[:position] + import_line + source[position:]
+          if '  AddLicensePercentage20260804000001,\n' not in source:
+              source = source.replace(
+                  '] as const;',
+                  '  AddLicensePercentage20260804000001,\n] as const;',
+                  1,
+              )
+          migration_index.write_text(source)
+
+          token_service = Path('apps/api/src/modules/integrations/oauth-exchange-token.service.ts')
+          token_service.write_text(textwrap.dedent('''\
+            import {
+              BadRequestException,
+              Injectable,
+              InternalServerErrorException,
+            } from '@nestjs/common';
+            import { ConfigService } from '@nestjs/config';
+            import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
+
+            export interface OAuthExchangeContext {
+              platform: string;
+              tenantId: string;
+              userId: string;
+              expiresAt: number;
+              tokenId: string;
+            }
+
+            type SignedPayload = OAuthExchangeContext & { version: 1 };
+
+            @Injectable()
+            export class OAuthExchangeTokenService {
+              private static readonly TTL_MS = 10 * 60 * 1000;
+
+              constructor(private readonly config: ConfigService) {}
+
+              issue(input: Omit<OAuthExchangeContext, 'expiresAt' | 'tokenId'>): string {
+                const payload: SignedPayload = {
+                  version: 1,
+                  ...input,
+                  expiresAt: Date.now() + OAuthExchangeTokenService.TTL_MS,
+                  tokenId: randomUUID(),
+                };
+                const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+                return `${encoded}.${this.sign(encoded)}`;
+              }
+
+              verify(token: string): OAuthExchangeContext {
+                const [encoded, providedSignature, extraPart] = token.split('.');
+                if (!encoded || !providedSignature || extraPart !== undefined) {
+                  throw this.invalidToken();
+                }
+
+                const expected = Buffer.from(this.sign(encoded), 'base64url');
+                const provided = Buffer.from(providedSignature, 'base64url');
+                if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
+                  throw this.invalidToken();
+                }
+
+                let payload: unknown;
+                try {
+                  payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+                } catch {
+                  throw this.invalidToken();
+                }
+                if (!this.isSignedPayload(payload) || payload.expiresAt <= Date.now()) {
+                  throw this.invalidToken();
+                }
+
+                const { platform, tenantId, userId, expiresAt, tokenId } = payload;
+                return { platform, tenantId, userId, expiresAt, tokenId };
+              }
+
+              private sign(encoded: string): string {
+                return createHmac('sha256', this.getSecret()).update(encoded).digest('base64url');
+              }
+
+              private getSecret(): string {
+                const secret = this.config.get<string>('OAUTH_EXCHANGE_SECRET') ??
+                  this.config.get<string>('JWT_SECRET');
+                if (!secret || secret.length < 32) {
+                  throw new InternalServerErrorException(
+                    'OAUTH_EXCHANGE_SECRET ou JWT_SECRET forte não configurado',
+                  );
+                }
+                return secret;
+              }
+
+              private invalidToken(): BadRequestException {
+                return new BadRequestException(
+                  'exchange_token inválido ou expirado. Inicie a autorização novamente.',
+                );
+              }
+
+              private isSignedPayload(value: unknown): value is SignedPayload {
+                if (!value || typeof value !== 'object') return false;
+                const payload = value as Record<string, unknown>;
+                return payload['version'] === 1 &&
+                  typeof payload['platform'] === 'string' && payload['platform'].length > 0 &&
+                  typeof payload['tenantId'] === 'string' && payload['tenantId'].length > 0 &&
+                  typeof payload['userId'] === 'string' && payload['userId'].length > 0 &&
+                  typeof payload['expiresAt'] === 'number' && Number.isFinite(payload['expiresAt']) &&
+                  typeof payload['tokenId'] === 'string' && payload['tokenId'].length > 0;
+              }
+            }
+          '''))
+
+          token_spec = Path('apps/api/src/modules/integrations/oauth-exchange-token.service.spec.ts')
+          token_spec.write_text(textwrap.dedent('''\
+            import { BadRequestException } from '@nestjs/common';
+            import { OAuthExchangeTokenService } from './oauth-exchange-token.service';
+
+            describe('OAuthExchangeTokenService', () => {
+              const service = new OAuthExchangeTokenService({
+                get: jest.fn((key: string) => key === 'JWT_SECRET'
+                  ? '0123456789abcdef0123456789abcdef'
+                  : undefined),
+              } as never);
+
+              it('issues and verifies a portable short-lived context token', () => {
+                const token = service.issue({
+                  platform: 'tiktok_business',
+                  tenantId: 'tenant-1',
+                  userId: 'user-1',
+                });
+                expect(service.verify(token)).toMatchObject({
+                  platform: 'tiktok_business',
+                  tenantId: 'tenant-1',
+                  userId: 'user-1',
+                });
+              });
+
+              it('rejects a tampered token', () => {
+                const token = service.issue({
+                  platform: 'google_ads',
+                  tenantId: 'tenant-1',
+                  userId: 'user-1',
+                });
+                const [payload, signature] = token.split('.');
+                expect(() => service.verify(`${payload}x.${signature}`)).toThrow(BadRequestException);
+              });
+            });
+          '''))
+
+          module = Path('apps/api/src/modules/integrations/integrations.module.ts')
+          source = module.read_text()
+          token_import = "import { OAuthExchangeTokenService } from './oauth-exchange-token.service';\n"
+          if token_import not in source:
+              source = source.replace(
+                  "import { IntegrationBaseService } from './integration-base.service';\n",
+                  "import { IntegrationBaseService } from './integration-base.service';\n" + token_import,
+                  1,
+              )
+          if '  OAuthExchangeTokenService,\n' not in source:
+              source = source.replace(
+                  '  IntegrationBaseService,\n',
+                  '  IntegrationBaseService,\n  OAuthExchangeTokenService,\n',
+                  1,
+              )
+          module.write_text(source)
+
+          dto = Path('apps/api/src/modules/integrations/dto/integrations.dto.ts')
+          source = dto.read_text()
+          if 'MaxLength' not in source.split('\n', 1)[0]:
+              source = source.replace("Matches } from 'class-validator';", "Matches, MaxLength } from 'class-validator';", 1)
+          source = source.replace(
+              "description: 'Token de troca de uso único emitido por POST /oauth/init (substitui redirect_uri)'",
+              "description: 'Contexto OAuth assinado, de curta duração, emitido por POST /oauth/init'",
+          )
+          source = source.replace(
+              '  @IsString() @IsNotEmpty()\n  exchange_token!: string;',
+              '  @IsString() @IsNotEmpty() @MaxLength(2048)\n  exchange_token!: string;',
+              1,
+          )
+          dto.write_text(source)
+
+          controller = Path('apps/api/src/modules/integrations/integrations.controller.ts')
+          source = controller.read_text()
+          source = source.replace("import { randomUUID }    from 'crypto';\n", '')
+          source = source.replace("import { CacheService }  from '../../core/cache/cache.service';\n", '')
+          token_import = "import { OAuthExchangeTokenService } from './oauth-exchange-token.service';\n"
+          if token_import not in source:
+              source = source.replace(
+                  "import { IntegrationBaseService } from './integration-base.service';\n",
+                  "import { IntegrationBaseService } from './integration-base.service';\n" + token_import,
+                  1,
+              )
+          source = source.replace(
+              '    private readonly cache:       CacheService,\n',
+              '    private readonly oauthExchangeTokens: OAuthExchangeTokenService,\n',
+          )
+
+          init_start = source.index('  // ─── OAuth init')
+          exchange_marker = '  // ─── OAuth exchange'
+          init_end = source.index(exchange_marker, init_start)
+          init_section = textwrap.dedent('''\
+            // ─── OAuth init (authenticated) ────────────────────────────────────────────
+
+            /**
+             * Issues a signed, short-lived context token for the authenticated tenant,
+             * user and platform. Any API instance can validate it; no memory affinity is required.
+             */
+            @Post('oauth/init')
+            @RequireRole('editor')
+            @HttpCode(HttpStatus.OK)
+            @ApiOperation({ summary: 'Emite contexto OAuth assinado para iniciar integração' })
+            oauthInit(@Body() dto: OAuthInitDto, @Request() req: any): { exchange_token: string } {
+              const tenantId = req.tenant?.id ?? req.tenantId;
+              const userId = req.auth?.userId ?? req.userId;
+              if (!tenantId || !userId) {
+                throw new BadRequestException('Contexto autenticado ausente para iniciar OAuth.');
+              }
+              return {
+                exchange_token: this.oauthExchangeTokens.issue({
+                  platform: dto.platform,
+                  tenantId,
+                  userId,
+                }),
+              };
+            }
+
+          ''')
+          source = source[:init_start] + init_section + source[init_end:]
+
+          source = re.sub(
+              r"\n  const cacheKey = `oauth_exchange:\$\{exchange_token\}`;.*?\n  if \(!entry\.tenantId \|\| !entry\.userId\) \{.*?\n  \}\n",
+              "\n  const entry = this.oauthExchangeTokens.verify(exchange_token);\n"
+              "  if (entry.platform !== platform) {\n"
+              "    throw new BadRequestException('exchange_token não corresponde à plataforma solicitada.');\n"
+              "  }\n"
+              "  const { tenantId, userId } = entry;\n",
+              source,
+              count=1,
+              flags=re.DOTALL,
+          )
+          source = source.replace('      tenantId: entry.tenantId!,\n      userId: entry.userId!,\n', '      tenantId,\n      userId,\n')
+          source = source.replace(
+              '   *   2. Is single-use — consumed immediately on first valid request.\n   *   3. Expires after 10 minutes.\n',
+              '   *   2. Is signed and portable across API instances.\n   *   3. Expires after 10 minutes; the provider authorization code remains single-use.\n',
+          )
+
+          block_start = source.index("  @Post('oauth/exchange')\n")
+          block_end = source.index('  // ─── Status geral', block_start)
+          block = source[block_start:block_end]
+          lines = block.splitlines(keepends=True)
+          if len(lines) > 1 and lines[1].startswith('@Public'):
+              block = lines[0] + ''.join(('  ' + line if line.strip() else line) for line in lines[1:])
+              source = source[:block_start] + block + source[block_end:]
+          controller.write_text(source)
+
+          controller_spec = Path('apps/api/src/modules/integrations/integrations.oauth-security.spec.ts')
+          source = controller_spec.read_text()
+          source = re.sub(
+              r"    const cache = \{.*?\n    \};\n    const integrationBase",
+              textwrap.dedent('''\
+                const oauthExchangeTokens = {
+                  verify: jest.fn().mockReturnValue({
+                    platform: 'tiktok_business',
+                    tenantId: 'tenant-1',
+                    userId: 'user-1',
+                    expiresAt: Date.now() + 60_000,
+                    tokenId: 'token-1',
+                  }),
+                  issue: jest.fn(),
+                };
+                const integrationBase'''),
+              source,
+              count=1,
+              flags=re.DOTALL,
+          )
+          source = source.replace('      cache as never,\n', '      oauthExchangeTokens as never,\n')
+          source = source.replace('    return { controller, cache, integrationBase };', '    return { controller, oauthExchangeTokens, integrationBase };')
+          source = source.replace('const { controller, integrationBase, cache } = buildController();', 'const { controller, integrationBase, oauthExchangeTokens } = buildController();')
+          source = source.replace("expect(cache.delete).toHaveBeenCalledWith('oauth_exchange:single-use-token');", "expect(oauthExchangeTokens.verify).toHaveBeenCalledWith('single-use-token');")
+          controller_spec.write_text(source)
+
+          staging = Path('.github/workflows/staging.yml')
+          source = staging.read_text()
+          checkout = '      - uses: actions/checkout@v4\n'
+          checkout_dev = '      - uses: actions/checkout@v4\n        with:\n          ref: dev\n'
+          source = source.replace(checkout, checkout_dev)
+          staging.write_text(source)
+
+          Path('.github/workflows/fix-dev-typecheck-blockers.yml').unlink(missing_ok=True)
+          PY
+
+      - name: Commit feature fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix(api): harden OAuth, license schema and staging ref"
+          git push origin HEAD:fix/oauth-token-boundary
+
+      - name: Clean temporary workflows from dev
+        shell: bash
+        run: |
+          git fetch origin dev
+          git checkout -B dev origin/dev
+          rm -f .github/workflows/continue-oauth-persistence.yml
+          rm -f .github/workflows/prepare-oauth-hardening-pr.yml
+          rm -f .github/workflows/repair-oauth-pr.yml
+          rm -f .github/workflows/repair-oauth-pr-v3.yml
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(ci): remove temporary OAuth repair workflows"
+            git push origin HEAD:dev
+          fi
