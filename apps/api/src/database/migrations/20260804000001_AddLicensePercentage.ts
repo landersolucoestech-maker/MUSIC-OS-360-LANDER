@@ -9,6 +9,20 @@ export class AddLicensePercentage20260804000001 implements MigrationInterface {
       ALTER TABLE "licenses"
       ADD COLUMN IF NOT EXISTS "percentage" numeric(7,4)
     `);
+
+    // Preserve values written by the legacy implementation in metadata.
+    // Invalid, non-numeric or out-of-range values remain untouched in metadata
+    // instead of aborting the migration.
+    await queryRunner.query(`
+      UPDATE "licenses"
+      SET "percentage" = TRIM("metadata"->>'percentage')::numeric
+      WHERE "percentage" IS NULL
+        AND "metadata" IS NOT NULL
+        AND "metadata" ? 'percentage'
+        AND TRIM("metadata"->>'percentage') ~ '^[0-9]+([.][0-9]+)?$'
+        AND TRIM("metadata"->>'percentage')::numeric BETWEEN 0 AND 100
+    `);
+
     await queryRunner.query(`
       DO $$
       BEGIN
