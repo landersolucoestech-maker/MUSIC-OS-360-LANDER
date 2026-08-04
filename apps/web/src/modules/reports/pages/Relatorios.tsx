@@ -80,6 +80,7 @@ export default function Relatorios() {
             <div className="divide-y divide-border/50">
               {reportable.map((e) => {
                 const def = defByTable.get(e.tableName);
+                const unavailable = !def;
                 return (
                   <div key={e.tableName} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20" data-testid={`entity-row-${e.tableName}`}>
                     <div className="p-1.5 rounded-md bg-muted shrink-0">
@@ -87,6 +88,11 @@ export default function Relatorios() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-foreground">{e.label ?? e.tableName}</p>
+                      {unavailable && (
+                        <p className="text-[11px] text-muted-foreground" data-testid={`unavailable-${e.tableName}`}>
+                          Temporariamente indisponível
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Button

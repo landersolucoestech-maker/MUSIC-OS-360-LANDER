@@ -30,6 +30,15 @@ const entities = [
     columns: [],
     risks: ["sensitive"],
   },
+  {
+    entityName: "ContentDetectionEntity",
+    tableName: "monitoring_pending",
+    label: "Monitoramento (Pendente)",
+    category: "REPORTABLE",
+    reportable: true,
+    columns: [{ name: "plataforma", label: "Plataforma" }],
+    risks: [],
+  },
 ];
 
 const definitions = [
@@ -107,5 +116,14 @@ describe("Relatorios - contrato dirigido pela API", () => {
     render(<Relatorios />);
 
     expect(screen.getByTestId("btn-import-contracts")).toBeDisabled();
+  });
+
+  it("mostra 'Temporariamente indisponivel' e desabilita import/export quando a entidade reportavel nao tem contrato ainda", () => {
+    render(<Relatorios />);
+
+    expect(screen.getByTestId("entity-row-monitoring_pending")).toBeTruthy();
+    expect(screen.getByTestId("unavailable-monitoring_pending")).toBeTruthy();
+    expect(screen.getByTestId("btn-import-monitoring_pending")).toBeDisabled();
+    expect(screen.getByTestId("btn-export-monitoring_pending")).toBeDisabled();
   });
 });
