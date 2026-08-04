@@ -2,7 +2,6 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const REPORTS_ROOT = join(__dirname);
-const SELF = 'single-sheet.guard.spec.ts';
 const FORBIDDEN = [
   'childSheets',
   'toXlsxMultiSheet',
@@ -16,8 +15,13 @@ function sourceFiles(directory: string): string[] {
   for (const entry of readdirSync(directory)) {
     const absolute = join(directory, entry);
     const stats = statSync(absolute);
-    if (stats.isDirectory()) files.push(...sourceFiles(absolute));
-    else if (/\.(ts|tsx)$/.test(entry) && entry !== SELF) files.push(absolute);
+    if (stats.isDirectory()) {
+      files.push(...sourceFiles(absolute));
+      continue;
+    }
+    if (!/\.(ts|tsx)$/.test(entry)) continue;
+    if (/\.(spec|test)\.(ts|tsx)$/.test(entry)) continue;
+    files.push(absolute);
   }
   return files;
 }
