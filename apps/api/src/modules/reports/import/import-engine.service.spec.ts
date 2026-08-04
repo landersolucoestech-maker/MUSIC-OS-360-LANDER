@@ -119,16 +119,24 @@ describe('ImportEngineService — projetos em uma única aba', () => {
     new ExportFormatService(),
   );
 
-  it('agrupa linhas consecutivas do mesmo projeto e mantém músicas como repeatingGroup', async () => {
+  it('mantém uma linha de preview por música; o commit agrupa linhas consecutivas pelo projeto', async () => {
     const file = workbook('Projetos', [
       ['Tipo de Lançamento', 'Nome do EP/Álbum', 'Status', 'Nome da Música', 'Compositores'],
       ['ep', 'Meu EP', 'planejamento', 'Faixa 1', 'Fulano | Ciclano'],
       ['ep', 'Meu EP', 'planejamento', 'Faixa 2', 'Beltrano'],
     ]);
     const result = await makeProjectsEngine().validateFile('projects', file, 't');
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].data.nome_ep_album).toBe('Meu EP');
-    expect(result.rows[0].repeatingGroups?.musicas).toHaveLength(2);
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[0].data).toMatchObject({
+      nome_ep_album: 'Meu EP',
+      nome_musica: 'Faixa 1',
+      compositores: 'Fulano | Ciclano',
+    });
+    expect(result.rows[1].data).toMatchObject({
+      nome_ep_album: 'Meu EP',
+      nome_musica: 'Faixa 2',
+      compositores: 'Beltrano',
+    });
   });
 
   it('template de projetos contém uma única aba e todas as colunas', async () => {
