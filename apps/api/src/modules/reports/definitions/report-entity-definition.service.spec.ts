@@ -5,7 +5,6 @@ import { EntityCategory } from '../entity-metadata.types';
 import {
   contractEncryptedFields,
   contractMetadataFields,
-  contractRefFields,
   getReportFormContract,
 } from '../form-contracts/report-form-contracts';
 
@@ -24,7 +23,7 @@ describe('ReportEntityDefinitionService — contratos', () => {
     }
   });
 
-  it('toda coluna declarada no contrato existe na metadata TypeORM', () => {
+  it('toda coluna declarada no contrato possui lastro físico ou resolver repetível', () => {
     const offenders: string[] = [];
     for (const d of defs) {
       const real = colsByTable.get(d.tableName)!;
@@ -34,18 +33,20 @@ describe('ReportEntityDefinitionService — contratos', () => {
         ...d.sortableColumns, ...d.searchableColumns, ...d.sensitiveColumns,
         ...d.requiredImportColumns,
       ];
-      // Coluna do contrato central pode ser: física, cifrada (coluna *_encrypted
-      // existente), residente em metadata jsonb (a tabela precisa ter metadata),
-      // ou 'ref' (aponta para uma coluna física real, ex.: id — Parte 87).
       const contract = getReportFormContract(d.tableName);
       const encrypted = contract ? contractEncryptedFields(contract) : {};
       const metaFields = contract ? contractMetadataFields(contract) : {};
-      const refFields = contract ? contractRefFields(contract) : {};
+      const repeatingFields = new Set(contract?.repeatingGroup?.fields.map((field) => field.key) ?? []);
+      const fieldsByKey = new Map(contract?.fields.map((field) => [field.key, field]) ?? []);
+
       for (const col of all) {
+        const field = fieldsByKey.get(col);
+        const physical = field?.physical ?? col;
         const backedByContract =
+          repeatingFields.has(col) ||
+          (field?.storage === 'column' && real.has(physical)) ||
           (encrypted[col] !== undefined && real.has(encrypted[col])) ||
-          (metaFields[col] !== undefined && real.has(metaFields[col])) ||
-          (refFields[col] !== undefined && real.has(refFields[col]));
+          (metaFields[col] !== undefined && real.has(metaFields[col]));
         if (!real.has(col) && !backedByContract) offenders.push(`${d.tableName}.${col}`);
       }
     }
@@ -77,17 +78,20 @@ describe('ReportEntityDefinitionService — contratos', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('identityColumn, displayColumn e dateColumn existem e têm label', () => {
+  it('identityColumn, displayColumn e dateColumn possuem lastro e label', () => {
     for (const d of defs) {
       const real = colsByTable.get(d.tableName)!;
+      const contract = getReportFormContract(d.tableName);
+      const fieldsByKey = new Map(contract?.fields.map((field) => [field.key, field]) ?? []);
       for (const col of [d.identityColumn, d.displayColumn, d.dateColumn]) {
-        expect(real.has(col)).toBe(true);
+        const physical = fieldsByKey.get(col)?.physical ?? col;
+        expect(real.has(physical)).toBe(true);
         expect(tryGetFieldLabelPtBr(col)).not.toBeNull();
       }
     }
   });
 
-  it('importação deriva SEMPRE do mesmo schema da exportação (nenhuma entidade foge da regra)', () => {
+  it('importação deriva SEMPRE do mesmo schema da exportação', () => {
     const offenders: string[] = [];
     for (const d of defs) {
       for (const col of d.importableColumns) {
@@ -119,13 +123,7 @@ describe('ReportEntityDefinitionService — contratos', () => {
     expect(artists.requiredImportColumns.length).toBeGreaterThan(0);
   });
 
-  // Parte 88: o antigo fallback heurístico (que inferia colunas exportáveis a
-  // partir de tipo/nome de coluna) foi removido por completo — ver Bloco 2.
-  // Uma entidade REPORTABLE sem ReportFormContract explícito não recebe mais
-  // uma definição "filtrada por heurística": ela simplesmente NÃO aparece em
-  // getDefinitions() nenhuma. Esta é a garantia estritamente mais forte que
-  // substitui os antigos testes de exclusão-por-heurística.
-  describe('entidade REPORTABLE sem contrato explícito nunca aparece (nenhum fallback heurístico)', () => {
+  describe('entidade REPORTABLE sem contrato explícito nunca aparece', () => {
     function defsFor(columns: Array<Partial<import('../entity-metadata.types').ColumnMeta> & { name: string }>) {
       const fakeMetadata = {
         scan: () => ({
@@ -143,15 +141,15 @@ describe('ReportEntityDefinitionService — contratos', () => {
       return new ReportEntityDefinitionService(fakeMetadata).getDefinitions();
     }
 
-    it('fake_table (reportable=true, sem contrato registrado) produz ZERO definições', () => {
-      const defs = defsFor([
+    it('fake_table sem contrato registrado produz ZERO definições', () => {
+      const result = defsFor([
         { name: 'nome', type: 'varchar' },
         { name: 'tags', type: 'simple-array' },
         { name: 'conteudo_html', type: 'text' },
         { name: 'preferencias', type: 'json' },
         { name: 'observacoes', type: 'text' },
       ]);
-      expect(defs).toEqual([]);
+      expect(result).toEqual([]);
     });
   });
 });
