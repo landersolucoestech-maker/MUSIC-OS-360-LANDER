@@ -15,7 +15,7 @@ import { ImportMapperService } from './import-mapper.service';
 import { ImportValidationService } from './import-validation.service';
 import { ReportTableGuardService } from '../report-table-guard.service';
 import { ExportFormatService, sanitizeExcelCellValue } from '../export/export-format.service';
-import { getReportFormContract, type ReportChildSheetSpec } from '../form-contracts/report-form-contracts';
+import { getReportFormContract } from '../form-contracts/report-form-contracts';
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
 import type { FieldTypeMeta, ImportValidationResult } from './import.types';
 
@@ -27,12 +27,6 @@ export interface ImportTemplateResult {
 
 export const IMPORT_TEMPLATE_VERSION = '2.0-single-sheet';
 const MULTI_VALUE_SEPARATOR = ' | ';
-
-type RepeatingGroup = { key: string; fields: Array<{ key: string; multi?: boolean }> };
-type CompatibleContract = NonNullable<ReturnType<typeof getReportFormContract>> & {
-  repeatingGroup?: RepeatingGroup;
-  childSheets?: ReportChildSheetSpec[];
-};
 
 function syntheticExample(meta: FieldTypeMeta | undefined): string {
   if (!meta) return 'exemplo';
@@ -132,7 +126,7 @@ export class ImportEngineService {
     return {
       filename: `${entity}_template.xlsx`,
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      body: this.buildTemplateWorkbook(entity, def, typeMap, getReportFormContract(entity) as CompatibleContract | null),
+      body: this.buildTemplateWorkbook(entity, def, typeMap),
     };
   }
 
@@ -140,11 +134,11 @@ export class ImportEngineService {
     entity: string,
     def: ReportEntityDefinition,
     typeMap: Record<string, FieldTypeMeta>,
-    contract: CompatibleContract | null,
   ): Buffer {
     const headers = this.exportFormat.headers(def.importableColumns);
     const clean = (value: unknown, column: string) => sanitizeExcelCellValue(value, { entity, column });
-    const repeatingGroup = contract?.repeatingGroup ?? contract?.childSheets?.[0];
+    const contract = getReportFormContract(entity);
+    const repeatingGroup = contract?.repeatingGroup;
     const repeatedKeys = new Set(repeatingGroup?.fields.map((field) => field.key) ?? []);
     const multiKeys = new Set(repeatingGroup?.fields.filter((field) => field.multi).map((field) => field.key) ?? []);
 
