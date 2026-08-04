@@ -24,7 +24,7 @@
  */
 import { ACCOUNTING_SUMMARY_TABLE_NAME } from '../report-module-registry';
 
-export type ReportFieldStorage = 'column' | 'metadata' | 'encrypted' | 'ref';
+export type ReportFieldStorage = 'column' | 'metadata' | 'encrypted';
 
 export interface ReportFieldSpec {
   /** Chave lógica estável (coluna do arquivo e do formulário). */
@@ -38,24 +38,24 @@ export interface ReportFieldSpec {
 }
 
 /**
- * Aba filha do workbook — estrutura repetível do formulário (ex.: músicas de
+ * Grupo repetível do formulário — estrutura repetível do formulário (ex.: músicas de
  * um projeto) representada como abas próprias, NUNCA compactada em JSON numa
- * única célula (Parte 87, Bloco 6). Cada linha da aba filha carrega a mesma
- * coluna de referência (`ReportFormContract.refField`) da linha-pai a que
+ * única célula (Parte 87, Bloco 6). Cada linha da grupo repetível carrega a mesma
+ * coluna de referência (`campos gerais do contrato`) da linha-pai a que
  * pertence, para reimportação correlacionar as duas abas.
  */
-export interface ReportChildSheetFieldSpec {
+export interface ReportRepeatingGroupFieldSpec {
   key: string;
   /** true ⇒ lista de valores (ex.: nomes de compositores) representada como texto separado por ", ". */
   multi?: boolean;
 }
 
-export interface ReportChildSheetSpec {
+export interface ReportRepeatingGroupSpec {
   /** Chave lógica do grupo (ex.: 'musicas'). */
   key: string;
   /** Nome da aba no workbook (≤ 31 caracteres — limite do Excel). */
   sheetName: string;
-  fields: ReportChildSheetFieldSpec[];
+  fields: ReportRepeatingGroupFieldSpec[];
 }
 
 export interface ReportFormContract {
@@ -71,7 +71,7 @@ export interface ReportFormContract {
   filterableColumns?: string[];
   searchableColumns?: string[];
   /** Abas filhas para estruturas repetíveis do formulário (Parte 87). */
-  childSheets?: ReportChildSheetSpec[];
+  repeatingGroup?: ReportRepeatingGroupSpec;
 }
 
 const col = (key: string, physical?: string): ReportFieldSpec => ({ key, storage: 'column', physical });
@@ -86,13 +86,12 @@ const ro = (key: string, physical?: string): ReportFieldSpec => ({ key, storage:
 const meta = (key: string, physical: string = 'metadata'): ReportFieldSpec => ({ key, storage: 'metadata', physical });
 const enc = (key: string, physical: string): ReportFieldSpec => ({ key, storage: 'encrypted', physical });
 /**
- * Coluna de correlação entre a linha principal e suas abas filhas
- * (contract.childSheets) — nunca persistida (nenhuma tabela tem coluna
+ * Coluna de correlação entre a linha principal e suas grupos repetíveis
+ * (contract.repeatingGroup) — nunca persistida (nenhuma tabela tem coluna
  * própria para isto); resolvida a partir de uma coluna física real (ex.: o
  * `id` do próprio registro) só para existir um valor estável dentro do
- * arquivo. Fora de contratos com childSheets, não deve ser usada.
+ * arquivo. Fora de contratos com repeatingGroup, não deve ser usada.
  */
-const ref = (key: string, physical: string): ReportFieldSpec => ({ key, storage: 'ref', physical });
 
 // ─── Artistas (formulário completo — 68 campos) ──────────────────────────────
 const ARTISTS_CONTRACT: ReportFormContract = {
@@ -325,10 +324,8 @@ const PROJECTS_CONTRACT: ReportFormContract = {
     genero: 'derivado das músicas, não é campo geral do formulário',
     musicas: 'representada pelas colunas individuais do grupo repetível na mesma aba',
   },
-  childSheets: [
-    {
+  repeatingGroup: {
       key: 'musicas',
-      sheetName: 'IGNORADA_SINGLE_SHEET',
       fields: [
         { key: 'nome_musica' },
         { key: 'soloFeat' },
@@ -345,8 +342,7 @@ const PROJECTS_CONTRACT: ReportFormContract = {
         { key: 'arquivosAudio' },
         { key: 'ordem' },
       ],
-    },
-  ],
+  },
 };
 
 // ─── Monitoramento (content_detections) ───────────────────────────────────────
@@ -409,7 +405,7 @@ const TAKEDOWNS_CONTRACT: ReportFormContract = {
 // Fonte canônica: LancamentoFormModal.tsx (wizard de 5 etapas). A maioria dos
 // campos avançados (Step 0/3) vive na coluna `metadata` genérica
 // (extraFields.* → metadata.*); `faixas[]` (Step 1) vive em
-// metadata.faixas — aba filha própria (ver releases-faixas.field.ts).
+// metadata.faixas — grupo repetível própria (ver releases-faixas.field.ts).
 // `platforms`/`assets`/`cronograma` não têm input de UI identificável
 // (platforms: sem seletor multi-plataforma no wizard atual; assets: sem
 // upload dedicado além da capa; cronograma: sem inputs no modal) — excluídos/
@@ -418,7 +414,6 @@ const RELEASES_CONTRACT: ReportFormContract = {
   tableName: 'releases',
   identityColumn: 'titulo',
   fields: [
-    ref('lancamento_ref', 'id'), // correlação com a aba "Faixas do Lançamento"
     col('titulo'), col('tipo'), col('artista_id'), col('upc'), col('distribuidora'),
     col('data_lancamento'), col('capa_url'), col('isrc_global'), col('notas_internas'),
     col('observacoes'), col('gravadora'), col('copyright'), col('genero'), col('idioma'),
@@ -433,7 +428,7 @@ const RELEASES_CONTRACT: ReportFormContract = {
     platforms: 'aceito pelo DTO mas sem seletor multi-plataforma identificado no wizard atual',
     metadata: 'objeto jsonb interno bruto — os campos individuais já são colunas do contrato',
     assets: 'sem inputs de upload dedicados além da capa (coverUrl → capa_url, já tem coluna própria)',
-    faixas: 'representada em aba filha própria ("Faixas do Lançamento", childSheets) — nunca compactada numa única célula',
+    faixas: 'representada em grupo repetível própria ("Faixas do Lançamento", repeatingGroup) — nunca compactada numa única célula',
   },
   formFieldAliases: {
     title: 'titulo',
@@ -443,18 +438,15 @@ const RELEASES_CONTRACT: ReportFormContract = {
     releasedAt: 'data_lancamento',
     coverUrl: 'capa_url',
   },
-  childSheets: [
-    {
+  repeatingGroup: {
       key: 'faixas',
-      sheetName: 'Faixas do Lançamento',
       fields: [
         { key: 'nome' }, { key: 'isVersionAlternativa' }, { key: 'tipoVersao' },
         { key: 'versionCustomName' }, { key: 'compositores', multi: true },
         { key: 'aiAssistanceLevel' }, { key: 'instrumental' }, { key: 'faixa_idioma' },
         { key: 'letra' }, { key: 'explicit' }, { key: 'isrc' }, { key: 'artista' },
       ],
-    },
-  ],
+  },
 };
 
 // ─── Shares ───────────────────────────────────────────────────────────────────
@@ -554,7 +546,6 @@ const INVOICES_CONTRACT: ReportFormContract = {
   tableName: 'invoices',
   identityColumn: 'numero',
   fields: [
-    ref('nota_fiscal_ref', 'id'), // correlação com a aba "Itens da Nota"
     col('numero'), col('serie'), col('tipo_nota'), col('data_emissao'), col('status'),
     col('natureza_operacao'), col('cfop'), col('codigo_servico_municipal'), col('codigo_municipio'),
     col('cliente_id'), col('tomador_cnpj'), col('tomador_razao_social'),
@@ -567,16 +558,13 @@ const INVOICES_CONTRACT: ReportFormContract = {
     col('observacoes'),
   ],
   excludedFormFields: {},
-  childSheets: [
-    {
+  repeatingGroup: {
       key: 'itens',
-      sheetName: 'Itens da Nota',
       fields: [
         { key: 'descricao' }, { key: 'codigo_servico' }, { key: 'quantidade' },
         { key: 'valor_unitario' }, { key: 'valor_total' },
       ],
-    },
-  ],
+  },
 };
 
 // ─── Agenda (events) ────────────────────────────────────────────────────────────
@@ -584,7 +572,6 @@ const EVENTS_CONTRACT: ReportFormContract = {
   tableName: 'events',
   identityColumn: 'titulo',
   fields: [
-    ref('evento_ref', 'id'), // correlação com a aba "Participantes do Evento"
     col('titulo'), col('tipo'), col('data'), col('data_fim'), col('local'),
     col('contato_local'), col('endereco'), col('valor_cache'), col('publico_esperado'),
     col('descricao'), col('observacoes'), col('status'),
@@ -596,7 +583,7 @@ const EVENTS_CONTRACT: ReportFormContract = {
     ticketUrl: 'aceito pelo DTO mas sem coluna física nem input no modal',
     metadata: 'objeto jsonb interno bruto',
     artistId: 'vínculo técnico preenchido indiretamente pelo primeiro participante do tipo artista — sem input próprio',
-    participantes: 'representada em aba filha própria ("Participantes do Evento", childSheets) — nunca compactada numa única célula',
+    participantes: 'representada em grupo repetível própria ("Participantes do Evento", repeatingGroup) — nunca compactada numa única célula',
   },
   formFieldAliases: {
     title: 'titulo',
@@ -605,15 +592,12 @@ const EVENTS_CONTRACT: ReportFormContract = {
     startsAt: 'data',
     endsAt: 'data_fim',
   },
-  childSheets: [
-    {
+  repeatingGroup: {
       key: 'participantes',
-      sheetName: 'Participantes do Evento',
       fields: [
         { key: 'source' }, { key: 'label' }, { key: 'email' }, { key: 'phone' }, { key: 'category' },
       ],
-    },
-  ],
+  },
 };
 
 // ─── Inventário ───────────────────────────────────────────────────────────────
