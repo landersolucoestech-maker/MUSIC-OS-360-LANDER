@@ -9,13 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import {
-  TrendingUp, TrendingDown, DollarSign, Download, Loader2, RotateCcw, Search,
+  TrendingUp, TrendingDown, DollarSign, Loader2, RotateCcw, Search,
 } from "lucide-react";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { formatCategoryLabel } from "@/shared/lib/category-labels";
-import { exportToXlsx } from "@/shared/lib/xlsx";
 import { FeatureGate } from '@/shared/components/FeatureGate';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -270,20 +269,6 @@ export default function Contabilidade() {
       .sort((a, b) => b.lucro - a.lucro),
   [filteredTransacoes, artistas]);
 
-  const handleExport = () => {
-    exportToXlsx(
-      [
-        { secao: "Receitas", categoria: "TOTAL", valor: totalReceitas },
-        ...receitasPorCategoria.map((r) => ({ secao: "Receita", categoria: catLabel(r.categoria), valor: r.valor })),
-        { secao: "Despesas", categoria: "TOTAL", valor: totalDespesas },
-        ...despesasPorCategoria.map((d) => ({ secao: "Despesa", categoria: catLabel(d.categoria), valor: d.valor })),
-        { secao: "Resultado", categoria: "Lucro Líquido", valor: lucroLiquido },
-      ],
-      [{ key: "secao", label: "Seção" }, { key: "categoria", label: "Categoria" }, { key: "valor", label: "Valor (R$)" }],
-      "pl-contabilidade",
-    );
-  };
-
   if (isLoading) {
     return (
       <MainLayout>
@@ -300,11 +285,6 @@ export default function Contabilidade() {
     <FeatureGate feature="moduleAccounting" featureName="Contabilidade">
     <MainLayout
       title="Contabilidade"
-      actions={
-        <Button variant="outline" size="sm" className="gap-2" onClick={handleExport} data-testid="button-export">
-          <Download className="h-4 w-4" /> Exportar P&L
-        </Button>
-      }
     >
       <div className="space-y-6">
 

@@ -12,7 +12,7 @@ import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Clock, TrendingUp, FileText, LayoutGrid, Search, Play, Folder, Loader2, Upload, Download, PlusCircle, MoreHorizontal, Eye, Pencil, Trash2, Music } from "lucide-react";
+import { Clock, TrendingUp, FileText, LayoutGrid, Search, Play, Folder, Loader2, PlusCircle, MoreHorizontal, Eye, Pencil, Trash2, Music } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -20,43 +20,15 @@ import { ProjetoFormModal } from "@/modules/projects/components/ProjetoFormModal
 import { ProjetoViewModal } from "@/modules/projects/components/ProjetoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
-import { exportToXlsx, importXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import type { ProjetoWithRelationsExtended } from "@/modules/projects/types/projetos-extensions";
-import { getFirstMusicaInfo, getMusicaInfo, parseMusicasFromProjeto, type MusicaData } from "@/modules/projects/lib/musica-helpers";
-
-const projetoColumns: XlsxColumn[] = [
-  { key: "titulo",          label: "Nome do Projeto" },
-  { key: "_artista",        label: "Artista Responsável" },
-  { key: "tipo",            label: "Tipo de Lançamento" },
-  { key: "status", label: "Status", transform: (row) => {
-    const s = row["status"] as string;
-    if (s === "em_andamento") return "Em Andamento";
-    if (s === "concluido")    return "Concluído";
-    if (s === "cancelado")    return "Cancelado";
-    return "Planejamento";
-  }},
-  { key: "_nome_ep",        label: "Nome do EP/Álbum" },
-  { key: "_nome_musica",    label: "Nome da Música" },
-  { key: "_solo_feat",      label: "Solo/Feat" },
-  { key: "_original_remix", label: "Original/Remix" },
-  { key: "_instrumental",   label: "Instrumental" },
-  { key: "_duracao",        label: "Duração" },
-  { key: "_genero",         label: "Gênero Musical" },
-  { key: "_idioma",         label: "Idioma" },
-  { key: "_compositores",   label: "Compositores" },
-  { key: "_interpretes",    label: "Intérpretes" },
-  { key: "_produtores",     label: "Produtores" },
-  { key: "_letra",          label: "Letra" },
-  { key: "_audio",          label: "Arquivos de Áudio (MP3/WAV)" },
-  { key: "observacoes",     label: "Observações" },
-];
+import { getFirstMusicaInfo, parseMusicasFromProjeto } from "@/modules/projects/lib/musica-helpers";
 
 export default function Projetos() {
   const navigate = useNavigate();
-  const { projetos: rawProjetos, isLoading, deleteProjeto, addProjeto } = useProjetos();
+  const { projetos: rawProjetos, isLoading, deleteProjeto } = useProjetos();
   const { artistas } = useArtistas();
 
   // In mock mode the storage doesn't do SQL joins, so artistas is undefined on each project.
@@ -135,165 +107,6 @@ export default function Projetos() {
     return Array.from(set).sort();
   }, [projetos]);
 
-  const handleExport = () => {
-    const base = selectedIds.length > 0
-      ? filteredProjects.filter(p => selectedIds.includes(p.id))
-      : filteredProjects;
-    const enriched: Record<string, any>[] = [];
-    const emptyMusic = {
-      _nome_ep: "", _nome_musica: "", _solo_feat: "", _original_remix: "",
-      _instrumental: "", _duracao: "", _genero: "", _idioma: "",
-      _compositores: "", _interpretes: "", _produtores: "", _letra: "", _audio: "",
-    };
-    for (const p of base) {
-      const nomeEP = p.tipo !== "single" ? (p.titulo || "") : "";
-      const artista = p.artistas?.nome_artistico || "";
-      const musicas = parseMusicasFromProjeto(p);
-      if (musicas.length === 0) {
-        enriched.push({ ...p, _artista: artista, ...emptyMusic, _nome_ep: nomeEP });
-      } else {
-        musicas.forEach((m) => {
-          const info = getMusicaInfo(m);
-          enriched.push({
-            ...p,
-            _artista:        artista,
-            _nome_ep:        nomeEP,
-            _nome_musica:    info.nome,
-            _solo_feat:      info.soloFeat,
-            _original_remix: info.originalRemix,
-            _instrumental:   info.instrumental,
-            _duracao:        info.duracao,
-            _genero:         info.genero,
-            _idioma:         info.idioma,
-            _compositores:   info.compositores,
-            _interpretes:    info.interpretes,
-            _produtores:     info.produtores,
-            _letra:          info.letra,
-            _audio:          m.audioUrl || "",
-          });
-        });
-      }
-    }
-    exportToXlsx(enriched, projetoColumns, "projetos");
-  };
-
-  const handleImport = () => importXlsx(async (data) => {
-    const artistaByNome: Record<string, string> = {};
-    artistas.forEach(a => { if (a.nome_artistico) artistaByNome[a.nome_artistico.toLowerCase()] = a.id; });
-
-    // Group rows by "Nome do Projeto" — multiple song rows collapse into one project
-    const grouped = new Map<string, Record<string, string>[]>();
-    for (const row of data) {
-      const titulo = row["Nome do Projeto"] || row["Título"] || "";
-      if (!titulo.trim()) continue;
-      if (!grouped.has(titulo)) grouped.set(titulo, []);
-      grouped.get(titulo)!.push(row);
-    }
-
-    // Case-insensitive + diacritic-insensitive column lookup so accented headers
-    // (e.g. "Tipo de Lançamento") are found even if encoding slightly differs.
-    const col = (row: Record<string, string>, label: string): string => {
-      if (row[label] !== undefined) return row[label];
-      const norm = (s: string) =>
-        s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-      const target = norm(label);
-      const key = Object.keys(row).find(k => norm(k) === target);
-      return key ? row[key] : "";
-    };
-
-    let importados = 0;
-    for (const [titulo, rows] of grouped) {
-      const firstRow = rows[0];
-      const rawTipo = (col(firstRow, "Tipo de Lançamento") || "single").toLowerCase().trim();
-      const tipo = rawTipo === "álbum" || rawTipo === "album" ? "album"
-        : rawTipo === "ep" ? "ep"
-        : rawTipo === "turnê" || rawTipo === "turne" ? "turne"
-        : "single";
-
-      const artistaNome = (col(firstRow, "Artista Responsável") || "").toLowerCase().trim();
-      const artista_id = artistaByNome[artistaNome] || null;
-
-      const splitList = (val: string) => val ? val.split(",").map(s => s.trim()).filter(Boolean) : [];
-
-      const musicas: MusicaData[] = await Promise.all(
-        rows
-          .filter(r => col(r, "Nome da Música")?.trim())
-          .map(async r => {
-            const duracao = col(r, "Duração") || "";
-            const [duracaoMin = "", duracaoSeg = ""] = duracao.split(":").map(s => s.trim());
-            const rawAudio = col(r, "Arquivos de Áudio (MP3/WAV)").trim();
-            const audioUrl = rawAudio.startsWith("http") ? rawAudio : undefined;
-
-            // Fetch the remote audio URL to reconstruct the local File metadata.
-            // arquivoAudio is a local-only field (not persisted); it powers the
-            // in-form file display. audioUrl is persisted and drives the download link.
-            let arquivoAudio: { name: string; size: number } | null = null;
-            if (audioUrl) {
-              try {
-                const resp = await fetch(audioUrl);
-                if (resp.ok) {
-                  const blob = await resp.blob();
-                  const filename = audioUrl.split("/").pop() || "audio";
-                  arquivoAudio = { name: filename, size: blob.size };
-                }
-              } catch { /* network error — skip arquivoAudio reconstruction */ }
-            }
-
-            return {
-              id: Math.random().toString(36).slice(2),
-              nome:           col(r, "Nome da Música") || "",
-              soloFeat:       (col(r, "Solo/Feat") || "solo").toLowerCase().trim(),
-              originalRemix:  (col(r, "Original/Remix") || "original").toLowerCase().trim(),
-              instrumental:   (col(r, "Instrumental") || "nao").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(),
-              duracaoMin,
-              duracaoSeg,
-              genero:         (col(r, "Gênero Musical") || "").toLowerCase().trim(),
-              idioma:         (col(r, "Idioma") || "").toLowerCase().trim(),
-              compositores:   splitList(col(r, "Compositores")),
-              interpretes:    splitList(col(r, "Intérpretes")),
-              produtores:     splitList(col(r, "Produtores")),
-              letra:          col(r, "Letra") || "",
-              arquivoAudio,
-              ...(audioUrl ? { audioUrl } : {}),
-            } as MusicaData;
-          })
-      );
-
-      // For singles, if no explicit music row, create one from the project title
-      if (tipo === "single" && musicas.length === 0) {
-        musicas.push({ id: Math.random().toString(36).slice(2), nome: titulo } as MusicaData);
-      }
-
-      // Strip the local-only arquivoAudio field before persisting (matches form-modal behaviour).
-      // musicas[] vai para colunas próprias (project_tracks), nunca mais serializada em descricao.
-      const musicasParaSalvar = musicas.map(({ arquivoAudio: _a, ...m }) => m);
-      const genero = musicas[0]?.genero || null;
-
-      const rawStatus = (col(firstRow, "Status") || "planejamento")
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-      const status =
-        rawStatus === "em andamento" || rawStatus === "em_andamento" ? "em_andamento"
-        : rawStatus === "concluido" || rawStatus === "concluído" || rawStatus === "concluido" ? "concluido"
-        : rawStatus === "cancelado" ? "cancelado"
-        : "planejamento";
-
-      try {
-        await addProjeto.mutateAsync({
-          titulo,
-          tipo,
-          status,
-          observacoes: col(firstRow, "Observações") || null,
-          artista_id,
-          genero,
-          musicas: musicasParaSalvar,
-        });
-        importados++;
-      } catch {}
-    }
-    if (importados > 0) toast.success(`${importados} projeto(s) importado(s) com sucesso!`);
-    else toast.error("Nenhum projeto válido encontrado no arquivo");
-  }, ["Nome do Projeto"]);
-
   const handleDelete = () => {
     if (deleteModal.projeto) {
       deleteProjeto.mutate(deleteModal.projeto.id);
@@ -336,27 +149,17 @@ export default function Projetos() {
   }
 
   const headerActions = (
-    <>
-      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExport} data-testid="button-export-projetos">
-        <Download className="h-3.5 w-3.5" />
-        Exportar XLSX
+    <RequirePermission module="projects" action="write">
+      <Button
+        size="sm"
+        className="h-8 text-xs gap-1.5"
+        onClick={() => setFormModal({ open: true, mode: "create" })}
+        data-testid="button-novo-projeto"
+      >
+        <PlusCircle className="h-3.5 w-3.5" />
+        Novo Projeto
       </Button>
-      <RequirePermission module="projects" action="write">
-        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleImport} data-testid="button-import-projetos">
-          <Upload className="h-3.5 w-3.5" />
-          Importar XLSX
-        </Button>
-        <Button
-          size="sm"
-          className="h-8 text-xs gap-1.5"
-          onClick={() => setFormModal({ open: true, mode: "create" })}
-          data-testid="button-novo-projeto"
-        >
-          <PlusCircle className="h-3.5 w-3.5" />
-          Novo Projeto
-        </Button>
-      </RequirePermission>
-    </>
+    </RequirePermission>
   );
 
   const metricas = {

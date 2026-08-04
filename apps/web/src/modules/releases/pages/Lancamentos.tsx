@@ -17,12 +17,10 @@ import {
   Music, Radio, Eye, Plus, Search,
   Loader2, Trash2, MoreHorizontal, Pencil, BarChart3,
   CheckCircle2, Timer, Library, Clock, AlertTriangle, Info,
-  Download, Upload,
 } from "lucide-react";
 import { LancamentoFormModal } from "@/modules/releases/components/LancamentoFormModal";
 import { LancamentoViewModal } from "@/modules/releases/components/LancamentoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
-import { exportToXlsx, importXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { TablePagination } from "@/shared/ui/table-pagination";
 import { usePagination } from "@/shared/hooks/usePagination";
@@ -36,17 +34,6 @@ import { formatReleaseDate } from "@/modules/releases/lib/release-format";
 import { shareFlowFromReleaseUrl } from "@/modules/releases/services/share-from-release";
 import type { Lancamento } from "@/modules/releases/types";
 import type { Artista } from "@/modules/artist/types/artista.types";
-
-const lancamentoColumns: XlsxColumn[] = [
-  { key: "titulo", label: "Título" },
-  { key: "tipo", label: "Tipo" },
-  { key: "status", label: "Status" },
-  { key: "artista", label: "Artista", transform: (r) => r.artistas?.nome_artistico || "" },
-  { key: "data_lancamento", label: "Data de Lançamento", transform: (r) => formatReleaseDate(r.data_lancamento) || "" },
-  { key: "distribuidora", label: "Distribuidora" },
-  { key: "plataformas", label: "Plataformas", transform: (r) => Array.isArray(r.plataformas) ? r.plataformas.join(", ") : (r.plataformas || "") },
-  { key: "observacoes", label: "Observações" },
-];
 
 
 function getReleaseArtworkUrl(release: Lancamento & Record<string, unknown>): string | null {
@@ -262,30 +249,6 @@ export default function Lancamentos() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const handleExport = () => exportToXlsx(lancamentos, lancamentoColumns, "lancamentos");
-  const handleImport = () => importXlsx(async (data) => {
-    let importados = 0;
-    for (const row of data) {
-      const titulo = row["Título"] || row["titulo"] || row["TITULO"];
-      if (!titulo) continue;
-      try {
-        const plataformasRaw = row["Plataformas"] || row["plataformas"] || null;
-        await addLancamento.mutateAsync({
-          titulo,
-          tipo: row["Tipo"] || row["tipo"] || "single",
-          status: row["Status"] || row["status"] || "planejado",
-          data_lancamento: row["Data de Lançamento"] || row["Data"] || row["data_lancamento"] || null,
-          distribuidora: row["Distribuidora"] || row["distribuidora"] || null,
-          plataformas: plataformasRaw ? plataformasRaw.split(",").map((p: string) => p.trim()).filter(Boolean) : null,
-          observacoes: row["Observações"] || row["observacoes"] || null,
-        } as any);
-        importados++;
-      } catch {}
-    }
-    if (importados > 0) toast.success(`${importados} lançamento(s) importado(s) com sucesso!`);
-    else toast.error("Nenhum lançamento válido encontrado no arquivo");
-  }, ["Título", "Tipo", "Status", "Data de Lançamento"]);
-
   const getArtistaById = (id: string | null) => id ? artistas.find(a => a.id === id) : undefined;
 
   // KPIs operacionais de distribuição — calculados dinamicamente do estado real (7-set).
@@ -382,20 +345,10 @@ export default function Lancamentos() {
   }
 
   const headerActions = (
-    <>
-      <Button variant="outline" size="sm" className="gap-2" data-testid="button-export-lancamentos" onClick={handleExport}>
-        <Download className="h-4 w-4" />
-        Exportar XLSX
-      </Button>
-      <Button variant="outline" size="sm" className="gap-2" data-testid="button-import-lancamentos" onClick={handleImport}>
-        <Upload className="h-4 w-4" />
-        Importar XLSX
-      </Button>
-      <Button size="sm" className="gap-2 bg-primary" data-testid="button-novo-lancamento" onClick={() => setFormModal({ open: true, mode: "create" })}>
-        <Plus className="h-4 w-4" />
-        Novo Lançamento
-      </Button>
-    </>
+    <Button size="sm" className="gap-2 bg-primary" data-testid="button-novo-lancamento" onClick={() => setFormModal({ open: true, mode: "create" })}>
+      <Plus className="h-4 w-4" />
+      Novo Lançamento
+    </Button>
   );
 
   return (

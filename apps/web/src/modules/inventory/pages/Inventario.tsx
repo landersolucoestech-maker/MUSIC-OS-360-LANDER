@@ -10,7 +10,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Package, Wrench, CheckCircle, Upload, Download, Plus, Search, Monitor, Loader2, MoreHorizontal, Eye, Pencil, Trash2, MapPin, User, DollarSign } from "lucide-react";
+import { Package, Wrench, CheckCircle, Plus, Search, Monitor, Loader2, MoreHorizontal, Eye, Pencil, Trash2, MapPin, User, DollarSign } from "lucide-react";
 import { formatCurrency, formatDate, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -19,24 +19,10 @@ import { InventarioFormModal } from "@/modules/inventory/components/InventarioFo
 import { InventarioViewModal } from "@/modules/inventory/components/InventarioViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
-import { exportToXlsx, importXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useInventario } from "@/modules/inventory/hooks/useInventario";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { FeatureGate } from '@/shared/components/FeatureGate';
-
-const inventarioColumns: XlsxColumn[] = [
-  { key: "setor", label: "Setor" },
-  { key: "categoria", label: "Categoria" },
-  { key: "nome", label: "Nome do Item" },
-  { key: "quantidade", label: "Quantidade" },
-  { key: "localizacao", label: "Localização" },
-  { key: "responsavel", label: "Responsável" },
-  { key: "status", label: "Status" },
-  { key: "dataEntrada", label: "Data de Entrada" },
-  { key: "valor_unitario", label: "Valor Unitário (R$)" },
-  { key: "observacoes", label: "Observações" },
-];
 
 export default function Inventario() {
   const { inventario, isLoading, deleteInventario, addInventario } = useInventario();
@@ -62,32 +48,6 @@ export default function Inventario() {
   const [categoryFilter, setCategoryFilter] = useState("all-category");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [localFilter, setLocalFilter] = useState("all-local");
-
-  const handleExport = () => exportToXlsx(inventario, inventarioColumns, "inventario");
-  const handleImport = () => importXlsx(async (data) => {
-    let importados = 0;
-    for (const row of data) {
-      const nome = row["Nome do Item"] || row["Nome"] || row["nome"] || row["NOME"];
-      if (!nome) continue;
-      try {
-        await addInventario.mutateAsync({
-          nome,
-          setor: row["Setor"] || row["setor"] || null,
-          categoria: row["Categoria"] || row["categoria"] || null,
-          quantidade: row["Quantidade"] || row["quantidade"] ? Number(row["Quantidade"] || row["quantidade"]) : null,
-          localizacao: row["Localização"] || row["localizacao"] || row["Local"] || null,
-          responsavel: row["Responsável"] || row["responsavel"] || null,
-          status: row["Status"] || row["status"] || "disponivel",
-          dataEntrada: row["Data de Entrada"] || row["dataEntrada"] || null,
-          valor_unitario: row["Valor Unitário (R$)"] || row["Valor Unitário"] || row["valor_unitario"] ? Number(row["Valor Unitário (R$)"] || row["Valor Unitário"] || row["valor_unitario"]) : null,
-          observacoes: row["Observações"] || row["observacoes"] || null,
-        } as any);
-        importados++;
-      } catch {}
-    }
-    if (importados > 0) toast.success(`${importados} item(ns) importado(s) com sucesso!`);
-    else toast.error("Nenhum item válido encontrado no arquivo");
-  }, ["Nome do Item", "Categoria", "Quantidade", "Status"]);
 
   const filteredEquipamentos = useMemo(() => inventario.filter((item) => {
     const matchesSearch = item.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -143,17 +103,9 @@ export default function Inventario() {
   }
 
   const headerActions = (
-    <>
-      <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleExport} data-testid="button-export-inventario">
-        <Download className="h-3.5 w-3.5" />Exportar XLSX
-      </Button>
-      <RequirePermission module="inventory" action="write">
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleImport} data-testid="button-import-inventario">
-          <Upload className="h-3.5 w-3.5" />Importar XLSX
-        </Button>
-        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-3.5 w-3.5" />Novo Item</Button>
-      </RequirePermission>
-    </>
+    <RequirePermission module="inventory" action="write">
+      <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-3.5 w-3.5" />Novo Item</Button>
+    </RequirePermission>
   );
 
   return (

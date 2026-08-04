@@ -29,7 +29,6 @@ import {
   Users,
   Search,
   Loader2,
-  Download,
   Plus,
   MoreHorizontal,
   Eye,
@@ -46,7 +45,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Upload,
 } from "lucide-react";
 import { FuncionarioFormModal } from "@/modules/rh/components/FuncionarioFormModal";
 import { FolhaPagamentoFormModal } from "@/modules/rh/components/FolhaPagamentoFormModal";
@@ -60,7 +58,6 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { exportToXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { formatCurrency, formatDate, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import {
   useFuncionarios,
@@ -83,48 +80,6 @@ import {
 import type { DocumentoFuncionario } from "@/modules/rh/hooks/useDocumentosFuncionario";
 import { Label } from "@/shared/ui/label";
 import { FeatureGate } from '@/shared/components/FeatureGate';
-const funcionarioColumns: XlsxColumn[] = [
-  { key: "nome_completo", label: "Nome Completo" },
-  { key: "cpf", label: "CPF" },
-  { key: "email", label: "Email" },
-  { key: "telefone", label: "Telefone" },
-  { key: "cargo", label: "Cargo" },
-  { key: "setor", label: "Setor" },
-  { key: "tipo_contrato", label: "Tipo Contrato" },
-  { key: "data_admissao", label: "Data Admissão" },
-  { key: "salario_base", label: "Salário Base (R$)" },
-  { key: "status", label: "Status" },
-  { key: "observacoes", label: "Observações" },
-];
-
-const folhaColumns: XlsxColumn[] = [
-  { key: "funcionario_nome", label: "Funcionário" },
-  { key: "mes_referencia", label: "Mês Referência" },
-  { key: "salario_bruto", label: "Salário Bruto" },
-  { key: "descontos", label: "Descontos" },
-  { key: "bonus", label: "Bônus" },
-  { key: "salario_liquido", label: "Salário Líquido" },
-  { key: "data_pagamento", label: "Data Pagamento" },
-  { key: "status", label: "Status" },
-];
-
-const feriasColumns: XlsxColumn[] = [
-  { key: "funcionario_nome", label: "Funcionário" },
-  { key: "tipo", label: "Tipo" },
-  { key: "data_inicio", label: "Data Início" },
-  { key: "data_fim", label: "Data Fim" },
-  { key: "dias_totais", label: "Dias" },
-  { key: "status", label: "Status" },
-  { key: "aprovado_por", label: "Aprovado Por" },
-];
-
-const documentosColumns: XlsxColumn[] = [
-  { key: "funcionario_nome", label: "Funcionário" },
-  { key: "tipo_documento", label: "Tipo Documento" },
-  { key: "nome_arquivo", label: "Nome Arquivo" },
-  { key: "descricao", label: "Descrição" },
-];
-
 const STATUS_VARIANT_FUNCIONARIO: Record<string, BadgeVariant> = {
   ativo: "success",
   inativo: "neutral",
@@ -322,33 +277,6 @@ export default function RH() {
     return func?.nome_completo || "N/A";
   };
 
-  const handleExportFuncionarios = () =>
-    exportToXlsx(filteredFuncionarios, funcionarioColumns, "funcionarios");
-
-  const handleExportFolha = () => {
-    const data = filteredFolha.map((fp) => ({
-      ...fp,
-      funcionario_nome: getFuncionarioNome(fp.funcionario_id ?? null),
-    }));
-    exportToXlsx(data, folhaColumns, "folha_pagamento");
-  };
-
-  const handleExportFerias = () => {
-    const data = filteredFerias.map((fa) => ({
-      ...fa,
-      funcionario_nome: getFuncionarioNome(fa.funcionario_id ?? null),
-    }));
-    exportToXlsx(data, feriasColumns, "ferias_ausencias");
-  };
-
-  const handleExportDocumentos = () => {
-    const data = (documentos || []).map((d) => ({
-      ...d,
-      funcionario_nome: getFuncionarioNome(d.funcionario_id ?? null),
-    }));
-    exportToXlsx(data, documentosColumns, "documentos_funcionario");
-  };
-
   const handleDeleteFuncionario = () => {
     if (funcDeleteModal.funcionario) {
       deleteFuncionario.mutate(funcDeleteModal.funcionario.id);
@@ -455,21 +383,6 @@ export default function RH() {
       description="Gestão de funcionários, folha de pagamento, férias e documentos"
       actions={
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={
-              activeTab === "funcionarios" ? handleExportFuncionarios
-                : activeTab === "folha" ? handleExportFolha
-                : activeTab === "ferias" ? handleExportFerias
-                : handleExportDocumentos
-            }
-            data-testid="button-export-rh"
-          >
-            <Download className="h-4 w-4" />
-            Exportar XLSX
-          </Button>
           {activeTab !== "documentos" && (
             <RequirePermission module="rh" action="write">
               <Button

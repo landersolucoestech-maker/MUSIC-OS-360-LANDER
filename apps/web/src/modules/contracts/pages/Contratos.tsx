@@ -11,7 +11,7 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { SigningPlatformBadge } from "@/modules/contracts/components/SigningPlatformBadge";
 import {
-  FileText, Clock, CheckCircle, Upload, Download, Plus, Search,
+  FileText, Clock, CheckCircle, Plus, Search,
   FileStack, Loader2, MoreHorizontal, Eye, Pencil, Trash2, X, DollarSign,
   AlertCircle, PenLine,
 } from "lucide-react";
@@ -20,7 +20,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ContratoWizard } from "@/modules/contracts/components/ContratoWizard";
 import { ContratoViewModal } from "@/modules/contracts/components/ContratoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
-import { exportToXlsx, importXlsx, XlsxColumn } from "@/shared/lib/xlsx";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { formatCurrency, formatDateDashes, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import { formatCategoryLabel } from "@/shared/lib/category-labels";
@@ -31,20 +30,6 @@ import { TablePagination } from "@/shared/ui/table-pagination";
 import { usePagination } from "@/shared/hooks/usePagination";
 import { cn } from "@/shared/lib/utils";
 import { RequirePermission } from "@/shared/components/RequirePermission";
-
-const contratoColumns: XlsxColumn[] = [
-  { key: "titulo", label: "Título" },
-  { key: "tipo", label: "Tipo" },
-  { key: "status", label: "Status" },
-  { key: "artista", label: "Artista", transform: (r) => r.artistas?.nome_artistico || "" },
-  { key: "cliente", label: "Cliente", transform: (r) => r.clientes?.nome || "" },
-  { key: "data_inicio", label: "Data Início" },
-  { key: "data_fim", label: "Data Fim" },
-  { key: "valor", label: "Valor (R$)" },
-  { key: "exclusivo", label: "Exclusivo" },
-  { key: "assinado_em", label: "Assinado Em" },
-  { key: "observacoes", label: "Observações" },
-];
 
 export default function Contratos() {
   const navigate = useNavigate();
@@ -107,36 +92,6 @@ export default function Contratos() {
     setPlatformFilter("all-platform");
   };
 
-  const handleExport = () => exportToXlsx(contratos, contratoColumns, "contratos");
-  const handleImport = () =>
-    importXlsx(async (data) => {
-      let importados = 0;
-      for (const row of data) {
-        const titulo = row["Título"] || row["titulo"] || row["TITULO"];
-        if (!titulo) continue;
-        try {
-          await addContrato.mutateAsync({
-            titulo,
-            tipo: row["Tipo"] || row["tipo"] || "distribuicao",
-            status: row["Status"] || row["status"] || "rascunho",
-            data_inicio: row["Data Início"] || row["data_inicio"] || null,
-            data_fim: row["Data Fim"] || row["data_fim"] || null,
-            valor: row["Valor (R$)"] || row["Valor"] || row["valor"]
-              ? Number(row["Valor (R$)"] || row["Valor"] || row["valor"])
-              : null,
-            exclusivo: row["Exclusivo"]
-              ? row["Exclusivo"] === "true" || row["Exclusivo"] === "1"
-              : null,
-            assinado_em: row["Assinado Em"] || row["assinado_em"] || null,
-            observacoes: row["Observações"] || row["observacoes"] || null,
-          } as any);
-          importados++;
-        } catch {}
-      }
-      if (importados > 0) toast.success(`${importados} contrato(s) importado(s) com sucesso!`);
-      else toast.error("Nenhum contrato válido encontrado no arquivo");
-    }, ["Título", "Tipo", "Status", "Data Início"]);
-
   const handleDelete = () => {
     if (deleteModal.contrato) {
       deleteContrato.mutate(deleteModal.contrato.id);
@@ -191,15 +146,7 @@ export default function Contratos() {
             <FileStack className="h-3.5 w-3.5" />
             Templates
           </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExport} data-testid="button-export-contratos">
-            <Download className="h-3.5 w-3.5" />
-            Exportar XLSX
-          </Button>
           <RequirePermission module="contracts" action="write">
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleImport} data-testid="button-import-contratos">
-              <Upload className="h-3.5 w-3.5" />
-              Importar XLSX
-            </Button>
             <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setWizardOpen(true)} data-testid="button-novo-contrato">
               <Plus className="h-3.5 w-3.5" />
               Novo Contrato
