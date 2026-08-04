@@ -1,3 +1,4 @@
+# retry: latest dev after invoice and takedown repairs
 name: DEV One-off — Repair Licensing Contract
 
 on:
@@ -74,7 +75,6 @@ export class CreateLicenseDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) amount?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Max(100) @Type(() => Number) percentage?: number;
 
-  /** Campos legados dual-written pelo service. */
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10) moeda?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
@@ -93,13 +93,11 @@ export class QueryLicenseDto extends PaginationDto {
 
           service = Path('apps/api/src/modules/licensing/licensing.service.ts')
           text = service.read_text()
-          text = text.replace(
-              "  async create(tenantId: string, userId: string, dto: CreateLicenseDto): Promise<LicenseEntity> {\n    const item = this.repository.create({ tenant_id: tenantId, ...dto, created_by: userId, updated_by: userId } as any);\n    return this.repository.save(item as any) as any;\n  }\n\n  async update(tenantId: string, userId: string, id: string, dto: UpdateLicenseDto): Promise<LicenseEntity> {\n    await this.findById(tenantId, id);\n    await this.repository.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date(), updated_by: userId } as any);\n    return this.findById(tenantId, id);\n  }",
-              "  private normalizePayload(dto: CreateLicenseDto | UpdateLicenseDto): Record<string, unknown> {\n    const payload: Record<string, unknown> = { ...dto };\n    if (dto.amount !== undefined) payload.valor = dto.amount;\n    if (dto.currency !== undefined) payload.moeda = dto.currency;\n    return payload;\n  }\n\n  async create(tenantId: string, userId: string, dto: CreateLicenseDto): Promise<LicenseEntity> {\n    const item = this.repository.create({\n      tenant_id: tenantId,\n      ...this.normalizePayload(dto),\n      created_by: userId,\n      updated_by: userId,\n    } as Partial<LicenseEntity>);\n    return this.repository.save(item as LicenseEntity);\n  }\n\n  async update(tenantId: string, userId: string, id: string, dto: UpdateLicenseDto): Promise<LicenseEntity> {\n    await this.findById(tenantId, id);\n    await this.repository.update(\n      { id, tenant_id: tenantId } as never,\n      { ...this.normalizePayload(dto), updated_at: new Date(), updated_by: userId } as never,\n    );\n    return this.findById(tenantId, id);\n  }"
-          )
-          if text == service.read_text():
-              raise SystemExit('licensing service block not replaced')
-          service.write_text(text)
+          old = "  async create(tenantId: string, userId: string, dto: CreateLicenseDto): Promise<LicenseEntity> {\n    const item = this.repository.create({ tenant_id: tenantId, ...dto, created_by: userId, updated_by: userId } as any);\n    return this.repository.save(item as any) as any;\n  }\n\n  async update(tenantId: string, userId: string, id: string, dto: UpdateLicenseDto): Promise<LicenseEntity> {\n    await this.findById(tenantId, id);\n    await this.repository.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date(), updated_by: userId } as any);\n    return this.findById(tenantId, id);\n  }"
+          new = "  private normalizePayload(dto: CreateLicenseDto | UpdateLicenseDto): Record<string, unknown> {\n    const payload: Record<string, unknown> = { ...dto };\n    if (dto.amount !== undefined) payload.valor = dto.amount;\n    if (dto.currency !== undefined) payload.moeda = dto.currency;\n    return payload;\n  }\n\n  async create(tenantId: string, userId: string, dto: CreateLicenseDto): Promise<LicenseEntity> {\n    const item = this.repository.create({\n      tenant_id: tenantId,\n      ...this.normalizePayload(dto),\n      created_by: userId,\n      updated_by: userId,\n    } as Partial<LicenseEntity>);\n    return this.repository.save(item as LicenseEntity);\n  }\n\n  async update(tenantId: string, userId: string, id: string, dto: UpdateLicenseDto): Promise<LicenseEntity> {\n    await this.findById(tenantId, id);\n    await this.repository.update(\n      { id, tenant_id: tenantId } as never,\n      { ...this.normalizePayload(dto), updated_at: new Date(), updated_by: userId } as never,\n    );\n    return this.findById(tenantId, id);\n  }"
+          if old not in text:
+              raise SystemExit('licensing service block not found')
+          service.write_text(text.replace(old, new, 1))
 
           replace_once(
               'apps/api/src/modules/reports/form-contracts/report-form-contracts.ts',
@@ -133,12 +131,8 @@ export class LicenseRemunerationColumns20260804000001 implements MigrationInterf
           index = Path('apps/api/src/database/migrations/index.ts')
           text = index.read_text()
           marker = "import { CreateContractServiceTypes20260803000003 } from './20260803000003_CreateContractServiceTypes';"
-          if marker not in text:
-              raise SystemExit('migration import marker not found')
           text = text.replace(marker, marker + "\nimport { LicenseRemunerationColumns20260804000001 } from './20260804000001_LicenseRemunerationColumns';", 1)
           marker2 = "  CreateContractServiceTypes20260803000003,\n] as const;"
-          if marker2 not in text:
-              raise SystemExit('migration array marker not found')
           text = text.replace(marker2, "  CreateContractServiceTypes20260803000003,\n  LicenseRemunerationColumns20260804000001,\n] as const;", 1)
           index.write_text(text)
           PY
@@ -155,4 +149,5 @@ export class LicenseRemunerationColumns20260804000001 implements MigrationInterf
                   apps/api/src/modules/licensing/licensing.service.ts \
                   apps/api/src/modules/reports/form-contracts/report-form-contracts.ts
           git commit -m "fix(licensing): persist the complete remuneration form"
+          git pull --rebase origin dev
           git push origin HEAD:dev
