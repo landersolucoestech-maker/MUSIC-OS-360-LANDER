@@ -83,12 +83,14 @@ describe('Colunas dedicadas de formulário sempre expostas no DTO correspondente
   });
 
   it('Licenciamento aceita e preserva os campos condicionais de remuneração', () => {
+    const entity = entityBlock('LicenseEntity');
     const dto = source('../modules/licensing/dto/licensing.dto.ts');
     const service = source('../modules/licensing/licensing.service.ts');
     expectFields(dto, ['remuneration_type', 'currency', 'amount', 'percentage']);
+    expectFields(entity, ['percentage'], (field) => `\\b${field}\\b`);
     expect(service).toContain('{ valor: amount ?? valor ?? null }');
     expect(service).toContain('{ moeda: currency ?? moeda ?? null }');
-    expect(service).toContain("metadata['percentage'] = percentage");
-    expect(service).toContain("percentage: metadata['percentage'] ?? null");
+    expect(service).toContain('...(percentage !== undefined ? { percentage } : {})');
+    expect(service).toContain("percentage: raw['percentage'] == null ? null : Number(raw['percentage'])");
   });
 });
