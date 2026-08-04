@@ -26,21 +26,45 @@ import { CreateArtistDto } from '../../artists/dto/create-artist.dto';
 import { CreateWorkDto } from '../../works/dto/create-work.dto';
 import { CreatePhonogramDto } from '../../phonograms/dto/create-phonogram.dto';
 import { CreateContractDto } from '../../contracts/dto/create-contract.dto';
-import { CreateContractTemplateDto } from '../../contract-templates/dto/create-contract-template.dto';
 import { CreateEmployeeDto } from '../../hr/dto/create-employee.dto';
 import { CreateClientDto } from '../../clients/dto/clients.dto';
 import { CreateProjectDto } from '../../projects/dto/projects.dto';
+import { CreateLicenseDto } from '../../licensing/dto/licensing.dto';
+import { CreateReleaseDto } from '../../releases/dto/releases.dto';
+import { CreateShareDto } from '../../shares/dto/shares.dto';
+import { CreateAudiovisualProjectDto } from '../../audiovisual/dto/audiovisual.dto';
+import { CreateEventDto } from '../../events/dto/events.dto';
+import { CreateInventoryItemDto } from '../../inventory/dto/inventory.dto';
+import { CreateLeadDto } from '../../leads/dto/leads.dto';
+import { CreateMarketingTaskDto } from '../../marketing/dto/marketing-tasks.dto';
+import { CreateMarketingContentDto } from '../../marketing/dto/marketing-contents.dto';
+import { CreateBriefingDto } from '../../briefings/dto/briefings.dto';
 
-/** DTO do formulário (whitelist real da API) por tabela com contrato. */
+/**
+ * DTO do formulário (whitelist real da API) por tabela com contrato — apenas
+ * para tabelas cujo DTO REFLETE o formulário real (Parte 89: takedowns e
+ * invoices ficam de fora — DTOs com mismatch de nomes pré-existente e
+ * documentado nos respectivos contratos; transactions usa validação Zod, sem
+ * DTO class-validator; content_detections não tem formulário real algum).
+ */
 const FORM_DTO_BY_TABLE: Record<string, new () => object> = {
   artists: CreateArtistDto,
   works: CreateWorkDto,
   phonograms: CreatePhonogramDto,
   contracts: CreateContractDto,
-  contract_templates: CreateContractTemplateDto,
   employees: CreateEmployeeDto,
   clients: CreateClientDto,
   projects: CreateProjectDto,
+  licenses: CreateLicenseDto,
+  releases: CreateReleaseDto,
+  shares: CreateShareDto,
+  audiovisual_projects: CreateAudiovisualProjectDto,
+  events: CreateEventDto,
+  inventory_items: CreateInventoryItemDto,
+  leads: CreateLeadDto,
+  marketing_tasks: CreateMarketingTaskDto,
+  marketing_content_posts: CreateMarketingContentDto,
+  briefings: CreateBriefingDto,
 };
 
 function dtoFields(dto: new () => object): string[] {
@@ -101,7 +125,7 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
         const ok =
           (f.storage === 'column' && real!.has(f.key)) ||
           (f.storage === 'encrypted' && f.physical !== undefined && real!.has(f.physical)) ||
-          (f.storage === 'metadata' && real!.has('metadata')) ||
+          (f.storage === 'metadata' && real!.has(f.physical ?? 'metadata')) ||
           (f.storage === 'ref' && f.physical !== undefined && real!.has(f.physical));
         if (!ok) offenders.push(`${table}.${f.key} (${f.storage})`);
         // chave lógica de campo cifrado/ref nunca pode colidir com coluna física
@@ -145,7 +169,8 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
       expect(def!.exportableColumns).toEqual(contractExportableColumns(contract));
       expect(def!.importableColumns).toEqual(contractImportableColumns(contract));
       expect(def!.identityColumn).toBe(contract.identityColumn);
-      expect(def!.supportsImport).toBe(true);
+      const exportOnly = contract.fields.every((f) => f.importable === false);
+      expect(def!.supportsImport).toBe(!exportOnly);
       expect(def!.supportsExport).toBe(true);
     }
   });
@@ -182,8 +207,13 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
     expect(offenders).toEqual([]);
   });
 
-  it('identityColumn do contrato é coluna direta importável', () => {
+  it('identityColumn do contrato é coluna direta importável (ou o contrato inteiro é export-only)', () => {
     for (const contract of Object.values(REPORT_FORM_CONTRACTS)) {
+      // Relatório inteiramente export-only (ex.: Monitoramento, Contabilidade
+      // — sem formulário Criar/Editar real): a exigência de identityColumn
+      // importável não se aplica, pois nada no contrato é importável.
+      const exportOnly = contract.fields.every((f) => f.importable === false);
+      if (exportOnly) continue;
       const spec = contract.fields.find((f) => f.key === contract.identityColumn);
       expect(spec).toBeDefined();
       expect(spec!.storage).toBe('column');

@@ -68,10 +68,15 @@ describe('EntityMetadataService — inventário entity-driven', () => {
     }
   });
 
-  // Parte 88: núcleo reportável restrito às entidades com ReportFormContract
-  // explícito (nenhum fallback heurístico) — ver form-contracts/report-form-contracts.ts.
+  // Parte 89: núcleo reportável é exatamente o registry fechado (22 módulos
+  // autorizados) — ver report-module-registry.ts.
   it('entidades operacionais núcleo são reportáveis (com tenant_id)', () => {
-    for (const table of ['artists', 'works', 'phonograms', 'contracts', 'contract_templates', 'clients', 'employees', 'projects']) {
+    for (const table of [
+      'artists', 'works', 'phonograms', 'contracts', 'clients', 'employees', 'projects',
+      'content_detections', 'licenses', 'takedowns', 'releases', 'shares',
+      'audiovisual_projects', 'transactions', 'invoices', 'events', 'inventory_items',
+      'leads', 'marketing_tasks', 'marketing_content_posts', 'briefings',
+    ]) {
       const e = byTable.get(table);
       if (!e) continue;
       expect(e.category).toBe(EntityCategory.REPORTABLE);
@@ -80,8 +85,8 @@ describe('EntityMetadataService — inventário entity-driven', () => {
     }
   });
 
-  it('entidades sem contrato explícito de relatório (Parte 88) são NOT_REPORTABLE', () => {
-    for (const table of ['transactions', 'invoices', 'leads']) {
+  it('entidades fora do registry fechado (Parte 89) são NOT_REPORTABLE', () => {
+    for (const table of ['contract_templates', 'operational_tasks', 'artist_goals', 'support_tickets']) {
       const e = byTable.get(table);
       if (!e) continue;
       expect(e.category).toBe(EntityCategory.NOT_REPORTABLE);

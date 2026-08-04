@@ -39,12 +39,12 @@ describe('ReportEntityDefinitionService — contratos', () => {
       // ou 'ref' (aponta para uma coluna física real, ex.: id — Parte 87).
       const contract = getReportFormContract(d.tableName);
       const encrypted = contract ? contractEncryptedFields(contract) : {};
-      const metaFields = contract ? contractMetadataFields(contract) : new Set<string>();
+      const metaFields = contract ? contractMetadataFields(contract) : {};
       const refFields = contract ? contractRefFields(contract) : {};
       for (const col of all) {
         const backedByContract =
           (encrypted[col] !== undefined && real.has(encrypted[col])) ||
-          (metaFields.has(col) && real.has('metadata')) ||
+          (metaFields[col] !== undefined && real.has(metaFields[col])) ||
           (refFields[col] !== undefined && real.has(refFields[col]));
         if (!real.has(col) && !backedByContract) offenders.push(`${d.tableName}.${col}`);
       }
