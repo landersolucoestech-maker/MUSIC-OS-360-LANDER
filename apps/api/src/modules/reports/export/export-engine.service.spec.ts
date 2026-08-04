@@ -108,8 +108,8 @@ describe('Projetos — workbook fiel ao modal e com uma única aba', () => {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets.Projetos, { header: 1 });
     expect(rows[0]).toEqual([
       'Tipo de Lançamento', 'Nome do EP/Álbum', 'Observações', 'Status',
-      'Nome da Música', 'Solo/Feat', 'Original/Remix', 'Instrumental',
-      'Duração — Minutos', 'Duração — Segundos', 'Gênero Musical', 'Idioma da Música',
+      'Nome da música', 'Solo/Feat', 'Original/Remix', 'Instrumental',
+      'Duração — Minutos', 'Duração — Segundos', 'Gênero musical', 'Idioma da Música',
       'Compositores', 'Intérpretes', 'Produtores', 'Letra', 'Arquivos de Áudio (MP3/WAV)', 'Ordem',
     ]);
     expect(rows).toHaveLength(3);
