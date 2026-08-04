@@ -11,6 +11,17 @@ import type {
 
 export type { NotaFiscal, NotaFiscalInsert, NotaFiscalUpdate, NotaFiscalWithRelations };
 
+function invoiceValue(invoice: NotaFiscalWithRelations): number | undefined {
+  const row = invoice as NotaFiscalWithRelations & {
+    valor_servicos?: number | string;
+    valor?: number | string;
+  };
+  const raw = row.valor_servicos ?? row.valor;
+  if (raw === null || raw === undefined || raw === "") return undefined;
+  const parsed = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export function useNotasFiscais() {
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
@@ -22,19 +33,19 @@ export function useNotasFiscais() {
     onMutationSuccess: {
       onCreate: (nf) =>
         emit(DomainEvents.INVOICE_CREATED, {
-          id:         (nf as NotaFiscalWithRelations & { id: string }).id,
-          numero:     (nf as NotaFiscalWithRelations & { numero?: string }).numero ?? undefined,
+          id: (nf as NotaFiscalWithRelations & { id: string }).id,
+          numero: (nf as NotaFiscalWithRelations & { numero?: string }).numero ?? undefined,
           cliente_id: (nf as NotaFiscalWithRelations & { cliente_id?: string }).cliente_id ?? undefined,
-          valor:      (nf as NotaFiscalWithRelations & { valor?: number }).valor ?? undefined,
-          org_id:     orgId,
+          valor: invoiceValue(nf),
+          org_id: orgId,
         }),
       onUpdate: (nf) =>
         emit(DomainEvents.INVOICE_UPDATED, {
-          id:         (nf as NotaFiscalWithRelations & { id: string }).id,
-          numero:     (nf as NotaFiscalWithRelations & { numero?: string }).numero ?? undefined,
+          id: (nf as NotaFiscalWithRelations & { id: string }).id,
+          numero: (nf as NotaFiscalWithRelations & { numero?: string }).numero ?? undefined,
           cliente_id: (nf as NotaFiscalWithRelations & { cliente_id?: string }).cliente_id ?? undefined,
-          valor:      (nf as NotaFiscalWithRelations & { valor?: number }).valor ?? undefined,
-          org_id:     orgId,
+          valor: invoiceValue(nf),
+          org_id: orgId,
         }),
       onDelete: (id) =>
         emit(DomainEvents.INVOICE_DELETED, { id, org_id: orgId }),
