@@ -1,36 +1,94 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsNumber, IsPositive, IsDate, MaxLength } from 'class-validator';
+import {
+  IsString, IsOptional, IsIn, IsNumber, IsBoolean, IsArray, IsUUID,
+  IsEmail, MaxLength, Min, Max, ValidateNested, IsObject,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-const TYPES    = ['nfe', 'nfse', 'nfce', 'rpa', 'recibo', 'other'] as const;
-const STATUSES = ['pending', 'issued', 'cancelled', 'overdue'] as const;
+const TIPOS_NOTA = ['nfse', 'nfe', 'nfce'] as const;
 
+export class InvoiceItemDto {
+  @ApiProperty() @IsString() @MaxLength(2000) descricao!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) codigo_servico?: string;
+  @ApiProperty() @IsNumber() @Min(1) @Type(() => Number) quantidade!: number;
+  @ApiProperty() @IsNumber() @Min(0) @Type(() => Number) valor_unitario!: number;
+  @ApiProperty() @IsNumber() @Min(0) @Type(() => Number) valor_total!: number;
+}
+
+/**
+ * Contrato canônico do NotaFiscalFormModal.
+ *
+ * O DTO antigo descrevia um objeto Stripe/inglês (`type`, `amount`,
+ * `issuerName`, `recipientDoc`) que não correspondia ao payload real da tela.
+ * Com whitelist/forbidNonWhitelisted, o formulário completo era rejeitado ou
+ * tinha campos descartados. Este DTO acompanha os nomes efetivamente exibidos,
+ * validados e persistidos pela interface.
+ */
 export class CreateInvoiceDto {
-  @ApiProperty({ enum: TYPES }) @IsIn(TYPES) type!: string;
-  @ApiProperty() @IsNumber() @IsPositive() @Type(() => Number) amount!: number;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100)  number?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(3)    currency?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255)  issuerName?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50)   issuerDoc?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255)  recipientName?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50)   recipientDoc?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() transactionId?: string;
-  @ApiPropertyOptional({ type: String, format: 'date-time' })
-  @IsOptional() @Type(() => Date) @IsDate() issuedAt?: Date;
-  @ApiPropertyOptional({ type: String, format: 'date-time' })
-  @IsOptional() @Type(() => Date) @IsDate() dueAt?: Date;
-  @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) numero?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) serie?: string;
+  @ApiPropertyOptional({ enum: TIPOS_NOTA }) @IsOptional() @IsIn(TIPOS_NOTA) tipo_nota?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() cliente_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() venda_id?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) natureza_operacao?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) codigo_servico_municipal?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) codigo_municipio?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) cfop?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) descricao_servicos?: string;
+
+  @ApiPropertyOptional({ type: String, format: 'date' }) @IsOptional() @IsString() data_emissao?: string;
+  @ApiPropertyOptional({ type: String, format: 'date' }) @IsOptional() @IsString() vencimento?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) status?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) tomador_cnpj?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) tomador_razao_social?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) tomador_inscricao_estadual?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) tomador_inscricao_municipal?: string;
+  @ApiPropertyOptional() @IsOptional() @IsEmail() @MaxLength(100) tomador_email?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(300) tomador_endereco?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) tomador_cidade?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2) tomador_uf?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10) tomador_cep?: string;
+
+  /** Coluna legada ainda usada por eventos e telas antigas; espelha valor_servicos. */
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor_servicos?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor_deducoes?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) base_calculo?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Max(100) @Type(() => Number) aliquota_iss?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor_iss?: number;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() iss_retido?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor_pis?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor_cofins?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor_inss?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor_ir?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor_csll?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Type(() => Number) valor_liquido?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) forma_pagamento?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) condicao_pagamento?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) url_pdf?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) observacoes?: string;
+
+  @ApiPropertyOptional({ type: [InvoiceItemDto] })
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => InvoiceItemDto)
+  itens?: InvoiceItemDto[];
+
+  @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
 }
 
-export class UpdateInvoiceDto extends PartialType(CreateInvoiceDto) {
-  @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() r2Key?: string;
-}
+export class UpdateInvoiceDto extends PartialType(CreateInvoiceDto) {}
 
 export class QueryInvoiceDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
+  @ApiPropertyOptional({ enum: TIPOS_NOTA }) @IsOptional() @IsIn(TIPOS_NOTA) tipo_nota?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() cliente_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
+
+  // Aliases legados mantidos somente para clientes antigos; o service deve
+  // priorizar os campos canônicos acima.
   @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
 }
