@@ -1,10 +1,13 @@
 /**
- * modules/reports/import/import.types.ts
- * Validação de importação XLSX em uma única aba.
+ * Contratos e limites da importação XLSX em uma única aba.
  */
 export type ImportFormat = 'xlsx';
 export const IMPORT_MAX_ROWS = 5000;
+export const IMPORT_MAX_COLUMNS = 200;
 export const IMPORT_MAX_BYTES = 1024 * 1024;
+export const IMPORT_MAX_ZIP_ENTRIES = 1000;
+export const IMPORT_MAX_UNCOMPRESSED_BYTES = 20 * 1024 * 1024;
+export const IMPORT_MAX_COMPRESSION_RATIO = 100;
 
 export interface ParsedFile {
   format: ImportFormat;
