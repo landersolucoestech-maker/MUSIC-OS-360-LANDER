@@ -39,15 +39,30 @@ export class BriefingsService {
     return result;
   }
 
+  // O DTO usa nomes em inglês (title/content/campaignId/dueAt) mas as colunas
+  // físicas da entidade são em português (titulo/descricao/campanha_id/prazo)
+  // — sem este mapeamento explícito, um spread bruto do DTO nunca populava as
+  // colunas reais (TypeORM só persiste propriedades decoradas com @Column).
+  private toEntityFields(dto: CreateBriefingDto | UpdateBriefingDto): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    if (dto.title !== undefined) out.titulo = dto.title;
+    if (dto.content !== undefined) out.descricao = dto.content;
+    if (dto.campaignId !== undefined) out.campanha_id = dto.campaignId;
+    if (dto.dueAt !== undefined) out.prazo = dto.dueAt;
+    if (dto.metadata !== undefined) out.metadata = dto.metadata;
+    if ('status' in dto && dto.status !== undefined) out.status = dto.status;
+    return out;
+  }
+
   async create(tenantId: string, userId: string, dto: CreateBriefingDto): Promise<BriefingEntity> {
-    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId });
+    const entity = this.repo!.create({ tenant_id: tenantId, ...this.toEntityFields(dto), created_by: userId });
     return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, id: string, dto: UpdateBriefingDto): Promise<BriefingEntity> {
     await this.findById(tenantId, id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date() } as any);
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...this.toEntityFields(dto), updated_at: new Date() } as any);
     return this.findById(tenantId, id);
   }
 
