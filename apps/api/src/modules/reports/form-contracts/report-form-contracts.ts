@@ -60,7 +60,7 @@ export interface ReportFormContract {
   /** Overrides opcionais (apenas colunas físicas do contrato). */
   filterableColumns?: string[];
   searchableColumns?: string[];
-  /** Abas filhas para estruturas repetíveis do formulário (Parte 87). */
+  /** Campos repetíveis achatados em linhas da mesma aba XLSX. */
   repeatingGroup?: ReportRepeatingGroupSpec;
 }
 
@@ -75,14 +75,6 @@ const ro = (key: string, physical?: string): ReportFieldSpec => ({ key, storage:
  */
 const meta = (key: string, physical: string = 'metadata'): ReportFieldSpec => ({ key, storage: 'metadata', physical });
 const enc = (key: string, physical: string): ReportFieldSpec => ({ key, storage: 'encrypted', physical });
-/**
- * Coluna de correlação entre a linha principal e suas grupos repetíveis
- * (contract.repeatingGroup) — nunca persistida (nenhuma tabela tem coluna
- * própria para isto); resolvida a partir de uma coluna física real (ex.: o
- * `id` do próprio registro) só para existir um valor estável dentro do
- * arquivo. Fora de contratos com repeatingGroup, não deve ser usada.
- */
-
 // ─── Artistas (formulário completo — 68 campos) ──────────────────────────────
 const ARTISTS_CONTRACT: ReportFormContract = {
   tableName: 'artists',
@@ -777,11 +769,17 @@ export function contractFieldByKey(
 }
 
 export function contractExportableColumns(contract: ReportFormContract): string[] {
-  return contract.fields.map((f) => f.key);
+  return [
+    ...contract.fields.map((field) => field.key),
+    ...(contract.repeatingGroup?.fields.map((field) => field.key) ?? []),
+  ];
 }
 
 export function contractImportableColumns(contract: ReportFormContract): string[] {
-  return contract.fields.filter((f) => f.importable !== false).map((f) => f.key);
+  return [
+    ...contract.fields.filter((field) => field.importable !== false).map((field) => field.key),
+    ...(contract.repeatingGroup?.fields.map((field) => field.key) ?? []),
+  ];
 }
 
 export function contractDirectColumns(contract: ReportFormContract): Set<string> {
