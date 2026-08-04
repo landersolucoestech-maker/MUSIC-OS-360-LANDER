@@ -69,7 +69,6 @@ export function UsuarioEditorModal({ open, onOpenChange, usuario, mode }: Usuari
         await updateUsuario.mutateAsync({
           id: usuario.id,
           full_name: name.trim(),
-          email: normalizedEmail,
           phone: phone.trim(),
           status,
           role: roleSlug,
@@ -120,7 +119,13 @@ export function UsuarioEditorModal({ open, onOpenChange, usuario, mode }: Usuari
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="usuario@empresa.com"
+              disabled={mode === "edit"}
             />
+            {mode === "edit" && (
+              <p className="text-xs text-muted-foreground">
+                A alteração de e-mail exige um fluxo de confirmação do provedor de autenticação e não é feita por este formulário.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
