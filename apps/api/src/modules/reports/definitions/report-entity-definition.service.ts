@@ -6,7 +6,6 @@ import {
   contractDirectColumns,
   getReportFormContract,
   type ReportFormContract,
-  type ReportChildSheetSpec,
 } from '../form-contracts/report-form-contracts';
 
 const JSON_TYPES = new Set(['json', 'jsonb', 'simple-json', 'simple-array']);
@@ -30,11 +29,6 @@ const DATE_TYPES = new Set(['timestamp', 'timestamptz', 'date', 'datetime', 'Dat
 const NUMERIC_TYPES = new Set(['int', 'integer', 'numeric', 'decimal', 'float', 'bigint', 'Number', 'real', 'double precision']);
 const FILTERABLE_HINTS = /^(status|situacao|categoria|category|tipo|type|kind|stage|prioridade|priority|active|ativo|is_active|published|approved|archived)$/;
 
-type CompatibleContract = ReportFormContract & {
-  repeatingGroup?: { key: string; fields: Array<{ key: string; multi?: boolean }> };
-  childSheets?: ReportChildSheetSpec[];
-};
-
 @Injectable()
 export class ReportEntityDefinitionService {
   constructor(private readonly entityMetadata: EntityMetadataService) {}
@@ -42,59 +36,62 @@ export class ReportEntityDefinitionService {
   getDefinitions(): ReportEntityDefinition[] {
     return this.entityMetadata
       .scan()
-      .entities.filter((e) => e.reportable && getReportFormContract(e.tableName) !== null)
-      .map((e) => this.build(e, getReportFormContract(e.tableName)!));
+      .entities.filter((entity) => entity.reportable && getReportFormContract(entity.tableName) !== null)
+      .map((entity) => this.build(entity, getReportFormContract(entity.tableName)!));
   }
 
   getDefinition(tableName: string): ReportEntityDefinition | null {
-    return this.getDefinitions().find((d) => d.tableName === tableName) ?? null;
+    return this.getDefinitions().find((definition) => definition.tableName === tableName) ?? null;
   }
 
-  private build(e: EntityReport, rawContract: ReportFormContract): ReportEntityDefinition {
-    const contract = rawContract as CompatibleContract;
-    const cols = e.columns;
-    const sensitive = cols.filter(isSensitiveColumn).map((c) => c.name);
-    const visible = cols.filter((c) => !isInternalColumn(c) && !isSensitiveColumn(c));
+  private build(entity: EntityReport, contract: ReportFormContract): ReportEntityDefinition {
+    const columns = entity.columns;
+    const sensitive = columns.filter(isSensitiveColumn).map((column) => column.name);
+    const visible = columns.filter((column) => !isInternalColumn(column) && !isSensitiveColumn(column));
 
-    const generalFields = contract.fields.filter((field) => field.storage !== 'ref');
-    const repeating = contract.repeatingGroup ?? contract.childSheets?.[0];
     const exportableColumns = [
-      ...generalFields.map((field) => field.key),
-      ...(repeating?.fields.map((field) => field.key) ?? []),
+      ...contract.fields.map((field) => field.key),
+      ...(contract.repeatingGroup?.fields.map((field) => field.key) ?? []),
     ];
     const importableColumns = [
-      ...generalFields.filter((field) => field.importable !== false).map((field) => field.key),
-      ...(repeating?.fields.map((field) => field.key) ?? []),
+      ...contract.fields.filter((field) => field.importable !== false).map((field) => field.key),
+      ...(contract.repeatingGroup?.fields.map((field) => field.key) ?? []),
     ];
     const identityColumn = contract.identityColumn;
     const displayColumn = identityColumn;
 
     const dateColumn =
-      cols.find((c) => c.isCreatedAt)?.name ??
-      cols.find((c) => DATE_TYPES.has(c.type) && !c.isUpdatedAt && !c.isDeletedAt)?.name ??
+      columns.find((column) => column.isCreatedAt)?.name ??
+      columns.find((column) => DATE_TYPES.has(column.type) && !column.isUpdatedAt && !column.isDeletedAt)?.name ??
       'created_at';
 
     const directContractColumns = contractDirectColumns(contract);
     const sqlSafe = (name: string): boolean => directContractColumns.has(name);
 
     const filterableColumns = contract.filterableColumns ?? visible
-      .filter((c) => (FILTERABLE_HINTS.test(c.name) || c.isEnum || c.type === 'Boolean' || DATE_TYPES.has(c.type)) && sqlSafe(c.name))
-      .map((c) => c.name);
+      .filter((column) => (
+        FILTERABLE_HINTS.test(column.name) || column.isEnum || column.type === 'Boolean' || DATE_TYPES.has(column.type)
+      ) && sqlSafe(column.name))
+      .map((column) => column.name);
 
     const sortableColumns = Array.from(new Set([
       identityColumn,
       dateColumn,
-      ...visible.filter((c) => (NUMERIC_TYPES.has(c.type) || DATE_TYPES.has(c.type)) && sqlSafe(c.name)).map((c) => c.name),
+      ...visible
+        .filter((column) => (NUMERIC_TYPES.has(column.type) || DATE_TYPES.has(column.type)) && sqlSafe(column.name))
+        .map((column) => column.name),
     ]));
 
     const searchableColumns = contract.searchableColumns ?? visible
-      .filter((c) => (c.type === 'String' || c.type === 'varchar' || c.type === 'text') && !c.isEnum && sqlSafe(c.name))
-      .map((c) => c.name);
+      .filter((column) => (
+        column.type === 'String' || column.type === 'varchar' || column.type === 'text'
+      ) && !column.isEnum && sqlSafe(column.name))
+      .map((column) => column.name);
 
     return {
-      entityName: e.entityName,
-      tableName: e.tableName,
-      category: e.category,
+      entityName: entity.entityName,
+      tableName: entity.tableName,
+      category: entity.category,
       identityColumn,
       displayColumn,
       dateColumn,
