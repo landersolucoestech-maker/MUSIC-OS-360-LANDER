@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsEmail, Matches, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsOptional, IsIn, IsEmail, Matches, MaxLength, IsObject } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 // PASSO 12-G.1: 'accounting' é o slug canônico (roles seed / ROLE_PERMISSIONS / FunctionalRole.ACCOUNTING).
@@ -23,11 +23,26 @@ export class CreateUserDto {
   @Matches(/^[a-z0-9_-]+$/)
   role!: string;
 
-  @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
+  @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
 }
 
-export class UpdateUserDto extends PartialType(CreateUserDto) {
+/**
+ * Atualização do perfil de membership.
+ *
+ * `email` e `userId` não pertencem a este endpoint: ambos vivem no provedor de
+ * autenticação e exigem fluxos próprios de confirmação/admin. Aceitá-los no DTO
+ * fazia a API responder sucesso enquanto o service os ignorava. `role` é
+ * mantido por compatibilidade interna, mas a UI usa o endpoint auditado
+ * PATCH /users/:id/role para respeitar a hierarquia RBAC.
+ */
+export class UpdateUserDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) fullName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) phone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() avatarUrl?: string;
   @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
+  @ApiPropertyOptional({ description: 'Slug de papel; preferir PATCH /users/:id/role' })
+  @IsOptional() @IsString() @Matches(/^[a-z0-9_-]+$/) role?: string;
+  @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
 }
 
 export class AssignRoleDto {
