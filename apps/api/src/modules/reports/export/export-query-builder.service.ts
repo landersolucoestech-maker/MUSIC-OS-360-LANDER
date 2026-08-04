@@ -58,6 +58,7 @@ export class ExportQueryBuilderService {
       }
     }
     const physicalAliasFields = { ...logicalAliases, ...encryptedFields };
+    const physical = (logical: string): string => physicalAliasFields[logical] ?? logical;
 
     const selectParts = columns.map((column) => {
       const physicalColumn = physicalAliasFields[column];
@@ -75,14 +76,14 @@ export class ExportQueryBuilderService {
       for (const [key, value] of Object.entries(params.filters)) {
         if (!def.filterableColumns.includes(key)) throw new BadRequestException(`Filtro não permitido: ${key}`);
         parameters.push(value);
-        where.push(`${quote(key)} = $${parameters.length}`);
+        where.push(`${quote(physical(key))} = $${parameters.length}`);
       }
     }
 
     let orderBy = '';
     if (params.sort) {
       if (!def.sortableColumns.includes(params.sort)) throw new BadRequestException(`Ordenação não permitida: ${params.sort}`);
-      orderBy = ` ORDER BY ${quote(params.sort)} ${params.order === 'DESC' ? 'DESC' : 'ASC'}`;
+      orderBy = ` ORDER BY ${quote(physical(params.sort))} ${params.order === 'DESC' ? 'DESC' : 'ASC'}`;
     }
 
     const pageSize = clamp(Math.trunc(params.pageSize) || 1, 1, EXPORT_MAX_PAGE_SIZE);
