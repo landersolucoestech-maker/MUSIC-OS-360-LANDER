@@ -31,30 +31,20 @@ export interface ReportFieldSpec {
   key: string;
   /** Onde o campo vive fisicamente. */
   storage: ReportFieldStorage;
-  /** Coluna física para storage 'encrypted'/'ref' (ex.: email → email_encrypted; projeto_ref → id). */
+  /** Coluna física para storage cifrado ou alias de coluna real. */
   physical?: string;
   /** false ⇒ somente exportação (nunca sobrescrito na importação). */
   importable?: boolean;
 }
 
-/**
- * Grupo repetível do formulário — estrutura repetível do formulário (ex.: músicas de
- * um projeto) representada como abas próprias, NUNCA compactada em JSON numa
- * única célula (Parte 87, Bloco 6). Cada linha da grupo repetível carrega a mesma
- * coluna de referência (`campos gerais do contrato`) da linha-pai a que
- * pertence, para reimportação correlacionar as duas abas.
- */
+/** Grupo repetível achatado em linhas da mesma aba XLSX. */
 export interface ReportRepeatingGroupFieldSpec {
   key: string;
-  /** true ⇒ lista de valores (ex.: nomes de compositores) representada como texto separado por ", ". */
   multi?: boolean;
 }
 
 export interface ReportRepeatingGroupSpec {
-  /** Chave lógica do grupo (ex.: 'musicas'). */
   key: string;
-  /** Nome da aba no workbook (≤ 31 caracteres — limite do Excel). */
-  sheetName: string;
   fields: ReportRepeatingGroupFieldSpec[];
 }
 
@@ -815,10 +805,3 @@ export function contractMetadataFields(contract: ReportFormContract): Record<str
   return out;
 }
 
-export function contractRefFields(contract: ReportFormContract): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const f of contract.fields) {
-    if (f.storage === 'ref' && f.physical) out[f.key] = f.physical;
-  }
-  return out;
-}
