@@ -7,27 +7,8 @@ import {
   contractExportableColumns,
   contractImportableColumns,
   getReportFormContract,
+  type ReportFormContract,
 } from '../form-contracts/report-form-contracts';
-
-const IDENTITY_NAMES = [
-  'numero',
-  'nome',
-  'nome_artistico',
-  'nome_civil',
-  'razao_social',
-  'titulo',
-  'title',
-  'name',
-  'codigo',
-  'code',
-  'slug',
-  'email',
-  'label',
-  'assunto',
-  'ticket_number',
-  'isrc',
-  'iswc',
-];
 
 const JSON_TYPES = new Set(['json', 'jsonb', 'simple-json', 'simple-array']);
 
@@ -73,6 +54,14 @@ const NUMERIC_TYPES = new Set([
 const FILTERABLE_HINTS =
   /^(status|situacao|categoria|category|tipo|type|kind|stage|prioridade|priority|active|ativo|is_active|published|approved|archived)$/;
 
+/**
+ * Parte 88 — PROIBIDO fallback heurístico para entidades reportáveis. Uma
+ * entidade só aparece na Central de Relatórios quando possui um
+ * ReportFormContract explícito registrado em report-form-contracts.ts —
+ * ela nunca "adivinha" colunas a partir da Entity/metadata TypeORM. Sem
+ * contrato, a entidade simplesmente não existe para getDefinitions()/
+ * getDefinition() (ver REPORT_CONTRACT_REQUIRED nos engines de export/import).
+ */
 @Injectable()
 export class ReportEntityDefinitionService {
   constructor(private readonly entityMetadata: EntityMetadataService) {}
@@ -80,39 +69,22 @@ export class ReportEntityDefinitionService {
   getDefinitions(): ReportEntityDefinition[] {
     return this.entityMetadata
       .scan()
-      .entities.filter((e) => e.reportable)
-      .map((e) => this.build(e));
+      .entities.filter((e) => e.reportable && getReportFormContract(e.tableName) !== null)
+      .map((e) => this.build(e, getReportFormContract(e.tableName)!));
   }
 
   getDefinition(tableName: string): ReportEntityDefinition | null {
     return this.getDefinitions().find((d) => d.tableName === tableName) ?? null;
   }
 
-  private build(e: EntityReport): ReportEntityDefinition {
+  private build(e: EntityReport, contract: ReportFormContract): ReportEntityDefinition {
     const cols = e.columns;
     const sensitive = cols.filter(isSensitiveColumn).map((c) => c.name);
-
     const visible = cols.filter((c) => !isInternalColumn(c) && !isSensitiveColumn(c));
 
-    // Fonte única de verdade: contrato de formulário registrado para a entidade.
-    // Sem contrato, cai na heurística de metadata (entidades sem formulário).
-    const contract = getReportFormContract(e.tableName);
-    const directContractColumns = contract ? contractDirectColumns(contract) : null;
-
-    const exportableColumns = contract
-      ? contractExportableColumns(contract)
-      : visible.map((c) => c.name);
-
-    const importableColumns = contract
-      ? contractImportableColumns(contract)
-      : visible
-          .filter((c) => !/_count$|^auto_|_at$/.test(c.name) && c.name !== 'auto_generated')
-          .map((c) => c.name);
-
-    const identityColumn =
-      contract?.identityColumn ??
-      (cols.find((c) => IDENTITY_NAMES.includes(c.name))?.name ?? exportableColumns[0] ?? 'id');
-
+    const exportableColumns = contractExportableColumns(contract);
+    const importableColumns = contractImportableColumns(contract);
+    const identityColumn = contract.identityColumn;
     const displayColumn = identityColumn;
 
     const dateColumn =
@@ -120,12 +92,13 @@ export class ReportEntityDefinitionService {
       cols.find((c) => DATE_TYPES.has(c.type) && !c.isUpdatedAt && !c.isDeletedAt)?.name ??
       'created_at';
 
-    // Filtros/ordenação/busca operam em SQL: restritos a colunas FÍSICAS.
-    // Em entidades com contrato, ainda exigimos que a coluna faça parte dele.
-    const sqlSafe = (name: string): boolean =>
-      !directContractColumns || directContractColumns.has(name);
+    // Filtros/ordenação/busca operam em SQL: restritos a colunas FÍSICAS
+    // diretas do contrato (nunca metadata/encrypted/ref, e nunca uma coluna
+    // fora do contrato).
+    const directContractColumns = contractDirectColumns(contract);
+    const sqlSafe = (name: string): boolean => directContractColumns.has(name);
 
-    const filterableColumns = contract?.filterableColumns ?? visible
+    const filterableColumns = contract.filterableColumns ?? visible
       .filter(
         (c) =>
           (FILTERABLE_HINTS.test(c.name) ||
@@ -146,7 +119,7 @@ export class ReportEntityDefinitionService {
       ]),
     );
 
-    const searchableColumns = contract?.searchableColumns ?? visible
+    const searchableColumns = contract.searchableColumns ?? visible
       .filter(
         (c) =>
           (c.type === 'String' || c.type === 'varchar' || c.type === 'text') &&
@@ -170,7 +143,7 @@ export class ReportEntityDefinitionService {
       sensitiveColumns: sensitive,
       requiredImportColumns: [identityColumn],
       supportsExport: exportableColumns.length > 0,
-      supportsImport: importableColumns.length > 0 && IDENTITY_NAMES.includes(identityColumn),
+      supportsImport: importableColumns.length > 0,
     };
   }
 }

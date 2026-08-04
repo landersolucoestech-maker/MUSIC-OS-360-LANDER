@@ -26,63 +26,70 @@ import {
 // ─── Classificação central, explícita e exaustiva (117 tabelas) ──────────────────
 // Qualquer tabela ausente daqui cai em UNKNOWN → teste falha (proposital).
 const ENTITY_CATEGORY: Record<string, EntityCategory> = {
-  // ── Operacionais reportáveis ──────────────────────────────────────────────
+  // ── Operacionais reportáveis (Parte 88: SOMENTE entidades com contrato
+  // explícito em form-contracts/report-form-contracts.ts — nenhum fallback
+  // heurístico. Lista propositalmente curta; crescer aqui exige criar o
+  // contrato correspondente primeiro, nunca o contrário.) ──────────────────
   artists: EntityCategory.REPORTABLE,
   works: EntityCategory.REPORTABLE,
   phonograms: EntityCategory.REPORTABLE,
   contracts: EntityCategory.REPORTABLE,
   contract_templates: EntityCategory.REPORTABLE,
-  contract_service_types: EntityCategory.REPORTABLE,
-  transactions: EntityCategory.REPORTABLE,
-  invoices: EntityCategory.REPORTABLE,
   clients: EntityCategory.REPORTABLE,
-  leads: EntityCategory.REPORTABLE,
-  lead_interactions: EntityCategory.REPORTABLE,
-  campaigns: EntityCategory.REPORTABLE,
-  briefings: EntityCategory.REPORTABLE,
-  events: EntityCategory.REPORTABLE,
-  projects: EntityCategory.REPORTABLE,
-  releases: EntityCategory.REPORTABLE,
-  shares: EntityCategory.REPORTABLE,
-  takedowns: EntityCategory.REPORTABLE,
-  support_tickets: EntityCategory.REPORTABLE,
-  ecad_reports: EntityCategory.REPORTABLE,
-  licenses: EntityCategory.REPORTABLE,
-  inventory_items: EntityCategory.REPORTABLE,
-  content_detections: EntityCategory.REPORTABLE,
-  conversations: EntityCategory.REPORTABLE,
-  operational_tasks: EntityCategory.REPORTABLE,
-  financial_categories: EntityCategory.REPORTABLE,
-  financial_rules: EntityCategory.REPORTABLE,
   employees: EntityCategory.REPORTABLE,
-  payroll_entries: EntityCategory.REPORTABLE,
-  leave_requests: EntityCategory.REPORTABLE,
-  artist_goals: EntityCategory.REPORTABLE,
-  assets: EntityCategory.REPORTABLE,
-  rights_holders: EntityCategory.REPORTABLE,
-  marketing_projects: EntityCategory.REPORTABLE,
-  marketing_strategies: EntityCategory.REPORTABLE,
-  marketing_assets: EntityCategory.REPORTABLE,
-  marketing_content_posts: EntityCategory.REPORTABLE,
-  marketing_tasks: EntityCategory.REPORTABLE,
-  audiovisual_projects: EntityCategory.REPORTABLE,
-  audiovisual_briefings: EntityCategory.REPORTABLE,
-  audiovisual_tasks: EntityCategory.REPORTABLE,
-  audiovisual_assets: EntityCategory.REPORTABLE,
-  audiovisual_deliverables: EntityCategory.REPORTABLE,
-  pipeline_opportunities: EntityCategory.REPORTABLE,
-  society_submissions: EntityCategory.REPORTABLE,
-  society_accounts: EntityCategory.REPORTABLE,
+  projects: EntityCategory.REPORTABLE,
 
   // ── Operacionais NÃO reportáveis (sub-entidades / ruído) ──────────────────
   // Parte 87: "forms" e "pipelines" (features de formulário/pipeline musical
   // — FormEntity/PipelineEntity) nunca podem aparecer na Central de
   // Relatórios (nem export, nem import, nem no inventário de entidades) —
   // seguem existindo normalmente em suas próprias telas/módulos, fora de
-  // Relatórios. Não confundir com `pipeline_opportunities` (CRM, entidade
-  // de negócio distinta, permanece reportável).
+  // Relatórios.
   forms: EntityCategory.NOT_REPORTABLE,
   pipelines: EntityCategory.NOT_REPORTABLE,
+  // Parte 88 — REMOVIDAS explicitamente da Central de Relatórios por não
+  // possuírem (ainda) um ReportFormContract explícito auditado contra seus
+  // formulários reais (Criar/Editar/Visualizar). Continuam existindo
+  // normalmente em seus próprios módulos — só saem do escopo de Relatórios
+  // até ganharem contrato. Nenhuma cai mais em fallback heurístico.
+  contract_service_types: EntityCategory.NOT_REPORTABLE,
+  transactions: EntityCategory.NOT_REPORTABLE,
+  invoices: EntityCategory.NOT_REPORTABLE,
+  leads: EntityCategory.NOT_REPORTABLE,
+  lead_interactions: EntityCategory.NOT_REPORTABLE,
+  campaigns: EntityCategory.NOT_REPORTABLE,
+  briefings: EntityCategory.NOT_REPORTABLE,
+  events: EntityCategory.NOT_REPORTABLE,
+  releases: EntityCategory.NOT_REPORTABLE,
+  shares: EntityCategory.NOT_REPORTABLE,
+  takedowns: EntityCategory.NOT_REPORTABLE,
+  support_tickets: EntityCategory.NOT_REPORTABLE,
+  ecad_reports: EntityCategory.NOT_REPORTABLE,
+  licenses: EntityCategory.NOT_REPORTABLE,
+  inventory_items: EntityCategory.NOT_REPORTABLE,
+  content_detections: EntityCategory.NOT_REPORTABLE,
+  conversations: EntityCategory.NOT_REPORTABLE,
+  operational_tasks: EntityCategory.NOT_REPORTABLE,
+  financial_categories: EntityCategory.NOT_REPORTABLE,
+  financial_rules: EntityCategory.NOT_REPORTABLE,
+  payroll_entries: EntityCategory.NOT_REPORTABLE,
+  leave_requests: EntityCategory.NOT_REPORTABLE,
+  artist_goals: EntityCategory.NOT_REPORTABLE,
+  assets: EntityCategory.NOT_REPORTABLE,
+  rights_holders: EntityCategory.NOT_REPORTABLE,
+  marketing_projects: EntityCategory.NOT_REPORTABLE,
+  marketing_strategies: EntityCategory.NOT_REPORTABLE,
+  marketing_assets: EntityCategory.NOT_REPORTABLE,
+  marketing_content_posts: EntityCategory.NOT_REPORTABLE,
+  marketing_tasks: EntityCategory.NOT_REPORTABLE,
+  audiovisual_projects: EntityCategory.NOT_REPORTABLE,
+  audiovisual_briefings: EntityCategory.NOT_REPORTABLE,
+  audiovisual_tasks: EntityCategory.NOT_REPORTABLE,
+  audiovisual_assets: EntityCategory.NOT_REPORTABLE,
+  audiovisual_deliverables: EntityCategory.NOT_REPORTABLE,
+  pipeline_opportunities: EntityCategory.NOT_REPORTABLE,
+  society_submissions: EntityCategory.NOT_REPORTABLE,
+  society_accounts: EntityCategory.NOT_REPORTABLE,
   // work_participants: relação normalizada de autoria de works (migration
   // 20260718000011) — reportável separadamente, como shares/rights_holders.
   work_participants: EntityCategory.NOT_REPORTABLE,

@@ -205,20 +205,6 @@ const CONTRACT_TEMPLATES_CONTRACT: ReportFormContract = {
   },
 };
 
-// ─── Metas de artista ─────────────────────────────────────────────────────────
-const ARTIST_GOALS_CONTRACT: ReportFormContract = {
-  tableName: 'artist_goals',
-  identityColumn: 'titulo',
-  fields: [
-    col('titulo'), col('tipo'), col('periodo'), col('status'),
-    col('meta_valor'), col('valor_atual'), col('data_inicio'), col('data_fim'),
-    col('artista_id'),
-  ],
-  excludedFormFields: {
-    metadata: 'objeto jsonb interno bruto',
-  },
-};
-
 // ─── Obras ────────────────────────────────────────────────────────────────────
 const WORKS_CONTRACT: ReportFormContract = {
   tableName: 'works',
@@ -391,7 +377,6 @@ export const REPORT_FORM_CONTRACTS: Record<string, ReportFormContract> = {
   employees: EMPLOYEES_CONTRACT,
   contracts: CONTRACTS_CONTRACT,
   contract_templates: CONTRACT_TEMPLATES_CONTRACT,
-  artist_goals: ARTIST_GOALS_CONTRACT,
   works: WORKS_CONTRACT,
   phonograms: PHONOGRAMS_CONTRACT,
   clients: CLIENTS_CONTRACT,
