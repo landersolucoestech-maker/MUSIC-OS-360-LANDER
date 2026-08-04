@@ -1,27 +1,26 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
   Optional,
   ServiceUnavailableException,
-  BadRequestException,
 } from '@nestjs/common';
 import { DataSource, QueryRunner } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
-import { ImportEngineService } from './import-engine.service';
-import { ReportEntityDefinitionService } from '../definitions/report-entity-definition.service';
-import { ImportAuditService } from './import-audit.service';
-import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
-import type { RowValidation } from './import.types';
 import { EncryptionService } from '../../../core/security/encryption.service';
+import { ReportEntityDefinitionService } from '../definitions/report-entity-definition.service';
+import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
 import {
   contractEncryptedFields,
   contractMetadataFields,
   getReportFormContract,
   type ReportFormContract,
-  type ReportChildSheetSpec,
 } from '../form-contracts/report-form-contracts';
 import { REPEATING_GROUP_IMPORT_WRITERS } from '../computed-fields/registry';
+import { ImportAuditService } from './import-audit.service';
+import { ImportEngineService } from './import-engine.service';
+import type { RowValidation } from './import.types';
 
 export interface ImportCommitResult {
   entity: string;
@@ -32,45 +31,12 @@ export interface ImportCommitResult {
   errors: string[];
 }
 
-interface RepeatingField { key: string; multi?: boolean }
-interface RepeatingGroup { key: string; fields: RepeatingField[] }
-type CompatibleContract = ReportFormContract & {
-  repeatingGroup?: RepeatingGroup;
-  childSheets?: ReportChildSheetSpec[];
-};
-
 interface RowGroup {
   generalRow: RowValidation;
   itemRows: RowValidation[];
 }
 
 const MULTI_VALUE_SEPARATOR = ' | ';
-
-function resolveRepeatingGroup(contract: CompatibleContract | null): RepeatingGroup | undefined {
-  return contract?.repeatingGroup ?? contract?.childSheets?.[0];
-}
-
-function groupRows(contract: CompatibleContract | null, rows: RowValidation[]): RowGroup[] {
-  const repeatingGroup = resolveRepeatingGroup(contract);
-  if (!contract || !repeatingGroup) return rows.map((row) => ({ generalRow: row, itemRows: [row] }));
-
-  const generalKeys = contract.fields.filter((field) => field.storage !== 'ref').map((field) => field.key);
-  const groups: RowGroup[] = [];
-  let currentSignature: string | null = null;
-  let current: RowGroup | null = null;
-
-  for (const row of rows) {
-    const signature = JSON.stringify(generalKeys.map((key) => row.data[key] ?? null));
-    if (signature !== currentSignature || !current) {
-      current = { generalRow: row, itemRows: [] };
-      groups.push(current);
-      currentSignature = signature;
-    }
-    current.itemRows.push(row);
-  }
-  return groups;
-}
-
 const RELATION_TARGETS: Record<string, string> = {
   artista_id: 'artists',
   projeto_id: 'projects',
@@ -79,7 +45,6 @@ const RELATION_TARGETS: Record<string, string> = {
   cliente_id: 'clients',
   campaign_id: 'campaigns',
 };
-
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function quote(name: string): string {
@@ -88,14 +53,35 @@ function quote(name: string): string {
 }
 
 function normalizeImportedValue(value: unknown): unknown {
-  if (value === '') return null;
+  if (value === '' || value === null || value === undefined) return null;
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
-  if (trimmed === '') return null;
+  if (!trimmed) return null;
   if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
     try { return JSON.parse(trimmed); } catch { return value; }
   }
   return value;
+}
+
+function groupRows(contract: ReportFormContract | null, rows: RowValidation[]): RowGroup[] {
+  const repeatingGroup = contract?.repeatingGroup;
+  if (!contract || !repeatingGroup) return rows.map((row) => ({ generalRow: row, itemRows: [row] }));
+
+  const generalKeys = contract.fields.map((field) => field.key);
+  const groups: RowGroup[] = [];
+  let currentSignature: string | null = null;
+  let current: RowGroup | null = null;
+
+  for (const row of rows) {
+    const signature = JSON.stringify(generalKeys.map((key) => row.data[key] ?? null));
+    if (!current || signature !== currentSignature) {
+      current = { generalRow: row, itemRows: [] };
+      groups.push(current);
+      currentSignature = signature;
+    }
+    current.itemRows.push(row);
+  }
+  return groups;
 }
 
 @Injectable()
@@ -118,7 +104,7 @@ export class ImportCommitService {
 
     const validation = await this.engine.validateFile(entity, file, tenantId);
     const def = this.definitions.getDefinition(entity)!;
-    const contract = getReportFormContract(entity) as CompatibleContract | null;
+    const contract = getReportFormContract(entity);
 
     if (validation.errors.length > 0 || validation.invalidRows > 0) {
       const rowErrors = validation.rows
@@ -143,12 +129,8 @@ export class ImportCommitService {
 
     const errors: string[] = [];
     try {
-      for (const group of groups) {
-        await this.assertNotDuplicate(qr, def, group.generalRow, tenantId, errors);
-      }
-      for (const row of validation.rows) {
-        await this.assertRelationships(qr, def, row, tenantId, errors);
-      }
+      for (const group of groups) await this.assertNotDuplicate(qr, def, group.generalRow, tenantId, errors);
+      for (const row of validation.rows) await this.assertRelationships(qr, def, row, tenantId, errors);
 
       if (errors.length > 0) {
         await qr.rollbackTransaction();
@@ -156,9 +138,7 @@ export class ImportCommitService {
         return { entity, totalRows: validation.totalRows, importedRows: 0, failedRows: validation.totalRows, warnings: validation.warnings, errors };
       }
 
-      for (const group of groups) {
-        await this.insertGroup(qr, def, contract, group, tenantId);
-      }
+      for (const group of groups) await this.insertGroup(qr, def, contract, group, tenantId);
 
       await qr.commitTransaction();
       this.audit.record({ userId, tenantId, entity, recordCount: validation.totalRows, successCount: validation.totalRows, failureCount: 0, status: 'committed' });
@@ -216,15 +196,13 @@ export class ImportCommitService {
   private async insertGroup(
     qr: QueryRunner,
     def: ReportEntityDefinition,
-    contract: CompatibleContract | null,
+    contract: ReportFormContract | null,
     group: RowGroup,
     tenantId: string,
   ): Promise<void> {
-    const generalFields = contract?.fields.filter((field) => field.storage !== 'ref') ?? [];
-    const generalKeys = contract ? generalFields.map((field) => field.key) : def.importableColumns;
+    const generalKeys = contract ? contract.fields.map((field) => field.key) : def.importableColumns;
     const encryptedFields = contract ? contractEncryptedFields(contract) : {};
     const metadataFields = contract ? contractMetadataFields(contract) : {};
-
     const cols: string[] = [];
     const values: unknown[] = [];
     const metadataByColumn: Record<string, Record<string, unknown>> = {};
@@ -248,11 +226,13 @@ export class ImportCommitService {
         continue;
       }
 
-      cols.push(column);
+      const field = contract?.fields.find((item) => item.key === column);
+      cols.push(field?.physical ?? column);
       values.push(rawValue);
     }
 
     for (const [physicalColumn, object] of Object.entries(metadataByColumn)) {
+      if (Object.keys(object).length === 0) continue;
       cols.push(physicalColumn);
       values.push(object);
     }
@@ -260,7 +240,7 @@ export class ImportCommitService {
     values.push(tenantId);
 
     const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
-    const repeatingGroup = resolveRepeatingGroup(contract);
+    const repeatingGroup = contract?.repeatingGroup;
     const sql = `INSERT INTO ${quote(def.tableName)} (${cols.map(quote).join(', ')}) VALUES (${placeholders})` +
       (repeatingGroup ? ` RETURNING ${quote('id')}` : '');
     const result = await qr.query(sql, values);
