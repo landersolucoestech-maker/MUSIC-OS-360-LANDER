@@ -14,6 +14,7 @@ import { Audit } from '../../core/interceptors/audit.interceptor';
 import { EntityMetadataService } from './entity-metadata.service';
 import { ReportEntityDefinitionService } from './definitions/report-entity-definition.service';
 import { ReportTableGuardService } from './report-table-guard.service';
+import { REPORT_MODULE_REGISTRY_BY_TABLE } from './report-module-registry';
 import { ExportEngineService } from './export/export-engine.service';
 import { ImportEngineService } from './import/import-engine.service';
 import { ImportCommitService, type ImportCommitResult } from './import/import-commit.service';
@@ -87,7 +88,13 @@ export class ReportsController {
 
     // Overlay de disponibilidade: entidade sem tabela física nunca é reportável
     // (evita export/import 500). Mantida no inventário com available=false + risco.
+    // Relatórios computados (ex.: accounting_summary) não têm tabela física
+    // própria — sempre "disponíveis" (dependem apenas da tabela que agregam).
     for (const e of inventory.entities) {
+      if (REPORT_MODULE_REGISTRY_BY_TABLE.get(e.tableName)?.computed) {
+        e.available = true;
+        continue;
+      }
       const available = tables.has(e.tableName);
       e.available = available;
       if (!available) {
@@ -107,8 +114,9 @@ export class ReportsController {
     const defs = this.definitions.getDefinitions();
     const tables = await this.tableGuard.existingTables();
     if (!tables) return defs;
-    // Só expõe contrato de entidade com tabela física (não oferece export/import 500).
-    return defs.filter((d) => tables.has(d.tableName));
+    // Só expõe contrato de entidade com tabela física (não oferece export/import
+    // 500) — exceto relatórios computados, que não têm tabela física própria.
+    return defs.filter((d) => REPORT_MODULE_REGISTRY_BY_TABLE.get(d.tableName)?.computed || tables.has(d.tableName));
   }
 
   @Get('entities/:entity/export')

@@ -15,6 +15,7 @@ import { Injectable, Inject, Optional, UnprocessableEntityException } from '@nes
 import { DataSource } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import type { EntityReport } from './entity-metadata.types';
+import { REPORT_MODULE_REGISTRY_BY_TABLE } from './report-module-registry';
 
 @Injectable()
 export class ReportTableGuardService {
@@ -60,6 +61,10 @@ export class ReportTableGuardService {
         `Entidade "${tableName}" não possui metadados registrados e não pode ser processada.`,
       );
     }
+    // Relatório computado (ex.: Contabilidade/accounting_summary): não tem
+    // tabela física própria — a validação de "tabela existe" não se aplica.
+    if (REPORT_MODULE_REGISTRY_BY_TABLE.get(tableName)?.computed) return;
+
     const tables = await this.existingTables();
     if (!tables) return; // não foi possível verificar — não bloqueia (engine trata DB ausente)
 
