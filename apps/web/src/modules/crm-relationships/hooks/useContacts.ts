@@ -78,6 +78,7 @@ function apiClientToCliente(c: ApiClient): Cliente {
     cidade: c.cidade ?? null,
     estado: c.estado ?? null,
     endereco: c.endereco_completo ?? c.address ?? null,
+    cep: c.cep ?? null,
     status: c.status ?? null,
     cpf: isPF ? c.document ?? null : null,
     cnpj: !isPF ? c.document ?? null : null,
