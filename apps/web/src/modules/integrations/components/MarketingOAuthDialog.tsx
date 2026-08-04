@@ -278,15 +278,13 @@ type DialogStep = "permissions" | "waiting" | "success";
 interface OAuthMessage {
   type: "musicos360_oauth_success";
   platform: string;
-  /** OAuth access token returned by the platform OAuth callback page. */
-  access_token?: string;
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   platform: MarketingPlatformId;
-  onConnect: (platform: MarketingPlatformId, scopes: string[], access_token?: string) => Promise<void>;
+  onConnect: (platform: MarketingPlatformId, scopes: string[]) => Promise<void>;
 }
 
 interface AuthorizationPresentationProps {
@@ -495,16 +493,19 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
   const meta = PLATFORM_META[platform];
   const PlatformIcon = meta.icon;
 
-  const pendingTokenRef = useRef<string | undefined>(undefined);
-
   const handleSuccess = useCallback(async () => {
-    setStep("success");
-    await onConnect(platform, meta?.scopes ?? [], pendingTokenRef.current);
-    pendingTokenRef.current = undefined;
-    setTimeout(() => {
-      onOpenChange(false);
-      setTimeout(() => setStep("permissions"), 300);
-    }, 1800);
+    try {
+      await onConnect(platform, meta?.scopes ?? []);
+      setStep("success");
+      setTimeout(() => {
+        onOpenChange(false);
+        setTimeout(() => setStep("permissions"), 300);
+      }, 1800);
+    } catch (error) {
+      setStep("permissions");
+      const message = error instanceof Error ? error.message : "Falha ao confirmar a conexão OAuth.";
+      toast.error(message);
+    }
   }, [platform, meta, onConnect, onOpenChange]);
 
   // Escuta o postMessage do popup
@@ -518,8 +519,7 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
         event.data?.platform === platform
       ) {
         popupRef.current = null;
-        pendingTokenRef.current = event.data.access_token;
-        handleSuccess();
+        void handleSuccess();
       }
     };
 
@@ -540,7 +540,7 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
           if (href.includes("spotify=connected")) {
             popupRef.current.close();
             popupRef.current = null;
-            handleSuccess();
+            void handleSuccess();
             return;
           }
         } catch { /* cross-origin durante o fluxo OAuth — ignorar */ }

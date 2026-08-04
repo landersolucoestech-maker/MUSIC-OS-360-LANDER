@@ -182,7 +182,6 @@ export interface IMarketingOAuthConnection {
   expiresAt?: string;
   scopes?: string[];
   category: MarketingCategory;
-  /** OAuth access token obtained from the platform OAuth flow. Present only after a real OAuth handshake. */
-  access_token?: string;
+  /** Tokens are encrypted and retained exclusively by the backend. */
 }
 

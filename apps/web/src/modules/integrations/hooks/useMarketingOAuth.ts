@@ -1,32 +1,13 @@
 /**
- * modules/integrations/hooks/useMarketingOAuth.ts
+ * OAuth state for corporate marketing integrations.
  *
- * Hook OAuth unificado para integrações de Marketing Digital — contas corporativas.
- *
- * ARQUITECTURA CORRECTA:
- *   · Plataformas de ARTISTAS (Instagram, TikTok, Spotify, YouTube, Deezer, Apple Music,
- *     SoundCloud) → automáticas via links do cadastro do artista. SEM integração manual aqui.
- *
- *   · Este hook trata APENAS contas corporativas da empresa/label/publisher:
- *       meta_business    — Meta Business Suite (Facebook + Instagram + Meta Ads — unificado)
- *       corp_tiktok      — conta TikTok oficial da empresa
- *       corp_youtube     — canal YouTube oficial da empresa
- *       corp_spotify     — perfil Spotify oficial da empresa
- *       google_ads       — Google Ads
- *       tiktok_ads       — TikTok Ads Manager
- *       spotify_ads      — Spotify Ad Studio
- *       youtube_ads      — YouTube Ads (Google)
- *       deezer_ads       — Deezer Ad Manager
- *       apple_music_ads  — Apple Music for Artists (ads)
- *       soundcloud_ads   — SoundCloud Ads
- *
- * Categorias:
- *   corporate_metrics — analytics das contas oficiais da empresa
- *   paid_ads          — plataformas de tráfego pago
+ * Tokens never cross the browser boundary. The backend exchanges authorization
+ * codes, encrypts credentials in oauth_connections and exposes only status and
+ * disconnect operations to the authenticated frontend.
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { safeSessionSet } from "@/shared/lib/safe-storage";
+import { api } from "@/shared/lib/api-client";
 import type {
   MarketingPlatformId,
   MarketingCategory,
@@ -35,105 +16,136 @@ import type {
 
 export type { MarketingPlatformId };
 
-const STORAGE_KEY = "musicos360_marketing_oauth_connections";
-
-// ─── Categoria por plataforma ────────────────────────────────────────────────
-
 export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingCategory> = {
-  // Métricas corporativas — contas oficiais da empresa
-  meta_business:    "corporate_metrics",
+  meta_business: "corporate_metrics",
   youtube_business: "corporate_metrics",
-  tiktok_business:  "corporate_metrics",
-  google_business:  "corporate_metrics",
-  corp_spotify:     "corporate_metrics",
-  corp_deezer:      "corporate_metrics",
-  corp_soundcloud:  "corporate_metrics",
+  tiktok_business: "corporate_metrics",
+  google_business: "corporate_metrics",
+  corp_spotify: "corporate_metrics",
+  corp_deezer: "corporate_metrics",
+  corp_soundcloud: "corporate_metrics",
   corp_apple_music: "corporate_metrics",
-  corp_instagram:   "corporate_metrics",
-  corp_tiktok:      "corporate_metrics",
-  corp_youtube:     "corporate_metrics",
-  // Tráfego pago
-  meta_ads:         "paid_ads",
-  google_ads:       "paid_ads",
-  tiktok_ads:       "paid_ads",
-  youtube_ads:      "paid_ads",
-  spotify_ads:      "paid_ads",
-  deezer_ads:       "paid_ads",
-  apple_music_ads:  "paid_ads",
-  soundcloud_ads:   "paid_ads",
+  corp_instagram: "corporate_metrics",
+  corp_tiktok: "corporate_metrics",
+  corp_youtube: "corporate_metrics",
+  meta_ads: "paid_ads",
+  google_ads: "paid_ads",
+  tiktok_ads: "paid_ads",
+  youtube_ads: "paid_ads",
+  spotify_ads: "paid_ads",
+  deezer_ads: "paid_ads",
+  apple_music_ads: "paid_ads",
+  soundcloud_ads: "paid_ads",
 };
 
-// ─── Storage helpers ──────────────────────────────────────────────────────────
+const SERVER_OAUTH_PLATFORMS: readonly MarketingPlatformId[] = [
+  "corp_instagram",
+  "meta_business",
+  "meta_ads",
+  "corp_tiktok",
+  "tiktok_business",
+  "tiktok_ads",
+  "corp_youtube",
+  "youtube_business",
+  "google_business",
+  "google_ads",
+  "youtube_ads",
+  "corp_spotify",
+  "spotify_ads",
+];
+
+const SERVER_OAUTH_PLATFORM_SET = new Set<MarketingPlatformId>(SERVER_OAUTH_PLATFORMS);
 
 type ConnectionMap = Partial<Record<MarketingPlatformId, IMarketingOAuthConnection>>;
+type OAuthStatus = { connected: boolean; needs_reauth?: boolean };
 
-function loadConnections(): ConnectionMap {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as ConnectionMap) : {};
-  } catch {
-    return {};
-  }
+function toConnection(
+  platform: MarketingPlatformId,
+  status: OAuthStatus,
+  scopes: string[] = [],
+): IMarketingOAuthConnection {
+  return {
+    platform,
+    connected: status.connected,
+    scopes,
+    category: MARKETING_PLATFORM_CATEGORY[platform],
+  };
 }
-
-function saveConnections(connections: ConnectionMap): void {
-  try {
-    safeSessionSet(STORAGE_KEY, connections); // strips any token/secret (CWE-312)
-  } catch {
-    // ignore quota errors
-  }
-}
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useMarketingOAuth() {
-  const [connections, setConnections] = useState<ConnectionMap>(loadConnections);
+  const [connections, setConnections] = useState<ConnectionMap>({});
 
-  useEffect(() => {
-    saveConnections(connections);
-  }, [connections]);
+  const refreshConnection = useCallback(
+    async (platform: MarketingPlatformId, scopes: string[] = []): Promise<boolean> => {
+      if (!SERVER_OAUTH_PLATFORM_SET.has(platform)) return false;
 
-  /**
-   * Stores an OAuth connection.
-   *
-   *    * real token received from the platform via the popup → OAuthCallbackPage →
-   * postMessage flow.  Calling connect() without a token in production indicates
-   * the OAuth flow did not complete and nothing should be persisted as "connected".
-   * This keeps UI state consistent with what platform services expect:
-   * a missing token means "not configured", not "connected but broken".
-   */
-  const connect = useCallback(
-    async (platform: MarketingPlatformId, scopes: string[], access_token?: string): Promise<void> => {
-      // Guard: nunca persistir conexão sem token real do fluxo OAuth.
-      if (!access_token) {
-        console.warn(`[useMarketingOAuth] connect(${platform}) called without access_token in production — ignoring.`);
-        return;
-      }
+      const status = await api.get<OAuthStatus>(
+        `/integrations/oauth/status?platform=${encodeURIComponent(platform)}`,
+      );
 
-      const now = new Date().toISOString();
-      setConnections((prev) => ({
-        ...prev,
-        [platform]: {
-          platform,
-          connected:    true,
-          // Nome/ID reais da conta virão do backend quando o fluxo OAuth expuser
-          // o perfil; até lá ficam vazios — nunca fabricados.
-          accountName:  "",
-          accountId:    "",
-          connectedAt:  now,
-          expiresAt:    undefined,
-          scopes,
-          category:     MARKETING_PLATFORM_CATEGORY[platform],
-          access_token,
-        } satisfies IMarketingOAuthConnection,
-      }));
+      setConnections((previous) => {
+        const next = { ...previous };
+        if (status.connected) next[platform] = toConnection(platform, status, scopes);
+        else delete next[platform];
+        return next;
+      });
+
+      return status.connected;
     },
-    []
+    [],
   );
 
-  const disconnect = useCallback((platform: MarketingPlatformId): void => {
-    setConnections((prev) => {
-      const next = { ...prev };
+  useEffect(() => {
+    let cancelled = false;
+
+    void Promise.allSettled(
+      SERVER_OAUTH_PLATFORMS.map(async (platform) => {
+        const status = await api.get<OAuthStatus>(
+          `/integrations/oauth/status?platform=${encodeURIComponent(platform)}`,
+        );
+        if (cancelled) return;
+        setConnections((previous) => {
+          const next = { ...previous };
+          if (status.connected) next[platform] = toConnection(platform, status);
+          else delete next[platform];
+          return next;
+        });
+      }),
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const connect = useCallback(
+    async (platform: MarketingPlatformId, scopes: string[]): Promise<void> => {
+      if (!SERVER_OAUTH_PLATFORM_SET.has(platform)) {
+        throw new Error(`OAuth server-side ainda não implementado para ${platform}.`);
+      }
+      const connected = await refreshConnection(platform, scopes);
+      if (!connected) {
+        throw new Error(`A plataforma ${platform} não confirmou a conexão persistida.`);
+      }
+    },
+    [refreshConnection],
+  );
+
+  const disconnect = useCallback(async (platform: MarketingPlatformId): Promise<void> => {
+    if (!SERVER_OAUTH_PLATFORM_SET.has(platform)) {
+      setConnections((previous) => {
+        const next = { ...previous };
+        delete next[platform];
+        return next;
+      });
+      return;
+    }
+
+    await api.delete(
+      `/integrations/oauth/disconnect?platform=${encodeURIComponent(platform)}`,
+    );
+    setConnections((previous) => {
+      const next = { ...previous };
       delete next[platform];
       return next;
     });
@@ -142,45 +154,43 @@ export function useMarketingOAuth() {
   const getConnection = useCallback(
     (platform: MarketingPlatformId): IMarketingOAuthConnection | undefined =>
       connections[platform],
-    [connections]
+    [connections],
   );
 
   const isConnected = useCallback(
     (platform: MarketingPlatformId): boolean =>
       connections[platform]?.connected === true,
-    [connections]
+    [connections],
   );
 
-  /** Todas as conexões de uma categoria */
   const getConnectionsByCategory = useCallback(
     (category: MarketingCategory): IMarketingOAuthConnection[] =>
       Object.values(connections).filter(
-        (c): c is IMarketingOAuthConnection =>
-          c !== undefined && c.category === category
+        (connection): connection is IMarketingOAuthConnection =>
+          connection !== undefined && connection.category === category,
       ),
-    [connections]
+    [connections],
   );
 
-  /** Número de plataformas conectadas por categoria */
   const connectedCountByCategory = useCallback(
     (category: MarketingCategory): number =>
       Object.values(connections).filter(
-        (c) => c?.category === category && c.connected
+        (connection) => connection?.category === category && connection.connected,
       ).length,
-    [connections]
+    [connections],
   );
 
-  /** Total de plataformas conectadas */
   const totalConnected = useCallback(
     (): number =>
-      Object.values(connections).filter((c) => c?.connected).length,
-    [connections]
+      Object.values(connections).filter((connection) => connection?.connected).length,
+    [connections],
   );
 
   return {
     connections,
     connect,
     disconnect,
+    refreshConnection,
     getConnection,
     isConnected,
     getConnectionsByCategory,
@@ -188,4 +198,3 @@ export function useMarketingOAuth() {
     totalConnected,
   };
 }
-
