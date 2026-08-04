@@ -74,8 +74,8 @@ export interface ReportFormContract {
   childSheets?: ReportChildSheetSpec[];
 }
 
-const col = (key: string): ReportFieldSpec => ({ key, storage: 'column' });
-const ro = (key: string): ReportFieldSpec => ({ key, storage: 'column', importable: false });
+const col = (key: string, physical?: string): ReportFieldSpec => ({ key, storage: 'column', physical });
+const ro = (key: string, physical?: string): ReportFieldSpec => ({ key, storage: 'column', physical, importable: false });
 /**
  * Campo residente num jsonb. `physical` indica QUAL coluna jsonb (default
  * `'metadata'`, a coluna genérica presente na maioria das tabelas) — use o
@@ -307,55 +307,42 @@ const CLIENTS_CONTRACT: ReportFormContract = {
 };
 
 // ─── Projetos ─────────────────────────────────────────────────────────────────
-// Parte 86: fonte canônica é o modal Criar/Editar (ProjetoFormModal.tsx), não a
-// Entity. Campos aceitos pelo CreateProjectDto/UpdateProjectDto sem input
-// correspondente no modal real (artista_id, orcamento, descricao, genero — este
-// último é derivado automaticamente de musicas[0].genero, não é um campo próprio
-// do formulário) ficam de fora do arquivo, documentados em excludedFormFields.
-//
-// Nota sobre `titulo`: no modal seu rótulo é dinâmico ("Nome do EP"/"Nome do
-// Álbum" para álbum/EP; para single não há input próprio, herda o nome da
-// primeira música) — não há um rótulo único e fixo para reproduzir. A célula
-// usa o rótulo global de `titulo` ("Título", field-labels.pt-br.ts), o mesmo
-// já usado por contracts/works/phonograms/etc.: o dicionário de labels é uma
-// camada ÚNICA e centralizada por chave técnica (não por entidade), e criar
-// um mecanismo de override por entidade só para este caso seria uma peça de
-// arquitetura nova não pedida (Bloco 20) para uma única divergência textual.
+// Fonte canônica: ProjetoFormModal.tsx. Uma única aba; uma linha por música.
 const PROJECTS_CONTRACT: ReportFormContract = {
   tableName: 'projects',
-  identityColumn: 'titulo',
+  identityColumn: 'nome_ep_album',
   fields: [
-    ref('projeto_ref', 'id'), // correlação com a aba "Músicas do Projeto" — ver childSheets abaixo
-    col('tipo'),        // "Tipo de Lançamento"
-    col('titulo'),      // ver nota acima
+    col('tipo_lancamento', 'tipo'),
+    col('nome_ep_album', 'titulo'),
     col('observacoes'),
-    col('status'),
+    col('status_projeto', 'status'),
   ],
   excludedFormFields: {
-    metadata: 'objeto jsonb interno bruto — sem campos de formulário próprios',
-    artista_id: 'aceito pelo DTO mas sem campo correspondente no modal Criar/Editar (ProjetoFormModal.tsx) — vínculo com artista existe apenas por nome livre dentro de cada música (compositor/intérprete/produtor)',
-    orcamento: 'aceito pelo DTO mas sem campo correspondente no modal Criar/Editar',
-    descricao: 'aceito pelo DTO mas sem campo correspondente no modal Criar/Editar (distinto de observacoes, que tem input próprio)',
-    genero: 'calculado automaticamente a partir de musicas[0].genero (ProjetoFormModal.tsx) — não é um input próprio do formulário, já presente dentro de cada música',
-    musicas: 'representada em aba filha própria ("Músicas do Projeto", childSheets abaixo) — nunca compactada numa única célula (Parte 87, Bloco 6)',
+    metadata: 'objeto jsonb interno bruto',
+    artista_id: 'sem campo correspondente no modal Criar/Editar',
+    orcamento: 'sem campo correspondente no modal Criar/Editar',
+    descricao: 'sem campo correspondente no modal Criar/Editar',
+    genero: 'derivado das músicas, não é campo geral do formulário',
+    musicas: 'representada pelas colunas individuais do grupo repetível na mesma aba',
   },
   childSheets: [
     {
       key: 'musicas',
-      sheetName: 'Músicas do Projeto',
+      sheetName: 'IGNORADA_SINGLE_SHEET',
       fields: [
-        { key: 'nome' },
+        { key: 'nome_musica' },
         { key: 'soloFeat' },
         { key: 'originalRemix' },
         { key: 'instrumental' },
-        { key: 'duracao' }, // "MIN:SEG" — mesmo par de inputs agrupados sob um único Label no modal
-        { key: 'genero' },
-        { key: 'idioma' },
+        { key: 'duracaoMinutos' },
+        { key: 'duracaoSegundos' },
+        { key: 'generoMusical' },
+        { key: 'idiomaMusica' },
         { key: 'compositores', multi: true },
         { key: 'interpretes', multi: true },
         { key: 'produtores', multi: true },
         { key: 'letra' },
-        { key: 'audioUrl' },
+        { key: 'arquivosAudio' },
         { key: 'ordem' },
       ],
     },
