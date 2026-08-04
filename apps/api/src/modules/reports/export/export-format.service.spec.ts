@@ -14,15 +14,15 @@ describe('ExportFormatService — serialização XLSX', () => {
   }
 
   it('cabeçalhos usam label pt-BR, nunca a chave técnica', () => {
-    const buf = svc.toXlsx('artists', ['nome_artistico'], [{ nome_artistico: 'Ana' }]);
+    const buf = svc.toXlsx('artists', 'Artistas', ['nome_artistico'], [{ nome_artistico: 'Ana' }]);
     const rows = readFirstSheetRows(buf);
     expect(rows[0]).toContain('Nome artístico');
     expect(rows[0]).not.toContain('nome_artistico');
   });
 
   it('campo de texto que excede o limite de célula do Excel é truncado (nunca derruba a exportação)', () => {
-    const huge = 'A'.repeat(40000); // > 32767, ex.: corpo de contrato muito longo
-    const buf = svc.toXlsx('contract_templates', ['conteudo'], [{ conteudo: huge }]);
+    const huge = 'A'.repeat(40000);
+    const buf = svc.toXlsx('contract_templates', 'Contratos', ['conteudo'], [{ conteudo: huge }]);
     const rows = readFirstSheetRows(buf);
     const cell = String(rows[1][0]);
     expect(cell.length).toBeLessThanOrEqual(32767);
@@ -31,7 +31,7 @@ describe('ExportFormatService — serialização XLSX', () => {
 
   it('valor dentro do limite não é alterado', () => {
     const normal = 'Texto normal de observação.';
-    const buf = svc.toXlsx('artists', ['observacoes'], [{ observacoes: normal }]);
+    const buf = svc.toXlsx('artists', 'Artistas', ['observacoes'], [{ observacoes: normal }]);
     const rows = readFirstSheetRows(buf);
     expect(rows[1][0]).toBe(normal);
   });
