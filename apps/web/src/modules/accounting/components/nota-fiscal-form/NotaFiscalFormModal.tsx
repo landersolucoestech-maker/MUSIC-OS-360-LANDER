@@ -32,7 +32,7 @@ export function NotaFiscalFormModal({
     onClose: () => onOpenChange(false),
   });
 
-  const { formData, tipoOperacao, rules, validationErrors, selectedFile, isViewMode, isSubmitting } = form;
+  const { formData, tipoOperacao, rules, validationErrors, isViewMode, isSubmitting } = form;
 
   const title =
     mode === "create"
@@ -107,10 +107,7 @@ export function NotaFiscalFormModal({
             <PaymentSection
               formData={formData}
               disabled={isViewMode}
-              selectedFile={selectedFile}
               updateField={form.updateField}
-              handleFileChange={form.handleFileChange}
-              setSelectedFile={form.setSelectedFile}
             />
           </div>
 
@@ -143,4 +140,3 @@ export function NotaFiscalFormModal({
     </Dialog>
   );
 }
-
