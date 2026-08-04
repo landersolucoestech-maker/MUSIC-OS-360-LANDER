@@ -70,7 +70,9 @@ describe('ImportEngineService — XLSX de aba única', () => {
     expect(enumResult.rows[0].valid).toBe(false);
     const sensitive = await makeEngine().validateFile('artists', workbook('Artistas', [['Nome artístico', 'Categoria', 'cpf_encrypted'], ['Ana', 'solo', '123']]), 't');
     expect(sensitive.errors.some((e) => /sensível/i.test(e))).toBe(true);
-    await expect(makeEngine().validateFile('artists', { filename: 'artists.csv', content: Buffer.from('x') }, 't')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      makeEngine().validateFile('artists', { filename: 'artists.txt', content: Buffer.from('x') }, 't'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('ignora tenant_id e avisa sobre coluna desconhecida', async () => {
