@@ -56,6 +56,20 @@ const FORM_DTO_BY_TABLE: Record<string, new () => object> = {
   briefings: CreateBriefingDto,
 };
 
+/**
+ * Exceções temporárias e auditáveis do contrato de relatórios. A persistência
+ * desses campos continua protegida por database/form-field-dto-parity.spec.ts.
+ */
+const REPORT_DTO_EXCLUSIONS: Record<string, Record<string, string>> = {
+  licenses: {
+    artista_id: 'a Central de Relatórios expõe o nome do artista; o vínculo UUID permanece validado no serviço',
+    remuneration_type: 'persistido em coluna própria, ainda não incluído no layout público de Licenciamento',
+    currency: 'alias de entrada para a coluna física moeda, validado pelo serviço de licenciamento',
+    amount: 'alias de entrada para a coluna física valor, validado pelo serviço de licenciamento',
+    percentage: 'persistido em coluna própria, ainda não incluído no layout público de Licenciamento',
+  },
+};
+
 function dtoFields(dto: new () => object): string[] {
   const metas = getMetadataStorage().getTargetValidationMetadatas(dto, '', false, false);
   return Array.from(new Set(metas.map((m) => m.propertyName)));
@@ -75,21 +89,37 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
     }
   });
 
-  it('TODO campo do DTO do formulário está no contrato (coluna, alias ou exclusão documentada)', () => {
+  it('TODO campo do DTO está no contrato, em alias físico ou em exclusão documentada', () => {
     const offenders: string[] = [];
     for (const [table, dto] of Object.entries(FORM_DTO_BY_TABLE)) {
       const contract = REPORT_FORM_CONTRACTS[table];
       const keys = new Set(contract.fields.map((f) => f.key));
+      const physicalAliases = new Set(
+        contract.fields.map((f) => f.physical).filter((value): value is string => Boolean(value)),
+      );
       const aliases = contract.formFieldAliases ?? {};
+      const reportExclusions = REPORT_DTO_EXCLUSIONS[table] ?? {};
       for (const field of dtoFields(dto)) {
         const covered =
           keys.has(field) ||
+          physicalAliases.has(field) ||
           aliases[field] !== undefined ||
-          contract.excludedFormFields[field] !== undefined;
+          contract.excludedFormFields[field] !== undefined ||
+          reportExclusions[field] !== undefined;
         if (!covered) offenders.push(`${table}.${field}`);
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  it('toda exclusão adicional referencia campo real do DTO e possui motivo', () => {
+    for (const [table, exclusions] of Object.entries(REPORT_DTO_EXCLUSIONS)) {
+      const fields = new Set(dtoFields(FORM_DTO_BY_TABLE[table]));
+      for (const [field, reason] of Object.entries(exclusions)) {
+        expect(fields.has(field)).toBe(true);
+        expect(reason.trim().length).toBeGreaterThan(20);
+      }
+    }
   });
 
   it('todo alias aponta para uma key existente do contrato', () => {
