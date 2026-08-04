@@ -302,16 +302,21 @@ export const FIELD_LABELS_PT_BR = {
   localCompra: 'Local de compra',
   localizacao: 'Localização',
   lyrics: 'Letra',
+  letra: 'Letra',
   managerContatoEncrypted: 'Contato do empresário (criptografado)',
   metaValor: 'Meta de valor',
   metadata: 'Metadados',
   metrics: 'Métricas',
-  // Campo computed do contrato de Projetos (Parte 86) — ver
-  // computed-fields/projects-musicas.field.ts. Uma célula JSON por projeto,
-  // um item por música, mesmas chaves do modal (nome, soloFeat,
-  // originalRemix, instrumental, duracaoMin, duracaoSeg, genero, idioma,
-  // compositores, interpretes, produtores, letra, audioUrl).
-  musicas: 'Músicas',
+  // Aba filha "Músicas do Projeto" (Parte 87) — ver
+  // computed-fields/projects-musicas.field.ts e report-form-contracts.ts
+  // (PROJECTS_CONTRACT.childSheets).
+  soloFeat: 'Solo/Feat',
+  originalRemix: 'Original/Remix',
+  audioUrl: 'Áudio',
+  ordem: 'Ordem',
+  // Coluna de correlação entre a aba principal e abas filhas (Parte 87) —
+  // nunca persistida, existe só dentro do arquivo XLSX.
+  projetoRef: 'Projeto ID de referência',
   midiaDestino: 'Mídia de destino',
   mimeType: 'Tipo de arquivo',
   moeda: 'Moeda',

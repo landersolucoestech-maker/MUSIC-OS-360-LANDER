@@ -14,6 +14,12 @@ import { ImportMapperService } from './import-mapper.service';
 import { ImportValidationService } from './import-validation.service';
 import { ReportTableGuardService } from '../report-table-guard.service';
 import { ExportFormatService, sanitizeExcelCellValue } from '../export/export-format.service';
+import { getFieldLabelPtBr, normalizeFieldKey } from '../i18n/field-labels.pt-br';
+import {
+  contractRefFields,
+  getReportFormContract,
+  type ReportChildSheetSpec,
+} from '../form-contracts/report-form-contracts';
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
 import type { FieldTypeMeta, ImportValidationResult } from './import.types';
 
@@ -58,8 +64,12 @@ export class ImportEngineService {
     if (!tenantId) throw new ForbiddenException('Tenant não identificado');
 
     const report = this.metadata.scan().entities.find((e) => e.tableName === entity);
-    if (!report) throw new NotFoundException(`Entidade não encontrada: ${entity}`);
-    if (!report.reportable) throw new NotFoundException(`Entidade não é reportável: ${entity}`);
+    if (!report || !report.reportable) {
+      throw new NotFoundException({
+        error: 'REPORT_ENTITY_NOT_AVAILABLE',
+        message: `Entidade não disponível na Central de Relatórios: ${entity}`,
+      });
+    }
 
     // Guarda: tabela física precisa existir (422 controlado, nunca 500).
     await this.tableGuard.assertTableUsable(entity, report);
@@ -75,15 +85,84 @@ export class ImportEngineService {
 
     const parsed = this.parser.parse(file.filename, file.content);
     const headerMapping = this.mapper.build(def, parsed.headers);
-    return this.validator.validate(def, typeMap, headerMapping, parsed.rows, entity);
+    const result = this.validator.validate(def, typeMap, headerMapping, parsed.rows, entity);
+
+    const contract = getReportFormContract(entity);
+    if (contract?.childSheets?.length) {
+      this.attachChildSheets(contract.childSheets, contract, file, result);
+    }
+
+    return result;
   }
 
   /**
-   * Template de importação: workbook XLSX com duas abas —
-   *   1) a aba de dados (nome da entidade): cabeçalho pt-BR + UMA linha de
-   *      exemplo sintético (nunca dado real), claramente marcada para o
-   *      usuário apagar antes de importar de verdade;
-   *   2) "Instruções": versão do template + tabela coluna→obrigatório/
+   * Parte 87: correlaciona cada linha validada da aba principal com suas
+   * linhas de aba(s) filha(s) (pelo valor da coluna 'ref', mesma coluna em
+   * ambas as abas). Parsing/agrupamento dedicados — as abas filhas NÃO
+   * passam pelo mapper/validator genérico (contrato mais simples: toda
+   * célula é texto, sem coerção de tipo/obrigatoriedade por schema).
+   */
+  private attachChildSheets(
+    childSheets: ReportChildSheetSpec[],
+    contract: NonNullable<ReturnType<typeof getReportFormContract>>,
+    file: { filename: string; content: Buffer },
+    result: ImportValidationResult,
+  ): void {
+    const refFields = contractRefFields(contract);
+    const refKey = Object.keys(refFields)[0];
+    if (!refKey) return;
+
+    childSheets.forEach((spec, i) => {
+      const sheetIndex = i + 1; // 0 = aba principal
+      const parsed = this.parser.parseChildSheet(file.filename, file.content, sheetIndex);
+      if (!parsed) return;
+
+      const allowedKeys = [refKey, ...spec.fields.map((f) => f.key)];
+      const byLabel = new Map(allowedKeys.map((k) => [getFieldLabelPtBr(k).toLowerCase(), k]));
+      const byCanonical = new Map(allowedKeys.map((k) => [normalizeFieldKey(k).toLowerCase(), k]));
+      const resolveHeader = (h: string): string | null =>
+        byLabel.get(h.trim().toLowerCase()) ?? byCanonical.get(normalizeFieldKey(h).toLowerCase()) ?? null;
+
+      const headerToKey = new Map(parsed.headers.map((h) => [h, resolveHeader(h)]));
+      const grouped = new Map<string, Record<string, unknown>[]>();
+
+      for (const rawRow of parsed.rows) {
+        const item: Record<string, unknown> = {};
+        let ref: string | null = null;
+        for (const [header, value] of Object.entries(rawRow)) {
+          const key = headerToKey.get(header);
+          if (!key) continue;
+          if (key === refKey) { ref = value; continue; }
+          const fieldSpec = spec.fields.find((f) => f.key === key);
+          item[key] = fieldSpec?.multi
+            ? value.split(',').map((s) => s.trim()).filter(Boolean)
+            : (value === '' ? null : value);
+        }
+        if (!ref) continue;
+        const list = grouped.get(ref) ?? [];
+        list.push(item);
+        grouped.set(ref, list);
+      }
+
+      for (const row of result.rows) {
+        const ref = row.data[refKey];
+        if (ref === undefined || ref === null || ref === '') continue;
+        const matched = grouped.get(String(ref));
+        if (!matched) continue;
+        row.childSheets = { ...row.childSheets, [spec.key]: matched };
+      }
+    });
+  }
+
+  /**
+   * Template de importação: workbook XLSX com:
+   *   1) a aba principal (label pt-BR da entidade): cabeçalho pt-BR + UMA
+   *      linha de exemplo sintético (nunca dado real), claramente marcada
+   *      para o usuário apagar antes de importar de verdade;
+   *   2) uma aba por estrutura filha do contrato (Parte 87, Bloco 6) —
+   *      mesma coluna de referência (valor de exemplo "1") correlacionando
+   *      as linhas entre abas, nunca uma célula JSON compactada;
+   *   3) "Instruções": versão do template + tabela coluna→obrigatório/
    *      opcional→valores permitidos, gerada a partir do próprio schema
    *      (NOT NULL sem DEFAULT = obrigatório, enum = valores permitidos).
    * Sem macro, sem fórmula (toda célula passa por sanitizeExcelCellValue).
@@ -94,8 +173,12 @@ export class ImportEngineService {
     if (!tenantId) throw new ForbiddenException('Tenant não identificado');
 
     const report = this.metadata.scan().entities.find((e) => e.tableName === entity);
-    if (!report) throw new NotFoundException(`Entidade não encontrada: ${entity}`);
-    if (!report.reportable) throw new NotFoundException(`Entidade não é reportável: ${entity}`);
+    if (!report || !report.reportable) {
+      throw new NotFoundException({
+        error: 'REPORT_ENTITY_NOT_AVAILABLE',
+        message: `Entidade não disponível na Central de Relatórios: ${entity}`,
+      });
+    }
 
     await this.tableGuard.assertTableUsable(entity, report);
 
@@ -108,7 +191,8 @@ export class ImportEngineService {
       typeMap[c.name] = { type: c.type, isEnum: c.isEnum, enumValues: c.enumValues, nullable: c.nullable, hasDefault: c.hasDefault };
     }
 
-    const body = this.buildTemplateWorkbook(entity, def, typeMap);
+    const contract = getReportFormContract(entity);
+    const body = this.buildTemplateWorkbook(entity, def, typeMap, contract);
     return {
       filename: `${entity}_template.xlsx`,
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -120,6 +204,7 @@ export class ImportEngineService {
     entity: string,
     def: ReportEntityDefinition,
     typeMap: Record<string, FieldTypeMeta>,
+    contract: ReturnType<typeof getReportFormContract>,
   ): Buffer {
     const requiredSet = new Set([
       ...def.requiredImportColumns,
@@ -132,14 +217,39 @@ export class ImportEngineService {
     const headers = this.exportFormat.headers(def.importableColumns);
     const clean = (v: unknown, column: string) => sanitizeExcelCellValue(v, { entity, column });
 
-    // Aba 1 — dados: cabeçalho + uma linha de exemplo sintético.
-    const exampleRow = def.importableColumns.map((c) => clean(syntheticExample(typeMap[c]), c));
+    const refFields = contract ? contractRefFields(contract) : {};
+    const refKey = Object.keys(refFields)[0] ?? null;
+    // Aba 1 — dados: cabeçalho + uma linha de exemplo sintético. Coluna 'ref'
+    // usa um valor fixo e legível ("1") — é a chave de junção com as abas
+    // filhas, não um dado real do formulário.
+    const exampleRow = def.importableColumns.map((c) =>
+      c === refKey ? clean('1', c) : clean(syntheticExample(typeMap[c]), c),
+    );
     const dataSheet = XLSX.utils.aoa_to_sheet([
       headers.map((h) => h.label),
       exampleRow,
     ]);
 
-    // Aba 2 — instruções: versão + tabela coluna/obrigatoriedade/valores permitidos.
+    const wb = XLSX.utils.book_new();
+    const mainSheetName = this.metadata.scan().entities.find((e) => e.tableName === entity)?.label ?? entity;
+    XLSX.utils.book_append_sheet(wb, dataSheet, mainSheetName.slice(0, 31) || 'Dados');
+
+    // Abas filhas (Parte 87): mesma coluna 'ref' com o mesmo valor de exemplo
+    // ("1"), uma linha de exemplo por aba, para deixar claro como as abas se
+    // correlacionam.
+    if (contract?.childSheets?.length && refKey) {
+      for (const spec of contract.childSheets) {
+        const childColumns = [refKey, ...spec.fields.map((f) => f.key)];
+        const childHeaders = this.exportFormat.headers(childColumns).map((h) => h.label);
+        const childExampleRow = childColumns.map((c) =>
+          c === refKey ? clean('1', c) : clean(spec.fields.find((f) => f.key === c)?.multi ? 'exemplo 1, exemplo 2' : 'exemplo', c),
+        );
+        const childSheet = XLSX.utils.aoa_to_sheet([childHeaders, childExampleRow]);
+        XLSX.utils.book_append_sheet(wb, childSheet, spec.sheetName.slice(0, 31));
+      }
+    }
+
+    // Aba de instruções — versão + tabela coluna/obrigatoriedade/valores permitidos.
     const instrucoesRows: unknown[][] = [
       [`Template de importação — ${entity}`],
       [`Versão do template: ${IMPORT_TEMPLATE_VERSION}`],
@@ -156,9 +266,6 @@ export class ImportEngineService {
       }),
     ];
     const instrucoesSheet = XLSX.utils.aoa_to_sheet(instrucoesRows);
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, dataSheet, entity.slice(0, 31) || 'Dados');
     XLSX.utils.book_append_sheet(wb, instrucoesSheet, 'Instruções');
     return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
   }

@@ -1,19 +1,21 @@
 /**
- * modules/reports/computed-fields/projects-musicas.field.ts  ·  Parte 86
+ * modules/reports/computed-fields/projects-musicas.field.ts  ·  Parte 87
  *
- * Resolver dedicado para o campo `computed('musicas')` do PROJECTS_CONTRACT
- * (report-form-contracts.ts). `musicas[]` não tem coluna física em `projects`
- * — é normalizada em `project_tracks` + `project_track_participants`
- * (migration ProjectsFormFieldAlignment20260718000013). O motor genérico de
- * export/import (SQL direto sobre UMA tabela, colunas/metadata/cifradas) não
- * suporta essa relação 1:N; este módulo é o único ponto de acesso a essas
- * duas tabelas a partir do domínio de Relatórios.
+ * Resolver dedicado para a aba filha "Músicas do Projeto"
+ * (PROJECTS_CONTRACT.childSheets, report-form-contracts.ts). `musicas[]` não
+ * tem coluna física em `projects` — é normalizada em `project_tracks` +
+ * `project_track_participants` (migration
+ * ProjectsFormFieldAlignment20260718000013). O motor genérico de export/
+ * import (SQL direto sobre UMA tabela) não suporta essa relação 1:N; este
+ * módulo é o único ponto de acesso a essas duas tabelas a partir do domínio
+ * de Relatórios.
  *
- * Formato espelha EXATAMENTE `MusicaResponse`
- * (apps/api/src/modules/projects/projects.service.ts) — mesmas chaves
- * camelCase usadas pelo modal/DTO/ProjectsService.hydrateMusicas — para que a
- * célula "Músicas" (um array JSON por projeto) faça round-trip
- * exportar→importar sem nenhuma tradução de campo.
+ * Cada música vira UMA LINHA da aba "Músicas do Projeto" (nunca uma célula
+ * JSON — Parte 87, Bloco 6). `duracao` combina duracao_min/duracao_seg no
+ * mesmo formato "MIN:SEG" que o modal exibe sob um único Label.
+ * compositores/interpretes/produtores são texto separado por ", " (campo
+ * `multi` do childSheet) — mesma convenção já usada em outros contratos para
+ * listas simples de nomes.
  */
 import { randomUUID } from 'crypto';
 import type { DataSource, QueryRunner } from 'typeorm';
@@ -23,15 +25,15 @@ export interface MusicaFieldItem {
   soloFeat: string | null;
   originalRemix: string | null;
   instrumental: string | null;
-  duracaoMin: string | null;
-  duracaoSeg: string | null;
+  duracao: string;
   genero: string | null;
   idioma: string | null;
-  letra: string | null;
-  audioUrl: string | null;
   compositores: string[];
   interpretes: string[];
   produtores: string[];
+  letra: string | null;
+  audioUrl: string | null;
+  ordem: number;
 }
 
 type TrackRole = 'compositor' | 'interprete' | 'produtor';
@@ -49,6 +51,7 @@ interface TrackRow {
   idioma: string | null;
   letra: string | null;
   audio_url: string | null;
+  ordem: number;
 }
 
 interface ParticipantRow {
@@ -57,7 +60,19 @@ interface ParticipantRow {
   role: TrackRole;
 }
 
-/** Export: busca musicas[] de N projetos de uma vez (evita N+1). */
+function formatDuracao(min: string | null, seg: string | null): string {
+  if (!min && !seg) return '';
+  return `${min ?? '0'}:${(seg ?? '0').padStart(2, '0')}`;
+}
+
+function parseDuracao(value: string | null | undefined): { min: string | null; seg: string | null } {
+  const raw = (value ?? '').trim();
+  if (!raw) return { min: null, seg: null };
+  const [min, seg] = raw.split(':').map((s) => s.trim());
+  return { min: min || null, seg: seg || null };
+}
+
+/** Export: busca musicas[] de N projetos de uma vez (evita N+1), uma linha por música. */
 export async function fetchProjectsMusicasForExport(
   ds: DataSource,
   tenantId: string,
@@ -68,7 +83,7 @@ export async function fetchProjectsMusicasForExport(
 
   const tracks = (await ds.query(
     `SELECT "id", "project_id", "nome", "solo_feat", "original_remix", "instrumental",
-            "duracao_min", "duracao_seg", "genero", "idioma", "letra", "audio_url"
+            "duracao_min", "duracao_seg", "genero", "idioma", "letra", "audio_url", "ordem"
        FROM "project_tracks"
       WHERE "tenant_id" = $1 AND "project_id" = ANY($2::uuid[])
       ORDER BY "ordem" ASC`,
@@ -102,15 +117,15 @@ export async function fetchProjectsMusicasForExport(
       soloFeat: t.solo_feat,
       originalRemix: t.original_remix,
       instrumental: t.instrumental,
-      duracaoMin: t.duracao_min,
-      duracaoSeg: t.duracao_seg,
+      duracao: formatDuracao(t.duracao_min, t.duracao_seg),
       genero: t.genero,
       idioma: t.idioma,
-      letra: t.letra,
-      audioUrl: t.audio_url,
       compositores: namesByRole(t.id, 'compositor'),
       interpretes: namesByRole(t.id, 'interprete'),
       produtores: namesByRole(t.id, 'produtor'),
+      letra: t.letra,
+      audioUrl: t.audio_url,
+      ordem: t.ordem,
     });
     out.set(t.project_id, list);
   }
@@ -132,6 +147,7 @@ export async function insertProjectsMusicasForImport(
     if (raw === null || typeof raw !== 'object') continue;
     const m = raw as Record<string, unknown>;
     const trackId = randomUUID();
+    const { min: duracaoMin, seg: duracaoSeg } = parseDuracao(m.duracao as string | undefined);
 
     await qr.query(
       `INSERT INTO "project_tracks"
@@ -145,8 +161,8 @@ export async function insertProjectsMusicasForImport(
         (m.soloFeat as string) || null,
         (m.originalRemix as string) || null,
         (m.instrumental as string) || null,
-        (m.duracaoMin as string) || null,
-        (m.duracaoSeg as string) || null,
+        duracaoMin,
+        duracaoSeg,
         (m.genero as string) || null,
         (m.idioma as string) || null,
         (m.letra as string) || null,

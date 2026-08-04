@@ -15,13 +15,12 @@ import { ReportEntityDefinitionService } from '../definitions/report-entity-defi
 import { tryGetFieldLabelPtBr } from '../i18n/field-labels.pt-br';
 import {
   REPORT_FORM_CONTRACTS,
-  contractComputedFields,
   contractEncryptedFields,
   contractExportableColumns,
   contractImportableColumns,
   contractMetadataFields,
 } from './report-form-contracts';
-import { COMPUTED_FIELD_EXPORT_RESOLVERS, COMPUTED_FIELD_IMPORT_WRITERS } from '../computed-fields/registry';
+import { CHILD_SHEET_EXPORT_RESOLVERS, CHILD_SHEET_IMPORT_WRITERS } from '../computed-fields/registry';
 
 import { CreateArtistDto } from '../../artists/dto/create-artist.dto';
 import { CreateWorkDto } from '../../works/dto/create-work.dto';
@@ -93,7 +92,7 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
     expect(offenders).toEqual([]);
   });
 
-  it('toda coluna do contrato tem lastro físico (direta, cifrada, metadata jsonb ou computed com resolver registrado)', () => {
+  it('toda coluna do contrato tem lastro físico (direta, cifrada, metadata jsonb ou ref apontando para coluna real)', () => {
     const offenders: string[] = [];
     for (const [table, contract] of Object.entries(REPORT_FORM_CONTRACTS)) {
       const real = colsByTable.get(table);
@@ -105,20 +104,11 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
           (f.storage === 'column' && real!.has(f.key)) ||
           (f.storage === 'encrypted' && f.physical !== undefined && real!.has(f.physical)) ||
           (f.storage === 'metadata' && real!.has('metadata')) ||
-          (f.storage === 'computed' && !real!.has(f.key));
+          (f.storage === 'ref' && f.physical !== undefined && real!.has(f.physical));
         if (!ok) offenders.push(`${table}.${f.key} (${f.storage})`);
-        // chave lógica de campo cifrado nunca pode colidir com coluna física
-        if (f.storage === 'encrypted' && real!.has(f.key)) {
-          offenders.push(`${table}.${f.key} (encrypted key colide com coluna física)`);
-        }
-        // campo computed precisa de resolver de export E writer de import registrados
-        if (f.storage === 'computed') {
-          if (!COMPUTED_FIELD_EXPORT_RESOLVERS[`${table}.${f.key}`]) {
-            offenders.push(`${table}.${f.key} (computed sem resolver de export registrado)`);
-          }
-          if (f.importable !== false && !COMPUTED_FIELD_IMPORT_WRITERS[`${table}.${f.key}`]) {
-            offenders.push(`${table}.${f.key} (computed sem writer de import registrado)`);
-          }
+        // chave lógica de campo cifrado/ref nunca pode colidir com coluna física
+        if ((f.storage === 'encrypted' || f.storage === 'ref') && real!.has(f.key)) {
+          offenders.push(`${table}.${f.key} (${f.storage} key colide com coluna física)`);
         }
       }
       // metadados: sem duplicidade de keys
@@ -130,13 +120,20 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
     expect(offenders).toEqual([]);
   });
 
-  it('nenhum campo computed usa a mesma key de um campo já declarado como column/metadata/encrypted', () => {
+  it('toda aba filha (childSheets) tem resolver de export E writer de import registrados', () => {
     const offenders: string[] = [];
     for (const [table, contract] of Object.entries(REPORT_FORM_CONTRACTS)) {
-      const computedKeys = contractComputedFields(contract);
-      for (const f of contract.fields) {
-        if (f.storage !== 'computed' && computedKeys.has(f.key)) {
-          offenders.push(`${table}.${f.key}`);
+      for (const spec of contract.childSheets ?? []) {
+        if (!CHILD_SHEET_EXPORT_RESOLVERS[`${table}.${spec.key}`]) {
+          offenders.push(`${table}.${spec.key} (sem resolver de export registrado)`);
+        }
+        if (!CHILD_SHEET_IMPORT_WRITERS[`${table}.${spec.key}`]) {
+          offenders.push(`${table}.${spec.key} (sem writer de import registrado)`);
+        }
+        // nenhum campo da aba filha pode colidir com uma key do contrato principal
+        const mainKeys = new Set(contract.fields.map((f) => f.key));
+        for (const cf of spec.fields) {
+          if (mainKeys.has(cf.key)) offenders.push(`${table}.${spec.key}.${cf.key} (colide com campo da aba principal)`);
         }
       }
     }
@@ -172,11 +169,16 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
     expect(offenders).toEqual([]);
   });
 
-  it('toda coluna do contrato possui label pt-BR (cabeçalho do arquivo)', () => {
+  it('toda coluna do contrato (principal e abas filhas) possui label pt-BR (cabeçalho do arquivo)', () => {
     const offenders: string[] = [];
     for (const [table, contract] of Object.entries(REPORT_FORM_CONTRACTS)) {
       for (const f of contract.fields) {
         if (tryGetFieldLabelPtBr(f.key) === null) offenders.push(`${table}.${f.key}`);
+      }
+      for (const spec of contract.childSheets ?? []) {
+        for (const cf of spec.fields) {
+          if (tryGetFieldLabelPtBr(cf.key) === null) offenders.push(`${table}.${spec.key}.${cf.key}`);
+        }
       }
     }
     expect(offenders).toEqual([]);

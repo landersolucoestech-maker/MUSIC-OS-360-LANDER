@@ -42,6 +42,12 @@ export interface RowValidation {
   valid: boolean;
   errors: RowIssue[];
   warnings: RowIssue[];
+  /**
+   * Linhas de aba(s) filha(s) correlacionadas a esta linha via a coluna de
+   * referência (contract.childSheets) — ex.: `{ musicas: MusicaFieldItem[] }`
+   * para projects. Ausente para entidades sem childSheets no contrato.
+   */
+  childSheets?: Record<string, unknown[]>;
 }
 
 export interface ImportValidationResult {

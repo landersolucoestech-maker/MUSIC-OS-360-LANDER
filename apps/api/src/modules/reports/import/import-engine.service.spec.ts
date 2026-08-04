@@ -151,3 +151,93 @@ describe('ImportEngineService — buildTemplate (Parte 80/81)', () => {
     await expect(makeEngine({ def: { ...DEF, supportsImport: false } }).buildTemplate('artists', 't')).rejects.toBeInstanceOf(BadRequestException);
   });
 });
+
+describe('ImportEngineService — abas filhas (projects → Músicas do Projeto, Parte 87)', () => {
+  const PROJECTS_DEF: ReportEntityDefinition = {
+    entityName: 'ProjectEntity', tableName: 'projects', category: EntityCategory.REPORTABLE,
+    identityColumn: 'titulo', displayColumn: 'titulo', dateColumn: 'created_at',
+    exportableColumns: ['projeto_ref', 'tipo', 'titulo', 'observacoes', 'status'],
+    importableColumns: ['projeto_ref', 'tipo', 'titulo', 'observacoes', 'status'],
+    filterableColumns: ['status'], sortableColumns: ['titulo'], searchableColumns: ['titulo'],
+    sensitiveColumns: [], requiredImportColumns: ['titulo'], supportsExport: true, supportsImport: true,
+  };
+  const PROJECTS_REPORT = {
+    tableName: 'projects', label: 'Projetos', reportable: true, hasSoftDelete: true,
+    columns: [
+      { name: 'id', type: 'uuid', isEnum: false, nullable: false, hasDefault: true },
+      { name: 'tipo', type: 'String', isEnum: false, nullable: false, hasDefault: false },
+      { name: 'titulo', type: 'String', isEnum: false, nullable: false, hasDefault: false },
+      { name: 'observacoes', type: 'String', isEnum: false, nullable: true, hasDefault: false },
+      { name: 'status', type: 'String', isEnum: false, nullable: false, hasDefault: true },
+      { name: 'tenant_id', type: 'String', isEnum: false, nullable: false, hasDefault: false },
+    ],
+  };
+
+  function makeProjectsEngine() {
+    const metadata = { scan: () => ({ entities: [PROJECTS_REPORT] }) } as any;
+    const definitions = { getDefinition: () => PROJECTS_DEF } as any;
+    const tableGuard = { assertTableUsable: jest.fn().mockResolvedValue(undefined) } as any;
+    return new ImportEngineService(metadata, definitions, new ImportParserService(), new ImportMapperService(), new ImportValidationService(), tableGuard, new ExportFormatService());
+  }
+
+  function multiSheetXlsx(sheets: Array<{ name: string; aoa: string[][] }>) {
+    const wb = XLSX.utils.book_new();
+    for (const s of sheets) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s.aoa), s.name);
+    }
+    const content = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+    return { filename: 'projects.xlsx', content };
+  }
+
+  it('buildTemplate: workbook com 3 abas — Projetos, Músicas do Projeto, Instruções', async () => {
+    const result = await makeProjectsEngine().buildTemplate('projects', 't');
+    const wb = XLSX.read(result.body, { type: 'buffer' });
+    expect(wb.SheetNames).toEqual(['Projetos', 'Músicas do Projeto', 'Instruções']);
+
+    const mainRows = XLSX.utils.sheet_to_json(wb.Sheets['Projetos']!, { header: 1 }) as unknown[][];
+    expect(mainRows[0]).toEqual(['Projeto ID de referência', 'Tipo', 'Título', 'Observações', 'Situação']);
+    expect(mainRows[1][0]).toBe('1'); // valor de exemplo fixo da coluna ref
+
+    const childRows = XLSX.utils.sheet_to_json(wb.Sheets['Músicas do Projeto']!, { header: 1 }) as unknown[][];
+    expect(childRows[0][0]).toBe('Projeto ID de referência');
+    expect(childRows[0]).toContain('Nome');
+    expect(childRows[1][0]).toBe('1'); // mesmo valor de exemplo — correlaciona com a aba principal
+  });
+
+  it('validateFile: correlaciona linha principal com linhas da aba filha via projeto_ref', async () => {
+    const file = multiSheetXlsx([
+      {
+        name: 'Projetos',
+        aoa: [
+          ['Projeto ID de referência', 'Tipo', 'Título', 'Status'],
+          ['A', 'ep', 'Meu EP', 'planejamento'],
+        ],
+      },
+      {
+        name: 'Músicas do Projeto',
+        aoa: [
+          ['Projeto ID de referência', 'Nome', 'Compositores', 'Ordem'],
+          ['A', 'Faixa 1', 'Fulano, Ciclano', '0'],
+          ['A', 'Faixa 2', 'Beltrano', '1'],
+        ],
+      },
+    ]);
+
+    const result = await makeProjectsEngine().validateFile('projects', file, 't');
+    expect(result.rows).toHaveLength(1);
+    const row = result.rows[0];
+    expect(row.data.titulo).toBe('Meu EP');
+    expect(row.childSheets?.musicas).toHaveLength(2);
+    expect(row.childSheets!.musicas[0]).toMatchObject({ nome: 'Faixa 1', compositores: ['Fulano', 'Ciclano'] });
+    expect(row.childSheets!.musicas[1]).toMatchObject({ nome: 'Faixa 2', compositores: ['Beltrano'] });
+  });
+
+  it('validateFile: sem aba filha no arquivo → linha principal validada normalmente, sem childSheets', async () => {
+    const file = multiSheetXlsx([
+      { name: 'Projetos', aoa: [['Projeto ID de referência', 'Tipo', 'Título'], ['A', 'single', 'Só Música']] },
+    ]);
+    const result = await makeProjectsEngine().validateFile('projects', file, 't');
+    expect(result.rows[0].valid).toBe(true);
+    expect(result.rows[0].childSheets).toBeUndefined();
+  });
+});

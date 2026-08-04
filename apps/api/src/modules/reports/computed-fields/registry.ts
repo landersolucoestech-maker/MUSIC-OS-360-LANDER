@@ -1,13 +1,11 @@
 /**
- * modules/reports/computed-fields/registry.ts  ·  Parte 86
+ * modules/reports/computed-fields/registry.ts  ·  Parte 87
  *
- * Registro mínimo de resolvers para campos `storage: 'computed'` do contrato
- * (report-form-contracts.ts) — chaveado por "tableName.fieldKey" para
- * precisão total caso uma entidade venha a ter mais de um campo computed no
- * futuro. NÃO é um framework de plugins: é um lookup direto, e um contrato
- * que declara `computed()` sem resolver registrado aqui falha alto e cedo
- * (ExportEngineService/ImportCommitService lançam erro explícito), nunca
- * silenciosamente.
+ * Registro mínimo de resolvers para abas filhas (`ReportFormContract.childSheets`,
+ * report-form-contracts.ts) — chaveado por "tableName.childSheetKey". NÃO é
+ * um framework de plugins: é um lookup direto, e uma aba filha declarada sem
+ * resolver registrado aqui falha alto e cedo (ExportEngineService/
+ * ImportCommitService lançam erro explícito), nunca silenciosamente.
  */
 import type { DataSource, QueryRunner } from 'typeorm';
 import {
@@ -15,23 +13,23 @@ import {
   insertProjectsMusicasForImport,
 } from './projects-musicas.field';
 
-export type ComputedFieldExportResolver = (
+export type ChildSheetExportResolver = (
   ds: DataSource,
   tenantId: string,
-  rowIds: string[],
-) => Promise<Map<string, unknown>>;
+  refIds: string[],
+) => Promise<Map<string, Record<string, unknown>[]>>;
 
-export type ComputedFieldImportWriter = (
+export type ChildSheetImportWriter = (
   qr: QueryRunner,
   tenantId: string,
-  rowId: string,
-  value: unknown,
+  parentId: string,
+  rows: unknown,
 ) => Promise<void>;
 
-export const COMPUTED_FIELD_EXPORT_RESOLVERS: Record<string, ComputedFieldExportResolver> = {
-  'projects.musicas': fetchProjectsMusicasForExport,
+export const CHILD_SHEET_EXPORT_RESOLVERS: Record<string, ChildSheetExportResolver> = {
+  'projects.musicas': fetchProjectsMusicasForExport as unknown as ChildSheetExportResolver,
 };
 
-export const COMPUTED_FIELD_IMPORT_WRITERS: Record<string, ComputedFieldImportWriter> = {
+export const CHILD_SHEET_IMPORT_WRITERS: Record<string, ChildSheetImportWriter> = {
   'projects.musicas': insertProjectsMusicasForImport,
 };

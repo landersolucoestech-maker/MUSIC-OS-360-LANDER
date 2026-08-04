@@ -104,4 +104,28 @@ export class ExportFormatService {
     XLSX.utils.book_append_sheet(wb, ws, entity.slice(0, 31) || 'Export');
     return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
   }
+
+  /**
+   * Workbook multi-aba (Parte 87, Bloco 6) — uma aba principal + N abas
+   * filhas para estruturas repetíveis do formulário, nunca compactadas numa
+   * única célula JSON. Nomes de aba truncados em 31 caracteres (limite do
+   * Excel/OOXML) — colisão entre abas truncadas é responsabilidade de quem
+   * declara o contrato (nomes de aba já curtos por design).
+   */
+  toXlsxMultiSheet(
+    entity: string,
+    sheets: Array<{ sheetName: string; columns: string[]; rows: Record<string, unknown>[] }>,
+  ): Buffer {
+    const wb = XLSX.utils.book_new();
+    for (const sheet of sheets) {
+      const header = this.headers(sheet.columns).map((h) => h.label);
+      const aoa: unknown[][] = [
+        header,
+        ...sheet.rows.map((r) => sheet.columns.map((c) => sanitizeExcelCellValue(r[c], { entity, column: c }))),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      XLSX.utils.book_append_sheet(wb, ws, sheet.sheetName.slice(0, 31));
+    }
+    return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  }
 }

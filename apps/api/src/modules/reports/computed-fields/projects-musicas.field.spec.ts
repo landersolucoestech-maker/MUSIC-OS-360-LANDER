@@ -1,6 +1,6 @@
 import { fetchProjectsMusicasForExport, insertProjectsMusicasForImport } from './projects-musicas.field';
 
-describe('projects-musicas.field — resolver do campo computed de Projetos', () => {
+describe('projects-musicas.field — resolver da aba filha "Musicas do Projeto"', () => {
   describe('fetchProjectsMusicasForExport', () => {
     it('lista vazia de projectIds → não consulta o banco, retorna mapa vazio', async () => {
       const query = jest.fn();
@@ -15,7 +15,7 @@ describe('projects-musicas.field — resolver do campo computed de Projetos', ()
         {
           id: 'track-1', project_id: 'proj-1', nome: 'Faixa 1', solo_feat: 'solo',
           original_remix: 'original', instrumental: 'nao', duracao_min: '3', duracao_seg: '30',
-          genero: 'pop', idioma: 'portugues', letra: 'la la', audio_url: 'https://x/a.mp3',
+          genero: 'pop', idioma: 'portugues', letra: 'la la', audio_url: 'https://x/a.mp3', ordem: 0,
         },
       ];
       const participants = [
@@ -39,8 +39,9 @@ describe('projects-musicas.field — resolver do campo computed de Projetos', ()
       expect(musicas).toHaveLength(1);
       expect(musicas![0]).toEqual({
         nome: 'Faixa 1', soloFeat: 'solo', originalRemix: 'original', instrumental: 'nao',
-        duracaoMin: '3', duracaoSeg: '30', genero: 'pop', idioma: 'portugues', letra: 'la la',
+        duracao: '3:30', genero: 'pop', idioma: 'portugues', letra: 'la la',
         audioUrl: 'https://x/a.mp3', compositores: ['Fulano'], interpretes: ['Ciclano'], produtores: ['Beltrano'],
+        ordem: 0,
       });
     });
 
@@ -72,7 +73,7 @@ describe('projects-musicas.field — resolver do campo computed de Projetos', ()
       const musicas = [
         {
           nome: 'Faixa importada', soloFeat: 'feat', originalRemix: 'remix', instrumental: 'sim',
-          duracaoMin: '4', duracaoSeg: '12', genero: 'rock', idioma: 'ingles', letra: '',
+          duracao: '4:12', genero: 'rock', idioma: 'ingles', letra: '',
           audioUrl: '', compositores: ['A', ''], interpretes: ['B'], produtores: [],
         },
       ];

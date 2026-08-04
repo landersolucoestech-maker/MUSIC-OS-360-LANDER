@@ -23,17 +23,38 @@
  *     canônica (ex.: `title` → `titulo`).
  */
 
-export type ReportFieldStorage = 'column' | 'metadata' | 'encrypted' | 'computed';
+export type ReportFieldStorage = 'column' | 'metadata' | 'encrypted' | 'ref';
 
 export interface ReportFieldSpec {
   /** Chave lógica estável (coluna do arquivo e do formulário). */
   key: string;
   /** Onde o campo vive fisicamente. */
   storage: ReportFieldStorage;
-  /** Coluna física para storage 'encrypted' (ex.: email → email_encrypted). */
+  /** Coluna física para storage 'encrypted'/'ref' (ex.: email → email_encrypted; projeto_ref → id). */
   physical?: string;
   /** false ⇒ somente exportação (nunca sobrescrito na importação). */
   importable?: boolean;
+}
+
+/**
+ * Aba filha do workbook — estrutura repetível do formulário (ex.: músicas de
+ * um projeto) representada como abas próprias, NUNCA compactada em JSON numa
+ * única célula (Parte 87, Bloco 6). Cada linha da aba filha carrega a mesma
+ * coluna de referência (`ReportFormContract.refField`) da linha-pai a que
+ * pertence, para reimportação correlacionar as duas abas.
+ */
+export interface ReportChildSheetFieldSpec {
+  key: string;
+  /** true ⇒ lista de valores (ex.: nomes de compositores) representada como texto separado por ", ". */
+  multi?: boolean;
+}
+
+export interface ReportChildSheetSpec {
+  /** Chave lógica do grupo (ex.: 'musicas'). */
+  key: string;
+  /** Nome da aba no workbook (≤ 31 caracteres — limite do Excel). */
+  sheetName: string;
+  fields: ReportChildSheetFieldSpec[];
 }
 
 export interface ReportFormContract {
@@ -48,6 +69,8 @@ export interface ReportFormContract {
   /** Overrides opcionais (apenas colunas físicas do contrato). */
   filterableColumns?: string[];
   searchableColumns?: string[];
+  /** Abas filhas para estruturas repetíveis do formulário (Parte 87). */
+  childSheets?: ReportChildSheetSpec[];
 }
 
 const col = (key: string): ReportFieldSpec => ({ key, storage: 'column' });
@@ -55,13 +78,13 @@ const ro = (key: string): ReportFieldSpec => ({ key, storage: 'column', importab
 const meta = (key: string): ReportFieldSpec => ({ key, storage: 'metadata' });
 const enc = (key: string, physical: string): ReportFieldSpec => ({ key, storage: 'encrypted', physical });
 /**
- * Campo sem coluna física própria, resolvido por um resolver dedicado fora do
- * fluxo genérico de SQL direto (ver modules/reports/computed-fields/). Único
- * uso hoje: `projects.musicas` (normalizada em project_tracks +
- * project_track_participants — ver ProjectsService.hydrateMusicas/replaceMusicas,
- * mesmo formato espelhado aqui para round-trip sem tradução).
+ * Coluna de correlação entre a linha principal e suas abas filhas
+ * (contract.childSheets) — nunca persistida (nenhuma tabela tem coluna
+ * própria para isto); resolvida a partir de uma coluna física real (ex.: o
+ * `id` do próprio registro) só para existir um valor estável dentro do
+ * arquivo. Fora de contratos com childSheets, não deve ser usada.
  */
-const computed = (key: string): ReportFieldSpec => ({ key, storage: 'computed' });
+const ref = (key: string, physical: string): ReportFieldSpec => ({ key, storage: 'ref', physical });
 
 // ─── Artistas (formulário completo — 68 campos) ──────────────────────────────
 const ARTISTS_CONTRACT: ReportFormContract = {
@@ -326,9 +349,9 @@ const PROJECTS_CONTRACT: ReportFormContract = {
   tableName: 'projects',
   identityColumn: 'titulo',
   fields: [
+    ref('projeto_ref', 'id'), // correlação com a aba "Músicas do Projeto" — ver childSheets abaixo
     col('tipo'),        // "Tipo de Lançamento"
     col('titulo'),      // ver nota acima
-    computed('musicas'), // Cada música do projeto — ver computed-fields/projects-musicas.field.ts
     col('observacoes'),
     col('status'),
   ],
@@ -338,7 +361,29 @@ const PROJECTS_CONTRACT: ReportFormContract = {
     orcamento: 'aceito pelo DTO mas sem campo correspondente no modal Criar/Editar',
     descricao: 'aceito pelo DTO mas sem campo correspondente no modal Criar/Editar (distinto de observacoes, que tem input próprio)',
     genero: 'calculado automaticamente a partir de musicas[0].genero (ProjetoFormModal.tsx) — não é um input próprio do formulário, já presente dentro de cada música',
+    musicas: 'representada em aba filha própria ("Músicas do Projeto", childSheets abaixo) — nunca compactada numa única célula (Parte 87, Bloco 6)',
   },
+  childSheets: [
+    {
+      key: 'musicas',
+      sheetName: 'Músicas do Projeto',
+      fields: [
+        { key: 'nome' },
+        { key: 'soloFeat' },
+        { key: 'originalRemix' },
+        { key: 'instrumental' },
+        { key: 'duracao' }, // "MIN:SEG" — mesmo par de inputs agrupados sob um único Label no modal
+        { key: 'genero' },
+        { key: 'idioma' },
+        { key: 'compositores', multi: true },
+        { key: 'interpretes', multi: true },
+        { key: 'produtores', multi: true },
+        { key: 'letra' },
+        { key: 'audioUrl' },
+        { key: 'ordem' },
+      ],
+    },
+  ],
 };
 
 export const REPORT_FORM_CONTRACTS: Record<string, ReportFormContract> = {
@@ -387,6 +432,10 @@ export function contractMetadataFields(contract: ReportFormContract): Set<string
   return new Set(contract.fields.filter((f) => f.storage === 'metadata').map((f) => f.key));
 }
 
-export function contractComputedFields(contract: ReportFormContract): Set<string> {
-  return new Set(contract.fields.filter((f) => f.storage === 'computed').map((f) => f.key));
+export function contractRefFields(contract: ReportFormContract): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of contract.fields) {
+    if (f.storage === 'ref' && f.physical) out[f.key] = f.physical;
+  }
+  return out;
 }

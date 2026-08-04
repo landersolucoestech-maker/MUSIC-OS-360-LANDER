@@ -21,13 +21,6 @@ export interface BuiltExportQuery {
   sql: string;
   parameters: unknown[];
   columns: string[];
-  /**
-   * Nome interno da coluna de PK incluída na query só para correlacionar
-   * linhas com campos `computed` pós-fetch (ver ExportEngineService) — nunca
-   * aparece em `columns`/no arquivo final. `null` quando o contrato não tem
-   * campo computed.
-   */
-  internalIdColumn: string | null;
 }
 
 export interface ExportResult {

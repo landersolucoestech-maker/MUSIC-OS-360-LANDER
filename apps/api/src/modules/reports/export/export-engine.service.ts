@@ -1,9 +1,10 @@
 /**
- * modules/reports/export/export-engine.service.ts  ·  FASE 2.2
+ * modules/reports/export/export-engine.service.ts  ·  FASE 2.2 (Parte 87: abas filhas)
  *
  * Orquestra a exportação 100% entity-driven: valida entidade/contrato/tenant,
  * monta a query segura (contrato), executa com isolamento por tenant, serializa
- * com labels pt-BR e audita. Sem if/switch por entidade.
+ * com labels pt-BR e audita. Sem if/switch por entidade — exceto o suporte a
+ * abas filhas (contract.childSheets), que é opt-in por contrato, não por tabela.
  */
 import {
   BadRequestException, ForbiddenException, Inject, Injectable,
@@ -19,11 +20,12 @@ import { ExportAuditService } from './export-audit.service';
 import { ReportTableGuardService } from '../report-table-guard.service';
 import { EncryptionService } from '../../../core/security/encryption.service';
 import {
-  contractComputedFields,
   contractEncryptedFields,
+  contractRefFields,
   getReportFormContract,
+  type ReportChildSheetSpec,
 } from '../form-contracts/report-form-contracts';
-import { COMPUTED_FIELD_EXPORT_RESOLVERS } from '../computed-fields/registry';
+import { CHILD_SHEET_EXPORT_RESOLVERS } from '../computed-fields/registry';
 import { EXPORT_FORMATS, type ExportFormat, type ExportQueryParams, type ExportResult } from './export.types';
 
 @Injectable()
@@ -54,8 +56,12 @@ export class ExportEngineService {
     }
 
     const report = this.metadata.scan().entities.find((e) => e.tableName === entity);
-    if (!report) throw new UnprocessableEntityException(`Entidade nao registrada para relatorios: ${entity}`);
-    if (!report.reportable) throw new UnprocessableEntityException(`Entidade nao e exportavel pela Central de Relatorios: ${entity}`);
+    if (!report || !report.reportable) {
+      throw new UnprocessableEntityException({
+        error: 'REPORT_ENTITY_NOT_AVAILABLE',
+        message: `Entidade não disponível na Central de Relatórios: ${entity}`,
+      });
+    }
 
     await this.tableGuard.assertTableUsable(entity, report);
 
@@ -78,12 +84,13 @@ export class ExportEngineService {
       throw err;
     }
 
+    const contract = getReportFormContract(entity);
+
     // Campos cifrados são exportados DESCRIPTOGRAFADOS (a chave lógica do
     // formulário, ex.: email). Sem isso o arquivo carregaria ciphertext e o
     // round-trip exportar→importar re-cifraria o ciphertext (dado corrompido).
-    const encryptedFields = Object.keys(
-      getReportFormContract(entity) ? contractEncryptedFields(getReportFormContract(entity)!) : {},
-    ).filter((k) => query.columns.includes(k));
+    const encryptedFields = Object.keys(contract ? contractEncryptedFields(contract) : {})
+      .filter((k) => query.columns.includes(k));
     if (encryptedFields.length > 0) {
       for (const row of rows) {
         for (const key of encryptedFields) {
@@ -93,35 +100,71 @@ export class ExportEngineService {
       }
     }
 
-    // Campos computed (sem coluna própria, ex.: projects.musicas): resolvidos
-    // após o fetch principal, via resolver dedicado (registry.ts), e serializados
-    // como JSON em uma única célula (sanitizeExcelCellValue rejeita objeto/array
-    // cru — JSON.stringify aqui é obrigatório, não estético). A coluna interna
-    // de correlação (__row_id) nunca aparece no arquivo.
-    const contract = getReportFormContract(entity);
-    const computedFields = contract ? Array.from(contractComputedFields(contract)).filter((f) => query.columns.includes(f)) : [];
-    if (computedFields.length > 0) {
-      if (!query.internalIdColumn) {
-        throw new Error(`[reports-export] campo(s) computed sem internalIdColumn para correlação: ${entity}`);
-      }
-      const rowIds = rows.map((r) => String(r[query.internalIdColumn!]));
-      for (const field of computedFields) {
-        const resolver = COMPUTED_FIELD_EXPORT_RESOLVERS[`${entity}.${field}`];
-        if (!resolver) {
-          throw new Error(`[reports-export] campo computed sem resolver registrado: ${entity}.${field}`);
-        }
-        const valuesById = await resolver(this.ds, tenantId, rowIds);
-        for (const row of rows) {
-          const id = String(row[query.internalIdColumn!]);
-          row[field] = JSON.stringify(valuesById.get(id) ?? []);
-        }
-      }
-      for (const row of rows) delete row[query.internalIdColumn!];
+    if (contract?.childSheets?.length) {
+      const result = await this.serializeWithChildSheets(entity, params.format, contract.childSheets, query.columns, rows, contract, tenantId);
+      this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: rows.length, status: 'success' });
+      return result;
     }
 
     const result = this.serialize(entity, params.format, query.columns, rows);
     this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: rows.length, status: 'success' });
     return result;
+  }
+
+  private async serializeWithChildSheets(
+    entity: string,
+    format: ExportFormat,
+    childSheets: ReportChildSheetSpec[],
+    mainColumns: string[],
+    mainRows: Record<string, unknown>[],
+    contract: NonNullable<ReturnType<typeof getReportFormContract>>,
+    tenantId: string,
+  ): Promise<ExportResult> {
+    if (!this.ds) throw new ServiceUnavailableException('Banco de dados indisponivel');
+
+    const refFields = contractRefFields(contract);
+    const refKey = Object.keys(refFields)[0];
+    if (!refKey) {
+      throw new Error(`[reports-export] contrato com childSheets sem campo 'ref' declarado: ${entity}`);
+    }
+    const refValues = mainRows.map((r) => String(r[refKey]));
+
+    const report = this.metadata.scan().entities.find((e) => e.tableName === entity);
+    const mainSheetName = report?.label ?? entity;
+
+    const sheets: Array<{ sheetName: string; columns: string[]; rows: Record<string, unknown>[] }> = [
+      { sheetName: mainSheetName, columns: mainColumns, rows: mainRows },
+    ];
+
+    for (const spec of childSheets) {
+      const resolver = CHILD_SHEET_EXPORT_RESOLVERS[`${entity}.${spec.key}`];
+      if (!resolver) {
+        throw new Error(`[reports-export] aba filha sem resolver registrado: ${entity}.${spec.key}`);
+      }
+      const dataByRef = await resolver(this.ds, tenantId, refValues);
+      const childColumns = [refKey, ...spec.fields.map((f) => f.key)];
+      const childRows: Record<string, unknown>[] = [];
+      for (const ref of refValues) {
+        for (const item of dataByRef.get(ref) ?? []) {
+          const row: Record<string, unknown> = { [refKey]: ref };
+          for (const f of spec.fields) {
+            const value = (item as Record<string, unknown>)[f.key];
+            row[f.key] = f.multi && Array.isArray(value) ? value.join(', ') : value;
+          }
+          childRows.push(row);
+        }
+      }
+      sheets.push({ sheetName: spec.sheetName, columns: childColumns, rows: childRows });
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    return {
+      filename: `${entity}_${stamp}.xlsx`,
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      body: this.format.toXlsxMultiSheet(entity, sheets),
+      recordCount: mainRows.length,
+      format,
+    };
   }
 
   private serialize(

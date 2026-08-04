@@ -15,12 +15,11 @@ import type { ReportEntityDefinition } from '../definitions/report-entity-defini
 import type { RowValidation } from './import.types';
 import { EncryptionService } from '../../../core/security/encryption.service';
 import {
-  contractComputedFields,
   contractEncryptedFields,
   contractMetadataFields,
   getReportFormContract,
 } from '../form-contracts/report-form-contracts';
-import { COMPUTED_FIELD_IMPORT_WRITERS } from '../computed-fields/registry';
+import { CHILD_SHEET_IMPORT_WRITERS } from '../computed-fields/registry';
 
 export interface ImportCommitResult {
   entity: string;
@@ -255,32 +254,27 @@ export class ImportCommitService {
   ): Promise<void> {
     // Persistência dirigida pelo contrato central (fonte única): coluna direta,
     // campo cifrado (re-encriptado do valor plaintext), campo em metadata jsonb
-    // ou campo computed (sem coluna própria — escrito após o INSERT principal,
-    // ver COMPUTED_FIELD_IMPORT_WRITERS).
+    // ou campo 'ref' (nunca persistido — só correlaciona com abas filhas,
+    // escritas após o INSERT principal via CHILD_SHEET_IMPORT_WRITERS).
     const contract = getReportFormContract(def.tableName);
     const encryptedFields = contract ? contractEncryptedFields(contract) : {};
     const metadataFields = contract ? contractMetadataFields(contract) : new Set<string>();
-    const computedFields = contract ? contractComputedFields(contract) : new Set<string>();
+    const refKeys = new Set(contract?.fields.filter((f) => f.storage === 'ref').map((f) => f.key) ?? []);
 
     const cols: string[] = [];
     const values: unknown[] = [];
     const metadata: Record<string, unknown> = {};
     let hasMetadataField = false;
-    const computedValues: Array<[string, unknown]> = [];
 
     for (const col of def.importableColumns) {
       if (!(col in row.data)) continue;
+      if (refKeys.has(col)) continue; // valor só existe no arquivo, nunca persistido
 
       const rawValue = contract ? normalizeImportedValue(row.data[col]) : row.data[col];
 
       // Célula vazia = AUSÊNCIA: a coluna é omitida do INSERT para o default do
       // schema valer (ex.: jsonb NOT NULL DEFAULT '[]'). Nunca convertida em null.
       if (contract && rawValue === null) continue;
-
-      if (computedFields.has(col)) {
-        computedValues.push([col, rawValue]);
-        continue;
-      }
 
       const encryptedColumn = encryptedFields[col];
       if (encryptedColumn) {
@@ -313,24 +307,26 @@ export class ImportCommitService {
 
     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
-    const needsReturningId = computedValues.length > 0;
+    const hasChildSheets = !!(contract?.childSheets?.length && row.childSheets);
     const sql =
       `INSERT INTO ${quote(def.tableName)} (${cols.map(quote).join(', ')}) VALUES (${placeholders})` +
-      (needsReturningId ? ` RETURNING ${quote('id')}` : '');
+      (hasChildSheets ? ` RETURNING ${quote('id')}` : '');
 
     const result = await qr.query(sql, values);
 
-    if (computedValues.length > 0) {
+    if (hasChildSheets) {
       const insertedId = (result as Array<{ id: string }>)[0]?.id;
       if (!insertedId) {
-        throw new Error(`[reports-import] INSERT sem id retornado para campo(s) computed: ${def.tableName}`);
+        throw new Error(`[reports-import] INSERT sem id retornado para aba(s) filha(s): ${def.tableName}`);
       }
-      for (const [col, value] of computedValues) {
-        const writer = COMPUTED_FIELD_IMPORT_WRITERS[`${def.tableName}.${col}`];
+      for (const spec of contract!.childSheets!) {
+        const childRows = row.childSheets?.[spec.key];
+        if (!childRows) continue;
+        const writer = CHILD_SHEET_IMPORT_WRITERS[`${def.tableName}.${spec.key}`];
         if (!writer) {
-          throw new Error(`[reports-import] campo computed sem writer registrado: ${def.tableName}.${col}`);
+          throw new Error(`[reports-import] aba filha sem writer registrado: ${def.tableName}.${spec.key}`);
         }
-        await writer(qr, tenantId, insertedId, value);
+        await writer(qr, tenantId, insertedId, childRows);
       }
     }
   }

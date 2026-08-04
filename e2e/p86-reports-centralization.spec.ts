@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
+import * as XLSX from 'xlsx';
+import * as fs from 'fs';
 
 /**
  * p86-reports-centralization.spec.ts  (Parte 86)
@@ -36,15 +38,21 @@ test.describe('Parte 86 — centralização de Importar/Exportar em Relatórios'
     });
   }
 
-  test('Relatórios: sem abas/seções Formulários ou Pipeline (a lista de entidades reportáveis pode legitimamente incluir entidades chamadas "Formulários"/"Pipelines" — não são abas)', async ({ page }) => {
+  test('Relatórios: sem abas/seções (estrutura da página)', async ({ page }) => {
     await page.goto('/relatorios', { waitUntil: 'networkidle' });
     // A página inteira é uma lista única (sem <Tabs>) — confirma ausência
-    // estrutural de qualquer aba, não só das antigas "Formulários"/"Pipeline".
+    // estrutural de qualquer aba.
     await expect(page.locator('[role="tab"], [role="tablist"]')).toHaveCount(0);
-    // Título de seção "Formulários"/"Pipeline" (heading), distinto de uma
-    // linha de entidade reportável (data-testid="entity-row-*") com esse nome.
-    const rogueSectionHeading = page.locator('h1, h2, h3').filter({ hasText: /^(Formulários|Pipeline)$/ });
-    await expect(rogueSectionHeading).toHaveCount(0);
+  });
+
+  test('Relatórios: Formulários e Pipelines NÃO aparecem como entidade (Parte 87 — removidas do registry, não apenas de uma aba)', async ({ page }) => {
+    await page.goto('/relatorios', { waitUntil: 'networkidle' });
+    await expect(page.locator('[data-testid="entity-row-projects"]')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[data-testid="entity-row-forms"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="entity-row-pipelines"]')).toHaveCount(0);
+    const bodyText = await page.locator('body').innerText();
+    expect(bodyText).not.toMatch(/\bFormulários\b/);
+    expect(bodyText).not.toMatch(/\bPipelines?\b/);
   });
 
   test('Relatórios: Projetos aparece como entidade reportável com Importar/Exportar funcionais', async ({ page }) => {
@@ -58,5 +66,29 @@ test.describe('Parte 86 — centralização de Importar/Exportar em Relatórios'
       row.locator('[data-testid="btn-export-projects"]').click(),
     ]);
     expect(download.suggestedFilename()).toMatch(/^projects.*\.xlsx$/);
+  });
+
+  test('Relatórios: exportação de Projetos é um workbook real com aba "Projetos" + aba filha "Músicas do Projeto" (Parte 87, Bloco 6 — nunca JSON numa célula)', async ({ page }) => {
+    await page.goto('/relatorios', { waitUntil: 'networkidle' });
+    const row = page.locator('[data-testid="entity-row-projects"]');
+    await expect(row).toBeVisible({ timeout: 10_000 });
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      row.locator('[data-testid="btn-export-projects"]').click(),
+    ]);
+    const filePath = await download.path();
+    expect(filePath).toBeTruthy();
+    const wb = XLSX.read(fs.readFileSync(filePath!));
+    expect(wb.SheetNames).toEqual(['Projetos', 'Músicas do Projeto']);
+
+    const mainHeader = XLSX.utils.sheet_to_json(wb.Sheets['Projetos'], { header: 1 })[0] as string[];
+    expect(mainHeader).toEqual(['Projeto ID de referência', 'Tipo', 'Título', 'Observações', 'Situação']);
+
+    const childHeader = XLSX.utils.sheet_to_json(wb.Sheets['Músicas do Projeto'], { header: 1 })[0] as string[];
+    expect(childHeader).toEqual([
+      'Projeto ID de referência', 'Nome', 'Solo/Feat', 'Original/Remix', 'Instrumental', 'Duração',
+      'Gênero', 'Idioma', 'Compositores', 'Intérpretes', 'Produtores', 'Letra', 'Áudio', 'Ordem',
+    ]);
   });
 });

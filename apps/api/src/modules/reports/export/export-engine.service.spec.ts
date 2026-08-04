@@ -98,31 +98,31 @@ describe('ExportEngineService — orquestração entity-driven', () => {
   });
 });
 
-describe('ExportEngineService — campo computed (projects.musicas, Parte 86)', () => {
+describe('ExportEngineService — aba filha (projects → Músicas do Projeto, Parte 87)', () => {
   const PROJECTS_DEF: ReportEntityDefinition = {
     entityName: 'ProjectEntity', tableName: 'projects', category: EntityCategory.REPORTABLE,
     identityColumn: 'titulo', displayColumn: 'titulo', dateColumn: 'created_at',
-    exportableColumns: ['tipo', 'titulo', 'musicas', 'observacoes', 'status'],
-    importableColumns: ['tipo', 'titulo', 'musicas', 'observacoes', 'status'],
+    exportableColumns: ['projeto_ref', 'tipo', 'titulo', 'observacoes', 'status'],
+    importableColumns: ['projeto_ref', 'tipo', 'titulo', 'observacoes', 'status'],
     filterableColumns: ['status'], sortableColumns: ['titulo', 'created_at'], searchableColumns: ['titulo'],
     sensitiveColumns: [], requiredImportColumns: ['titulo'], supportsExport: true, supportsImport: true,
   };
 
-  it('resolve musicas via resolver dedicado, serializa como JSON e remove a coluna interna de correlação', async () => {
+  it('exporta workbook com aba principal "Projetos" + aba filha "Músicas do Projeto" correlacionadas por projeto_ref', async () => {
     const mainRows = [
-      { tipo: 'ep', titulo: 'Meu EP', observacoes: 'obs', status: 'em_andamento', __row_id: 'proj-1' },
+      { projeto_ref: 'proj-1', tipo: 'ep', titulo: 'Meu EP', observacoes: 'obs', status: 'em_andamento' },
     ];
     const ds = {
       query: jest.fn()
-        .mockResolvedValueOnce(mainRows) // SELECT principal de "projects"
+        .mockResolvedValueOnce(mainRows) // SELECT principal de "projects" (projeto_ref = id físico)
         .mockResolvedValueOnce([{        // project_tracks
           id: 'track-1', project_id: 'proj-1', nome: 'Faixa', solo_feat: 'solo',
           original_remix: 'original', instrumental: 'nao', duracao_min: '3', duracao_seg: '0',
-          genero: 'pop', idioma: 'portugues', letra: null, audio_url: null,
+          genero: 'pop', idioma: 'portugues', letra: null, audio_url: null, ordem: 0,
         }])
         .mockResolvedValueOnce([]),      // project_track_participants
     } as any;
-    const metadata = { scan: () => ({ entities: [{ tableName: 'projects', reportable: true, hasSoftDelete: false, columns: [] }] }) } as any;
+    const metadata = { scan: () => ({ entities: [{ tableName: 'projects', label: 'Projetos', reportable: true, hasSoftDelete: false, columns: [] }] }) } as any;
     const definitions = { getDefinition: () => PROJECTS_DEF } as any;
     const audit = { record: jest.fn() } as any;
     const tableGuard = { assertTableUsable: jest.fn().mockResolvedValue(undefined) } as any;
@@ -131,21 +131,24 @@ describe('ExportEngineService — campo computed (projects.musicas, Parte 86)', 
 
     const res = await engine.export('projects', params(), 'tenant-1', 'user-1');
 
-    // SQL principal seleciona __row_id internamente para correlação
-    expect(ds.query.mock.calls[0][0]).toContain('AS "__row_id"');
+    // SQL principal seleciona a coluna física "id" AS "projeto_ref" (não uma coluna interna oculta)
+    expect(ds.query.mock.calls[0][0]).toContain('"id" AS "projeto_ref"');
 
     const wb = XLSX.read(res.body as Buffer, { type: 'buffer' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
-    expect(rows[0]).not.toContain('__row_id'); // coluna interna nunca vaza pro arquivo
+    expect(wb.SheetNames).toEqual(['Projetos', 'Músicas do Projeto']);
 
-    const musicasColIdx = (rows[0] as string[]).indexOf('Músicas');
-    expect(musicasColIdx).toBeGreaterThanOrEqual(0);
-    const parsed = JSON.parse((rows[1] as string[])[musicasColIdx]);
-    expect(parsed).toEqual([{
-      nome: 'Faixa', soloFeat: 'solo', originalRemix: 'original', instrumental: 'nao',
-      duracaoMin: '3', duracaoSeg: '0', genero: 'pop', idioma: 'portugues', letra: null,
-      audioUrl: null, compositores: [], interpretes: [], produtores: [],
-    }]);
+    const mainSheetRows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets['Projetos'], { header: 1 });
+    expect(mainSheetRows[0]).toEqual(['Projeto ID de referência', 'Tipo', 'Título', 'Observações', 'Situação']);
+    expect(mainSheetRows[1][0]).toBe('proj-1');
+    expect(mainSheetRows[1][2]).toBe('Meu EP');
+
+    const childSheetRows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets['Músicas do Projeto'], { header: 1 });
+    expect(childSheetRows[0]).toEqual([
+      'Projeto ID de referência', 'Nome', 'Solo/Feat', 'Original/Remix', 'Instrumental', 'Duração',
+      'Gênero', 'Idioma', 'Compositores', 'Intérpretes', 'Produtores', 'Letra', 'Áudio', 'Ordem',
+    ]);
+    expect(childSheetRows[1]).toEqual([
+      'proj-1', 'Faixa', 'solo', 'original', 'nao', '3:00', 'pop', 'portugues', '', '', '', '', '', '0',
+    ]);
   });
 });

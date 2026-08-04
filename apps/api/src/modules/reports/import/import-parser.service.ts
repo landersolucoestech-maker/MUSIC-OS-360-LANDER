@@ -56,10 +56,20 @@ export class ImportParserService {
       throw new BadRequestException(`Arquivo excede o limite de ${IMPORT_MAX_BYTES} bytes.`);
     }
     assertKnownWorkbookSignature(content);
-    return this.parseXlsx(content);
+    return this.parseXlsx(content, 0);
   }
 
-  private parseXlsx(content: Buffer): ParsedFile {
+  parseChildSheet(filename: string, content: Buffer, sheetIndex: number): ParsedFile | null {
+    formatFromName(filename);
+    if (!content || content.length === 0) return null;
+    if (content.length > IMPORT_MAX_BYTES) return null;
+    assertKnownWorkbookSignature(content);
+    const wb = XLSX.read(content, { type: 'buffer', sheetRows: IMPORT_MAX_ROWS + 2 });
+    if (sheetIndex >= wb.SheetNames.length) return null;
+    return this.parseXlsx(content, sheetIndex);
+  }
+
+  private parseXlsx(content: Buffer, sheetIndex: number): ParsedFile {
     // sheetRows bounds how many rows SheetJS itself materializes per sheet —
     // stops pathological parsing before it happens, rather than only
     // rejecting the result afterwards. +2 (not +1) so a file with exactly
@@ -69,7 +79,7 @@ export class ImportParserService {
     if (wb.SheetNames.length > IMPORT_MAX_SHEETS) {
       throw new BadRequestException(`Planilha excede o limite de ${IMPORT_MAX_SHEETS} abas.`);
     }
-    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const sheet = wb.Sheets[wb.SheetNames[sheetIndex]];
     if (!sheet) throw new BadRequestException('Planilha sem abas.');
     const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '', raw: false, blankrows: false });
     if (matrix.length === 0) throw new BadRequestException('Planilha vazia.');
