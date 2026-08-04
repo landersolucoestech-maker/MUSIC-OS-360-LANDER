@@ -26,7 +26,6 @@ import { EncryptionService } from '../../../core/security/encryption.service';
 import {
   contractEncryptedFields,
   getReportFormContract,
-  REPORT_MULTI_VALUE_SEPARATOR,
   type ReportFormContract,
   type ReportRepeatingGroupSpec,
 } from '../form-contracts/report-form-contracts';
@@ -41,6 +40,8 @@ import {
   type ExportQueryParams,
   type ExportResult,
 } from './export.types';
+
+const REPORT_MULTI_VALUE_SEPARATOR = ' | ';
 
 @Injectable()
 export class ExportEngineService {
@@ -211,7 +212,7 @@ export class ExportEngineService {
       const items = itemsByParent.get(String(row.__internal_id)) ?? [];
 
       if (items.length === 0) {
-        const blank = { ...general };
+        const blank: Record<string, unknown> = { ...general };
         for (const column of itemColumns) blank[column] = '';
         flatRows.push(blank);
         continue;
