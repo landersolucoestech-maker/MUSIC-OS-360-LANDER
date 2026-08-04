@@ -1,0 +1,105 @@
+name: Fix web typecheck PR
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-web-typecheck-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.ref == 'fix/oauth-token-boundary'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Align canonical client and OAuth types
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_or_verify(path: Path, old: str, new: str, label: str) -> None:
+              text = path.read_text()
+              if old in text:
+                  path.write_text(text.replace(old, new, 1))
+                  return
+              if new in text:
+                  return
+              raise SystemExit(f'{label}: neither old nor expected new content found')
+
+          settings_path = Path('apps/web/src/modules/settings/pages/Configuracoes.tsx')
+          replace_or_verify(
+              settings_path,
+              '''                onConnect={async (platform, scopes, access_token) => {
+                  await connectMarketing(platform, scopes, access_token);
+''',
+              '''                onConnect={async (platform, scopes) => {
+                  await connectMarketing(platform, scopes);
+''',
+              'MarketingOAuthDialog callback signature',
+          )
+
+          types_path = Path('apps/web/src/modules/crm-relationships/types/index.ts')
+          replace_or_verify(
+              types_path,
+              '''  endereco?: string | null;
+  status?: string | null;
+''',
+              '''  endereco?: string | null;
+  cep?: string | null;
+  status?: string | null;
+''',
+              'Cliente CEP field',
+          )
+
+          contacts_path = Path('apps/web/src/modules/crm-relationships/hooks/useContacts.ts')
+          replace_or_verify(
+              contacts_path,
+              '''    endereco: c.endereco_completo ?? c.address ?? null,
+    status: c.status ?? null,
+''',
+              '''    endereco: c.endereco_completo ?? c.address ?? null,
+    cep: c.cep ?? null,
+    status: c.status ?? null,
+''',
+              'ApiClient to Cliente CEP mapping',
+          )
+
+          nf_path = Path('apps/web/src/modules/accounting/components/nota-fiscal-form/hooks/useNotaFiscalForm.ts')
+          replace_or_verify(
+              nf_path,
+              '      tomador_endereco: cliente.endereco || cliente.endereco_completo || "",\n',
+              '      tomador_endereco: cliente.endereco || "",\n',
+              'Nota fiscal canonical client address',
+          )
+          PY
+
+      - name: Commit when changed
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "Web types already aligned"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/modules/settings/pages/Configuracoes.tsx \
+                  apps/web/src/modules/crm-relationships/types/index.ts \
+                  apps/web/src/modules/crm-relationships/hooks/useContacts.ts \
+                  apps/web/src/modules/accounting/components/nota-fiscal-form/hooks/useNotaFiscalForm.ts
+          git diff --cached --check
+          git commit -m "fix(web): align OAuth and client invoice types"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
