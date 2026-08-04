@@ -57,6 +57,10 @@ function columnMeta(report: EntityReport, name: string): FieldTypeMeta | undefin
   };
 }
 
+function reportSheetName(report: EntityReport, entity: string): string {
+  return (report.label ?? entity).slice(0, 31) || 'Dados';
+}
+
 /**
  * A definição usa chaves lógicas do formulário, enquanto a metadata do banco
  * usa nomes físicos. Este mapa mantém coerção/required checks alinhados ao
@@ -138,7 +142,11 @@ export class ImportEngineService {
 
     const contract = getReportFormContract(entity);
     const typeMap = buildLogicalTypeMap(report, contract);
-    const parsed = this.parser.parse(file.filename, file.content);
+    const parsed = this.parser.parse(
+      file.filename,
+      file.content,
+      reportSheetName(report, entity),
+    );
     const headerMapping = this.mapper.build(def, parsed.headers);
     return this.validator.validate(def, typeMap, headerMapping, parsed.rows, entity);
   }
@@ -172,12 +180,13 @@ export class ImportEngineService {
     return {
       filename: `${entity}_template.xlsx`,
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      body: this.buildTemplateWorkbook(entity, def, typeMap),
+      body: this.buildTemplateWorkbook(entity, report, def, typeMap),
     };
   }
 
   private buildTemplateWorkbook(
     entity: string,
+    report: EntityReport,
     def: ReportEntityDefinition,
     typeMap: Record<string, FieldTypeMeta>,
   ): Buffer {
@@ -202,8 +211,7 @@ export class ImportEngineService {
       exampleRow,
     ]);
     const workbook = XLSX.utils.book_new();
-    const sheetName = this.metadata.scan().entities.find((item) => item.tableName === entity)?.label ?? entity;
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31) || 'Dados');
+    XLSX.utils.book_append_sheet(workbook, worksheet, reportSheetName(report, entity));
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
   }
 }
