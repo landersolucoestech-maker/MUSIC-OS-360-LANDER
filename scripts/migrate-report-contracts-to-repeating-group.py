@@ -5,41 +5,42 @@ path = Path('apps/api/src/modules/reports/form-contracts/report-form-contracts.t
 text = path.read_text(encoding='utf-8')
 
 text = text.replace("export type ReportFieldStorage = 'column' | 'metadata' | 'encrypted' | 'ref';", "export type ReportFieldStorage = 'column' | 'metadata' | 'encrypted';")
-text = text.replace('export interface ReportChildSheetFieldSpec', 'export interface ReportRepeatingGroupFieldSpec')
-text = text.replace('export interface ReportChildSheetSpec', 'export interface ReportRepeatingGroupSpec')
-text = text.replace('fields: ReportChildSheetFieldSpec[];', 'fields: ReportRepeatingGroupFieldSpec[];')
+text = text.replace('ReportChildSheetFieldSpec', 'ReportRepeatingGroupFieldSpec')
+text = text.replace('ReportChildSheetSpec', 'ReportRepeatingGroupSpec')
+text = text.replace('childSheets?: ReportRepeatingGroupSpec[];', 'repeatingGroup?: ReportRepeatingGroupSpec;')
 text = text.replace('childSheets?: ReportChildSheetSpec[];', 'repeatingGroup?: ReportRepeatingGroupSpec;')
-text = re.sub(r"\nconst ref = \(key: string, physical: string\): ReportFieldSpec => \(\{ key, storage: 'ref', physical \}\);\n", '\n', text)
+text = text.replace('childSheets', 'repeatingGroup')
 
-# Cada contrato antigo tinha exatamente uma aba filha. Ela vira um grupo repetível
-# achatado em linhas da mesma aba; sheetName deixa de existir.
-text = text.replace('childSheets: [\n    {', 'repeatingGroup: {')
-text = re.sub(r"\n\s*sheetName: '[^']+',", '', text)
-text = text.replace('\n    },\n  ],', '\n  },')
-
-# Remove qualquer campo técnico de correlação que tenha sobrado.
-text = re.sub(r"\n\s*ref\('[^']+',\s*'[^']+'\),[^\n]*", '', text)
-text = text.replace("music as", "musicas")
-
-# Terminologia e documentação deixam claro que nunca há worksheet filha.
-replacements = {
-    'Aba filha do workbook': 'Grupo repetível do formulário',
-    'aba filha': 'grupo repetível',
-    'abas filhas': 'grupos repetíveis',
-    'childSheets': 'repeatingGroup',
-    'ReportFormContract.refField': 'campos gerais do contrato',
-    'representada em aba filha própria': 'representada por colunas repetíveis na mesma aba',
-    'aba própria': 'linhas repetidas na mesma aba',
+# Interface canônica: grupo repetível não possui nome de worksheet.
+text = re.sub(
+    r"/\*\*\n \* Grupo repetível.*?export interface ReportRepeatingGroupSpec \{.*?\n\}",
+    """/** Grupo repetível achatado em linhas da mesma aba XLSX. */
+export interface ReportRepeatingGroupFieldSpec {
+  key: string;
+  multi?: boolean;
 }
-for old, new in replacements.items():
-    text = text.replace(old, new)
 
-# Não pode haver array em repeatingGroup.
-text = re.sub(r"repeatingGroup:\s*\[\s*\{", 'repeatingGroup: {', text)
-text = re.sub(r"\n\s*\}\s*\],", '\n  },', text)
+export interface ReportRepeatingGroupSpec {
+  key: string;
+  fields: ReportRepeatingGroupFieldSpec[];
+}""",
+    text,
+    count=1,
+    flags=re.S,
+)
 
-if 'childSheets' in text or "storage: 'ref'" in text or 'ReportChildSheet' in text:
+text = re.sub(r"\nconst ref = \(key: string, physical: string\): ReportFieldSpec => \(\{ key, storage: 'ref', physical \}\);\n", '\n', text)
+text = re.sub(r"\n\s*ref\('[^']+',\s*'[^']+'\),[^\n]*", '', text)
+text = re.sub(r"\nexport function contractRefFields\(contract: ReportFormContract\): Record<string, string> \{.*?\n\}", '', text, flags=re.S)
+text = re.sub(r"\n\s*sheetName: '[^']+',", '', text)
+text = text.replace("  /** Coluna física para storage 'encrypted'/'ref' (ex.: email → email_encrypted; projeto_ref → id). */", "  /** Coluna física para storage cifrado ou alias de coluna real. */")
+text = text.replace('representada como abas próprias', 'representada por linhas repetidas na mesma aba')
+text = text.replace('correlacionar as duas abas', 'agrupar os itens do mesmo registro')
+text = text.replace('Nome da aba no workbook (≤ 31 caracteres — limite do Excel).', 'Grupo sem worksheet própria.')
+text = text.replace('aba filha', 'grupo repetível').replace('abas filhas', 'grupos repetíveis')
+
+if 'childSheets' in text or "storage: 'ref'" in text or 'ReportChildSheet' in text or 'contractRefFields' in text:
     raise SystemExit('resíduos de childSheets/ref ainda presentes')
 
 path.write_text(text, encoding='utf-8')
-print('report contracts migrated to repeatingGroup')
+print('report contracts repeatingGroup cleanup complete')
