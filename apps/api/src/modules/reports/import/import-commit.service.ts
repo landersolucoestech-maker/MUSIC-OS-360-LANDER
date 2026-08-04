@@ -129,7 +129,7 @@ export class ImportCommitService {
 
     const errors: string[] = [];
     try {
-      for (const group of groups) await this.assertNotDuplicate(qr, def, group.generalRow, tenantId, errors);
+      for (const group of groups) await this.assertNotDuplicate(qr, def, contract, group.generalRow, tenantId, errors);
       for (const row of validation.rows) await this.assertRelationships(qr, def, row, tenantId, errors);
 
       if (errors.length > 0) {
@@ -155,14 +155,16 @@ export class ImportCommitService {
   private async assertNotDuplicate(
     qr: QueryRunner,
     def: ReportEntityDefinition,
+    contract: ReportFormContract | null,
     row: RowValidation,
     tenantId: string,
     errors: string[],
   ): Promise<void> {
     const value = row.data[def.identityColumn];
     if (value === null || value === undefined || value === '') return;
+    const identityColumn = contract?.fields.find((field) => field.key === def.identityColumn)?.physical ?? def.identityColumn;
     const found = await qr.query(
-      `SELECT 1 FROM ${quote(def.tableName)} WHERE ${quote(def.identityColumn)} = $1 AND ${quote('tenant_id')} = $2 LIMIT 1`,
+      `SELECT 1 FROM ${quote(def.tableName)} WHERE ${quote(identityColumn)} = $1 AND ${quote('tenant_id')} = $2 LIMIT 1`,
       [value, tenantId],
     );
     if (Array.isArray(found) && found.length > 0) {
