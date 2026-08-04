@@ -243,7 +243,7 @@ export class InvoicesService {
           tenantId,
           numero,
           valor,
-          dataVencimento: after['vencimento'] ?? after['data_vencimento'] ?? nowIso,
+          dataVencimento: String(after['vencimento'] ?? after['data_vencimento'] ?? nowIso),
         },
       });
     }
