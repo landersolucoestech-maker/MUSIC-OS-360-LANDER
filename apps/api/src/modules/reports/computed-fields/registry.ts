@@ -1,7 +1,6 @@
 /**
- * modules/reports/computed-fields/registry.ts
- *
- * Resolvers para grupos repetíveis achatados em linhas da mesma aba.
+ * Registro dos resolvers e writers para grupos repetíveis achatados em linhas
+ * da mesma aba XLSX.
  */
 import type { DataSource, QueryRunner } from 'typeorm';
 import {
@@ -13,40 +12,44 @@ import {
   writeReleasesFaixasForImport,
 } from './releases-faixas.field';
 import {
-  makeRowEmbeddedChildSheetExportResolver,
-  makeRowEmbeddedChildSheetImportWriter,
-} from './row-embedded-child-sheet';
+  makeRowEmbeddedRepeatingGroupExportResolver,
+  makeRowEmbeddedRepeatingGroupImportWriter,
+} from './row-embedded-repeating-group';
 
 export type RepeatingGroupExportResolver = (
-  ds: DataSource,
+  dataSource: DataSource,
   tenantId: string,
   parentIds: string[],
 ) => Promise<Map<string, Record<string, unknown>[]>>;
 
 export type RepeatingGroupImportWriter = (
-  qr: QueryRunner,
+  queryRunner: QueryRunner,
   tenantId: string,
   parentId: string,
   items: unknown,
 ) => Promise<void>;
 
-const invoicesItens = { tableName: 'invoices', jsonColumn: 'itens', arrayKey: null } as const;
-const eventsParticipantes = { tableName: 'events', jsonColumn: 'participantes', arrayKey: null } as const;
+const invoiceItems = {
+  tableName: 'invoices',
+  jsonColumn: 'itens',
+  arrayKey: null,
+} as const;
+const eventParticipants = {
+  tableName: 'events',
+  jsonColumn: 'participantes',
+  arrayKey: null,
+} as const;
 
 export const REPEATING_GROUP_EXPORT_RESOLVERS: Record<string, RepeatingGroupExportResolver> = {
   'projects.musicas': fetchProjectsMusicasForExport as unknown as RepeatingGroupExportResolver,
   'releases.faixas': fetchReleasesFaixasForExport as unknown as RepeatingGroupExportResolver,
-  'invoices.itens': makeRowEmbeddedChildSheetExportResolver(invoicesItens),
-  'events.participantes': makeRowEmbeddedChildSheetExportResolver(eventsParticipantes),
+  'invoices.itens': makeRowEmbeddedRepeatingGroupExportResolver(invoiceItems),
+  'events.participantes': makeRowEmbeddedRepeatingGroupExportResolver(eventParticipants),
 };
 
 export const REPEATING_GROUP_IMPORT_WRITERS: Record<string, RepeatingGroupImportWriter> = {
   'projects.musicas': insertProjectsMusicasForImport,
   'releases.faixas': writeReleasesFaixasForImport,
-  'invoices.itens': makeRowEmbeddedChildSheetImportWriter(invoicesItens),
-  'events.participantes': makeRowEmbeddedChildSheetImportWriter(eventsParticipantes),
+  'invoices.itens': makeRowEmbeddedRepeatingGroupImportWriter(invoiceItems),
+  'events.participantes': makeRowEmbeddedRepeatingGroupImportWriter(eventParticipants),
 };
-
-/** Compatibilidade temporária enquanto os contratos antigos childSheets são migrados. */
-export const CHILD_SHEET_EXPORT_RESOLVERS = REPEATING_GROUP_EXPORT_RESOLVERS;
-export const CHILD_SHEET_IMPORT_WRITERS = REPEATING_GROUP_IMPORT_WRITERS;
