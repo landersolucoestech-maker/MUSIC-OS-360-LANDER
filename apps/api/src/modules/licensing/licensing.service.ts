@@ -116,10 +116,15 @@ export class LicensingService {
     });
     if (!current) throw new NotFoundException('Licença não encontrada');
 
+    const currentRaw = current as unknown as Record<string, unknown>;
+    const currentMetadata = currentRaw['metadata'] && typeof currentRaw['metadata'] === 'object'
+      ? currentRaw['metadata'] as Record<string, unknown>
+      : {};
+
     await this.repository.update(
       { id, tenant_id: tenantId } as never,
       {
-        ...this.normalizePayload(dto, current.metadata ?? {}),
+        ...this.normalizePayload(dto, currentMetadata),
         updated_at: new Date(),
         updated_by: userId,
       } as never,
