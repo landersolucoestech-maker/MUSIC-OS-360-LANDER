@@ -1,0 +1,41 @@
+name: Migrate report contracts to repeating groups (one-off)
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - scripts/migrate-report-contracts-to-repeating-group.py
+      - .github/workflows/migrate-report-contracts-oneoff.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: migrate-report-contracts-oneoff
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Migrate contracts
+        run: python scripts/migrate-report-contracts-to-repeating-group.py
+      - name: Commit migration
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/api/src/modules/reports/form-contracts/report-form-contracts.ts
+          git commit -m "refactor(reports): replace child sheets with repeating groups"
+          git push origin HEAD:dev
