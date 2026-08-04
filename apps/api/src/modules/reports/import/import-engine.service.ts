@@ -75,7 +75,12 @@ export class ImportEngineService {
     await this.tableGuard.assertTableUsable(entity, report);
 
     const def = this.definitions.getDefinition(entity);
-    if (!def) throw new NotFoundException(`Contrato de relatório ausente: ${entity}`);
+    if (!def) {
+      throw new NotFoundException({
+        error: 'REPORT_CONTRACT_REQUIRED',
+        message: `Entidade sem contrato de relatório explícito (nenhum fallback heurístico): ${entity}`,
+      });
+    }
     if (!def.supportsImport) throw new BadRequestException(`Entidade não suporta importação: ${entity}`);
 
     const typeMap: Record<string, FieldTypeMeta> = {};
@@ -183,7 +188,12 @@ export class ImportEngineService {
     await this.tableGuard.assertTableUsable(entity, report);
 
     const def = this.definitions.getDefinition(entity);
-    if (!def) throw new NotFoundException(`Contrato de relatório ausente: ${entity}`);
+    if (!def) {
+      throw new NotFoundException({
+        error: 'REPORT_CONTRACT_REQUIRED',
+        message: `Entidade sem contrato de relatório explícito (nenhum fallback heurístico): ${entity}`,
+      });
+    }
     if (!def.supportsImport) throw new BadRequestException(`Entidade não suporta importação: ${entity}`);
 
     const typeMap: Record<string, FieldTypeMeta> = {};

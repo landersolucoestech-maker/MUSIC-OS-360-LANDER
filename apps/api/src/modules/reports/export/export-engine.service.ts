@@ -66,7 +66,12 @@ export class ExportEngineService {
     await this.tableGuard.assertTableUsable(entity, report);
 
     const def = this.definitions.getDefinition(entity);
-    if (!def) throw new UnprocessableEntityException(`Entidade nao e exportavel (contrato de relatorio ausente): ${entity}`);
+    if (!def) {
+      throw new UnprocessableEntityException({
+        error: 'REPORT_CONTRACT_REQUIRED',
+        message: `Entidade sem contrato de relatório explícito (nenhum fallback heurístico): ${entity}`,
+      });
+    }
     if (!def.supportsExport) throw new BadRequestException(`Entidade nao suporta exportacao: ${entity}`);
 
     const softDeleteColumn = report.hasSoftDelete
