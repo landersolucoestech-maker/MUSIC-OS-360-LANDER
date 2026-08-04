@@ -135,10 +135,12 @@ export class HardenRbacDecisionLogPartitions20260804000002
         month_end timestamptz;
         partition_name text;
         partition_table regclass;
+        existing_partition regclass;
+        parent_table regclass := to_regclass('public.rbac_decision_logs');
         default_table regclass := to_regclass('public.rbac_decision_logs_default');
         default_rows bigint;
       BEGIN
-        IF to_regclass('public.rbac_decision_logs') IS NULL THEN
+        IF parent_table IS NULL THEN
           RETURN;
         END IF;
         IF months_ahead < 0 OR months_ahead > 24 THEN
@@ -146,7 +148,17 @@ export class HardenRbacDecisionLogPartitions20260804000002
         END IF;
 
         PERFORM pg_advisory_xact_lock(hashtext('ensure_rbac_decision_log_partitions'));
-        PERFORM public.harden_rbac_decision_log_partition('public.rbac_decision_logs'::regclass);
+        PERFORM public.harden_rbac_decision_log_partition(parent_table);
+
+        -- Harden every partition already attached, including historical months
+        -- outside the rolling creation window and the default partition.
+        FOR existing_partition IN
+          SELECT inheritance.inhrelid::regclass
+          FROM pg_inherits inheritance
+          WHERE inheritance.inhparent = parent_table
+        LOOP
+          PERFORM public.harden_rbac_decision_log_partition(existing_partition);
+        END LOOP;
 
         FOR month_offset IN -1..months_ahead LOOP
           month_start := date_trunc('month', reference_date::timestamptz)
@@ -182,10 +194,6 @@ export class HardenRbacDecisionLogPartitions20260804000002
 
           PERFORM public.harden_rbac_decision_log_partition(partition_table);
         END LOOP;
-
-        IF default_table IS NOT NULL THEN
-          PERFORM public.harden_rbac_decision_log_partition(default_table);
-        END IF;
       END;
       $fn$
     `);
