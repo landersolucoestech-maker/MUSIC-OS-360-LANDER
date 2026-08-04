@@ -1,19 +1,11 @@
 /**
- * modules/reports/import/import.types.ts  ·  FASE 2.3A
- * Validação de importação (upload → parse → mapping → preview → validação).
- * NENHUMA persistência nesta fase.
+ * modules/reports/import/import.types.ts
+ * Validação de importação XLSX em uma única aba.
  */
 export type ImportFormat = 'xlsx';
 export const IMPORT_MAX_ROWS = 5000;
-/**
- * Defense-in-depth cap on raw bytes handed to XLSX.read(), independent of
- * the global JSON body-size limit (see scripts/verify-body-limit-guard.mjs).
- * xlsx has no patched release for its known prototype-pollution/ReDoS
- * advisories (scripts/dependency-audit-waivers.json) — bounding input size
- * here protects this path even if the body-parser's own limit ever changes.
- */
 export const IMPORT_MAX_BYTES = 1024 * 1024;
-export const IMPORT_MAX_SHEETS = 20;
+export const IMPORT_MAX_SHEETS = 1;
 
 export interface ParsedFile {
   format: ImportFormat;
@@ -26,7 +18,6 @@ export interface FieldTypeMeta {
   isEnum: boolean;
   enumValues?: string[];
   nullable: boolean;
-  /** Coluna tem DEFAULT no schema (Postgres preenche se omitida do INSERT). */
   hasDefault: boolean;
 }
 
@@ -37,23 +28,15 @@ export interface RowIssue {
 
 export interface RowValidation {
   index: number;
-  /** Dados normalizados (chave técnica → valor coergido). Preview, não persistido. */
   data: Record<string, unknown>;
   valid: boolean;
   errors: RowIssue[];
   warnings: RowIssue[];
-  /**
-   * Linhas de aba(s) filha(s) correlacionadas a esta linha via a coluna de
-   * referência (contract.childSheets) — ex.: `{ musicas: MusicaFieldItem[] }`
-   * para projects. Ausente para entidades sem childSheets no contrato.
-   */
-  childSheets?: Record<string, unknown[]>;
 }
 
 export interface ImportValidationResult {
   entity: string;
   supportsImport: boolean;
-  /** Cabeçalho do arquivo → coluna técnica (ou null se desconhecido). */
   mapping: Record<string, string | null>;
   unknownColumns: string[];
   ignoredColumns: string[];
