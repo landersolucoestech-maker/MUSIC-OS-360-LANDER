@@ -18,8 +18,10 @@ import {
   contractEncryptedFields,
   contractMetadataFields,
   getReportFormContract,
+  type ReportFormContract,
+  type ReportChildSheetSpec,
 } from '../form-contracts/report-form-contracts';
-import { CHILD_SHEET_IMPORT_WRITERS } from '../computed-fields/registry';
+import { REPEATING_GROUP_IMPORT_WRITERS } from '../computed-fields/registry';
 
 export interface ImportCommitResult {
   entity: string;
@@ -28,6 +30,45 @@ export interface ImportCommitResult {
   failedRows: number;
   warnings: string[];
   errors: string[];
+}
+
+interface RepeatingField { key: string; multi?: boolean }
+interface RepeatingGroup { key: string; fields: RepeatingField[] }
+type CompatibleContract = ReportFormContract & {
+  repeatingGroup?: RepeatingGroup;
+  childSheets?: ReportChildSheetSpec[];
+};
+
+interface RowGroup {
+  generalRow: RowValidation;
+  itemRows: RowValidation[];
+}
+
+const MULTI_VALUE_SEPARATOR = ' | ';
+
+function resolveRepeatingGroup(contract: CompatibleContract | null): RepeatingGroup | undefined {
+  return contract?.repeatingGroup ?? contract?.childSheets?.[0];
+}
+
+function groupRows(contract: CompatibleContract | null, rows: RowValidation[]): RowGroup[] {
+  const repeatingGroup = resolveRepeatingGroup(contract);
+  if (!contract || !repeatingGroup) return rows.map((row) => ({ generalRow: row, itemRows: [row] }));
+
+  const generalKeys = contract.fields.filter((field) => field.storage !== 'ref').map((field) => field.key);
+  const groups: RowGroup[] = [];
+  let currentSignature: string | null = null;
+  let current: RowGroup | null = null;
+
+  for (const row of rows) {
+    const signature = JSON.stringify(generalKeys.map((key) => row.data[key] ?? null));
+    if (signature !== currentSignature || !current) {
+      current = { generalRow: row, itemRows: [] };
+      groups.push(current);
+      currentSignature = signature;
+    }
+    current.itemRows.push(row);
+  }
+  return groups;
 }
 
 const RELATION_TARGETS: Record<string, string> = {
@@ -48,24 +89,12 @@ function quote(name: string): string {
 
 function normalizeImportedValue(value: unknown): unknown {
   if (value === '') return null;
-
   if (typeof value !== 'string') return value;
-
   const trimmed = value.trim();
-
   if (trimmed === '') return null;
-
-  if (
-    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-    (trimmed.startsWith('[') && trimmed.endsWith(']'))
-  ) {
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      return value;
-    }
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try { return JSON.parse(trimmed); } catch { return value; }
   }
-
   return value;
 }
 
@@ -89,14 +118,12 @@ export class ImportCommitService {
 
     const validation = await this.engine.validateFile(entity, file, tenantId);
     const def = this.definitions.getDefinition(entity)!;
+    const contract = getReportFormContract(entity) as CompatibleContract | null;
 
     if (validation.errors.length > 0 || validation.invalidRows > 0) {
       const rowErrors = validation.rows
-        .filter((r) => !r.valid)
-        .flatMap((r) =>
-          r.errors.map((e) => `Linha ${r.index + 2}: ${e.column} — ${e.message}`),
-        );
-
+        .filter((row) => !row.valid)
+        .flatMap((row) => row.errors.map((error) => `Linha ${row.index + 2}: ${error.column} — ${error.message}`));
       return {
         entity,
         totalRows: validation.totalRows,
@@ -108,87 +135,38 @@ export class ImportCommitService {
     }
 
     if (!this.ds) throw new ServiceUnavailableException('Banco de dados indisponível');
-
+    const groups = groupRows(contract, validation.rows);
     const qr = this.ds.createQueryRunner();
-
     await qr.connect();
     await qr.startTransaction();
-
-    // Contexto de tenant da TRANSAÇÃO (RLS fail-closed): o QueryRunner próprio
-    // escapa do proxy ALS de request, então o set_config transaction-local é
-    // obrigatório aqui — sem ele o INSERT/SELECT é bloqueado pelas policies.
-    // O tenant vem SEMPRE da autenticação; nunca do arquivo importado.
     await qr.query(`SELECT set_config('app.current_tenant_id', $1, true)`, [tenantId]);
 
     const errors: string[] = [];
-
     try {
+      for (const group of groups) {
+        await this.assertNotDuplicate(qr, def, group.generalRow, tenantId, errors);
+      }
       for (const row of validation.rows) {
-        await this.assertNotDuplicate(qr, def, row, tenantId, errors);
         await this.assertRelationships(qr, def, row, tenantId, errors);
       }
 
       if (errors.length > 0) {
         await qr.rollbackTransaction();
-
-        this.audit.record({
-          userId,
-          tenantId,
-          entity,
-          recordCount: validation.totalRows,
-          successCount: 0,
-          failureCount: validation.totalRows,
-          status: 'rolledback',
-        });
-
-        return {
-          entity,
-          totalRows: validation.totalRows,
-          importedRows: 0,
-          failedRows: validation.totalRows,
-          warnings: validation.warnings,
-          errors,
-        };
+        this.audit.record({ userId, tenantId, entity, recordCount: validation.totalRows, successCount: 0, failureCount: validation.totalRows, status: 'rolledback' });
+        return { entity, totalRows: validation.totalRows, importedRows: 0, failedRows: validation.totalRows, warnings: validation.warnings, errors };
       }
 
-      for (const row of validation.rows) {
-        await this.insertRow(qr, def, row, tenantId);
+      for (const group of groups) {
+        await this.insertGroup(qr, def, contract, group, tenantId);
       }
 
       await qr.commitTransaction();
-
-      this.audit.record({
-        userId,
-        tenantId,
-        entity,
-        recordCount: validation.totalRows,
-        successCount: validation.totalRows,
-        failureCount: 0,
-        status: 'committed',
-      });
-
-      return {
-        entity,
-        totalRows: validation.totalRows,
-        importedRows: validation.totalRows,
-        failedRows: 0,
-        warnings: validation.warnings,
-        errors: [],
-      };
-    } catch (err) {
+      this.audit.record({ userId, tenantId, entity, recordCount: validation.totalRows, successCount: validation.totalRows, failureCount: 0, status: 'committed' });
+      return { entity, totalRows: validation.totalRows, importedRows: validation.totalRows, failedRows: 0, warnings: validation.warnings, errors: [] };
+    } catch (error) {
       if (qr.isTransactionActive) await qr.rollbackTransaction();
-
-      this.audit.record({
-        userId,
-        tenantId,
-        entity,
-        recordCount: validation.totalRows,
-        successCount: 0,
-        failureCount: validation.totalRows,
-        status: 'rolledback',
-      });
-
-      throw err;
+      this.audit.record({ userId, tenantId, entity, recordCount: validation.totalRows, successCount: 0, failureCount: validation.totalRows, status: 'rolledback' });
+      throw error;
     } finally {
       await qr.release();
     }
@@ -201,19 +179,14 @@ export class ImportCommitService {
     tenantId: string,
     errors: string[],
   ): Promise<void> {
-    const idVal = row.data[def.identityColumn];
-
-    if (idVal === null || idVal === undefined || idVal === '') return;
-
+    const value = row.data[def.identityColumn];
+    if (value === null || value === undefined || value === '') return;
     const found = await qr.query(
       `SELECT 1 FROM ${quote(def.tableName)} WHERE ${quote(def.identityColumn)} = $1 AND ${quote('tenant_id')} = $2 LIMIT 1`,
-      [idVal, tenantId],
+      [value, tenantId],
     );
-
     if (Array.isArray(found) && found.length > 0) {
-      errors.push(
-        `Linha ${row.index + 2}: já existe registro com ${def.identityColumn}="${String(idVal)}" (create-only).`,
-      );
+      errors.push(`Linha ${row.index + 2}: já existe registro com ${def.identityColumn}="${String(value)}" (create-only).`);
     }
   }
 
@@ -224,114 +197,95 @@ export class ImportCommitService {
     tenantId: string,
     errors: string[],
   ): Promise<void> {
-    for (const col of def.importableColumns) {
-      if (!/_id$/.test(col)) continue;
-
-      const target = RELATION_TARGETS[col];
-
+    for (const column of def.importableColumns) {
+      if (!/_id$/.test(column)) continue;
+      const target = RELATION_TARGETS[column];
       if (!target) continue;
-
-      const val = row.data[col];
-
-      if (val === null || val === undefined || val === '') continue;
-
-      const ref = await qr.query(
+      const value = row.data[column];
+      if (value === null || value === undefined || value === '') continue;
+      const found = await qr.query(
         `SELECT 1 FROM ${quote(target)} WHERE ${quote('id')} = $1 AND ${quote('tenant_id')} = $2 LIMIT 1`,
-        [val, tenantId],
+        [value, tenantId],
       );
-
-      if (!Array.isArray(ref) || ref.length === 0) {
-        errors.push(`Linha ${row.index + 2}: relacionamento inválido ${col}="${String(val)}".`);
+      if (!Array.isArray(found) || found.length === 0) {
+        errors.push(`Linha ${row.index + 2}: relacionamento inválido ${column}="${String(value)}".`);
       }
     }
   }
 
-  private async insertRow(
+  private async insertGroup(
     qr: QueryRunner,
     def: ReportEntityDefinition,
-    row: RowValidation,
+    contract: CompatibleContract | null,
+    group: RowGroup,
     tenantId: string,
   ): Promise<void> {
-    // Persistência dirigida pelo contrato central (fonte única): coluna direta,
-    // campo cifrado (re-encriptado do valor plaintext), campo em metadata jsonb
-    // ou campo 'ref' (nunca persistido — só correlaciona com abas filhas,
-    // escritas após o INSERT principal via CHILD_SHEET_IMPORT_WRITERS).
-    const contract = getReportFormContract(def.tableName);
+    const generalFields = contract?.fields.filter((field) => field.storage !== 'ref') ?? [];
+    const generalKeys = contract ? generalFields.map((field) => field.key) : def.importableColumns;
     const encryptedFields = contract ? contractEncryptedFields(contract) : {};
-    const metadataFields = contract ? contractMetadataFields(contract) : {}; // key -> coluna jsonb física
-    const refKeys = new Set(contract?.fields.filter((f) => f.storage === 'ref').map((f) => f.key) ?? []);
+    const metadataFields = contract ? contractMetadataFields(contract) : {};
 
     const cols: string[] = [];
     const values: unknown[] = [];
-    // Uma tabela pode ter mais de uma coluna jsonb de destino (ex.: leads tem
-    // payload_servico E dados_internos_crm) — agrupa por coluna física.
     const metadataByColumn: Record<string, Record<string, unknown>> = {};
-    for (const physicalCol of new Set(Object.values(metadataFields))) {
-      metadataByColumn[physicalCol] = {};
-    }
+    for (const physicalColumn of new Set(Object.values(metadataFields))) metadataByColumn[physicalColumn] = {};
 
-    for (const col of def.importableColumns) {
-      if (!(col in row.data)) continue;
-      if (refKeys.has(col)) continue; // valor só existe no arquivo, nunca persistido
-
-      const rawValue = contract ? normalizeImportedValue(row.data[col]) : row.data[col];
-
-      // Célula vazia = AUSÊNCIA: a coluna é omitida do INSERT para o default do
-      // schema valer (ex.: jsonb NOT NULL DEFAULT '[]'). Nunca convertida em null.
+    for (const column of generalKeys) {
+      if (!(column in group.generalRow.data)) continue;
+      const rawValue = contract ? normalizeImportedValue(group.generalRow.data[column]) : group.generalRow.data[column];
       if (contract && rawValue === null) continue;
 
-      const encryptedColumn = encryptedFields[col];
+      const encryptedColumn = encryptedFields[column];
       if (encryptedColumn) {
         cols.push(encryptedColumn);
-        values.push(
-          typeof rawValue === 'string'
-            ? this.encryption.encryptNullable(rawValue)
-            : null,
-        );
+        values.push(typeof rawValue === 'string' ? this.encryption.encryptNullable(rawValue) : null);
         continue;
       }
 
-      const metadataColumn = metadataFields[col];
+      const metadataColumn = metadataFields[column];
       if (metadataColumn) {
-        metadataByColumn[metadataColumn][col] = rawValue;
+        metadataByColumn[metadataColumn][column] = rawValue;
         continue;
       }
 
-      cols.push(col);
+      cols.push(column);
       values.push(rawValue);
     }
 
-    for (const [physicalCol, obj] of Object.entries(metadataByColumn)) {
-      cols.push(physicalCol);
-      values.push(obj);
+    for (const [physicalColumn, object] of Object.entries(metadataByColumn)) {
+      cols.push(physicalColumn);
+      values.push(object);
     }
-
     cols.push('tenant_id');
     values.push(tenantId);
 
-    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-
-    const hasChildSheets = !!(contract?.childSheets?.length && row.childSheets);
-    const sql =
-      `INSERT INTO ${quote(def.tableName)} (${cols.map(quote).join(', ')}) VALUES (${placeholders})` +
-      (hasChildSheets ? ` RETURNING ${quote('id')}` : '');
-
+    const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
+    const repeatingGroup = resolveRepeatingGroup(contract);
+    const sql = `INSERT INTO ${quote(def.tableName)} (${cols.map(quote).join(', ')}) VALUES (${placeholders})` +
+      (repeatingGroup ? ` RETURNING ${quote('id')}` : '');
     const result = await qr.query(sql, values);
 
-    if (hasChildSheets) {
-      const insertedId = (result as Array<{ id: string }>)[0]?.id;
-      if (!insertedId) {
-        throw new Error(`[reports-import] INSERT sem id retornado para aba(s) filha(s): ${def.tableName}`);
-      }
-      for (const spec of contract!.childSheets!) {
-        const childRows = row.childSheets?.[spec.key];
-        if (!childRows) continue;
-        const writer = CHILD_SHEET_IMPORT_WRITERS[`${def.tableName}.${spec.key}`];
-        if (!writer) {
-          throw new Error(`[reports-import] aba filha sem writer registrado: ${def.tableName}.${spec.key}`);
+    if (!repeatingGroup) return;
+    const insertedId = (result as Array<{ id: string }>)[0]?.id;
+    if (!insertedId) throw new Error(`[reports-import] INSERT sem id retornado para grupo repetível: ${def.tableName}`);
+
+    const writer = REPEATING_GROUP_IMPORT_WRITERS[`${def.tableName}.${repeatingGroup.key}`];
+    if (!writer) throw new Error(`[reports-import] grupo repetível sem writer registrado: ${def.tableName}.${repeatingGroup.key}`);
+
+    const items = group.itemRows
+      .map((row) => {
+        const item: Record<string, unknown> = {};
+        for (const field of repeatingGroup.fields) {
+          const raw = row.data[field.key];
+          const text = raw === null || raw === undefined ? '' : String(raw);
+          item[field.key] = field.multi
+            ? text.split(MULTI_VALUE_SEPARATOR).map((part) => part.trim()).filter(Boolean)
+            : (text === '' ? null : text);
         }
-        await writer(qr, tenantId, insertedId, childRows);
-      }
-    }
+        return item;
+      })
+      .filter((item) => Object.values(item).some((value) => Array.isArray(value) ? value.length > 0 : value !== null));
+
+    await writer(qr, tenantId, insertedId, items);
   }
 }
