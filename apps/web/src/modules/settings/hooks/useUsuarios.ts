@@ -1,13 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { QUERY_KEYS } from "@/shared/lib/query-config";
+import { api } from "@/shared/lib/api-client";
 import { useAuth } from "@/app/providers/AuthContext";
-import { storage } from "@/shared/lib/storage";
-
-/**
- * Lista de usuários do app. Lê e persiste via storage.ts (abstração de MOCK_DATA).
- * Ao conectar backend real, apenas storage.ts muda — este hook permanece intacto.
- */
 
 export interface Usuario {
   id: string;
@@ -21,14 +16,53 @@ export interface Usuario {
   created_at: string;
 }
 
+interface ApiUser {
+  id: string;
+  auth_user_id: string;
+  email: string;
+  full_name: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  role_slug?: string | null;
+  cargo?: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface UsersPage {
+  data: ApiUser[];
+  meta?: {
+    total?: number;
+    limit?: number;
+    offset?: number;
+  };
+}
+
+function mapUser(user: ApiUser): Usuario {
+  return {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    phone: user.phone ?? null,
+    avatar_url: user.avatar_url ?? null,
+    role: user.role_slug ?? user.role ?? "viewer",
+    cargo: user.cargo ?? null,
+    status: user.is_active ? "ativo" : "inativo",
+    created_at: user.created_at,
+  };
+}
+
 export function useUsuarios() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: usuarios = [], isLoading, error } = useQuery<Usuario[]>({
     queryKey: [...QUERY_KEYS.USUARIOS],
-    queryFn: async () =>
-      (await storage.list<Record<string, unknown> & { id: string }>("usuarios")) as unknown as Usuario[],
+    queryFn: async () => {
+      const page = await api.get<UsersPage>("/users?limit=100&offset=0");
+      return (page.data ?? []).map(mapUser);
+    },
   });
 
   const updateUsuario = useMutation({
@@ -43,13 +77,7 @@ export function useUsuarios() {
       phone?: string;
       cargo?: string;
     }) => {
-      const existing = await storage.getById<Record<string, unknown> & { id: string }>("usuarios", id);
-      if (!existing) throw new Error(`Usuário ${id} não encontrado`);
-      // UpdateUserDto usa camelCase (fullName) e o slug de papel real é `role`
-      // (não `cargo` — `cargo` nunca foi uma coluna real; o valor enviado é
-      // sempre um nível de acesso/role, então vai para o campo que já existe
-      // e já aciona a resolução de role_id no service).
-      await storage.update<Record<string, unknown> & { id: string }>("usuarios", id, {
+      await api.patch(`/users/${id}`, {
         ...(full_name !== undefined && { fullName: full_name }),
         ...(phone !== undefined && { phone }),
         ...(cargo !== undefined && { role: cargo }),
@@ -57,10 +85,11 @@ export function useUsuarios() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.USUARIOS] });
+      queryClient.invalidateQueries({ queryKey: ["team_members"] });
       toast.success("Usuário atualizado com sucesso!");
     },
-    onError: (error: Error) => {
-      toast.error(`Erro ao atualizar usuário: ${error.message}`);
+    onError: (mutationError: Error) => {
+      toast.error(`Erro ao atualizar usuário: ${mutationError.message}`);
     },
   });
 
