@@ -1,0 +1,130 @@
+name: DEV Finish Invoice and Report Cleanup
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/dev-finish-invoice-report-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Apply cleanup
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          hook = Path('apps/web/src/modules/accounting/components/nota-fiscal-form/hooks/useNotaFiscalForm.ts')
+          text = hook.read_text()
+          for item in [
+              '  selectedFile: File | null;\n',
+              '  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;\n',
+              '  setSelectedFile: (f: File | null) => void;\n',
+              '  const [selectedFile, setSelectedFile] = useState<File | null>(null);\n',
+              '    setSelectedFile(null);\n',
+              '    selectedFile,\n',
+              '    handleFileChange,\n',
+              '    setSelectedFile,\n',
+          ]:
+              if item not in text:
+                  raise SystemExit(f'missing expected hook fragment: {item!r}')
+              text = text.replace(item, '', 1)
+          start = text.index('  // ── File handling ')
+          end = text.index('  // ── Manual recalculate ', start)
+          text = text[:start] + text[end:]
+          dead = '''      const uploadFile = async (_file: File, _opts?: Record<string, unknown>): Promise<{ path: string } | null> => null;
+      const getPublicUrl = (_path: string): string => "";
+
+      let pdfUrl = formData.url_pdf;
+      if (selectedFile) {
+        const result = await uploadFile(selectedFile, { folder: "notas-fiscais" });
+        if (result) pdfUrl = getPublicUrl(result.path);
+      }
+
+'''
+          if dead not in text:
+              raise SystemExit('dead PDF block not found')
+          text = text.replace(dead, '', 1)
+          text = text.replace('        url_pdf: pdfUrl || null,', '        url_pdf: formData.url_pdf || null,', 1)
+          text = text.replace('[formData, mode, tipoOperacao, selectedFile, notaFiscal, onClose]', '[formData, mode, tipoOperacao, notaFiscal, onClose]', 1)
+          hook.write_text(text)
+
+          reports = Path('apps/api/src/modules/reports/form-contracts/report-form-contracts.ts')
+          text = reports.read_text()
+          old = '''// ─── Licenciamento ──────────────────────────────────────────────────────────
+// `amount`/`percentage`/`currency` são enviados pelo formulário mas NÃO
+// existem no CreateLicenseDto (nem na entidade) — nunca persistem. `valor`/
+// `moeda` são as colunas reais correspondentes. `remuneration_type`, embora
+// exista fisicamente na entidade, também não está no DTO — excluído.
+const LICENSES_CONTRACT: ReportFormContract = {
+  tableName: 'licenses',
+  identityColumn: 'titulo',
+  fields: [
+    col('titulo'), col('tipo'), col('obra_id'), col('obra_musical'), col('artista'),
+    col('cliente_id'), col('cliente'), col('projeto'), col('tipo_uso'),
+    col('midia_destino'), col('territorio'), col('status'),
+    col('data_inicio'), col('data_fim'), col('valor'), col('moeda'), col('observacoes'),
+  ],
+  excludedFormFields: {},
+  filterableColumns: ['status', 'tipo', 'territorio'],
+  searchableColumns: ['titulo', 'obra_musical', 'artista', 'cliente', 'projeto'],
+};'''
+          new = '''// ─── Licenciamento ──────────────────────────────────────────────────────────
+// Fonte canônica: LicencaFormModal. O service mapeia amount/currency para as
+// colunas físicas valor/moeda e preserva percentage em metadata.
+const LICENSES_CONTRACT: ReportFormContract = {
+  tableName: 'licenses',
+  identityColumn: 'titulo',
+  fields: [
+    col('titulo'), col('tipo'), col('obra_id'), col('artista'), col('cliente_id'),
+    col('projeto'), col('midia_destino'), col('territorio'), col('status'),
+    col('data_inicio'), col('data_fim'), col('remuneration_type'),
+    col('currency', 'moeda'), col('amount', 'valor'), meta('percentage'),
+    col('observacoes'),
+  ],
+  excludedFormFields: {
+    obra_musical: 'duplicata textual da obra selecionada; o formulário usa obra_id',
+    cliente: 'duplicata textual do cliente selecionado; o formulário usa cliente_id',
+    tipo_uso: 'coluna legada sem input próprio no modal atual',
+    valor: 'coluna física exposta como amount',
+    moeda: 'coluna física exposta como currency',
+  },
+  filterableColumns: ['status', 'tipo', 'territorio', 'remuneration_type'],
+  searchableColumns: ['titulo', 'artista', 'projeto'],
+};'''
+          if old not in text:
+              raise SystemExit('old licensing contract not found')
+          text = text.replace(old, new, 1)
+          stale = '''// CreateTakedownDto (platform/trackId/reason/requestedAt) diverge por completo
+// dos nomes reais de coluna e do formulário real (TakedownFormModal.tsx, que
+// usa titulo/tipo/obra_afetada/artista/.../observacoes) — bug pré-existente
+// de mismatch DTO↔form, fora do escopo desta Parte. O contrato usa as colunas
+// físicas reais que o formulário de fato grava; não é checado contra o DTO
+// quebrado (ausente de FORM_DTO_BY_TABLE no guard test).'''
+          current = '''// Fonte canônica: TakedownFormModal + CreateTakedownDto. O DTO, o service e
+// as colunas físicas usam os mesmos nomes do formulário.'''
+          if stale not in text:
+              raise SystemExit('stale takedown comment not found')
+          reports.write_text(text.replace(stale, current, 1))
+          PY
+
+      - name: Commit and remove workflow
+        shell: bash
+        run: |
+          rm .github/workflows/dev-finish-invoice-report-cleanup.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(forms): finish invoice upload and report contract cleanup"
+          git pull --rebase origin dev
+          git push origin HEAD:dev
