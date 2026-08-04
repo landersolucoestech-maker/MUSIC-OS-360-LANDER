@@ -4,7 +4,6 @@ import { EXPORT_MAX_PAGE_SIZE, type BuiltExportQuery, type ExportQueryParams } f
 import {
   contractEncryptedFields,
   contractMetadataFields,
-  contractRefFields,
   getReportFormContract,
 } from '../form-contracts/report-form-contracts';
 
@@ -34,91 +33,67 @@ export class ExportQueryBuilderService {
     def: ReportEntityDefinition,
     params: ExportQueryParams,
     tenantId: string,
-    opts: { softDeleteColumn?: string } = {},
+    opts: { softDeleteColumn?: string; includeInternalId?: boolean } = {},
   ): BuiltExportQuery {
     if (!tenantId) throw new ForbiddenException('Tenant não identificado para exportação');
 
-    const requested =
-      params.columns && params.columns.length > 0
-        ? params.columns
-        : def.exportableColumns;
-
-    for (const c of requested) {
-      if (def.sensitiveColumns.includes(c)) {
-        throw new BadRequestException(`Coluna sensível não pode ser exportada: ${c}`);
+    const requested = params.columns?.length ? params.columns : def.exportableColumns;
+    for (const column of requested) {
+      if (def.sensitiveColumns.includes(column)) {
+        throw new BadRequestException(`Coluna sensível não pode ser exportada: ${column}`);
       }
-
-      if (!def.exportableColumns.includes(c)) {
-        throw new BadRequestException(`Coluna não exportável: ${c}`);
+      if (!def.exportableColumns.includes(column)) {
+        throw new BadRequestException(`Coluna não exportável: ${column}`);
       }
     }
 
     const columns = [...requested];
-
-    // Resolução física via contrato central (fonte única): coluna direta,
-    // campo em metadata jsonb, coluna cifrada ou campo 'ref' (ambos expostos
-    // pela chave lógica, apontando para uma coluna física via `physical`).
     const contract = getReportFormContract(def.tableName);
     const encryptedFields = contract ? contractEncryptedFields(contract) : {};
     const metadataFields = contract ? contractMetadataFields(contract) : {};
-    const refFields = contract ? contractRefFields(contract) : {};
-    const physicalAliasFields: Record<string, string> = { ...encryptedFields, ...refFields };
+    const logicalAliases: Record<string, string> = {};
+    if (contract) {
+      for (const field of contract.fields) {
+        if (field.physical && field.physical !== field.key) logicalAliases[field.key] = field.physical;
+      }
+    }
+    const physicalAliasFields = { ...logicalAliases, ...encryptedFields };
 
     const selectParts = columns.map((column) => {
       const physicalColumn = physicalAliasFields[column];
-      if (physicalColumn) {
-        return `${quote(physicalColumn)} AS ${quote(column)}`;
-      }
-      if (metadataFields[column]) {
-        return metadataSelectExpression(column, metadataFields[column]);
-      }
+      if (physicalColumn) return `${quote(physicalColumn)} AS ${quote(column)}`;
+      if (metadataFields[column]) return metadataSelectExpression(column, metadataFields[column]);
       return quote(column);
     });
-
-    const selectList = selectParts.join(', ');
+    if (opts.includeInternalId) selectParts.push(`${quote('id')} AS ${quote('__internal_id')}`);
 
     const where: string[] = [`${quote('tenant_id')} = $1`];
     const parameters: unknown[] = [tenantId];
-
-    if (opts.softDeleteColumn) {
-      where.push(`${quote(opts.softDeleteColumn)} IS NULL`);
-    }
+    if (opts.softDeleteColumn) where.push(`${quote(opts.softDeleteColumn)} IS NULL`);
 
     if (params.filters) {
       for (const [key, value] of Object.entries(params.filters)) {
-        if (!def.filterableColumns.includes(key)) {
-          throw new BadRequestException(`Filtro não permitido: ${key}`);
-        }
-
+        if (!def.filterableColumns.includes(key)) throw new BadRequestException(`Filtro não permitido: ${key}`);
         parameters.push(value);
         where.push(`${quote(key)} = $${parameters.length}`);
       }
     }
 
     let orderBy = '';
-
     if (params.sort) {
-      if (!def.sortableColumns.includes(params.sort)) {
-        throw new BadRequestException(`Ordenação não permitida: ${params.sort}`);
-      }
-
-      const order = params.order === 'DESC' ? 'DESC' : 'ASC';
-      orderBy = ` ORDER BY ${quote(params.sort)} ${order}`;
+      if (!def.sortableColumns.includes(params.sort)) throw new BadRequestException(`Ordenação não permitida: ${params.sort}`);
+      orderBy = ` ORDER BY ${quote(params.sort)} ${params.order === 'DESC' ? 'DESC' : 'ASC'}`;
     }
 
     const pageSize = clamp(Math.trunc(params.pageSize) || 1, 1, EXPORT_MAX_PAGE_SIZE);
     const page = Math.max(1, Math.trunc(params.page) || 1);
-
     parameters.push(pageSize);
-    const limitIdx = parameters.length;
-
+    const limitIndex = parameters.length;
     parameters.push((page - 1) * pageSize);
-    const offsetIdx = parameters.length;
+    const offsetIndex = parameters.length;
 
-    const sql =
-      `SELECT ${selectList} FROM ${quote(def.tableName)} ` +
-      `WHERE ${where.join(' AND ')}${orderBy} ` +
-      `LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
+    const sql = `SELECT ${selectParts.join(', ')} FROM ${quote(def.tableName)} ` +
+      `WHERE ${where.join(' AND ')}${orderBy} LIMIT $${limitIndex} OFFSET $${offsetIndex}`;
 
     return { sql, parameters, columns };
   }
