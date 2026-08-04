@@ -1,54 +1,75 @@
 import { BadRequestException } from '@nestjs/common';
 import { parseExportParams } from './reports.controller';
 
-/**
- * reports.controller.spec.ts  (Parte 81)
- *
- * parseExportParams é a única porta de entrada do formato de exportação
- * (GET /reports/entities/:entity/export?format=...). Antes desta Parte o
- * campo `format` da query string era descartado e o retorno hardcodeava
- * 'xlsx' — ou seja, um cliente pedindo ?format=csv nunca via um erro,
- * apenas recebia XLSX silenciosamente. Isso é compatibilidade implícita
- * proibida: qualquer formato fora de EXPORT_FORMATS precisa ser rejeitado
- * de forma explícita, com o código UNSUPPORTED_EXPORT_FORMAT.
- */
-describe('parseExportParams — validação real de format (Parte 81)', () => {
-  it('sem format na query → default xlsx', () => {
+describe('parseExportParams — contrato XLSX e paginação', () => {
+  it('usa xlsx como formato padrão', () => {
     expect(parseExportParams({}).format).toBe('xlsx');
   });
 
-  it('format=xlsx explícito → aceito', () => {
+  it('aceita xlsx explícito', () => {
     expect(parseExportParams({ format: 'xlsx' }).format).toBe('xlsx');
   });
 
-  it('format=csv → rejeitado com UNSUPPORTED_EXPORT_FORMAT (400), nunca convertido silenciosamente para xlsx', () => {
-    try {
-      parseExportParams({ format: 'csv' });
-      throw new Error('deveria ter lançado');
-    } catch (err) {
-      expect(err).toBeInstanceOf(BadRequestException);
-      expect((err as BadRequestException).getStatus()).toBe(400);
-      expect((err as BadRequestException).getResponse()).toMatchObject({ error: 'UNSUPPORTED_EXPORT_FORMAT' });
+  it('rejeita qualquer formato não implementado com código estável', () => {
+    for (const format of ['xml', 'pdf', 'txt']) {
+      try {
+        parseExportParams({ format });
+        throw new Error('deveria ter lançado');
+      } catch (error) {
+        expect(error).toBeInstanceOf(BadRequestException);
+        expect((error as BadRequestException).getStatus()).toBe(400);
+        expect((error as BadRequestException).getResponse()).toMatchObject({
+          error: 'UNSUPPORTED_EXPORT_FORMAT',
+        });
+      }
     }
   });
 
-  it('format=pdf (ainda não implementado) → rejeitado com o mesmo código, não com sucesso fabricado', () => {
-    try {
-      parseExportParams({ format: 'pdf' });
-      throw new Error('deveria ter lançado');
-    } catch (err) {
-      expect(err).toBeInstanceOf(BadRequestException);
-      expect((err as BadRequestException).getResponse()).toMatchObject({ error: 'UNSUPPORTED_EXPORT_FORMAT' });
-    }
-  });
-
-  it('colunas/filtros continuam funcionando normalmente junto com o format válido', () => {
-    const params = parseExportParams({ format: 'xlsx', columns: 'a, b ,c', status: 'ativo', sort: 'nome', order: 'desc', page: '2', pageSize: '50' });
+  it('deduplica colunas e preserva filtros seguros', () => {
+    const params = parseExportParams({
+      format: 'xlsx',
+      columns: 'a, b ,a,c',
+      status: 'ativo',
+      sort: 'nome',
+      order: 'desc',
+      page: '2',
+      pageSize: '50',
+    });
     expect(params.columns).toEqual(['a', 'b', 'c']);
     expect(params.filters).toEqual({ status: 'ativo' });
     expect(params.sort).toBe('nome');
     expect(params.order).toBe('DESC');
     expect(params.page).toBe(2);
     expect(params.pageSize).toBe(50);
+  });
+
+  it.each([
+    [{ page: '0' }, 'page'],
+    [{ page: '-1' }, 'page'],
+    [{ page: '1.5' }, 'page'],
+    [{ page: 'abc' }, 'page'],
+    [{ pageSize: '0' }, 'pageSize'],
+    [{ pageSize: '1001' }, 'pageSize'],
+    [{ pageSize: 'Infinity' }, 'pageSize'],
+  ])('rejeita paginação inválida: %p', (query, field) => {
+    try {
+      parseExportParams(query);
+      throw new Error('deveria ter lançado');
+    } catch (error) {
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).getResponse()).toMatchObject({
+        error: 'INVALID_REPORT_PAGINATION',
+        message: expect.stringContaining(field),
+      });
+    }
+  });
+
+  it('descarta chaves inseguras de filtro', () => {
+    const query = Object.create(null) as Record<string, string>;
+    query.status = 'ativo';
+    query.__proto__ = 'contaminado';
+    const params = parseExportParams(query);
+    expect(params.filters).toEqual({ status: 'ativo' });
+    expect(Object.prototype.polluted).toBeUndefined();
   });
 });
