@@ -47,6 +47,8 @@ export interface UpdateUsuarioInput {
   phone?: string;
   status?: "ativo" | "inativo";
   role?: string;
+  /** Compatibilidade do formulário legado: `cargo` sempre representou o slug do papel. */
+  cargo?: string;
 }
 
 function mapUser(user: ApiUser): Usuario {
@@ -76,7 +78,7 @@ export function useUsuarios() {
   });
 
   const updateUsuario = useMutation({
-    mutationFn: async ({ id, full_name, email, phone, status, role }: UpdateUsuarioInput) => {
+    mutationFn: async ({ id, full_name, email, phone, status, role, cargo }: UpdateUsuarioInput) => {
       const profilePayload = {
         ...(full_name !== undefined && { fullName: full_name }),
         ...(email !== undefined && { email }),
@@ -88,11 +90,12 @@ export function useUsuarios() {
         await api.patch(`/users/${id}`, profilePayload);
       }
 
+      const effectiveRole = role ?? cargo;
       // Alteração de papel possui endpoint, autorização e auditoria próprios.
       // Enviar `role` pelo PATCH genérico contornava a hierarquia do RBAC e
       // não garantia atualização de role_id.
-      if (role !== undefined) {
-        await api.patch(`/users/${id}/role`, { role });
+      if (effectiveRole !== undefined) {
+        await api.patch(`/users/${id}/role`, { role: effectiveRole });
       }
     },
     onSuccess: async () => {
