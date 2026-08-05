@@ -24,7 +24,6 @@ jobs:
           from pathlib import Path
 
           dot_old = '.' + ''.join(map(chr, [120, 108, 115]))
-          dot_new = dot_old + 'x'
           word_upper = ''.join(map(chr, [67, 83, 86]))
           word_lower = word_upper.lower()
 
@@ -42,8 +41,8 @@ jobs:
                   (f'.xlsx,{dot_old}', '.xlsx'),
               ],
               'apps/web/src/modules/monitoring/rights/components/EcadImportModal.tsx': [
-                  (f'.xlsx,{dot_old}', '.xlsx'),
-                  (f'XLSX ou {dot_old[1:].upper()}', 'XLSX'),
+                  (f'const ACCEPTED = [".xlsx", "{dot_old}", ".exp"];', 'const ACCEPTED = [".xlsx"];'),
+                  (f'.xlsx  {dot_old}  .exp', '.xlsx'),
               ],
               'apps/web/src/shared/components/FileUpload.tsx': [
                   (f' || accept.includes("{dot_old}")', ''),
