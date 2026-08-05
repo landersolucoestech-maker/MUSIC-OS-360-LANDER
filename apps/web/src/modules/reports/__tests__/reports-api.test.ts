@@ -51,7 +51,13 @@ describe("reportsApi — Central de Relatórios real-only", () => {
     fetchMock.mockResolvedValue({
       ok: true,
       headers: {
-        get: vi.fn(() => 'attachment; filename="artistas.xlsx"'),
+        get: vi.fn((name: string) => {
+          if (name.toLowerCase() === "content-type") return XLSX_MIME;
+          if (name.toLowerCase() === "content-disposition") {
+            return 'attachment; filename="artistas.xlsx"';
+          }
+          return null;
+        }),
       },
       blob: vi.fn().mockResolvedValue(blob),
     } as unknown as Response);
@@ -126,13 +132,15 @@ describe("reportsApi — Central de Relatórios real-only", () => {
     });
 
     it("clica no link ANTES de revogar a URL, e a revogação só ocorre no próximo tick", () => {
-      const anchor = { click: vi.fn(), href: "", download: "" };
-      const createSpy = vi.spyOn(document, "createElement").mockReturnValue(anchor as unknown as HTMLAnchorElement);
+      const anchor = document.createElement("a");
+      const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => undefined);
+      const createSpy = vi.spyOn(document, "createElement").mockReturnValue(anchor);
 
       triggerBlobDownload(new Blob(["x"]), "arquivo.xlsx");
 
-      expect(anchor.click).toHaveBeenCalledTimes(1);
+      expect(clickSpy).toHaveBeenCalledTimes(1);
       expect(anchor.href).toBe("blob:fake-url");
+      expect(anchor.download).toBe("arquivo.xlsx");
       // A revogação NÃO pode ter acontecido ainda no mesmo tick do click().
       expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 
@@ -140,6 +148,7 @@ describe("reportsApi — Central de Relatórios real-only", () => {
       expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:fake-url");
 
       createSpy.mockRestore();
+      clickSpy.mockRestore();
     });
   });
 });
