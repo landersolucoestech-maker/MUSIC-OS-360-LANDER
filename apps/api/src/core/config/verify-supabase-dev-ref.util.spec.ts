@@ -1,5 +1,5 @@
 import { validateSupabaseDevRef, validateSupabaseStagingRef } from './verify-supabase-dev-ref.util';
-import { SUPABASE_DEV_REF, SUPABASE_STAGING_REF, SUPABASE_PROD_REF, SUPABASE_PROD_REF } from './env.schema';
+import { SUPABASE_DEV_REF, SUPABASE_STAGING_REF, SUPABASE_PROD_REF } from './env.schema';
 
 function pooler(ref: string): string {
   return `postgresql://postgres.${ref}:pw@aws-0-us-east-1.pooler.supabase.com:6543/postgres`;
@@ -15,13 +15,7 @@ describe('validateSupabaseDevRef', () => {
   it('rejects the PRODUCTION ref explicitly', () => {
     const result = validateSupabaseDevRef(pooler(SUPABASE_PROD_REF));
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toMatch(/MAIN/);
-  });
-
-  it('rejects the production ref', () => {
-    const result = validateSupabaseDevRef(pooler(SUPABASE_PROD_REF));
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toMatch(/not the expected DEV ref/);
+    if (!result.ok) expect(result.reason).toMatch(/PRODUCTION/);
   });
 
   it('rejects a denylisted historical ref', () => {
@@ -76,11 +70,6 @@ describe('validateSupabaseStagingRef', () => {
   it('rejects the PRODUCTION ref explicitly', () => {
     const result = validateSupabaseStagingRef(pooler(SUPABASE_PROD_REF));
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toMatch(/MAIN/);
-  });
-
-  it('rejects the production ref', () => {
-    const result = validateSupabaseStagingRef(pooler(SUPABASE_PROD_REF));
-    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toMatch(/PRODUCTION/);
   });
 });
