@@ -42,6 +42,11 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- `DROP SCHEMA public CASCADE; CREATE SCHEMA public` (used by the segmented
+-- migration CI) recreates `public` without the provider-level USAGE grants.
+-- Without this explicit baseline, musicos_app silently loses `public` from its
+-- effective search_path and unqualified tables/functions appear nonexistent.
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, musicos_app, musicos_migrator;
 GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role, musicos_app;
 GRANT anon, authenticated, service_role, musicos_app, musicos_migrator TO musicos360;
 -- App role inherits the `authenticated`-scoped RLS policies (Supabase convention).
