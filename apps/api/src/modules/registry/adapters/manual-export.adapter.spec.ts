@@ -27,7 +27,7 @@ describe('ManualExportAdapter — exportPayload XLSX', () => {
     expect(rows[0]).toEqual(['field', 'value']);
     expect(rows.some((row) => row[0] === 'titulo' && row[1] === 'Minha Obra')).toBe(true);
     expect(rows.some((row) => row[0] === 'autores[0].nome' && row[1] === 'Fulano')).toBe(true);
-    expect(rows.some((row) => row[0] === 'autores[0].percentual' && row[1] === 100)).toBe(true);
+    expect(rows.some((row) => row[0] === 'autores[0].percentual' && row[1] === '100')).toBe(true);
   });
 
   it('formato json continua disponível para integração técnica', async () => {
