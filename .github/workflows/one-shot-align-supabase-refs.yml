@@ -52,47 +52,49 @@ jobs:
           spec_path = Path('apps/api/src/core/config/env.schema.spec.ts')
           spec = spec_path.read_text()
           spec = spec.replace("  SUPABASE_MAIN_REF,\n", "")
-          spec = re.sub(
-              r"\n    it\('MAIN_REF nunca é o esperado de nenhum ambiente \(main ≠ production\)', \(\) => \{.*?\n    \}\);",
-              "\n    it('production usa o projeto Supabase main real', () => {\n"
-              "      expect(expectedSupabaseRef('production')).toBe(SUPABASE_PROD_REF);\n"
-              "      expect(SUPABASE_PROD_REF).toBe('sxmfeocztlztvpdnxayk');\n"
-              "      expect(forbiddenSupabaseRefs('production')).not.toContain(SUPABASE_PROD_REF);\n"
-              "    });",
-              spec,
-              flags=re.S,
+
+          def remove_test(source: str, title_fragment: str) -> str:
+              marker = "    it('" + title_fragment
+              start = source.find(marker)
+              if start == -1:
+                  return source
+              line_start = source.rfind('\n', 0, start) + 1
+              i = start
+              depth = 0
+              seen_open = False
+              while i < len(source):
+                  ch = source[i]
+                  if ch == '{':
+                      depth += 1
+                      seen_open = True
+                  elif ch == '}':
+                      depth -= 1
+                  if seen_open and depth == 0 and source.startswith(');', i + 1):
+                      end = i + 3
+                      if end < len(source) and source[end] == '\n':
+                          end += 1
+                      return source[:line_start] + source[end:]
+                  i += 1
+              raise RuntimeError(f'Não foi possível remover teste: {title_fragment}')
+
+          spec = remove_test(spec, 'MAIN_REF nunca é o esperado')
+          spec = remove_test(spec, 'production + MAIN_REF → falha')
+          spec = spec.replace('SUPABASE_MAIN_REF', 'SUPABASE_PROD_REF')
+          spec = spec.replace('development + MAIN_REF', 'development + projeto de produção')
+          spec = spec.replace('development + MAIN → bloqueado', 'development + projeto de produção → bloqueado')
+
+          anchor = "      expect(expectedSupabaseRef('production')).toBe(SUPABASE_PROD_REF);\n"
+          insertion = (
+              anchor
+              + "      expect(SUPABASE_PROD_REF).toBe('sxmfeocztlztvpdnxayk');\n"
+              + "      expect(forbiddenSupabaseRefs('production')).not.toContain(SUPABASE_PROD_REF);\n"
           )
-          spec = spec.replace(
-              "    it('development + MAIN_REF → falha (denylist cruzada)', () => {\n"
-              "      const errors = collectSupabaseEnvErrors({ DATABASE_URL: pooler(SUPABASE_MAIN_REF) }, 'development');\n"
-              "      expect(errors.some((e) => e.includes('OUTRO ambiente') && e.includes(SUPABASE_MAIN_REF))).toBe(true);\n"
-              "    });\n",
-              "    it('development + projeto de produção → falha (denylist cruzada)', () => {\n"
-              "      const errors = collectSupabaseEnvErrors({ DATABASE_URL: pooler(SUPABASE_PROD_REF) }, 'development');\n"
-              "      expect(errors.some((e) => e.includes('OUTRO ambiente') && e.includes(SUPABASE_PROD_REF))).toBe(true);\n"
-              "    });\n",
-          )
-          spec = re.sub(
-              r"\n    it\('production \+ MAIN_REF → falha \(main não é sinônimo de production\)', \(\) => \{.*?\n    \}\);",
-              "",
-              spec,
-              flags=re.S,
-          )
-          spec = spec.replace("jwtFor(SUPABASE_MAIN_REF, 'anon')", "jwtFor(SUPABASE_STAGING_REF, 'anon')")
-          spec = spec.replace("e.includes('SUPABASE_ANON_KEY') && e.includes('OUTRO ambiente')", "e.includes('SUPABASE_ANON_KEY') && e.includes('OUTRO ambiente')")
-          spec = spec.replace("direct(SUPABASE_MAIN_REF)", "direct(SUPABASE_PROD_REF)")
-          spec = spec.replace(
-              "    it('development + MAIN → bloqueado', () => {\n"
-              "      const errors = collectDatabaseCommandErrors({ DATABASE_URL: pooler(SUPABASE_MAIN_REF) }, 'development');\n",
-              "    it('development + projeto de produção → bloqueado', () => {\n"
-              "      const errors = collectDatabaseCommandErrors({ DATABASE_URL: pooler(SUPABASE_PROD_REF) }, 'development');\n",
-          )
+          spec = spec.replace(anchor, insertion, 1)
           assert 'SUPABASE_MAIN_REF' not in spec
           spec_path.write_text(spec)
 
           ci_path = Path('.github/workflows/ci.yml')
-          ci = ci_path.read_text()
-          ci = ci.replace('jtizbxbrwyczbkdiruoq', 'sxmfeocztlztvpdnxayk')
+          ci = ci_path.read_text().replace('jtizbxbrwyczbkdiruoq', 'sxmfeocztlztvpdnxayk')
           ci_path.write_text(ci)
 
           Path('.github/workflows/one-shot-align-supabase-refs.yml').unlink()
