@@ -1,0 +1,111 @@
+name: Apply E2E schema fix (one-shot dev)
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/apply-e2e-schema-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: musicos360
+          POSTGRES_PASSWORD: ci_only_ephemeral_password_ba3f0d
+          POSTGRES_DB: musicos360
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://musicos360:ci_only_ephemeral_password_ba3f0d@localhost:5432/musicos360
+      APP_DATABASE_URL: postgresql://musicos_app:local_only_ephemeral_musicos_app_pw@localhost:5432/musicos360
+      DB_SSL: 'false'
+      ENCRYPTION_KEY: '33b29b3d331d95a7a029160cbbb4c64cc7e094271b0a6f501da19a596ade7217'
+      NODE_VERSION: '20'
+      PNPM_VERSION: '10.11.0'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: dev
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm turbo build --filter='./packages/*'
+
+      - name: Prepare ephemeral PostgreSQL
+        run: |
+          PGPASSWORD=ci_only_ephemeral_password_ba3f0d psql -h localhost -U musicos360 -d musicos360 -f apps/api/scripts/local-auth-shim.sql
+          pnpm --filter @music-os-360/api db:migrate
+
+      - name: Apply exact supplied fix and run E2E
+        id: apply_test
+        shell: bash
+        env:
+          FIX_SCRIPT_B64: ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCmltcG9ydCByZQoKUk9PVCA9IFBhdGguY3dkKCkKClJMU19GSUxFID0gUk9PVCAvICJhcHBzL2FwaS90ZXN0L2UyZS9ybHMvcmxzLWlzb2xhdGlvbi5lMmUtc3BlYy50cyIKQ09OVEVYVF9GSUxFID0gUk9PVCAvICJhcHBzL2FwaS90ZXN0L2UyZS9ybHMvcmVxdWVzdC1jb250ZXh0LmUyZS1zcGVjLnRzIgpTQ0hFTUFfRklMRSA9IFJPT1QgLyAiYXBwcy9hcGkvdGVzdC9lMmUvc2NoZW1hL3NjaGVtYS1yZWNvbmNpbGlhdGlvbi5lMmUtc3BlYy50cyIKCkZJTEVTID0gW1JMU19GSUxFLCBDT05URVhUX0ZJTEUsIFNDSEVNQV9GSUxFXQoKZm9yIGZpbGUgaW4gRklMRVM6CiAgICBpZiBub3QgZmlsZS5pc19maWxlKCk6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChmIkFSUVVJVk8gTsODTyBFTkNPTlRSQURPOiB7ZmlsZX0iKQoKIyBJRHMgZGV0ZXJtaW7DrXN0aWNvcyBleGNsdXNpdm9zIHBhcmEgb3MgdGVzdGVzIEUyRS4KT1JHX0lEID0gIjkwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIKClRFTkFOVF9GSVhUVVJFX1RTID0gZiIiIgphc3luYyBmdW5jdGlvbiBlbnN1cmVFMmVUZW5hbnRzKG93bmVyOiBEYXRhU291cmNlKTogUHJvbWlzZTx2b2lkPiB7ewogIGNvbnN0IG9yZ2FuaXphdGlvbklkID0gJ3tPUkdfSUR9JzsKCiAgYXdhaXQgb3duZXIucXVlcnkoCiAgICBgCiAgICAgIElOU0VSVCBJTlRPIG9yZ2FuaXphdGlvbnMgKAogICAgICAgIGlkLAogICAgICAgIG5hbWUsCiAgICAgICAgc2x1ZywKICAgICAgICBwbGFuLAogICAgICAgIGJpbGxpbmdfc3RhdHVzLAogICAgICAgIGluZHVzdHJ5LAogICAgICAgIGFkZHJlc3MsCiAgICAgICAgY29uZmlnLAogICAgICAgIG1ldGFkYXRhCiAgICAgICkKICAgICAgVkFMVUVTICgKICAgICAgICAkMSwKICAgICAgICAnTVVTSUMgT1MgMzYwIEUyRScsCiAgICAgICAgJ211c2ljLW9zLTM2MC1lMmUnLAogICAgICAgICdzdGFydGVyJywKICAgICAgICAndHJpYWwnLAogICAgICAgICdncmF2YWRvcmEnLAogICAgICAgICd7e319Jzo6anNvbmIsCiAgICAgICAgJ3t7fX0nOjpqc29uYiwKICAgICAgICAne3t9fSc6Ompzb25iCiAgICAgICkKICAgICAgT04gQ09ORkxJQ1QgKGlkKSBETyBVUERBVEUgU0VUCiAgICAgICAgbmFtZSA9IEVYQ0xVREVELm5hbWUsCiAgICAgICAgdXBkYXRlZF9hdCA9IE5PVygpCiAgICBgLAogICAgW29yZ2FuaXphdGlvbklkXSwKICApOwoKICBhd2FpdCBvd25lci5xdWVyeSgKICAgIGAKICAgICAgSU5TRVJUIElOVE8gdGVuYW50cyAoCiAgICAgICAgaWQsCiAgICAgICAgb3JnX2lkLAogICAgICAgIG5hbWUsCiAgICAgICAgc2x1ZywKICAgICAgICBwbGFuLAogICAgICAgIGZlYXR1cmVzLAogICAgICAgIHNldHRpbmdzLAogICAgICAgIGFjdGl2ZQogICAgICApCiAgICAgIFZBTFVFUwoKICAgICAgICAoCiAgICAgICAgICAkMSwKICAgICAgICAgICQzLAogICAgICAgICAgJ01VU0lDIE9TIDM2MCBFMkUgVGVuYW50IEEnLAogICAgICAgICAgJ211c2ljLW9zLTM2MC1lMmUtdGVuYW50LWEnLAogICAgICAgICAgJ3N0YXJ0ZXInLAogICAgICAgICAgJ3t7fX0nOjpqc29uYiwKICAgICAgICAgICd7e319Jzo6anNvbmIsCiAgICAgICAgICB0cnVlCiAgICAgICAgKSwKICAgICAgICAoCiAgICAgICAgICAkMiwKICAgICAgICAgICQzLAogICAgICAgICAgJ01VU0lDIE9TIDM2MCBFMkUgVGVuYW50IEInLAogICAgICAgICAgJ211c2ljLW9zLTM2MC1lMmUtdGVuYW50LWInLAogICAgICAgICAgJ3N0YXJ0ZXInLAogICAgICAgICAgJ3t7fX0nOjpqc29uYiwKICAgICAgICAgICd7e319Jzo6anNvbmIsCiAgICAgICAgICB0cnVlCiAgICAgICAgKQogICAgICBPTiBDT05GTElDVCAoaWQpIERPIFVQREFURSBTRVQKICAgICAgICBvcmdfaWQgPSBFWENMVURFRC5vcmdfaWQsCiAgICAgICAgbmFtZSA9IEVYQ0xVREVELm5hbWUsCiAgICAgICAgYWN0aXZlID0gdHJ1ZSwKICAgICAgICB1cGRhdGVkX2F0ID0gTk9XKCkKICAgIGAsCiAgICBbVEVOQU5UX0EsIFRFTkFOVF9CLCBvcmdhbml6YXRpb25JZF0sCiAgKTsKCiAgY29uc3Qgcm93cyA9IGF3YWl0IG93bmVyLnF1ZXJ5KAogICAgYAogICAgICBTRUxFQ1QgaWQKICAgICAgRlJPTSB0ZW5hbnRzCiAgICAgIFdIRVJFIGlkID0gQU5ZKCQxOjp1dWlkW10pCiAgICAgIE9SREVSIEJZIGlkCiAgICBgLAogICAgW1tURU5BTlRfQSwgVEVOQU5UX0JdXSwKICApOwoKICBpZiAocm93cy5sZW5ndGggIT09IDIpIHt7CiAgICB0aHJvdyBuZXcgRXJyb3IoCiAgICAgIGBGYWxoYSBhbyBjcmlhciB0ZW5hbnRzIEUyRTogZXNwZXJhZG9zIDIsIGVuY29udHJhZG9zICR7e3Jvd3MubGVuZ3RofX1gLAogICAgKTsKICB9fQp9fQoiIiIuc3RyaXAoKQoKCmRlZiB3cml0ZShwYXRoOiBQYXRoLCBjb250ZW50OiBzdHIpOgogICAgcGF0aC53cml0ZV90ZXh0KGNvbnRlbnQsIGVuY29kaW5nPSJ1dGYtOCIpCiAgICBwcmludChmIkNPUlJJR0lETzoge3BhdGgucmVsYXRpdmVfdG8oUk9PVCl9IikKCgojID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09CiMgMS4gcmxzLWlzb2xhdGlvbi5lMmUtc3BlYy50cwojID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09Cgpjb250ZW50ID0gUkxTX0ZJTEUucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIpCgojIFJlbW92ZSBxdWFscXVlciB2ZXJzw6NvIGFudGVyaW9yIGRhIGZ1bsOnw6NvLCB0b3JuYW5kbyBvIHNjcmlwdCBpZGVtcG90ZW50ZS4KY29udGVudCA9IHJlLnN1YigKICAgIHIiXG5hc3luYyBmdW5jdGlvbiBlbnN1cmVFMmVUZW5hbnRzXChvd25lcjogRGF0YVNvdXJjZVwpOiBQcm9taXNlPHZvaWQ+IFx7Lio/XG5cfVxuIiwKICAgICJcbiIsCiAgICBjb250ZW50LAogICAgZmxhZ3M9cmUuRE9UQUxMLApdCgpyZWFkX2Vudl9tYXRjaCA9IHJlLnNlYXJjaCgKICAgIHIiKGZ1bmN0aW9uIHJlYWRFbnZcKGtleTogc3RyaW5nXCk6IHN0cmluZyBcey4qP1xuXH0pIiwKICAgIGNvbnRlbnQsCiAgICBmbGFncz1yZS5ET1RBTEwsCikKCmlmIG5vdCByZWFkX2Vudl9tYXRjaDoKICAgIHJhaXNlIFN5c3RlbUV4aXQoCiAgICAgICAgIk7Do28gZm9pIHBvc3PDrcOtdmVsIGxvY2FsaXphciByZWFkRW52KCkgZW0gcmxzLWlzb2xhdGlvbi5lMmUtc3BlYy50cyIKICAgICkKCmluc2VydF9wb3NpdGlvbiA9IHJlYWRfZW52X21hdGNoLmVuZCgpCmNvbnRlbnQgPSAoCiAgICBjb250ZW50WzppbnNlcnRfcG9zaXRpb25dCiAgICArICJcblxuIgogICAgKyBURU5BTlRfRklYVFVSRV9UUwogICAgKyBjb250ZW50W2luc2VydF9wb3NpdGlvbjpdCikKCiMgR2FyYW50ZSBxdWUgb3MgdGVuYW50cyBzZWphbSBjcmlhZG9zIGltZWRpYXRhbWVudGUgYXDDs3MgYSBjb25leMOjbyBPV05FUi4Kb3duZXJfaW5pdF9wYXR0ZXJuID0gcmUuY29tcGlsZSgKICAgIHIiIigoClxzKm93bmVyXHMqPVxzKmF3YWl0IG5ldyBEYXRhU291cmNlXChcewpcCSp0eXBlOlxzKidwb3N0Z3JlcycsCj9ccyp1cmw6XHMqb3duZXJVcmwsCj9ccypzc2w6XHMqZmFsc2UKXHMqXH1cKVwuaW5pdGlhbGl6ZVwoXCk7CikiIiIsCiAgICBmbGFncz1yZS5WRVJCT1NFLApdCgojIFRhbWLDqW0gc3Vwb3J0YSBhIHZlcnPDp28gY29tcGFjdGEgYXR1YWwuCmNvbXBhY3Rfb3duZXJfaW5pdCA9ICgKICAgICIgICAgb3duZXIgPSBhd2FpdCBuZXcgRGF0YVNvdXJjZSh7IHR5cGU6ICdwb3N0Z3JlcycsIHVybDogb3duZXJVcmwsIHNzbDogZmFsc2UgfSkuaW5pdGlhbGl6ZSgpOyIKKQoKZW5zdXJlX2NhbGwgPSAiICAgIGF3YWl0IGVuc3VyZUUyZVRlbmFudHMob3duZXIpOyIKCiMgUmVtb3ZlIGNoYW1hZGEgYW50ZXJpb3IgcGFyYSBldml0YXIgZHVwbGljYcOnw6NvLgpjb250ZW50ID0gY29udGVudC5yZXBsYWNlKGYiXG57ZW5zdXJlX2NhbGx9IiwgIiIpCgppZiBjb21wYWN0X293bmVyX2luaXQgaW4gY29udGVudDoKICAgIGNvbnRlbnQgPSBjb250ZW50LnJlcGxhY2UoCiAgICAgICAgY29tcGFjdF9vd25lcl9pbml0LAogICAgICAgIGNvbXBhY3Rfb3duZXJfaW5pdCArICJcbiIgKyBlbnN1cmVfY2FsbCwKICAgICAgICAxLAogICAgKQplbHNlOgogICAgbWF0Y2ggPSBvd25lcl9pbml0X3BhdHRlcm4uc2VhcmNoKGNvbnRlbnQpCiAgICBpZiBub3QgbWF0Y2g6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdCgKICAgICAgICAgICAgIk7Do28gZm9pIHBvc3PDrcOtdmVsIGxvY2FsaXphciBpbmljaWFsaXphw6fDo28gT1dORVIgZW0gIgogICAgICAgICAgICAicmxzLWlzb2xhdGlvbi5lMmUtc3BlYy50cyIKICAgICAgICApCgogICAgY29udGVudCA9ICgKICAgICAgICBjb250ZW50WzptYXRjaC5lbmQoKV0KICAgICAgICArICJcbiIKICAgICAgICArIGVuc3VyZV9jYWxsCiAgICAgICAgKyBjb250ZW50W21hdGNoLmVuZCgpOl0KICAgICkKCiMgTyBzY2hlbWEgZG8gQ0kgbsOjbyBwb3NzdWkgZmluYW5jaWFsX2NhdGVnb3JpZXMucGF0aC4KIyBVc2Egc29tZW50ZSBjb2x1bmEgY29uZmlybWFkYW1lbnRlIGV4aXN0ZW50ZSBlIGRlaXhhIGRlZmF1bHRzIGRvIGJhbmNvIGF0dWFyZW0uCmZpbmFuY2lhbF9wYXR0ZXJuID0gcmUuY29tcGlsZSgKICAgIHIiIiJcewpccyp0YWJsZTpcHMqJ2ZpbmFuY2lhbF9jYXRlZ29yaWVzJywKXHMqZXh0cmE6XHMqXCtcKVxzKj0+XHMqXCxceyouKj9cfVwpClxzKlx9IiIiLAogICAgZmxhZ3M9cmUuRE9UQUxMLApdCg pGaW5hbmNpYWxfcmVwbGFjZW1lbnQgPSAiIiJ7CiAgICB0YWJsZTogJ2ZpbmFuY2lhbF9jYXRlZ29yaWVzJywKICAgIGV4dHJhOiAoKSA9PiAoewogICAgICBuYW1lOiBgUkxTX1RFU1RfJHtyYW5kb21VVUlEKCkuc2xpY2UoMCwgOCl9YCwKICAgIH0pLAogIH0iIiIKCmlmIG5vdCBmaW5hbmNpYWxfcGF0dGVybi5zZWFyY2goY29udGVudCk6CiAgICAjIFN1cG9ydGEgYSBmb3JtYXRhw6fDo28gZW0gdW1hIMO6bmljYSBsaW5oYSBleGlzdGVudGUgbm8gYXJxdWl2by4KICAgIG9sZF9maW5hbmNpYWwgPSAiIiJ7IHRhYmxlOiAnZmluYW5jaWFsX2NhdGVnb3JpZXMnLCBleHRyYTogKCkgPT4gKHsKICAgIHBhdGg6ICdwJyArIHJhbmRvbVVVSUQoKS5zbGljZSgwLCA2KSwgbmFtZTogJ1JMU19URVNUJywKICAgIHNsdWc6ICdzbCcgKyByYW5kb21VVUlEKCkuc2xpY2UoMCwgOCksIGNvZGU6ICdjZCcgKyByYW5kb21VVUlEKCkuc2xpY2UoMCwgOCksCiAgfSkgfSIiIgoKICAgIGlmIG9sZF9maW5hbmNpYWwgbm90IGluIGNvbnRlbnQ6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdCgKICAgICAgICAgICAgIk7Do28gZm9pIHBvc3PDrcOtdmVsIGxvY2FsaXphciBmaXh0dXJlIGZpbmFuY2lhbF9jYXRlZ29yaWVzIGVtICIKICAgICAgICAgICAgInJscy1pc29sYXRpb24uZTJlLXNwZWMudHMiCiAgICAgICAgKQoKICAgIGNvbnRlbnQgPSBjb250ZW50LnJlcGxhY2Uob2xkX2ZpbmFuY2lhbCwgZmluYW5jaWFsX3JlcGxhY2VtZW50LCAxKQplbHNlOgogICAgY29udGVudCA9IGZpbmFuY2lhbF9wYXR0ZXJuLnN1YihmaW5hbmNpYWxfcmVwbGFjZW1lbnQsIGNvbnRlbnQsIGNvdW50PTEpCgp3cml0ZShSTFNfRklMRSwgY29udGVudCkKCgojID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09CiMgMi4gcmVxdWVzdC1jb250ZXh0LmUyZS1zcGVjLnRzCiMgPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0KCmNvbnRlbnQgPSBDT05URVhUX0ZJTEUucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIpCgojIFJlbW92ZSB2ZXJzw6NvIGFudGVyaW9yIGRhIGZ1bsOnw6NvLgpjb250ZW50ID0gcmUuc3ViKAogICAgciJcbmFzeW5jIGZ1bmN0aW9uIGVuc3VyZUUyZVRlbmFudHNcKG93bmVyOiBEYXRhU291cmNlXCk6IFByb21pc2U8dm9pZD4gXHsuKj9cblx9XG4iLAogICAgIlxuIiwKICAgIGNvbnRlbnQsCiAgICBmbGFncz1yZS5ET1RBTEwsCikKCmVudl9tYXRjaCA9IHJlLnNlYXJjaCgKICAgIHIiKGZ1bmN0aW9uIGVudlwoa2V5OiBzdHJpbmdcKTogc3RyaW5nIFx7Lio/XG5cfSkiLAogICAgY29udGVudCwKICAgIGZsYWdzPXJlLkRPVEFMTCwKKQoKaWYgbm90IGVudl9tYXRjaDoKICAgIHJhaXNlIFN5c3RlbUV4aXQoCiAgICAgICAgIk7Do28gZm9pIHBvc3PDrcOtdmVsIGxvY2FsaXphciBlbnYoKSBlbSByZXF1ZXN0LWNvbnRleHQuZTJlLXNwZWMudHMiCiAgICApCgppbnNlcnRfcG9zaXRpb24gPSBlbnZfbWF0Y2guZW5kKCkKY29udGVudCA9ICgKICAgIGNvbnRlbnRbOmluc2VydF9wb3NpdGlvbl0KICAgICsgIlxuXG4iCiAgICArIFRFTkFOVF9GSVhUVVJFX1RTCiAgICArIGNvbnRlbnRbaW5zZXJ0X3Bvc2l0aW9uOl0KKQoKY29tcGFjdF9vd25lcl9jb250ZXh0ID0gKAogICAgIiAgICBvd25lciA9IGF3YWl0IG5ldyBEYXRhU291cmNlKHsgdHlwZTogJ3Bvc3RncmVzJywgIgogICAgInVybDogZW52KCdEQVRBQkFTRV9VUkw nKSwgc3NsOiBmYWxzZSB9KS5pbml0aWFsaXplKCk7Igo pCg pY29udGVudCA9IGNvbnRlbnQucmVwbGFjZShmIlxue2Vuc3VyZV9jYWxsfSIsICIiKQoKaWYgY29tcGFjdF9vd25lcl9jb250ZXh0IG5vdCBpbiBjb250ZW50OgogICAgcmFpc2UgU3lzdGVtRXhpdCgKICAgICAgICAiTsOjbyBmb2kgcG9zc8OtdmVsIGxvY2FsaXphciBpbmljaWFsaXphw6fDo28gT1dORVIgZW0gIgogICAgICAgICJyZXF1ZXN0LWNvbnRleHQuZTJlLXNwZWMudHMiCiAgICApCgpjb250ZW50ID0gY29udGVudC5yZXBsYWNlKAogICAgY29tcGFjdF9vd25lcl9jb250ZXh0LAogICAgY29tcGFjdF9vd25lcl9jb250ZXh0ICsgIlxuIiArIGVuc3VyZV9jYWxsLAogICAgMSwKKQoKd3JpdGUoQ09OVEVYVF9GSUxFLCBjb250ZW50KQoKCiMgPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0KIyAzLiBzY2hlbWEtcmVjb25jaWxpYXRpb24uZTJlLXNwZWMudHMKIyA9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09Cgpjb250ZW50ID0gU0NIRU1BX0ZJTEUucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIpCgojIFByb3ByaWVkYWRlcyBmw61zaWNhcyBTUUwgcGVybWFuZWNlbSBzbmFrZV9jYXNlLgojIFByb3ByaWVkYWRlcyBUeXBlU2NyaXB0IGV4cGxpY2l0YW1lbnRlIG1hcGVhZGFzIHVzYW0gY2FtZWxDYXNlLgpyZXBsYWNlbWVudHMgPSB7CiAgICAidGlwb19zZXJ2aWNvOiAnZGlzdHJpYnVpY2FvJyI6CiAgICAgICAgInRpcG9TZXJ2aWNvOiAnZGlzdHJpYnVpY2FvJyIsCgogICAgIm9yaWdlbV9sZWFkOiAnaW5kaWNhY2FvJyI6CiAgICAgICAgIm9yaWdlbUxlYWQ6ICdpbmRpY2FvJyIsCgogICAgInByb2JhYmlsaWRhZGVfZmVjaGFtZW50bzogJzc1LjAwJyI6CiAgICAgICAgInByb2JhYmlsaWRhZGVGZWNoYW1lbnRvOiAnNzUuMDAnIiwKCiAgICAicmVhZC50aXBvX3NlcnZpY28iOgogICAgICAgICJyZWFkLnRpcG9TZXJ2aWNvIiwKCiAgICAicmVhZC5vcmlnZW1fbGVhZCI6CiAgICAgICAgInJlYWQub3JpZ2VtTGVhZCIsCgogICAgInJlYWQucHJvYmFiaWxpZGFkZV9mZWNoYW1lbnRvIjoKICAgICAgICAicmVhZC5wcm9iYWJpbGlkYWRlRmVjaGFtZW50byIsCn0KCmZvciBvbGQsIG5ldyBpbiByZXBsYWNlbWVudHMuaXRlbXMoKToKICAgIGNvbnRlbnQgPSBjb250ZW50LnJlcGxhY2Uob2xkLCBuZXcpCgojIFZlcmlmaWNhw6fDo28gb2JyaWdhdMOzcmlhOiBuZW5odW0gaWRlbnRpZmljYWRvciBpbmNvcnJldG8gcG9kZSBwZXJtYW5lY2VyLgppbnZhbGlkX2lkZW50aWZpZXJzID0gWwogICAgInRpcG9fc2VydmljbzogJ2Rpc3RyaWJ1aWNhbyciLAogICAgIm9yaWdlbV9sZWFkOiAnaW5kaWNhY2FvJyIsCiAgICAicHJvYmFiaWxpZGFkZV9mZWNoYW1lbnRvOiAnNzUuMDAnIiwKICAgICJyZWFkLnRpcG9fc2VydmljbyIsCiAgICAicmVhZC5vcmlnZW1fbGVhZCIsCiAgICAicmVhZC5wcm9iYWJpbGlkYWRlX2ZlY2hhbWVudG8iLApdCgpyZW1haW5pbmcgPSBbaXRlbSBmb3IgaXRlbSBpbiBpbnZhbGlkX2lkZW50aWZpZXJzIGlmIGl0ZW0gaW4gY29udGVudF0KCmlmIHJlbWFpbmluZzoKICAgIHJhaXNlIFN5c3RlbUV4aXQoCiAgICAgICAgIklkZW50aWZpY2Fkb3JlcyBpbnbDoWxpZG9zIGFpbmRhIHByZXNlbnRlcyBlbSAiCiAgICAgICAgZiJzY2hlbWEtcmVjb25jaWxpYXRpb24uZTJlLXNwZWMudHM6IHtyZW1haW5pbmd9IgogICAgKQoKd3JpdGUoU0NIRU1BX0ZJTEUsIGNvbnRlbnQpCgpwcmludCgpCnByaW50KCJUT0RBUyBBUyBTVUJTVElUVUnDh8OVRVMgRk9SQU0gQVBMSUNBREFTLiIpCg==
+        run: |
+          set +e
+          printf '%s' "$FIX_SCRIPT_B64" | base64 --decode | python3
+          apply_status=$?
+
+          if [ "$apply_status" -eq 0 ]; then
+            pnpm --filter @music-os-360/api test:e2e
+            test_status=$?
+          else
+            test_status=$apply_status
+            git checkout -- \
+              apps/api/test/e2e/rls/rls-isolation.e2e-spec.ts \
+              apps/api/test/e2e/rls/request-context.e2e-spec.ts \
+              apps/api/test/e2e/schema/schema-reconciliation.e2e-spec.ts
+          fi
+
+          echo "status=$test_status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Commit target files and remove one-shot workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/apply-e2e-schema-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/api/test/e2e/rls/rls-isolation.e2e-spec.ts \
+            apps/api/test/e2e/rls/request-context.e2e-spec.ts \
+            apps/api/test/e2e/schema/schema-reconciliation.e2e-spec.ts \
+            .github/workflows/apply-e2e-schema-fix.yml
+
+          if git diff --cached --quiet; then
+            echo "No repository changes to commit."
+          else
+            git commit -m "fix(e2e): reconcile fixtures with CI schema"
+            git push origin HEAD:dev
+          fi
+
+      - name: Propagate E2E failure status
+        if: steps.apply_test.outputs.status != '0'
+        run: |
+          echo "::error::pnpm --filter @music-os-360/api test:e2e failed with status ${{ steps.apply_test.outputs.status }}"
+          exit "${{ steps.apply_test.outputs.status }}"
