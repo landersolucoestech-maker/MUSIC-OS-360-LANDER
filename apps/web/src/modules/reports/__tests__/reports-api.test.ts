@@ -46,7 +46,12 @@ describe("reportsApi — Central de Relatórios real-only", () => {
   });
 
   it("exportBlob chama o endpoint real com token, tenant e query params", async () => {
-    const blob = new Blob(["xlsx"]);
+    const signature = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+    const blob = {
+      slice: vi.fn(() => ({
+        arrayBuffer: vi.fn().mockResolvedValue(signature.buffer),
+      })),
+    } as unknown as Blob;
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue({
       ok: true,
