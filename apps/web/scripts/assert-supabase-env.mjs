@@ -9,19 +9,14 @@
  */
 import { loadEnv } from "vite";
 
-// MATRIZ DE AMBIENTES (espelho de env.schema.ts; incidente 2026-07-16/17):
+// MATRIZ REAL DE AMBIENTES:
 //   development→DEV_REF · test→nenhum remoto · staging→STAGING_REF · production→PROD_REF.
-//   MAIN_REF é a branch principal do Supabase — NÃO é produção, proibido em runtime.
-export const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
-// Branch STAGING persistente do projeto MAIN, criada na Parte 65 (2026-08-01).
-// Substitui o placeholder reservado ('khnaxcgjnvhhtgkozsif') que nunca
-// correspondeu a um recurso real.
+export const SUPABASE_PROD_REF = "sxmfeocztlztvpdnxayk";
 export const SUPABASE_STAGING_REF = "jjnnjnxjkqipgqebijen";
-export const SUPABASE_MAIN_REF = "sxmfeocztlztvpdnxayk";
 export const SUPABASE_DEV_REF = "rypnevnfipygyhysqpdo";
 export const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb", "sxdhnhoupjrnntrmjtyn"];
 const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
-const SUPABASE_KNOWN_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_MAIN_REF, SUPABASE_DEV_REF];
+const SUPABASE_KNOWN_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
 
 /** Ref esperado por ambiente. `null` (test) = nenhum projeto remoto aceito. */
 function expectedRefFor(nodeEnv) {
@@ -65,9 +60,6 @@ export function extractSupabaseRef(value) {
  */
 export function assertWebSupabaseEnv(mode, envDir) {
   const env = { ...loadEnv(mode, envDir, ""), ...process.env };
-  // O ambiente-alvo (qual projeto Supabase) é definido pelo NODE_ENV, NÃO pelo
-  // modo de build do Vite. Um `pnpm build` local (sem NODE_ENV) valida como
-  // DESENVOLVIMENTO; um build de produção/staging DEVE exportar NODE_ENV.
   const nodeEnv = env.NODE_ENV ?? "development";
   const isProdLike = nodeEnv === "production" || nodeEnv === "staging";
   const errors = [];
@@ -88,8 +80,6 @@ export function assertWebSupabaseEnv(mode, envDir) {
     );
   }
 
-  // Isolamento por ambiente (vale SEMPRE, inclusive em development): o ref usado
-  // precisa ser o do ambiente atual. Denylist cruzada prevalece sobre allowlist.
   const expectedRef = expectedRefFor(nodeEnv);
   const forbidden = forbiddenRefsFor(nodeEnv);
   for (const [key, ref] of [["VITE_SUPABASE_URL", webRef], ["SUPABASE_URL", backendRef]]) {
@@ -103,7 +93,6 @@ export function assertWebSupabaseEnv(mode, envDir) {
     }
   }
 
-  // Coerência ref × payload do anon JWT (sem expor o token).
   const anonClaims = jwtClaims(env.VITE_SUPABASE_ANON_KEY);
   if (anonClaims) {
     if (anonClaims.ref && forbidden.includes(anonClaims.ref)) {
