@@ -15,7 +15,7 @@ import { seedAdminUser }      from './02_admin_user';
 import { seedOperational }    from './03_operational_seed';
 import { seedRbac }           from './04_rbac_seed';
 import { seedOrgStructure }   from './05_org_structure_seed';
-import { extractSupabaseRef, SUPABASE_MAIN_REF } from '../../core/config/env.schema';
+import { extractSupabaseRef, SUPABASE_PROD_REF } from '../../core/config/env.schema';
 
 async function run(): Promise<void> {
   const env    = process.env['NODE_ENV'] ?? 'development';
@@ -35,7 +35,7 @@ async function run(): Promise<void> {
   // --force por engano. --force existe para permitir produção legítima
   // (fora do projeto MAIN), não para contornar este guard.
   const targetRef = extractSupabaseRef(process.env['DATABASE_URL']);
-  if (targetRef === SUPABASE_MAIN_REF) {
+  if (targetRef === SUPABASE_PROD_REF) {
     console.error(
       '\n[MUSIC OS 360] Recusado: DATABASE_URL aponta para a branch MAIN do Supabase.\n' +
       'Seeds nunca podem rodar contra MAIN, independente de NODE_ENV ou --force.\n',

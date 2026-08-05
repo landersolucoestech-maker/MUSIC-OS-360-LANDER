@@ -29,7 +29,7 @@
 import 'reflect-metadata';
 import { createClient } from '@supabase/supabase-js';
 import { AppDataSource } from './datasource';
-import { extractSupabaseRef, SUPABASE_MAIN_REF } from '../core/config/env.schema';
+import { extractSupabaseRef, SUPABASE_PROD_REF } from '../core/config/env.schema';
 import { bootstrapTenantZero, type RealOwnerInput } from './bootstrap-tenant-zero';
 import { generateStrongPassword } from '../core/security/generate-strong-password';
 import { normalizeEmail } from '../core/security/normalize-email';
@@ -102,7 +102,7 @@ async function run(): Promise<void> {
   }
 
   const targetRef = extractSupabaseRef(process.env['DATABASE_URL']);
-  if (targetRef === SUPABASE_MAIN_REF) {
+  if (targetRef === SUPABASE_PROD_REF) {
     console.error(
       '\n[MUSIC OS 360] Recusado: DATABASE_URL aponta para a branch MAIN do Supabase. ' +
       'O bootstrap do tenant-zero nunca pode rodar contra MAIN.\n',

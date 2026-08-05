@@ -1,5 +1,5 @@
 import { validateSupabaseDevRef, validateSupabaseStagingRef } from './verify-supabase-dev-ref.util';
-import { SUPABASE_DEV_REF, SUPABASE_STAGING_REF, SUPABASE_MAIN_REF, SUPABASE_PROD_REF } from './env.schema';
+import { SUPABASE_DEV_REF, SUPABASE_STAGING_REF, SUPABASE_PROD_REF, SUPABASE_PROD_REF } from './env.schema';
 
 function pooler(ref: string): string {
   return `postgresql://postgres.${ref}:pw@aws-0-us-east-1.pooler.supabase.com:6543/postgres`;
@@ -12,8 +12,8 @@ describe('validateSupabaseDevRef', () => {
     if (result.ok) expect(result.ref).toBe(SUPABASE_DEV_REF);
   });
 
-  it('rejects the MAIN ref explicitly', () => {
-    const result = validateSupabaseDevRef(pooler(SUPABASE_MAIN_REF));
+  it('rejects the PRODUCTION ref explicitly', () => {
+    const result = validateSupabaseDevRef(pooler(SUPABASE_PROD_REF));
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toMatch(/MAIN/);
   });
@@ -53,7 +53,7 @@ describe('validateSupabaseDevRef', () => {
   });
 
   it('never includes the connection string itself in the failure reason', () => {
-    const secretLookingUrl = pooler(SUPABASE_MAIN_REF).replace('pw', 'sUp3rS3cr3tPassw0rd');
+    const secretLookingUrl = pooler(SUPABASE_PROD_REF).replace('pw', 'sUp3rS3cr3tPassw0rd');
     const result = validateSupabaseDevRef(secretLookingUrl);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).not.toContain('sUp3rS3cr3tPassw0rd');
@@ -73,8 +73,8 @@ describe('validateSupabaseStagingRef', () => {
     if (!result.ok) expect(result.reason).toMatch(/not the expected STAGING ref/);
   });
 
-  it('rejects the MAIN ref explicitly', () => {
-    const result = validateSupabaseStagingRef(pooler(SUPABASE_MAIN_REF));
+  it('rejects the PRODUCTION ref explicitly', () => {
+    const result = validateSupabaseStagingRef(pooler(SUPABASE_PROD_REF));
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toMatch(/MAIN/);
   });

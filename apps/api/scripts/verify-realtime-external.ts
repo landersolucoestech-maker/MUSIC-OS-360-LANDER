@@ -22,14 +22,14 @@ try {
   require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 } catch { /* opcional */ }
 
-import { extractSupabaseRef, SUPABASE_MAIN_REF, SUPABASE_REF_DENYLIST } from '../src/core/config/env.schema';
+import { extractSupabaseRef, SUPABASE_PROD_REF, SUPABASE_REF_DENYLIST } from '../src/core/config/env.schema';
 import { evaluateRealtimeState, type RealtimePolicyRow } from '../src/database/realtime-external-verifier';
 
 async function main(): Promise<void> {
   const databaseUrl = process.env['DATABASE_URL'];
   const ref = extractSupabaseRef(databaseUrl);
 
-  if (ref === SUPABASE_MAIN_REF) {
+  if (ref === SUPABASE_PROD_REF) {
     console.error('::error::DATABASE_URL aponta para a branch MAIN do Supabase — recusado.');
     process.exitCode = 1;
     return;

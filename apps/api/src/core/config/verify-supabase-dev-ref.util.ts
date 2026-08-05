@@ -16,7 +16,7 @@ import {
   extractSupabaseRef,
   SUPABASE_DEV_REF,
   SUPABASE_STAGING_REF,
-  SUPABASE_MAIN_REF,
+  SUPABASE_PROD_REF,
   SUPABASE_REF_DENYLIST,
 } from './env.schema';
 
@@ -36,8 +36,8 @@ export function validateSupabaseRef(
   if (!ref) {
     return { ok: false, reason: 'Supabase project ref could not be extracted from DATABASE_URL' };
   }
-  if (ref === SUPABASE_MAIN_REF && expectedRef !== SUPABASE_MAIN_REF) {
-    return { ok: false, reason: 'DATABASE_URL points at the MAIN ref — refusing to proceed' };
+  if (ref === SUPABASE_PROD_REF && expectedRef !== SUPABASE_PROD_REF) {
+    return { ok: false, reason: 'DATABASE_URL points at the PRODUCTION ref — refusing to proceed' };
   }
   if (SUPABASE_REF_DENYLIST.includes(ref)) {
     return { ok: false, reason: `DATABASE_URL points at a denylisted ref ("${ref}")` };
