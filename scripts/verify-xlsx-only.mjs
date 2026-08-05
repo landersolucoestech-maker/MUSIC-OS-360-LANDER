@@ -40,6 +40,10 @@ const FORBIDDEN_PATTERNS = [
     regex: /application\/vnd\.ms-excel|\.xls(?!x)\b/i,
   },
   {
+    label: 'arquivo de intercâmbio legado fora do contrato XLSX',
+    regex: /\.exp\b/i,
+  },
+  {
     label: 'biblioteca delimitada legada',
     regex: /papaparse|fast-csv|json2csv|csv-parse|csv-stringify/i,
   },
