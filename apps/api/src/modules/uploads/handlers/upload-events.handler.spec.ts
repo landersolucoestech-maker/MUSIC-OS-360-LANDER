@@ -25,7 +25,7 @@ describe('UploadEventsHandler — P2-9', () => {
     uploadedBy: 'u1',
   };
 
-  it('tenantId válido → executa dentro de runInTenantContext e confirma upload', async () => {
+  it('tenantId válido → executa dentro de runInTenantContext e deixa upload pronto', async () => {
     const { handler, uploadRepo, dbContext } = build();
     await handler.onAssetUploaded({ payload: basePayload, correlationId: null } as any);
     expect(dbContext.runInTenantContext).toHaveBeenCalledWith(
@@ -34,7 +34,7 @@ describe('UploadEventsHandler — P2-9', () => {
     );
     expect(uploadRepo.update).toHaveBeenCalledWith(
       { id: 'up1', tenant_id: 't1' },
-      { status: 'confirmed' },
+      { status: 'ready' },
     );
   });
 
