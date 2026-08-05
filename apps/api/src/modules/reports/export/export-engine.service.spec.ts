@@ -1,10 +1,16 @@
-import { BadRequestException, ForbiddenException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  PayloadTooLargeException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import * as XLSX from 'xlsx';
 import { ExportEngineService } from './export-engine.service';
 import { ExportQueryBuilderService } from './export-query-builder.service';
 import { ExportFormatService } from './export-format.service';
 import { EntityCategory } from '../entity-metadata.types';
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
+import { EXPORT_DETECTION_LIMIT } from './export.types';
 
 const ARTISTS_DEF: ReportEntityDefinition = {
   entityName: 'ArtistEntity', tableName: 'artists', category: EntityCategory.REPORTABLE,
@@ -15,7 +21,7 @@ const ARTISTS_DEF: ReportEntityDefinition = {
   requiredImportColumns: ['nome_artistico'], supportsExport: true, supportsImport: true,
 };
 
-const params = (extra: Record<string, unknown> = {}) => ({ format: 'xlsx' as const, page: 1, pageSize: 100, ...extra });
+const params = (extra: Record<string, unknown> = {}) => ({ format: 'xlsx' as const, ...extra });
 
 function makeEngine(options: {
   tableName?: string; label?: string; reportable?: boolean; hasEntity?: boolean;
@@ -45,6 +51,7 @@ describe('ExportEngineService', () => {
     expect(result.format).toBe('xlsx');
     expect(Buffer.isBuffer(result.body)).toBe(true);
     expect(ds.query.mock.calls[0][1][0]).toBe('tenant-1');
+    expect(ds.query.mock.calls[0][1].at(-1)).toBe(EXPORT_DETECTION_LIMIT);
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entity: 'artists', tenantId: 'tenant-1', status: 'success' }));
   });
 
@@ -60,6 +67,24 @@ describe('ExportEngineService', () => {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
     expect(rows[0]).toContain('Nome artístico');
     expect(rows[0]).not.toContain('nome_artistico');
+  });
+
+  it('falha explicitamente e audita quando o conjunto excede o limite; nunca gera arquivo parcial', async () => {
+    const rows = Array.from({ length: EXPORT_DETECTION_LIMIT }, (_, index) => ({
+      nome_artistico: `Artista ${index}`,
+      email: `artista${index}@example.com`,
+      status: 'ativo',
+    }));
+    const { engine, audit } = makeEngine({ query: jest.fn().mockResolvedValue(rows) });
+
+    await expect(engine.export('artists', params(), 'tenant-1', 'user-1'))
+      .rejects.toBeInstanceOf(PayloadTooLargeException);
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      entity: 'artists',
+      tenantId: 'tenant-1',
+      status: 'failed',
+      recordCount: 0,
+    }));
   });
 
   it('rejeita entidade indisponível, contrato sem export e tenant ausente', async () => {
