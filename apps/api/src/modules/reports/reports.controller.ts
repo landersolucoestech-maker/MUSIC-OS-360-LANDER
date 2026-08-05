@@ -17,9 +17,7 @@ import { ExportEngineService } from './export/export-engine.service';
 import { ImportEngineService } from './import/import-engine.service';
 import { ImportCommitService, type ImportCommitResult } from './import/import-commit.service';
 import {
-  EXPORT_DEFAULT_PAGE_SIZE,
   EXPORT_FORMATS,
-  EXPORT_MAX_PAGE_SIZE,
   type ExportFormat,
   type ExportQueryParams,
 } from './export/export.types';
@@ -48,33 +46,12 @@ export class ImportUploadDto {
   contentBase64: string;
 }
 
+// page/pageSize permanecem reservados para não serem interpretados como filtros
+// caso um cliente antigo ainda os envie. Exportação de arquivo nunca é paginada.
 const RESERVED_QUERY_KEYS = new Set(['format', 'columns', 'sort', 'order', 'page', 'pageSize']);
 
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function positiveInteger(
-  name: string,
-  value: string | undefined,
-  fallback: number,
-  maximum?: number,
-): number {
-  if (value === undefined || value === '') return fallback;
-  if (!/^\d+$/.test(value)) {
-    throw new BadRequestException({
-      error: 'INVALID_REPORT_PAGINATION',
-      message: `${name} deve ser um número inteiro positivo.`,
-    });
-  }
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 1 || (maximum !== undefined && parsed > maximum)) {
-    throw new BadRequestException({
-      error: 'INVALID_REPORT_PAGINATION',
-      message: `${name} fora do intervalo permitido${maximum ? ` (1-${maximum})` : ''}.`,
-    });
-  }
-  return parsed;
 }
 
 function decodeImportBody(body: ImportUploadDto): Buffer {
@@ -124,13 +101,6 @@ export function parseExportParams(
     filters: Object.keys(filters).length ? filters : undefined,
     sort: first(query.sort),
     order: first(query.order)?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
-    page: positiveInteger('page', first(query.page), 1),
-    pageSize: positiveInteger(
-      'pageSize',
-      first(query.pageSize),
-      EXPORT_DEFAULT_PAGE_SIZE,
-      EXPORT_MAX_PAGE_SIZE,
-    ),
   };
 }
 
@@ -191,7 +161,7 @@ export class ReportsController {
   @Get('entities/:entity/export')
   @RequireRole('manager')
   @Audit('report.exported')
-  @ApiOperation({ summary: 'Exporta uma entidade reportável em XLSX' })
+  @ApiOperation({ summary: 'Exporta o conjunto integral de uma entidade reportável em XLSX' })
   async export(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: { userId: string },
