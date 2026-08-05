@@ -30,6 +30,99 @@ function env(key: string): string {
     .trim().replace(/^["']|["']$/g, '');
 }
 
+async function ensureE2eTenants(owner: DataSource): Promise<void> {
+  const organizationId = '90000000-0000-0000-0000-000000000001';
+
+  await owner.query(
+    `
+      INSERT INTO organizations (
+        id,
+        name,
+        slug,
+        plan,
+        billing_status,
+        industry,
+        address,
+        config,
+        metadata
+      )
+      VALUES (
+        $1,
+        'MUSIC OS 360 E2E',
+        'music-os-360-e2e',
+        'starter',
+        'trial',
+        'gravadora',
+        '{}'::jsonb,
+        '{}'::jsonb,
+        '{}'::jsonb
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        updated_at = NOW()
+    `,
+    [organizationId],
+  );
+
+  await owner.query(
+    `
+      INSERT INTO tenants (
+        id,
+        org_id,
+        name,
+        slug,
+        plan,
+        features,
+        settings,
+        active
+      )
+      VALUES
+        (
+          $1,
+          $3,
+          'MUSIC OS 360 E2E Tenant A',
+          'music-os-360-e2e-tenant-a',
+          'starter',
+          '{}'::jsonb,
+          '{}'::jsonb,
+          true
+        ),
+        (
+          $2,
+          $3,
+          'MUSIC OS 360 E2E Tenant B',
+          'music-os-360-e2e-tenant-b',
+          'starter',
+          '{}'::jsonb,
+          '{}'::jsonb,
+          true
+        )
+      ON CONFLICT (id) DO UPDATE SET
+        org_id = EXCLUDED.org_id,
+        name = EXCLUDED.name,
+        active = true,
+        updated_at = NOW()
+    `,
+    [TENANT_A, TENANT_B, organizationId],
+  );
+
+  const rows = await owner.query(
+    `
+      SELECT id
+      FROM tenants
+      WHERE id = ANY($1::uuid[])
+      ORDER BY id
+    `,
+    [[TENANT_A, TENANT_B]],
+  );
+
+  if (rows.length !== 2) {
+    throw new Error(
+      `Falha ao criar tenants E2E: esperados 2, encontrados ${rows.length}`,
+    );
+  }
+}
+
 describe('FASE 3J — contexto de tenant transparente no request-path (PostgreSQL real)', () => {
   let owner: DataSource;
   let appReal: DataSource;
@@ -43,6 +136,7 @@ describe('FASE 3J — contexto de tenant transparente no request-path (PostgreSQ
 
   beforeAll(async () => {
     owner = await new DataSource({ type: 'postgres', url: env('DATABASE_URL'), ssl: false }).initialize();
+    await ensureE2eTenants(owner);
     appReal = await new DataSource({
       type: 'postgres', url: env('APP_DATABASE_URL'), ssl: false, entities: ALL_ENTITIES, synchronize: false,
     }).initialize();

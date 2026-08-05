@@ -168,22 +168,22 @@ describe('Schema reconciliation — PostgreSQL real', () => {
         estado: 'SP',
         pais: 'BR',
         tipo_cliente: 'artista',
-        tipo_servico: 'distribuicao',
+        tipoServico: 'distribuicao',
         responsavel: 'ana',
         prioridade: 'alta',
         temperatura: 'quente',
-        origem_lead: 'indicacao',
+        origemLead: 'indicacao',
         valor_estimado: '1500.00',
-        probabilidade_fechamento: '75.00',
+        probabilidadeFechamento: '75.00',
         proximo_follow_up: new Date('2026-07-01T12:00:00Z'),
         tags: ['vip', 'inbound'],
         payload_servico: { plano: 'pro' },
         dados_internos_crm: { score_interno: 9 },
       }));
       const read = await repo.findOneByOrFail({ id: lead.id });
-      expect(read.tipo_servico).toBe('distribuicao');
-      expect(read.origem_lead).toBe('indicacao');
-      expect(read.probabilidade_fechamento).toBe('75.00');
+      expect(read.tipoServico).toBe('distribuicao');
+      expect(read.origemLead).toBe('indicacao');
+      expect(read.probabilidadeFechamento).toBe('75.00');
       expect(read.tags).toEqual(['vip', 'inbound']);
     } finally {
       await qr.rollbackTransaction();

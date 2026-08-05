@@ -34,6 +34,99 @@ function readEnv(key: string): string {
     .trim().replace(/^["']|["']$/g, '');
 }
 
+async function ensureE2eTenants(owner: DataSource): Promise<void> {
+  const organizationId = '90000000-0000-0000-0000-000000000001';
+
+  await owner.query(
+    `
+      INSERT INTO organizations (
+        id,
+        name,
+        slug,
+        plan,
+        billing_status,
+        industry,
+        address,
+        config,
+        metadata
+      )
+      VALUES (
+        $1,
+        'MUSIC OS 360 E2E',
+        'music-os-360-e2e',
+        'starter',
+        'trial',
+        'gravadora',
+        '{}'::jsonb,
+        '{}'::jsonb,
+        '{}'::jsonb
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        updated_at = NOW()
+    `,
+    [organizationId],
+  );
+
+  await owner.query(
+    `
+      INSERT INTO tenants (
+        id,
+        org_id,
+        name,
+        slug,
+        plan,
+        features,
+        settings,
+        active
+      )
+      VALUES
+        (
+          $1,
+          $3,
+          'MUSIC OS 360 E2E Tenant A',
+          'music-os-360-e2e-tenant-a',
+          'starter',
+          '{}'::jsonb,
+          '{}'::jsonb,
+          true
+        ),
+        (
+          $2,
+          $3,
+          'MUSIC OS 360 E2E Tenant B',
+          'music-os-360-e2e-tenant-b',
+          'starter',
+          '{}'::jsonb,
+          '{}'::jsonb,
+          true
+        )
+      ON CONFLICT (id) DO UPDATE SET
+        org_id = EXCLUDED.org_id,
+        name = EXCLUDED.name,
+        active = true,
+        updated_at = NOW()
+    `,
+    [TENANT_A, TENANT_B, organizationId],
+  );
+
+  const rows = await owner.query(
+    `
+      SELECT id
+      FROM tenants
+      WHERE id = ANY($1::uuid[])
+      ORDER BY id
+    `,
+    [[TENANT_A, TENANT_B]],
+  );
+
+  if (rows.length !== 2) {
+    throw new Error(
+      `Falha ao criar tenants E2E: esperados 2, encontrados ${rows.length}`,
+    );
+  }
+}
+
 /**
  * Colunas extras obrigatórias (além de id + tenant_id) por tabela.
  * `extra` recebe o mapa de FKs já semeadas (fkCol → id do pai do tenant atual).
@@ -157,10 +250,12 @@ const SUBLOTE_HARMONIZED_3VA: TableCfg[] = [
 // FASE 3V-B — representantes das 2 famílias harmonizadas (RAW ::text → padrão).
 // financial_* (FORCE ON) e marketing_* (FORCE OFF); policy idêntica às 15.
 const SUBLOTE_HARMONIZED_3VB: TableCfg[] = [
-  { table: 'financial_categories', extra: () => ({                                  // FORCE-RLS
-    path: 'p' + randomUUID().slice(0, 6), name: 'RLS_TEST',
-    slug: 'sl' + randomUUID().slice(0, 8), code: 'cd' + randomUUID().slice(0, 8),
-  }) },
+  {
+    table: 'financial_categories',
+    extra: () => ({
+      name: `RLS_TEST_${randomUUID().slice(0, 8)}`,
+    }),
+  },
   { table: 'marketing_projects', extra: () => ({ type: 'ARTIST', title: 'RLS_TEST' }) },
 ];
 
@@ -172,6 +267,7 @@ describe('RLS isolation harness (FASE 3B) — PostgreSQL real', () => {
     const ownerUrl = readEnv('DATABASE_URL');
     const appUrl = readEnv('APP_DATABASE_URL');
     owner = await new DataSource({ type: 'postgres', url: ownerUrl, ssl: false }).initialize();
+    await ensureE2eTenants(owner);
     app = await new DataSource({ type: 'postgres', url: appUrl, ssl: false }).initialize();
 
     // Pré-condição do harness: app role NÃO pode ter bypassrls (senão o teste é vazio).
