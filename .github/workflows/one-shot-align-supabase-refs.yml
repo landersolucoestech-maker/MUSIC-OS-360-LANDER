@@ -17,11 +17,10 @@ jobs:
         with:
           ref: dev
           fetch-depth: 0
-      - name: Align backend, tests and CI refs
+      - name: Align backend guard and tests
         run: |
           python3 <<'PY'
           from pathlib import Path
-          import re
 
           schema_path = Path('apps/api/src/core/config/env.schema.ts')
           schema = schema_path.read_text()
@@ -39,79 +38,62 @@ jobs:
           schema = schema.replace(
               "/** Branch MAIN do projeto Supabase (contém o schema real; ≠ produção). */\n"
               "export const SUPABASE_MAIN_REF = 'sxmfeocztlztvpdnxayk';\n",
-              "",
+              "/** Alias legado para guards operacionais que bloqueiam explicitamente produção. */\n"
+              "export const SUPABASE_MAIN_REF = SUPABASE_PROD_REF;\n",
           )
           schema = schema.replace(
               "  SUPABASE_STAGING_REF,\n  SUPABASE_MAIN_REF,\n  SUPABASE_DEV_REF,\n",
               "  SUPABASE_STAGING_REF,\n  SUPABASE_DEV_REF,\n",
           )
           assert 'jtizbxbrwyczbkdiruoq' not in schema
-          assert 'SUPABASE_MAIN_REF' not in schema
+          assert "export const SUPABASE_MAIN_REF = SUPABASE_PROD_REF;" in schema
           schema_path.write_text(schema)
 
           spec_path = Path('apps/api/src/core/config/env.schema.spec.ts')
           spec = spec_path.read_text()
-          spec = spec.replace("  SUPABASE_MAIN_REF,\n", "")
-
-          def remove_test(source: str, title_fragment: str) -> str:
-              marker = "    it('" + title_fragment
-              start = source.find(marker)
-              if start == -1:
-                  return source
-              line_start = source.rfind('\n', 0, start) + 1
-              i = start
-              depth = 0
-              seen_open = False
-              while i < len(source):
-                  ch = source[i]
-                  if ch == '{':
-                      depth += 1
-                      seen_open = True
-                  elif ch == '}':
-                      depth -= 1
-                  if seen_open and depth == 0 and source.startswith(');', i + 1):
-                      end = i + 3
-                      if end < len(source) and source[end] == '\n':
-                          end += 1
-                      return source[:line_start] + source[end:]
-                  i += 1
-              raise RuntimeError(f'Não foi possível remover teste: {title_fragment}')
-
-          spec = remove_test(spec, 'MAIN_REF nunca é o esperado')
-          spec = remove_test(spec, 'production + MAIN_REF → falha')
-          spec = spec.replace('SUPABASE_MAIN_REF', 'SUPABASE_PROD_REF')
-          spec = spec.replace('development + MAIN_REF', 'development + projeto de produção')
-          spec = spec.replace('development + MAIN → bloqueado', 'development + projeto de produção → bloqueado')
-
-          anchor = "      expect(expectedSupabaseRef('production')).toBe(SUPABASE_PROD_REF);\n"
-          insertion = (
-              anchor
-              + "      expect(SUPABASE_PROD_REF).toBe('sxmfeocztlztvpdnxayk');\n"
-              + "      expect(forbiddenSupabaseRefs('production')).not.toContain(SUPABASE_PROD_REF);\n"
+          spec = spec.replace(
+              "    it('MAIN_REF nunca é o esperado de nenhum ambiente (main ≠ production)', () => {\n"
+              "      for (const env of ['development', 'test', 'staging', 'production']) {\n"
+              "        expect(expectedSupabaseRef(env)).not.toBe(SUPABASE_MAIN_REF);\n"
+              "        expect(forbiddenSupabaseRefs(env)).toContain(SUPABASE_MAIN_REF);\n"
+              "      }\n"
+              "    });\n",
+              "    it('MAIN_REF é alias do projeto de produção real', () => {\n"
+              "      expect(SUPABASE_MAIN_REF).toBe(SUPABASE_PROD_REF);\n"
+              "      expect(SUPABASE_PROD_REF).toBe('sxmfeocztlztvpdnxayk');\n"
+              "      expect(expectedSupabaseRef('production')).toBe(SUPABASE_MAIN_REF);\n"
+              "      expect(forbiddenSupabaseRefs('production')).not.toContain(SUPABASE_MAIN_REF);\n"
+              "    });\n",
           )
-          spec = spec.replace(anchor, insertion, 1)
-          assert 'SUPABASE_MAIN_REF' not in spec
+          spec = spec.replace(
+              "    it('production + MAIN_REF → falha (main não é sinônimo de production)', () => {\n"
+              "      const errors = collectSupabaseEnvErrors({\n"
+              "        SUPABASE_URL: url(SUPABASE_MAIN_REF),\n"
+              "        DATABASE_URL: pooler(SUPABASE_MAIN_REF),\n"
+              "        SUPABASE_ANON_KEY: jwtFor(SUPABASE_MAIN_REF, 'anon'),\n"
+              "      }, 'production');\n"
+              "      expect(errors.some((e) => e.includes('OUTRO ambiente'))).toBe(true);\n"
+              "    });\n",
+              "    it('production + MAIN_REF → passa porque MAIN é produção', () => {\n"
+              "      const errors = collectSupabaseEnvErrors({\n"
+              "        SUPABASE_URL: url(SUPABASE_MAIN_REF),\n"
+              "        DATABASE_URL: pooler(SUPABASE_MAIN_REF),\n"
+              "        SUPABASE_ANON_KEY: jwtFor(SUPABASE_MAIN_REF, 'anon'),\n"
+              "      }, 'production');\n"
+              "      expect(errors).toEqual([]);\n"
+              "    });\n",
+          )
           spec_path.write_text(spec)
-
-          ci_path = Path('.github/workflows/ci.yml')
-          ci = ci_path.read_text().replace('jtizbxbrwyczbkdiruoq', 'sxmfeocztlztvpdnxayk')
-          ci_path.write_text(ci)
-
-          Path('.github/workflows/one-shot-align-supabase-refs.yml').unlink()
           PY
       - name: Verify patch scope
         run: |
           git diff --check
-          ! git grep -n 'jtizbxbrwyczbkdiruoq' -- ':!docs/SUPABASE_ENVIRONMENTS.md'
-          ! git grep -n 'SUPABASE_MAIN_REF'
+          ! git grep -n 'jtizbxbrwyczbkdiruoq' -- apps/api/src/core/config/env.schema.ts
           git diff --name-only
       - name: Commit patch
         run: |
           git config user.name "landersolucoestech-maker"
           git config user.email "landersolucoestech@gmail.com"
-          git add apps/api/src/core/config/env.schema.ts \
-                  apps/api/src/core/config/env.schema.spec.ts \
-                  .github/workflows/ci.yml \
-                  .github/workflows/one-shot-align-supabase-refs.yml
+          git add apps/api/src/core/config/env.schema.ts apps/api/src/core/config/env.schema.spec.ts
           git commit -m "fix(env): align backend Supabase production ref with main project"
           git push origin HEAD:dev
