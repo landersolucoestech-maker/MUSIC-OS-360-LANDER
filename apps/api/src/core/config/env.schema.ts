@@ -6,20 +6,19 @@ import { z } from 'zod';
 // scripts/env-check.mjs — qualquer alteração deve ser feita nos três lugares.
 //
 // MATRIZ DE AMBIENTES (incidente de isolamento 2026-07-16/17):
-//   development → SOMENTE DEV_REF; MAIN/STAGING/PROD explicitamente proibidos.
+//   development → SOMENTE DEV_REF; STAGING/PROD explicitamente proibidos.
 //   test        → NENHUM projeto remoto (sem fallback silencioso para DEV).
 //   staging     → SOMENTE STAGING_REF.
 //   production  → SOMENTE PROD_REF.
-// MAIN_REF é a branch principal do projeto Supabase — NÃO é sinônimo de
-// produção e não é aceito por nenhum NODE_ENV de runtime.
-export const SUPABASE_PROD_REF = 'jtizbxbrwyczbkdiruoq'; // confirmar por fonte administrativa antes de usar
+// O projeto Supabase MAIN é o ambiente de produção e permanece intacto até a liberação formal.
+export const SUPABASE_PROD_REF = 'sxmfeocztlztvpdnxayk';
 /** Branch STAGING persistente do projeto Supabase MAIN, criada na Parte 65
  * (2026-08-01) via mcp__Supabase__create_branch. Substitui o valor reservado
  * anteriormente ('khnaxcgjnvhhtgkozsif') que nunca correspondeu a um recurso
  * real — o placeholder ficou sem uso até este ref ser confirmado. */
 export const SUPABASE_STAGING_REF = 'jjnnjnxjkqipgqebijen';
-/** Branch MAIN do projeto Supabase (contém o schema real; ≠ produção). */
-export const SUPABASE_MAIN_REF = 'sxmfeocztlztvpdnxayk';
+/** Alias legado para guards operacionais que bloqueiam explicitamente produção. */
+export const SUPABASE_MAIN_REF = SUPABASE_PROD_REF;
 /** Branch DEV do projeto Supabase (único ref aceito em development). */
 export const SUPABASE_DEV_REF = 'rypnevnfipygyhysqpdo';
 /** Refs banidos de QUALQUER runtime (previews/branches excluídos). */
@@ -36,7 +35,6 @@ export const SUPABASE_ALLOWED_REFS: readonly string[] = [
 export const SUPABASE_KNOWN_REFS: readonly string[] = [
   SUPABASE_PROD_REF,
   SUPABASE_STAGING_REF,
-  SUPABASE_MAIN_REF,
   SUPABASE_DEV_REF,
 ];
 

@@ -30,11 +30,11 @@ describe('env.schema — matriz de isolamento de ambientes Supabase (incidente 2
       expect(expectedSupabaseRef('production')).toBe(SUPABASE_PROD_REF);
     });
 
-    it('MAIN_REF nunca é o esperado de nenhum ambiente (main ≠ production)', () => {
-      for (const env of ['development', 'test', 'staging', 'production']) {
-        expect(expectedSupabaseRef(env)).not.toBe(SUPABASE_MAIN_REF);
-        expect(forbiddenSupabaseRefs(env)).toContain(SUPABASE_MAIN_REF);
-      }
+    it('MAIN_REF é alias do projeto de produção real', () => {
+      expect(SUPABASE_MAIN_REF).toBe(SUPABASE_PROD_REF);
+      expect(SUPABASE_PROD_REF).toBe('sxmfeocztlztvpdnxayk');
+      expect(expectedSupabaseRef('production')).toBe(SUPABASE_MAIN_REF);
+      expect(forbiddenSupabaseRefs('production')).not.toContain(SUPABASE_MAIN_REF);
     });
   });
 
@@ -72,13 +72,13 @@ describe('env.schema — matriz de isolamento de ambientes Supabase (incidente 2
       expect(errors).toEqual([]);
     });
 
-    it('production + MAIN_REF → falha (main não é sinônimo de production)', () => {
+    it('production + MAIN_REF → passa porque MAIN é produção', () => {
       const errors = collectSupabaseEnvErrors({
         SUPABASE_URL: url(SUPABASE_MAIN_REF),
         DATABASE_URL: pooler(SUPABASE_MAIN_REF),
         SUPABASE_ANON_KEY: jwtFor(SUPABASE_MAIN_REF, 'anon'),
       }, 'production');
-      expect(errors.some((e) => e.includes('OUTRO ambiente'))).toBe(true);
+      expect(errors).toEqual([]);
     });
 
     it('production + DEV_REF → falha', () => {
