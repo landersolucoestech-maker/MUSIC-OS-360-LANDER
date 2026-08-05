@@ -1,0 +1,55 @@
+name: One-shot replace Supabase main ref consumers
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/one-shot-replace-main-ref-consumers.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+      - name: Replace legacy main-ref symbol in TypeScript consumers
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          files = [
+              Path('apps/api/scripts/verify-realtime-external.ts'),
+              Path('apps/api/src/core/config/verify-supabase-dev-ref.util.ts'),
+              Path('apps/api/src/core/config/verify-supabase-dev-ref.util.spec.ts'),
+              Path('apps/api/src/database/bootstrap-tenant-zero.cli.ts'),
+              Path('apps/api/src/database/seeds/index.ts'),
+          ]
+
+          for path in files:
+              text = path.read_text()
+              text = text.replace('SUPABASE_MAIN_REF', 'SUPABASE_PROD_REF')
+              text = text.replace('MAIN ref', 'PRODUCTION ref')
+              text = text.replace('MAIN_REF', 'PROD_REF')
+              path.write_text(text)
+          PY
+      - name: Verify patch
+        run: |
+          git diff --check
+          ! git grep -n 'SUPABASE_MAIN_REF' -- '*.ts'
+          git diff --name-only
+      - name: Commit patch
+        run: |
+          git config user.name "landersolucoestech-maker"
+          git config user.email "landersolucoestech@gmail.com"
+          git add apps/api/scripts/verify-realtime-external.ts \
+                  apps/api/src/core/config/verify-supabase-dev-ref.util.ts \
+                  apps/api/src/core/config/verify-supabase-dev-ref.util.spec.ts \
+                  apps/api/src/database/bootstrap-tenant-zero.cli.ts \
+                  apps/api/src/database/seeds/index.ts
+          git commit -m "fix(env): replace legacy main ref consumers with production ref"
+          git push origin HEAD:dev
