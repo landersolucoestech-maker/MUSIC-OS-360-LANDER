@@ -38,9 +38,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # RELEASE-01: cheap structural check, runs before any build — catches a
-      # workflow file being deleted/emptied on this branch again in the future.
-      # Does NOT prove the workflows are merged into `main` (that step is external).
       - name: Verify critical workflows present
         run: node scripts/verify-critical-workflows.mjs
 
@@ -50,53 +47,40 @@ jobs:
       - name: Lint
         run: pnpm turbo lint
 
-  # ─── Tests ────────────────────────────────────────────────────────────────────
   test:
     name: Tests
     runs-on: ubuntu-latest
     needs: quality
     env:
       NODE_ENV: test
-      # Minimal env for test runner — no real DB needed
       DATABASE_URL: "postgresql://localhost:5432/test_db"
       ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000001"
       ENCRYPTION_IV_SECRET: "test_iv_secret"
       JWT_SECRET: "test_jwt_secret"
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      # Workspace packages (types, ai-skills, …) must be built before app tests
-      # so their dist/ type declarations resolve.
       - name: Build workspace packages
         run: pnpm turbo build --filter='./packages/*'
-
       - name: Run API tests with coverage
         run: pnpm --filter @music-os-360/api test:ci
         env:
           CI: true
-
       - name: Run Web tests
         run: pnpm --filter @music-os-360/web test:run
         env:
           CI: true
-          # Dummy values: web tests import the Supabase client at load; real keys
-          # are never needed (mock mode), but the client requires the vars present.
           VITE_SUPABASE_URL: https://dummy.supabase.co
           VITE_SUPABASE_ANON_KEY: dummy-anon-key-for-ci
           VITE_MOCK_MODE: "true"
-
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
@@ -105,68 +89,46 @@ jobs:
           path: apps/api/coverage/
           retention-days: 7
 
-  # ─── Build ────────────────────────────────────────────────────────────────────
   build:
     name: Build
     runs-on: ubuntu-latest
     needs: [quality, test]
     env:
-      # BUG FIXED: 'https://placeholder.supabase.co' is 11 chars — shorter
-      # than extractSupabaseRef()'s 18-22 char ref pattern, so it always
-      # resolved to ref "unknown", which assert-supabase-env.mjs then always
-      # rejected as "outside allowlist" whenever NODE_ENV=production (this
-      # job never actually connects to Supabase — it's a pure compile smoke
-      # test). NODE_ENV=production below requires specifically the PROD ref
-      # (assert-supabase-env.mjs's cross-environment denylist rejects DEV/
-      # STAGING refs just as hard as an unrecognized one) — not a secret,
-      # just a project identifier, and syntactically satisfies the allowlist
-      # check without ever making a real network call.
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://jtizbxbrwyczbkdiruoq.supabase.co' }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://sxmfeocztlztvpdnxayk.supabase.co' }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder' }}
       VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:3001/api/v1' }}
-      # Mock mode OFF in CI builds — validates that production paths compile
       VITE_USE_MOCK: "false"
       VITE_MOCK_MODE: "false"
       NODE_ENV: production
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Build (frontend + API)
         run: pnpm turbo build
-
       - name: Upload frontend dist
         uses: actions/upload-artifact@v4
         with:
           name: web-dist
-          # Vite writes to repo-root /dist (see vite.config.mjs build.outDir),
-          # NOT apps/web/dist/. Empty artifact uploads otherwise.
           path: dist/
           retention-days: 7
           if-no-files-found: error
 
-  # ─── Docker build — validates that apps/api/Dockerfile actually produces an image ──
   docker-build:
     name: Docker Build (API)
     runs-on: ubuntu-latest
     needs: [quality]
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Build API image (no push)
         uses: docker/build-push-action@v6
         with:
@@ -177,14 +139,8 @@ jobs:
           tags: musicos360-api:ci-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
       - name: Smoke — image starts and /health/live responds
         env:
-          # Ephemeral, CI-only password: this Postgres container is created and
-          # destroyed entirely within this job (see Cleanup step below), never
-          # reused across runs/jobs, and never holds anything but throwaway
-          # smoke-test data. No production/staging credential, no repo secret —
-          # there is nothing here worth persisting or protecting beyond the job.
           CI_POSTGRES_PASSWORD: ci_only_ephemeral_password_ba3f0d
         run: |
           docker network create ci-net || true
@@ -192,17 +148,10 @@ jobs:
             -e POSTGRES_USER=musicos360 -e POSTGRES_PASSWORD="$CI_POSTGRES_PASSWORD" -e POSTGRES_DB=musicos360 \
             postgres:16-alpine
           docker run -d --rm --name redis --network ci-net redis:7-alpine
-          # Wait for PG to be ready
           for i in $(seq 1 30); do
             docker exec pg pg_isready -U musicos360 && break
             sleep 2
           done
-          # No --rm on this one: a crashed container auto-removes itself the
-          # instant it exits, which previously destroyed `docker logs api`
-          # before the failure branch below could ever read it (confirmed:
-          # every failure here read as "No such container: api" instead of a
-          # real stack trace). Cleanup step below removes it explicitly once
-          # logs have been captured either way.
           docker run -d --name api --network ci-net -p 3001:3001 \
             -e NODE_ENV=development \
             -e DATABASE_URL="postgresql://musicos360:$CI_POSTGRES_PASSWORD@pg:5432/musicos360" \
@@ -213,12 +162,10 @@ jobs:
             -e ENCRYPTION_KEY=33b29b3d331d95a7a029160cbbb4c64cc7e094271b0a6f501da19a596ade7217 \
             -e CORS_ORIGINS=http://localhost:5000 \
             musicos360-api:ci-${{ github.sha }}
-          # Wait up to 90s for /health/live
           ok=0
           for i in $(seq 1 45); do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/v1/health/live || true)
             if [ "$code" = "200" ]; then ok=1; break; fi
-            # Container exited early (crash) — no point waiting out the full 90s.
             status=$(docker inspect -f '{{.State.Status}}' api 2>/dev/null || echo "gone")
             if [ "$status" = "exited" ] || [ "$status" = "gone" ]; then break; fi
             sleep 2
@@ -230,7 +177,6 @@ jobs:
           echo "API healthy ✓"
           curl -s http://localhost:3001/api/v1/health/live
         shell: bash
-
       - name: API container logs and state on failure
         if: failure()
         run: |
@@ -243,89 +189,56 @@ jobs:
           echo "::group::docker logs api"
           docker logs api 2>&1 || true
           echo "::endgroup::"
-
       - name: Cleanup
         if: always()
         run: docker rm -f api pg redis 2>/dev/null || true
 
-  # ─── Security regression — fast checks for the FASE 9.4/9.5 fixes ─────────────
   security-regression:
     name: Security Regression (FASE 9.x fixes)
     runs-on: ubuntu-latest
     needs: [quality]
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: RolesGuard fail-closed in code
         run: |
           grep -q "WRITE_METHODS.has" apps/api/src/core/guards/roles.guard.ts || (echo "::error::RolesGuard fail-closed regression"; exit 1)
-
       - name: Realtime broadcasts use service_role (not client-decoded JWTs)
-        # Replaces the old "WS gateway uses TokenVerifierService" check —
-        # core/websocket/ws.gateway.ts (Socket.IO) no longer exists, replaced
-        # by core/realtime/realtime.service.ts (Supabase Realtime Broadcast).
-        # The equivalent regression here isn't "decodeJwtPayload" (that was
-        # specific to the old gateway's own connection-time auth) — it's
-        # RealtimeService doing ANY of its own client-JWT verification at
-        # all, which would duplicate (and could drift from) the RLS policies
-        # in 20260801000001_RealtimeBroadcastAuthorization that are the
-        # actual, sole authorization boundary for who can subscribe to what.
         run: |
           if grep -qE "decodeJwtPayload|jwt\.verify|jsonwebtoken" apps/api/src/core/realtime/realtime.service.ts; then
             echo "::error::RealtimeService should never verify client JWTs itself — Postgres RLS (auth.jwt()) is the only decision point"; exit 1
           fi
           grep -q "SUPABASE_SERVICE_ROLE_KEY" apps/api/src/core/realtime/realtime.service.ts || (echo "::error::RealtimeService missing service_role key usage"; exit 1)
-
       - name: Upload MIME extension validation present
         run: |
           grep -q "MIME_TO_EXTENSIONS" apps/api/src/storage/storage.service.ts || (echo "::error::Upload MIME extension check missing"; exit 1)
-
       - name: AuditInterceptor sanitization present
         run: |
           grep -q "sanitizeForAudit" apps/api/src/core/interceptors/audit.interceptor.ts || (echo "::error::AuditInterceptor sanitization missing"; exit 1)
-
       - name: Sentry/PostHog placeholder detection present
         run: |
           grep -q "isPlaceholder" apps/api/src/instrument.ts || (echo "::error::Sentry placeholder detection missing"; exit 1)
           grep -q "isPostHogPlaceholder" apps/api/src/core/analytics/posthog.service.ts || (echo "::error::PostHog placeholder detection missing"; exit 1)
-
       - name: Body limit + 413 handler present
-        # Structural (AST-based) check — see scripts/verify-body-limit-guard.mjs.
-        # The previous single-line grep for "express.json({ limit:" broke as a
-        # false negative whenever that call was reformatted across lines; this
-        # is immune to formatting and also validates the ceiling value and the
-        # rawBody capture needed for Stripe webhook signature verification.
         run: node scripts/verify-body-limit-guard.mjs
-
       - name: CORS silent reject (no Error throw)
-        # BUG FIXED: CORS config moved from main.ts to create-app.ts (Vercel
-        # packaging part) — this negative check (fails only if the BAD
-        # pattern is found) was silently passing by checking an empty file
-        # that no longer has any CORS code at all, good or bad.
         run: |
           if grep -q "callback(new Error(\`CORS:" apps/api/src/create-app.ts; then
             echo "::error::CORS still throws Error (would 500)"; exit 1
           fi
-
       - name: /metrics + AdminQueuesModule registered
         run: |
           grep -q "MetricsModule" apps/api/src/app.module.ts || (echo "::error::MetricsModule not registered"; exit 1)
           grep -q "AdminQueuesModule" apps/api/src/app.module.ts || (echo "::error::AdminQueuesModule not registered"; exit 1)
 
-  # ─── DB Verify — Fresh PostgreSQL — migrations + RLS + tenant isolation on an
-  # ephemeral DB. No secrets required; always runs, never skipped. ─────────────
   db-verify-fresh-postgres:
     name: DB Verify — Fresh PostgreSQL
     runs-on: ubuntu-latest
@@ -335,89 +248,51 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: musicos360
-          # Ephemeral, CI-only password (same rationale as Docker Build's
-          # smoke-test): this service container lives only for this job's
-          # duration and is torn down automatically by GitHub Actions when
-          # the job ends. No production/staging credential, no repo secret.
           POSTGRES_PASSWORD: ci_only_ephemeral_password_ba3f0d
           POSTGRES_DB: musicos360
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 10
     env:
-      # Built directly from the same ephemeral value above — no second secret
-      # needed just to duplicate what the service container already knows.
-      # musicos_app's password below is the throwaway, ephemeral-only LOGIN
-      # password local-auth-shim.sql itself sets — never a real secret, never
-      # reused outside a container that's destroyed when this job ends.
       DATABASE_URL: postgresql://musicos360:ci_only_ephemeral_password_ba3f0d@localhost:5432/musicos360
       APP_DATABASE_URL: postgresql://musicos_app:local_only_ephemeral_musicos_app_pw@localhost:5432/musicos360
       DB_SSL: 'false'
       ENCRYPTION_KEY: '33b29b3d331d95a7a029160cbbb4c64cc7e094271b0a6f501da19a596ade7217'
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Build workspace packages
-        # test:e2e imports from @music-os-360/types, which only resolves
-        # once the package's own build output exists.
         run: pnpm turbo build --filter='./packages/*'
-
       - name: Apply Supabase auth shim (local Postgres needs auth.jwt() etc.)
-        # Must match services.postgres.env.POSTGRES_PASSWORD above — the
-        # previous hardcoded "musicos360_dev" never matched the service
-        # container's actual password and would have failed here regardless
-        # of CI_POSTGRES_PASSWORD.
         run: PGPASSWORD=ci_only_ephemeral_password_ba3f0d psql -h localhost -U musicos360 -d musicos360 -f apps/api/scripts/local-auth-shim.sql
-
       - name: Run migrations
         run: pnpm --filter @music-os-360/api db:migrate
-
       - name: Verify no pending migrations
         run: pnpm --filter @music-os-360/api db:check
-
       - name: Migration source-of-truth guard (no dual tracking, no drift)
         run: node scripts/verify-migration-source-of-truth.mjs
-
       - name: DB Verify DEV jobs gate wiring guard (catches the "always skipped" class of bug)
         run: node scripts/verify-db-verify-gate-wiring.mjs
-
       - name: verify:rls (all tenant tables have RLS + policies)
         run: pnpm --filter @music-os-360/api verify:rls
-
       - name: verify:tenant-isolation (cross-tenant DB blocks — throwaway rows on this ephemeral DB)
         run: pnpm --filter @music-os-360/api verify:tenant-isolation
-
-      # ─── Segmented migration executor (Parte 72) — real Postgres, no mocks ──
-      # Proves db:migrate:application genuinely skips EXTERNAL_MANAGED
-      # migrations (RealtimeBroadcastAuthorization20260801000001) instead of
-      # aborting the whole run, and that everything else — including
-      # TenantZeroFormalization20260801000002, which comes right after it in
-      # migrations/index.ts — still applies. Resets the schema first so this
-      # is a clean fresh-DB run, independent of the full db:migrate above.
       - name: Reset schema for segmented-executor integration test
         run: |
           PGPASSWORD=ci_only_ephemeral_password_ba3f0d psql -h localhost -U musicos360 -d musicos360 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP SCHEMA IF EXISTS realtime CASCADE; DROP SCHEMA IF EXISTS auth CASCADE;"
-
       - name: Re-apply Supabase auth/realtime shim on the reset schema
         run: PGPASSWORD=ci_only_ephemeral_password_ba3f0d psql -h localhost -U musicos360 -d musicos360 -f apps/api/scripts/local-auth-shim.sql
-
       - name: db:migrate:application — must apply everything except Realtime
         run: pnpm --filter @music-os-360/api db:migrate:application
-
       - name: db:check:application — must report zero APPLICATION pending
         run: pnpm --filter @music-os-360/api db:check:application
-
       - name: Confirm Realtime migration was genuinely skipped (no tracking row, no false success)
         run: |
           COUNT=$(PGPASSWORD=ci_only_ephemeral_password_ba3f0d psql -h localhost -U musicos360 -d musicos360 -tAc "SELECT count(*) FROM musicos360_migrations WHERE name = 'RealtimeBroadcastAuthorization20260801000001'")
@@ -426,33 +301,21 @@ jobs:
             exit 1
           fi
           echo "Confirmed: Realtime migration correctly has zero tracking rows after db:migrate:application."
-
       - name: db:migrate (unfiltered) — converges the rest, including Realtime, on this fresh DB
         run: pnpm --filter @music-os-360/api db:migrate
-
       - name: db:check — must now report zero pending overall
         run: pnpm --filter @music-os-360/api db:check
-
       - name: verify:realtime-external — must report APPLIED_AND_VERIFIED once fully converged
         run: pnpm --filter @music-os-360/api verify:realtime-external
-
-      # This suite never ran in CI before dev's branch-condition bug was fixed
-      # (Parte 59) — now that it does, it surfaces pre-existing, unrelated
-      # issues (e.g. a schema-drift reference in reports-data.e2e-spec.ts)
-      # that need dedicated follow-up. Informational for now so this doesn't
-      # block every future push to dev on unrelated debt; promote to blocking
-      # once that follow-up lands.
       - name: test:e2e (RLS real via Postgres — informational, see apps/api/DATABASE.md)
         run: pnpm --filter @music-os-360/api test:e2e
         continue-on-error: true
 
-  # ─── .env.example coherence — no drift between code references and template ──
   env-example:
     name: Env Example Coherence
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Required envs referenced in code present in .env.example
         run: |
           missing=0
@@ -462,49 +325,26 @@ jobs:
               missing=$((missing + 1))
             fi
           done
-          # Soft gate for now — surfaces drift without blocking
           echo "Missing: $missing keys"
 
-  # ─── Security Audit ───────────────────────────────────────────────────────────
   security:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: pnpm audit (high+)
         run: pnpm audit --audit-level=high --prod
         continue-on-error: true
 
-  # ─── DB Verify — Application Migrations — DEV (Parte 72) ──────────────────────
-  # Read-only sanity check against the real DEV branch, scoped to APPLICATION
-  # migrations only (see apps/api/src/database/migration-classification.ts).
-  # Replaces the old blanket "DB Verify — Supabase DEV" job: that job used
-  # unfiltered db:check, which stayed permanently red the moment ANY migration
-  # became EXTERNAL_MANAGED (schema owned by a Supabase-managed service, e.g.
-  # `realtime`) — even though every migration this app actually owns kept
-  # applying fine. This job is what should gate deploys; the Realtime-specific
-  # state is reported separately below and must never make this one look red
-  # for a reason it doesn't control.
-  #
-  # Anti-production guard: datasource.ts (which db:check:application/verify:rls
-  # load) calls assertDatabaseCommandEnv() at module load — before any
-  # connection opens, it aborts if DATABASE_URL's Supabase ref isn't the one
-  # expected for NODE_ENV. This job never sets NODE_ENV=production, so it can
-  # only ever successfully target the DEV ref — a MAIN/STAGING/unknown ref
-  # hard-fails before opening a connection, let alone running a query.
   db-verify-application-dev:
     name: DB Verify — Application Migrations — DEV
     runs-on: ubuntu-latest
@@ -516,50 +356,31 @@ jobs:
       DB_VERIFY_ENABLED: ${{ vars.DB_VERIFY_ENABLED }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Check DB verification gate
         id: gate
         run: node scripts/db-verify-gate.mjs
-
       - uses: pnpm/action-setup@v4
         if: steps.gate.outputs.enabled == 'true'
         with:
           version: ${{ env.PNPM_VERSION }}
-
       - uses: actions/setup-node@v4
         if: steps.gate.outputs.enabled == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
-
       - name: Install dependencies
         if: steps.gate.outputs.enabled == 'true'
         run: pnpm install --frozen-lockfile
-
       - name: Validate Supabase project ref is DEV (never MAIN/STAGING/prod) before any query
         if: steps.gate.outputs.enabled == 'true'
         run: pnpm --filter @music-os-360/api exec tsx scripts/verify-supabase-dev-ref.ts
-
       - name: db:check:application (zero APPLICATION migrations pending) — read-only
         if: steps.gate.outputs.enabled == 'true'
         run: pnpm --filter @music-os-360/api db:check:application
-
       - name: verify:rls (all tenant tables have RLS + policies) — read-only
         if: steps.gate.outputs.enabled == 'true'
         run: pnpm --filter @music-os-360/api verify:rls
 
-  # ─── DB Verify — Realtime External — DEV (Parte 72) ───────────────────────────
-  # Physical, tracking-independent check of realtime.messages against the real
-  # DEV branch. Reports one of 5 states (see
-  # apps/api/src/database/realtime-external-verifier.ts):
-  #   APPLIED_AND_VERIFIED / PENDING_EXTERNAL_PRIVILEGE -> job SUCCEEDS (a
-  #     known, externally-blocked pending state is not an application
-  #     regression — GitHub Actions has no native "blocked" status, so this is
-  #     the closest honest equivalent: green, but the step log always states
-  #     which of the two it actually is, never silently "fine").
-  #   DRIFT / INVALID_POLICY / UNSAFE_PUBLIC_ACCESS -> job FAILS (a real
-  #     regression: the physical state diverged from what the migration
-  #     defines, or a channel became publicly readable).
   db-verify-realtime-external-dev:
     name: DB Verify — Realtime External — DEV
     runs-on: ubuntu-latest
@@ -571,41 +392,28 @@ jobs:
       DB_VERIFY_ENABLED: ${{ vars.DB_VERIFY_ENABLED }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Check DB verification gate
         id: gate
         run: node scripts/db-verify-gate.mjs
-
       - uses: pnpm/action-setup@v4
         if: steps.gate.outputs.enabled == 'true'
         with:
           version: ${{ env.PNPM_VERSION }}
-
       - uses: actions/setup-node@v4
         if: steps.gate.outputs.enabled == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
-
       - name: Install dependencies
         if: steps.gate.outputs.enabled == 'true'
         run: pnpm install --frozen-lockfile
-
       - name: Validate Supabase project ref is DEV (never MAIN/STAGING/prod) before any query
         if: steps.gate.outputs.enabled == 'true'
         run: pnpm --filter @music-os-360/api exec tsx scripts/verify-supabase-dev-ref.ts
-
       - name: verify:realtime-external (physical state, independent of tracking) — read-only
         if: steps.gate.outputs.enabled == 'true'
         run: pnpm --filter @music-os-360/api verify:realtime-external
 
-  # ─── Smoke Test — full API integration (post-deploy, staging only) ───────────
-  # smoke-test requires a live API server; run it in your deployment pipeline:
-  #   1. Deploy to staging
-  #   2. API_URL=https://staging.api.musicos360.app pnpm --filter @music-os-360/api smoke-test
-  # The smoke-test auto-bootstraps auth via GET /api/v1/dev-auth/token (staging only).
-
-  # ─── Release — inject SENTRY_RELEASE on merge to main ─────────────────────────
   release-tag:
     name: Tag Release
     runs-on: ubuntu-latest
@@ -613,10 +421,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-
       - name: Set SENTRY_RELEASE
         run: echo "SENTRY_RELEASE=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
       - name: Annotate deployment
         run: |
           echo "Release ${{ env.SENTRY_RELEASE }} ready for deployment"
