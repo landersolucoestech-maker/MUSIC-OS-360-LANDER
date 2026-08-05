@@ -6,7 +6,7 @@
  *   1. Nenhum ref Supabase banido (denylist) em .env*, código rastreado, workflows ou scripts.
  *   2. Frontend (VITE_SUPABASE_URL) e backend (SUPABASE_URL/DATABASE_URL/APP_DATABASE_URL)
  *      apontam para o MESMO projeto Supabase.
- *   3. Ref em uso pertence à allowlist (produção ou staging).
+ *   3. Ref em uso pertence à allowlist do ambiente.
  *   4. Envs obrigatórios presentes e não vazios.
  *   5. Mock/auth-bypass proibidos fora de development e coerentes entre web e api.
  *
@@ -24,17 +24,16 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 
 // MATRIZ DE AMBIENTES (espelho de env.schema.ts; incidente 2026-07-16/17):
 //   development→DEV_REF · test→nenhum remoto · staging→STAGING_REF · production→PROD_REF.
-//   MAIN_REF é a branch principal do Supabase — NÃO é produção, proibido em runtime.
-const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
+// O projeto Supabase main é o alvo de produção e permanece bloqueado até a liberação formal.
+const SUPABASE_PROD_REF = "sxmfeocztlztvpdnxayk";
 // Branch STAGING persistente do projeto MAIN, criada na Parte 65 (2026-08-01).
 // Substitui o placeholder reservado ('khnaxcgjnvhhtgkozsif') que nunca
 // correspondeu a um recurso real.
 const SUPABASE_STAGING_REF = "jjnnjnxjkqipgqebijen";
-const SUPABASE_MAIN_REF = "sxmfeocztlztvpdnxayk";
 const SUPABASE_DEV_REF = "rypnevnfipygyhysqpdo";
 const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb", "sxdhnhoupjrnntrmjtyn"];
 const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
-const SUPABASE_KNOWN_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_MAIN_REF, SUPABASE_DEV_REF];
+const SUPABASE_KNOWN_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
 
 /**
  * Ref Supabase esperado para cada NODE_ENV — isolamento absoluto de ambientes.
@@ -225,7 +224,7 @@ const jwtSources = [
   ["SUPABASE_SERVICE_ROLE_KEY (api)", apiEnv.SUPABASE_SERVICE_ROLE_KEY, "service_role"],
 ];
 for (const [label, token, expectedRole] of jwtSources) {
-  if (!token) continue; // ausência é tratada por outras regras (obrigatoriedade)
+  if (!token) continue;
   const claims = jwtClaims(token);
   if (!claims) {
     errors.push(`${label} não é um JWT decodificável`);
