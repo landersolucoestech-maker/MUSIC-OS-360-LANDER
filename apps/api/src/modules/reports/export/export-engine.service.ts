@@ -10,6 +10,7 @@ import {
   Inject,
   Injectable,
   Optional,
+  PayloadTooLargeException,
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -37,11 +38,23 @@ import {
 import { fetchAccountingSummaryRows } from '../computed-fields/accounting-summary.report';
 import {
   EXPORT_FORMATS,
+  EXPORT_MAX_ROWS,
   type ExportQueryParams,
   type ExportResult,
 } from './export.types';
 
 const REPORT_MULTI_VALUE_SEPARATOR = ' | ';
+
+function assertExportSize(entity: string, rows: number): void {
+  if (rows <= EXPORT_MAX_ROWS) return;
+  throw new PayloadTooLargeException({
+    error: 'REPORT_EXPORT_TOO_LARGE',
+    message:
+      `A exportação de ${entity} possui mais de ${EXPORT_MAX_ROWS} linhas. ` +
+      'Nenhum arquivo parcial foi gerado. Reduza o conjunto com filtros ou use o fluxo assíncrono quando disponível.',
+    limit: EXPORT_MAX_ROWS,
+  });
+}
 
 @Injectable()
 export class ExportEngineService {
@@ -95,6 +108,7 @@ export class ExportEngineService {
       if (!this.ds) throw new ServiceUnavailableException('Banco de dados indisponivel');
       try {
         const rows = await this.resolveComputedReport(entity, tenantId);
+        assertExportSize(entity, rows.length);
         const columns = params.columns?.length
           ? params.columns.filter((column) => definition.exportableColumns.includes(column))
           : definition.exportableColumns;
@@ -136,6 +150,7 @@ export class ExportEngineService {
     const query = this.queryBuilder.build(definition, params, tenantId, { softDeleteColumn });
     try {
       const rows = (await this.ds.query(query.sql, query.parameters)) as Record<string, unknown>[];
+      assertExportSize(entity, rows.length);
       this.decryptEncryptedColumns(contract, query.columns, rows);
       const result = this.serialize(entity, sheetName, params.format, query.columns, rows);
       this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: rows.length, status: 'success' });
@@ -193,6 +208,7 @@ export class ExportEngineService {
       { softDeleteColumn, includeInternalId: true },
     );
     const rawRows = (await this.ds.query(query.sql, query.parameters)) as Record<string, unknown>[];
+    assertExportSize(entity, rawRows.length);
     this.decryptEncryptedColumns(contract, query.columns, rawRows);
 
     const resolver = REPEATING_GROUP_EXPORT_RESOLVERS[`${entity}.${group.key}`];
@@ -215,6 +231,7 @@ export class ExportEngineService {
         const blank: Record<string, unknown> = { ...general };
         for (const column of itemColumns) blank[column] = '';
         flatRows.push(blank);
+        assertExportSize(entity, flatRows.length);
         continue;
       }
 
@@ -227,6 +244,7 @@ export class ExportEngineService {
             : value;
         }
         flatRows.push(flat);
+        assertExportSize(entity, flatRows.length);
       }
     }
 
