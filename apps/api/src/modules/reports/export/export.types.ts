@@ -19,6 +19,10 @@ export interface ExportQueryParams {
   filters?: Record<string, string>;
   sort?: string;
   order?: 'ASC' | 'DESC';
+  /** @deprecated Export síncrono não é paginado; mantido para clientes legados. */
+  page?: number;
+  /** @deprecated Export síncrono não é paginado; mantido para clientes legados. */
+  pageSize?: number;
 }
 
 export interface BuiltExportQuery {
