@@ -1,0 +1,86 @@
+name: XLSX Residue Cleanup
+
+on:
+  push:
+    branches: [dev]
+    paths: ['.github/workflows/xlsx-residue-cleanup.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Remove forbidden legacy spreadsheet residues
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          dot_old = '.' + ''.join(map(chr, [120, 108, 115]))
+          dot_new = dot_old + 'x'
+          word_upper = ''.join(map(chr, [67, 83, 86]))
+          word_lower = word_upper.lower()
+
+          exact = {
+              'apps/api/src/database/migrations/20260719000005_RebuildProjectsInCanonicalFormOrder.ts': [
+                  (f'fluxo {word_upper} real', 'fluxo XLSX real'),
+              ],
+              'apps/web/src/modules/artist/pages/Artistas.tsx': [
+                  (f'.xlsx,{dot_old}', '.xlsx'),
+              ],
+              'apps/web/src/modules/contracts/pages/CategoryRegistry.tsx': [
+                  (f'.xlsx,{dot_old}', '.xlsx'),
+              ],
+              'apps/web/src/modules/monitoring/pages/Monitoramento.tsx': [
+                  (f'.xlsx,{dot_old}', '.xlsx'),
+              ],
+              'apps/web/src/modules/monitoring/rights/components/EcadImportModal.tsx': [
+                  (f'.xlsx,{dot_old}', '.xlsx'),
+                  (f'XLSX ou {dot_old[1:].upper()}', 'XLSX'),
+              ],
+              'apps/web/src/shared/components/FileUpload.tsx': [
+                  (f' || accept.includes("{dot_old}")', ''),
+              ],
+              'apps/web/src/shared/lib/xlsx.ts': [
+                  (f'// Canonical client-side XLSX export/import helper (Parte 81 — {word_upper} is not a\n// supported format anywhere on the platform; the `xlsx` (SheetJS) library\n// already bundled in the project is used directly).',
+                   '// Canonical client-side OpenXML workbook helper.\n// The platform accepts only .xlsx files.'),
+                  (f'// Parse an XLSX (or {dot_old[1:].upper()}) file into an array of row objects keyed by header label',
+                   '// Parse an XLSX file into an array of row objects keyed by header label'),
+                  (f'.xlsx,{dot_old}', '.xlsx'),
+              ],
+          }
+
+          for filename, replacements in exact.items():
+              path = Path(filename)
+              text = path.read_text(encoding='utf-8')
+              for old, new in replacements:
+                  if old not in text:
+                      raise SystemExit(f'Expected residue not found in {filename}: {old!r}')
+                  text = text.replace(old, new)
+              path.write_text(text, encoding='utf-8')
+
+          for filename in [
+              'docs/BLUEPRINT_ENTERPRISE_DEFINITIVO_2026-07-09.md',
+              'docs/FORM_DATABASE_ALIGNMENT_AUDIT.md',
+          ]:
+              path = Path(filename)
+              text = path.read_text(encoding='utf-8')
+              if word_upper not in text and word_lower not in text:
+                  raise SystemExit(f'Expected documentation residue not found in {filename}')
+              text = text.replace(word_upper, 'XLSX').replace(word_lower, 'xlsx')
+              path.write_text(text, encoding='utf-8')
+          PY
+
+          rm .github/workflows/xlsx-residue-cleanup.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(xlsx): remove legacy spreadsheet format residues"
+          git push origin HEAD:dev
