@@ -41,7 +41,10 @@ const FORBIDDEN_PATTERNS = [
   },
   {
     label: 'arquivo de intercâmbio legado fora do contrato XLSX',
-    regex: /\.exp\b/i,
+    // Restrict the check to string literals that actually reference a file.
+    // A generic /\.exp\b/ also matches legitimate JavaScript/TypeScript
+    // properties such as JWT `payload.exp` and OAuth `state.exp`.
+    regex: /(?:['"`])[^'"`\r\n]*\.exp\b[^'"`\r\n]*(?:['"`])/i,
   },
   {
     label: 'biblioteca delimitada legada',
