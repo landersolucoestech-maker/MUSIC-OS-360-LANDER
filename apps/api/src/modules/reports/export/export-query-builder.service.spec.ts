@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ExportQueryBuilderService } from './export-query-builder.service';
 import { EntityCategory } from '../entity-metadata.types';
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
-import type { ExportQueryParams } from './export.types';
+import { EXPORT_DETECTION_LIMIT, type ExportQueryParams } from './export.types';
 
 const DEF: ReportEntityDefinition = {
   entityName: 'ArtistEntity', tableName: 'artists', category: EntityCategory.REPORTABLE,
@@ -16,7 +16,7 @@ const DEF: ReportEntityDefinition = {
   requiredImportColumns: ['nome_artistico'],
   supportsExport: true, supportsImport: true,
 };
-const base = (p: Partial<ExportQueryParams> = {}): ExportQueryParams => ({ format: 'xlsx', page: 1, pageSize: 100, ...p });
+const base = (p: Partial<ExportQueryParams> = {}): ExportQueryParams => ({ format: 'xlsx', ...p });
 
 describe('ExportQueryBuilderService — query segura entity-driven', () => {
   const svc = new ExportQueryBuilderService();
@@ -51,13 +51,14 @@ describe('ExportQueryBuilderService — query segura entity-driven', () => {
   it('ordenação permitida; proibida → 400', () => {
     const q = svc.build(DEF, base({ sort: 'created_at', order: 'DESC' }), 't');
     expect(q.sql).toContain('ORDER BY "created_at" DESC');
-    expect(() => svc.build(DEF, base({ sort: 'email' }), 't')).toThrow(BadRequestException);
+    expect(() => svc.build(DEF, base({ sort: 'email' } as ExportQueryParams), 't')).toThrow(BadRequestException);
   });
 
-  it('paginação respeita limite máximo', () => {
-    const q = svc.build(DEF, base({ pageSize: 999999, page: 3 }), 't');
-    expect(q.parameters).toContain(1000);        // pageSize clamp
-    expect(q.parameters).toContain(2000);        // offset (page-1)*1000
+  it('consulta o conjunto completo até a linha sentinela, sem OFFSET ou paginação silenciosa', () => {
+    const q = svc.build(DEF, base(), 't');
+    expect(q.sql).toContain(`LIMIT $${q.parameters.length}`);
+    expect(q.sql).not.toContain('OFFSET');
+    expect(q.parameters.at(-1)).toBe(EXPORT_DETECTION_LIMIT);
   });
 
   it('soft delete aplica deleted_at IS NULL quando informado', () => {
