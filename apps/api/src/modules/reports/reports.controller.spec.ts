@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { parseExportParams } from './reports.controller';
 
-describe('parseExportParams — contrato XLSX e paginação', () => {
+describe('parseExportParams — contrato XLSX sem paginação', () => {
   it('usa xlsx como formato padrão', () => {
     expect(parseExportParams({}).format).toBe('xlsx');
   });
@@ -25,7 +25,7 @@ describe('parseExportParams — contrato XLSX e paginação', () => {
     }
   });
 
-  it('deduplica colunas e preserva filtros seguros', () => {
+  it('deduplica colunas, preserva filtros seguros e ignora paginação legada', () => {
     const params = parseExportParams({
       format: 'xlsx',
       columns: 'a, b ,a,c',
@@ -39,29 +39,8 @@ describe('parseExportParams — contrato XLSX e paginação', () => {
     expect(params.filters).toEqual({ status: 'ativo' });
     expect(params.sort).toBe('nome');
     expect(params.order).toBe('DESC');
-    expect(params.page).toBe(2);
-    expect(params.pageSize).toBe(50);
-  });
-
-  it.each([
-    [{ page: '0' }, 'page'],
-    [{ page: '-1' }, 'page'],
-    [{ page: '1.5' }, 'page'],
-    [{ page: 'abc' }, 'page'],
-    [{ pageSize: '0' }, 'pageSize'],
-    [{ pageSize: '1001' }, 'pageSize'],
-    [{ pageSize: 'Infinity' }, 'pageSize'],
-  ])('rejeita paginação inválida: %p', (query, field) => {
-    try {
-      parseExportParams(query);
-      throw new Error('deveria ter lançado');
-    } catch (error) {
-      expect(error).toBeInstanceOf(BadRequestException);
-      expect((error as BadRequestException).getResponse()).toMatchObject({
-        error: 'INVALID_REPORT_PAGINATION',
-        message: expect.stringContaining(field),
-      });
-    }
+    expect(params).not.toHaveProperty('page');
+    expect(params).not.toHaveProperty('pageSize');
   });
 
   it('descarta chaves inseguras de filtro', () => {
@@ -70,6 +49,6 @@ describe('parseExportParams — contrato XLSX e paginação', () => {
     query.__proto__ = 'contaminado';
     const params = parseExportParams(query);
     expect(params.filters).toEqual({ status: 'ativo' });
-    expect(Object.prototype.polluted).toBeUndefined();
+    expect((Object.prototype as Record<string, unknown>)['polluted']).toBeUndefined();
   });
 });
