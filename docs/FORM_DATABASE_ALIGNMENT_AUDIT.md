@@ -733,7 +733,7 @@ canônica.
 genero, idioma, compositores[], interpretes[], produtores[], letra,
 audioUrl) era serializada com `JSON.stringify()` dentro de `descricao` —
 encontrados **dois** writers reais com o mesmo anti-padrão:
-`ProjetoFormModal.tsx` (formulário principal) e o import em massa (CSV) em
+`ProjetoFormModal.tsx` (formulário principal) e o import em massa (XLSX) em
 `Projetos.tsx`. Ambos corrigidos.
 
 Pesquisados nomes de tabela equivalentes existentes (`project_tracks`,

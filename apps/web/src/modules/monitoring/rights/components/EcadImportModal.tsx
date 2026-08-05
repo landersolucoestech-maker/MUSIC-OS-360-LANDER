@@ -44,7 +44,7 @@ export function EcadImportModal({ open, onOpenChange }: Props) {
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const ACCEPTED = [".xlsx", ".xls", ".exp"];
+  const ACCEPTED = [".xlsx"];
 
   const handleFile = (f: File) => {
     const ext = "." + f.name.split(".").pop()?.toLowerCase();
@@ -107,7 +107,7 @@ export function EcadImportModal({ open, onOpenChange }: Props) {
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold">Arraste o arquivo ou clique para selecionar</p>
-                <p className="text-xs text-muted-foreground mt-1">Formatos aceitos: <span className="font-sans">.xlsx  .xls  .exp</span> — máx. 50 MB</p>
+                <p className="text-xs text-muted-foreground mt-1">Formatos aceitos: <span className="font-sans">.xlsx</span> — máx. 50 MB</p>
               </div>
             </div>
           ) : (

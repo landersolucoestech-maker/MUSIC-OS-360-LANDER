@@ -245,7 +245,7 @@ export default function Artistas() {
           <input
             ref={excelInputRef}
             type="file"
-            accept=".xlsx,.xls"
+            accept=".xlsx"
             className="hidden"
             onChange={handleExcelImport}
             data-testid="input-import-excel"

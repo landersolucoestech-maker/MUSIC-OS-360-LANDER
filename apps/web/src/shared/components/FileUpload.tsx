@@ -11,7 +11,7 @@ function inferCategory(accept?: string): UploadCategory {
   if (!accept) return "documents";
   if (accept.includes("image/")) return "images";
   if (accept.includes("audio/")) return "audio";
-  if (accept.includes("spreadsheet") || accept.includes(".xlsx") || accept.includes(".xls")) return "spreadsheets";
+  if (accept.includes("spreadsheet") || accept.includes(".xlsx")) return "spreadsheets";
   return "documents";
 }
 

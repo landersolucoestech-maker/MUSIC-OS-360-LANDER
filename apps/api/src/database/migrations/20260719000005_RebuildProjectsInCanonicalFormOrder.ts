@@ -12,7 +12,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * filtro) → "Observações" → "Status" (último campo do formulário).
  *
  * `artista_id` nunca é enviado pelo ProjetoFormModal (create/edit) — só é
- * escrito pelo import em massa (Projetos.tsx, fluxo CSV real, não órfão) —
+ * escrito pelo import em massa (Projetos.tsx, fluxo XLSX real, não órfão) —
  * mantido como relação técnica após os campos do formulário interativo.
  *
  * `orcamento` e `descricao` são aceitos pelo CreateProjectDto/UpdateProjectDto

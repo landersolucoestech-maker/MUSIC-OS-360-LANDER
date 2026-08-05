@@ -1,6 +1,5 @@
-// Canonical client-side XLSX export/import helper (Parte 81 — CSV is not a
-// supported format anywhere on the platform; the `xlsx` (SheetJS) library
-// already bundled in the project is used directly).
+// Canonical client-side OpenXML workbook helper.
+// The platform accepts only .xlsx files.
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 
@@ -61,7 +60,7 @@ export function exportToXlsx<T extends Record<string, any>>(
   toast.success(`${data.length} registro(s) exportado(s) com sucesso!`);
 }
 
-// Parse an XLSX (or XLS) file into an array of row objects keyed by header label
+// Parse an XLSX file into an array of row objects keyed by header label
 export function parseXlsx(file: File): Promise<Record<string, string>[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -119,7 +118,7 @@ export function importXlsx(
 ): void {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = ".xlsx,.xls";
+  input.accept = ".xlsx";
 
   input.onchange = async (e) => {
     const file = (e.target as HTMLInputElement).files?.[0];

@@ -415,7 +415,7 @@ export default function Monitoramento() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx"
               className="hidden"
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
             />

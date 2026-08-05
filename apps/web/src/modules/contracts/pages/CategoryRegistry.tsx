@@ -214,7 +214,7 @@ export default function CategoryRegistry({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".xlsx,.xls"
+        accept=".xlsx"
         className="hidden"
         onChange={handleImport}
         data-testid="input-import-categories-file"
