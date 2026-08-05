@@ -54,7 +54,7 @@ describe('Guarda permanente: forms/pipelines nunca reportáveis (Parte 87)', () 
         { decryptNullable: jest.fn() } as never,
       );
       await expect(
-        engine.export(table, { format: 'xlsx', page: 1, pageSize: 10 }, 'tenant-1', 'user-1'),
+        engine.export(table, { format: 'xlsx' }, 'tenant-1', 'user-1'),
       ).rejects.toMatchObject({ response: { error: 'REPORT_ENTITY_NOT_AVAILABLE' } });
     });
 
