@@ -22,16 +22,16 @@ const config: Config = {
   ],
   coverageDirectory: '../coverage',
   testEnvironment: 'node',
-  // P0-09: Thresholds aligned to current baseline (FASE 10). The strict-types
-  // migration + new tests for FASE 9.4/9.5 fixes (RolesGuard, TokenVerifier,
-  // sanitizeForAudit, MIME extension, etc.) will incrementally raise these.
-  // Plan: +2% per quarter on lines/statements until 60%+; +1% on branches.
+  // Baseline locked just below the verified CI coverage from 2026-08-05:
+  // lines 46.43%, statements 46.23%, functions 39.24%, branches 29.59%.
+  // Any meaningful regression now fails CI instead of remaining hidden behind
+  // the former 13/12/2/1 thresholds.
   coverageThreshold: {
     global: {
-      lines:      13,
-      statements: 12,
-      functions:   2,
-      branches:    1,
+      lines:      45,
+      statements: 45,
+      functions:  38,
+      branches:   28,
     },
   },
   moduleNameMapper: {
