@@ -4,8 +4,14 @@
 export type ExportFormat = 'xlsx';
 
 export const EXPORT_FORMATS: ExportFormat[] = ['xlsx'];
-export const EXPORT_DEFAULT_PAGE_SIZE = 100;
-export const EXPORT_MAX_PAGE_SIZE = 1000;
+
+/**
+ * XLSX é materializado em memória pela biblioteca atual. Acima deste volume a
+ * requisição síncrona deve falhar explicitamente, nunca entregar uma planilha
+ * parcial. O limite + 1 é consultado para detectar excesso sem COUNT adicional.
+ */
+export const EXPORT_MAX_ROWS = 50_000;
+export const EXPORT_DETECTION_LIMIT = EXPORT_MAX_ROWS + 1;
 
 export interface ExportQueryParams {
   format: ExportFormat;
@@ -13,8 +19,6 @@ export interface ExportQueryParams {
   filters?: Record<string, string>;
   sort?: string;
   order?: 'ASC' | 'DESC';
-  page: number;
-  pageSize: number;
 }
 
 export interface BuiltExportQuery {
