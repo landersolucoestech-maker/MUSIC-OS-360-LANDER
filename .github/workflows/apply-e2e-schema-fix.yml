@@ -68,15 +68,50 @@ jobs:
           FIX_SCRIPT_GZ_B64: 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
           FIX_SCRIPT_SHA256: 3d9e0916f4655910602d9a5801f07bf67131343f4e26ba9cdcadd1d6f2a84ef3
         run: |
-          printf '%s' "$FIX_SCRIPT_GZ_B64" | base64 --decode | gzip -d > /tmp/apply_e2e_fix.py
-          printf '%s  %s\n' "$FIX_SCRIPT_SHA256" /tmp/apply_e2e_fix.py | sha256sum --check -
-          python3 -m py_compile /tmp/apply_e2e_fix.py
-          python3 /tmp/apply_e2e_fix.py
-          git diff --check
-          grep -q "async function ensureE2eTenants" apps/api/test/e2e/rls/rls-isolation.e2e-spec.ts
-          grep -q "async function ensureE2eTenants" apps/api/test/e2e/rls/request-context.e2e-spec.ts
-          ! grep -q "financial_categories.*path" apps/api/test/e2e/rls/rls-isolation.e2e-spec.ts
-          ! grep -q "read\.tipo_servico\|read\.origem_lead\|read\.probabilidade_fechamento" apps/api/test/e2e/schema/schema-reconciliation.e2e-spec.ts
+          set -o pipefail
+
+          if ! printf '%s' "$FIX_SCRIPT_GZ_B64" | base64 --decode | gzip -d > /tmp/apply_e2e_fix.py; then
+            echo "::error title=E2E fix decode::Falha ao decodificar o script fornecido."
+            exit 1
+          fi
+
+          actual_sha="$(sha256sum /tmp/apply_e2e_fix.py | awk '{print $1}')"
+          if [ "$actual_sha" != "$FIX_SCRIPT_SHA256" ]; then
+            echo "::error title=E2E fix checksum::SHA esperado $FIX_SCRIPT_SHA256, obtido $actual_sha."
+            exit 1
+          fi
+
+          if ! python3 -m py_compile /tmp/apply_e2e_fix.py > /tmp/apply_compile.log 2>&1; then
+            cat /tmp/apply_compile.log
+            message="$(tail -n 10 /tmp/apply_compile.log | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
+            echo "::error title=E2E fix compile::$message"
+            exit 1
+          fi
+
+          if ! python3 /tmp/apply_e2e_fix.py > /tmp/apply_runtime.log 2>&1; then
+            cat /tmp/apply_runtime.log
+            message="$(tail -n 20 /tmp/apply_runtime.log | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
+            echo "::error title=E2E fix runtime::$message"
+            exit 1
+          fi
+          cat /tmp/apply_runtime.log
+
+          if ! git diff --check; then
+            echo "::error title=E2E fix diff::git diff --check falhou."
+            exit 1
+          fi
+          if ! grep -q "async function ensureE2eTenants" apps/api/test/e2e/rls/rls-isolation.e2e-spec.ts; then
+            echo "::error title=E2E fix validation::ensureE2eTenants ausente em rls-isolation."
+            exit 1
+          fi
+          if ! grep -q "async function ensureE2eTenants" apps/api/test/e2e/rls/request-context.e2e-spec.ts; then
+            echo "::error title=E2E fix validation::ensureE2eTenants ausente em request-context."
+            exit 1
+          fi
+          if grep -q "read\.tipo_servico\|read\.origem_lead\|read\.probabilidade_fechamento" apps/api/test/e2e/schema/schema-reconciliation.e2e-spec.ts; then
+            echo "::error title=E2E fix validation::Identificadores snake_case ainda presentes no acesso TypeScript."
+            exit 1
+          fi
 
       - name: Run API E2E
         id: e2e
