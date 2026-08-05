@@ -1,6 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
-import { EXPORT_MAX_PAGE_SIZE, type BuiltExportQuery, type ExportQueryParams } from './export.types';
+import {
+  EXPORT_DETECTION_LIMIT,
+  type BuiltExportQuery,
+  type ExportQueryParams,
+} from './export.types';
 import {
   contractEncryptedFields,
   contractMetadataFields,
@@ -16,10 +20,6 @@ function assertIdent(name: string): void {
 function quote(name: string): string {
   assertIdent(name);
   return `"${name}"`;
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
 }
 
 function metadataSelectExpression(column: string, physicalJsonColumn: string): string {
@@ -86,15 +86,10 @@ export class ExportQueryBuilderService {
       orderBy = ` ORDER BY ${quote(physical(params.sort))} ${params.order === 'DESC' ? 'DESC' : 'ASC'}`;
     }
 
-    const pageSize = clamp(Math.trunc(params.pageSize) || 1, 1, EXPORT_MAX_PAGE_SIZE);
-    const page = Math.max(1, Math.trunc(params.page) || 1);
-    parameters.push(pageSize);
+    parameters.push(EXPORT_DETECTION_LIMIT);
     const limitIndex = parameters.length;
-    parameters.push((page - 1) * pageSize);
-    const offsetIndex = parameters.length;
-
     const sql = `SELECT ${selectParts.join(', ')} FROM ${quote(def.tableName)} ` +
-      `WHERE ${where.join(' AND ')}${orderBy} LIMIT $${limitIndex} OFFSET $${offsetIndex}`;
+      `WHERE ${where.join(' AND ')}${orderBy} LIMIT $${limitIndex}`;
 
     return { sql, parameters, columns };
   }
