@@ -20,7 +20,12 @@ vi.mock("@/shared/lib/env", () => ({
   API_BASE_URL: "http://localhost:3001",
 }));
 
-import { reportsApi, triggerBlobDownload, XLSX_MIME } from "../services/reports-api";
+import {
+  reportsApi,
+  triggerBlobDownload,
+  XLSX_MIME,
+  type ImportUploadBody,
+} from "../services/reports-api";
 
 describe("reportsApi — Central de Relatórios real-only", () => {
   beforeEach(() => {
@@ -88,7 +93,11 @@ describe("reportsApi — Central de Relatórios real-only", () => {
   });
 
   it("envia importValidate para a API real", () => {
-    const body = { filename: "artistas.xlsx", mimeType: XLSX_MIME, contentBase64: "abc" };
+    const body: ImportUploadBody = {
+      filename: "artistas.xlsx",
+      mimeType: XLSX_MIME,
+      contentBase64: "abc",
+    };
 
     reportsApi.importValidate("artistas", body);
 
@@ -96,7 +105,11 @@ describe("reportsApi — Central de Relatórios real-only", () => {
   });
 
   it("envia importCommit para a API real", () => {
-    const body = { filename: "artistas.xlsx", mimeType: XLSX_MIME, contentBase64: "abc" };
+    const body: ImportUploadBody = {
+      filename: "artistas.xlsx",
+      mimeType: XLSX_MIME,
+      contentBase64: "abc",
+    };
 
     reportsApi.importCommit("artistas", body);
 
