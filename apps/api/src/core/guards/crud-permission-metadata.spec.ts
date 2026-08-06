@@ -124,13 +124,6 @@ const expectedRoutes: ExpectedRoute[] = [
   { controller: FinancialCategoriesController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'financial_category:read' },
   { controller: FinancialCategoriesController, methodName: 'tree', httpMethod: RequestMethod.GET, path: 'tree', role: 'viewer', permission: 'financial_category:read' },
   { controller: FinancialCategoriesController, methodName: 'search', httpMethod: RequestMethod.GET, path: 'search', role: 'viewer', permission: 'financial_category:read' },
-  { controller: FinancialCategoriesController, methodName: 'suggest', httpMethod: RequestMethod.POST, path: 'suggest', role: 'viewer', permission: 'financial_category:read' },
-  { controller: FinancialCategoriesController, methodName: 'createRule', httpMethod: RequestMethod.POST, path: 'rules', role: 'financial', permission: 'financial_rule:create' },
-  { controller: FinancialCategoriesController, methodName: 'listRules', httpMethod: RequestMethod.GET, path: 'rules', role: 'viewer', permission: 'financial_rule:read' },
-  { controller: FinancialCategoriesController, methodName: 'updateRule', httpMethod: RequestMethod.PATCH, path: 'rules/:ruleId', role: 'financial', permission: 'financial_rule:update' },
-  { controller: FinancialCategoriesController, methodName: 'removeRule', httpMethod: RequestMethod.DELETE, path: 'rules/:ruleId', role: 'financial', permission: 'financial_rule:delete' },
-  { controller: FinancialCategoriesController, methodName: 'previewRules', httpMethod: RequestMethod.POST, path: 'rules/preview', role: 'viewer', permission: 'financial_rule:read' },
-  { controller: FinancialCategoriesController, methodName: 'executeRules', httpMethod: RequestMethod.POST, path: 'rules/execute', role: 'financial', permission: 'financial_rule:trigger' },
   { controller: FinancialCategoriesController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'financial_category:read' },
   { controller: FinancialCategoriesController, methodName: 'descendants', httpMethod: RequestMethod.GET, path: ':id/descendants', role: 'viewer', permission: 'financial_category:read' },
   { controller: FinancialCategoriesController, methodName: 'ancestors', httpMethod: RequestMethod.GET, path: ':id/ancestors', role: 'viewer', permission: 'financial_category:read' },
@@ -140,7 +133,6 @@ const expectedRoutes: ExpectedRoute[] = [
   { controller: FinancialCategoriesController, methodName: 'reorder', httpMethod: RequestMethod.PATCH, path: ':id/reorder', role: 'financial', permission: 'financial_category:reorder' },
   { controller: FinancialCategoriesController, methodName: 'archive', httpMethod: RequestMethod.PATCH, path: ':id/archive', role: 'financial', permission: 'financial_category:update' },
   { controller: FinancialCategoriesController, methodName: 'restore', httpMethod: RequestMethod.PATCH, path: ':id/restore', role: 'manager', permission: 'financial_category:update' },
-  { controller: FinancialCategoriesController, methodName: 'merge', httpMethod: RequestMethod.POST, path: ':id/merge', role: 'manager', permission: 'financial_category:update' },
   { controller: FinancialCategoriesController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'financial_category:delete' },
 
   { controller: FinancialRulesController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'financial_rule:read' },
@@ -214,21 +206,6 @@ describe('FASE 6.1 CRUD controller permission metadata', () => {
   it('uses a specific permission for financial category reorder', () => {
     expect(Reflect.getMetadata(PERMISSIONS_KEY, FinancialCategoriesController.prototype.reorder)).toEqual([
       'financial_category:reorder',
-    ]);
-  });
-
-  it('uses read permissions for suggest and rules preview special routes', () => {
-    expect(Reflect.getMetadata(PERMISSIONS_KEY, FinancialCategoriesController.prototype.suggest)).toEqual([
-      'financial_category:read',
-    ]);
-    expect(Reflect.getMetadata(PERMISSIONS_KEY, FinancialCategoriesController.prototype.previewRules)).toEqual([
-      'financial_rule:read',
-    ]);
-  });
-
-  it('uses trigger permission for rules execute special route', () => {
-    expect(Reflect.getMetadata(PERMISSIONS_KEY, FinancialCategoriesController.prototype.executeRules)).toEqual([
-      'financial_rule:trigger',
     ]);
   });
 
