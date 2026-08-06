@@ -11,7 +11,6 @@ import {
   ALL_ENTITIES,
   ConversationEntity,
   ConversationMessageEntity,
-  FinancialCategoryEntity,
   FormEntity,
   LeadEntity,
   TransactionEntity,
@@ -127,22 +126,61 @@ describe('Schema reconciliation — PostgreSQL real', () => {
     }
   });
 
-  it('financial_categories persiste transaction_types como text[]', async () => {
+  it('financial_categories preserva o contrato canônico nature/level', async () => {
     const qr = ds.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
     try {
-      const repo = qr.manager.getRepository(FinancialCategoryEntity);
       const suffix = Date.now().toString(36);
-      const row = await repo.save(repo.create({
-        tenant_id: TENANT,
-        path: `schema.${suffix}`,
-        name: 'Schema E2E',
-        slug: `schema-${suffix}`,
-        code: `S${suffix}`,
-        transaction_types: ['REVENUE', 'EXPENSE'],
-      }));
-      expect((await repo.findOneByOrFail({ id: row.id })).transaction_types).toEqual(['REVENUE', 'EXPENSE']);
+      const inserted = await qr.query(
+        `
+          INSERT INTO "financial_categories" (
+            "tenant_id",
+            "name",
+            "nature",
+            "level"
+          )
+          VALUES ($1, $2, $3, $4)
+          RETURNING
+            "id",
+            "nature",
+            "level",
+            "includes_in_pnl",
+            "is_active",
+            "sort_order"
+        `,
+        [TENANT, `Schema E2E ${suffix}`, 'expense', 1],
+      );
+
+      expect(inserted[0]).toMatchObject({
+        nature: 'expense',
+        level: 1,
+        includes_in_pnl: true,
+        is_active: true,
+        sort_order: 0,
+      });
+
+      const persisted = await qr.query(
+        `
+          SELECT
+            "nature",
+            "level",
+            "includes_in_pnl",
+            "is_active",
+            "sort_order"
+          FROM "financial_categories"
+          WHERE "id" = $1
+        `,
+        [inserted[0].id],
+      );
+
+      expect(persisted[0]).toMatchObject({
+        nature: 'expense',
+        level: 1,
+        includes_in_pnl: true,
+        is_active: true,
+        sort_order: 0,
+      });
     } finally {
       await qr.rollbackTransaction();
       await qr.release();

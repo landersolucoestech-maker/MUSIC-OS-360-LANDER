@@ -254,6 +254,8 @@ const SUBLOTE_HARMONIZED_3VB: TableCfg[] = [
     table: 'financial_categories',
     extra: () => ({
       name: `RLS_TEST_${randomUUID().slice(0, 8)}`,
+      nature: 'expense',
+      level: '1',
     }),
   },
   { table: 'marketing_projects', extra: () => ({ type: 'ARTIST', title: 'RLS_TEST' }) },
