@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [quality, test]
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ci-build.invalid' }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://sxmfeocztlztvpdnxayk.supabase.co' }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder' }}
       VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:3001/api/v1' }}
       VITE_USE_MOCK: "false"
