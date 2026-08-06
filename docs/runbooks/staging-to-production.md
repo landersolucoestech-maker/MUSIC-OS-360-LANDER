@@ -1,61 +1,84 @@
-# Runbook — Promoção Staging → Produção · MUSIC OS 360
+# Runbook — Promoção DEV → Staging → Produção · MUSIC OS 360
 
-> Nenhuma mudança vai a produção sem passar por staging **verde** com evidência.
-> Produção nunca é ambiente de teste. Secrets de staging ≠ produção.
+> Nenhuma mudança vai a produção sem passar pela branch `staging` e pelo ambiente de staging com todos os gates verdes.
+> Produção nunca é ambiente de teste. Secrets de desenvolvimento, staging e produção são independentes.
 
-## Pré-condição: Fase 0 (staging) = PASS
-Só promover se o ambiente de staging existir e estiver isolado:
-- [ ] Supabase staging (DB/auth/keys isolados)
+## Topologia permanente
+
+```text
+dev -> staging -> main
+```
+
+- `dev`: desenvolvimento e integração contínua.
+- `staging`: homologação, migrations autorizadas, deploy e smoke.
+- `main`: produção.
+- Não promover código diretamente de `dev` para `main`.
+
+## Pré-condição: staging operacional
+
+Só promover para `staging` se o ambiente estiver isolado:
+
+- [ ] Supabase staging isolado (`jjnnjnxjkqipgqebijen`)
 - [ ] Redis staging isolado
-- [ ] Storage R2 staging (bucket + prefixo separados)
-- [ ] Secrets staging (nenhum valor de produção)
-- [ ] API staging sobe · `GET /health` = 200
-- [ ] Web staging sobe e aponta para API staging
-- [ ] Migrations aplicam em staging (RLS/FORCE/policies OK)
+- [ ] Storage R2 staging com bucket/prefixo separado
+- [ ] GitHub Environment `staging` configurado
+- [ ] Secrets de staging sem valores de produção
+- [ ] API staging responde ao health check
+- [ ] Web staging aponta exclusivamente para a API staging
 
 ## Ordem de promoção
-1. **Disparar `staging.yml` manualmente** (Actions tab → Run workflow, ref `dev`) → roda quality + migrations-staging + deploy-staging. Staging é um ambiente (GitHub Environment `staging`), não uma branch — a topologia deste projeto tem somente `dev` e `main`.
-2. **Validação em staging** (evidência obrigatória por área):
-   - Auth/tenant: login + isolamento A×B (403/404).
-   - Billing (quando liberado): checkout+webhook+idempotência+portal (Stripe TEST).
-   - Smoke das jornadas críticas.
-3. **Aprovação** (ver "Quem aprova").
-4. **Tag de release** (SemVer) no commit validado.
-5. **Aplicar migrations em produção** (`db:migrate` contra prod) — em janela, com backup fresco (ver `dr.md`).
-6. **Deploy produção** do mesmo commit taggeado.
-7. **Smoke pós-deploy** em prod (`/health` 200, login, leitura tenant-scoped).
 
-## Checklist pré-produção (bloqueadores automáticos)
-- [ ] `staging.yml` verde no commit exato a promover
-- [ ] Backup de produção < 24h (evidência: run do `backup.yml`)
-- [ ] 0 CVE crítico/alto (`pnpm audit`) OU exceção assinada
-- [ ] 0 advisor de segurança crítico (`get_advisors security`)
-- [ ] Migrations revisadas (sem perda de dados; `down()` presente)
-- [ ] Alertas ativos (API down / erro / DB)
-- [ ] Rollback ensaiado (abaixo)
+1. Validar CI e Security Scan verdes em `dev`.
+2. Abrir promoção de `dev` para `staging`; não adicionar mudanças funcionais durante a promoção.
+3. Após o push/merge em `staging`, aguardar o workflow `staging.yml`.
+4. O primeiro run executa `db:check` somente leitura:
+   - sem migrations pendentes: segue para RLS, isolamento, deploy e smoke;
+   - com migrations pendentes: falha de forma controlada e não altera o banco.
+5. Quando houver migrations pendentes e revisadas, executar manualmente `staging.yml` na ref `staging` com `apply_migrations=true`.
+6. Validar em staging:
+   - autenticação;
+   - isolamento tenant A × tenant B;
+   - jornadas críticas;
+   - integrações;
+   - observabilidade;
+   - rollback.
+7. Após aprovação, promover `staging` para `main`.
+8. Aplicar migrations de produção somente em janela autorizada, com backup recente e plano de rollback.
+9. Fazer deploy de produção e smoke pós-deploy.
+
+## Checklist pré-produção
+
+- [ ] CI verde no código promovido
+- [ ] Security Scan verde
+- [ ] `staging.yml` verde
+- [ ] Backup de produção com menos de 24 horas
+- [ ] Nenhuma migration destrutiva sem plano explícito
+- [ ] `db:check` sem pendências após aplicação autorizada
+- [ ] RLS e isolamento multi-tenant verificados
+- [ ] Smoke de staging concluído
+- [ ] Alertas e observabilidade ativos
+- [ ] Aprovação do Eng. Lead e Owner
 
 ## Rollback
-- **App:** re-deploy da tag anterior (imutável).
-- **Banco:** migrations aditivas → `down()` da migration específica; destrutivas → restore do backup pré-deploy (`dr.md`) — decisão do DBA/Owner.
-- **Billing:** `BillingEnforcementGuard` atrás de flag; desligar via env se necessário.
-- Critério de rollback: erro >1% por 5 min, `/health` 503 sustentado, ou incidente SEV1/2.
 
-## Quem aprova
-| Etapa | Aprovador |
-|---|---|
-| Validação staging | Eng. Lead |
-| Migrations em prod | DBA/Owner |
-| Go-live | Eng. Lead + Owner |
+- **Aplicação:** redeploy da versão anterior imutável.
+- **Banco:** migrations aditivas podem usar rollback específico; migrations destrutivas exigem restore do backup pré-deploy.
+- **Critério de rollback:** erro superior a 1% por 5 minutos, health check sustentadamente indisponível ou incidente SEV1/SEV2.
 
-## Evidências mínimas por promoção
-- Link do run `staging.yml` verde.
-- SQL pós-migração (staging): contagem de tabelas + RLS/FORCE + policies.
-- Evidência de smoke (staging e prod pós-deploy).
-- Tag de release + commit hash.
+## Evidências mínimas
 
-## Bloqueadores automáticos (não promover)
+- Link do CI verde em `dev`.
+- Link do workflow `staging.yml` verde na branch `staging`.
+- Resultado de `db:check`, RLS e isolamento.
+- Evidência do smoke em staging.
+- Backup pré-produção.
+- Commit/tag promovido para `main`.
+
+## Bloqueadores automáticos
+
+- Promoção direta `dev -> main`.
 - `staging.yml` vermelho.
-- Backup > 24h ou ausente.
-- CVE crítico/alto sem exceção.
-- Advisor de segurança crítico.
-- Alertas inativos.
+- Migrations pendentes sem `apply_migrations=true`.
+- Backup ausente ou antigo.
+- Vulnerabilidade crítica/alta sem exceção aprovada.
+- Falha de RLS, isolamento ou smoke.
