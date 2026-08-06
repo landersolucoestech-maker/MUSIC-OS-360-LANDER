@@ -1,5 +1,6 @@
 name: Branch Policy
 
+# Keep repository history limited to the three permanent environment branches.
 on:
   create:
   push:
