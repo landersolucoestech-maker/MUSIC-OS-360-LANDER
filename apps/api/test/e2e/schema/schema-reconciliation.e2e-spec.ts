@@ -149,11 +149,11 @@ describe('Schema reconciliation — PostgreSQL real', () => {
             "is_active",
             "sort_order"
         `,
-        [TENANT, `Schema E2E ${suffix}`, 'expense', 1],
+        [TENANT, `Schema E2E ${suffix}`, 'operating_expense', 1],
       );
 
       expect(inserted[0]).toMatchObject({
-        nature: 'expense',
+        nature: 'operating_expense',
         level: 1,
         includes_in_pnl: true,
         is_active: true,
@@ -175,7 +175,7 @@ describe('Schema reconciliation — PostgreSQL real', () => {
       );
 
       expect(persisted[0]).toMatchObject({
-        nature: 'expense',
+        nature: 'operating_expense',
         level: 1,
         includes_in_pnl: true,
         is_active: true,
