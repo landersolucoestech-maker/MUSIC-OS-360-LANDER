@@ -1,7 +1,8 @@
 name: Staging CI/CD
 
-# Gate de homologacao: toda mudanca destinada a producao DEVE passar por staging.
-# Requer secrets de STAGING, isolados de producao:
+# Gate de homologação da branch permanente `staging`.
+# Toda mudança destinada a produção deve seguir dev -> staging -> main.
+# Requer secrets do GitHub Environment `staging`, isolados de produção:
 #   STAGING_DATABASE_URL
 #   STAGING_APP_DATABASE_URL
 #   STAGING_API_URL
@@ -9,33 +10,12 @@ name: Staging CI/CD
 # Opcionais para smoke autenticado:
 #   STAGING_SMOKE_TOKEN
 #   STAGING_SMOKE_TENANT
-# NAO usar secrets de producao aqui.
+# Nunca usar secrets de produção neste workflow.
 
 on:
-  # Staging is an environment, not a branch — there is no "staging" branch in
-  # this project's topology (dev/main only). Promotion to staging is a
-  # deliberate, manual action (Actions tab -> Run workflow), not an automatic
-  # side effect of every push to dev. Wiring this to `push: branches: [dev]`
-  # would trigger a real staging deployment attempt on every dev commit,
-  # which is a bigger behavior change than this cleanup is meant to make —
-  # left as a documented future option, not enabled here.
-  #
-  # workflow_dispatch on this file only works when dispatched directly on
-  # dev (e.g. via `gh workflow run staging.yml --ref dev` from a checkout
-  # that has this file) — GitHub does NOT list/allow dispatch of workflows
-  # that don't exist on the default branch. Since this repo's default
-  # branch is main and this file intentionally never lives there, the
-  # Actions UI/API dispatch entry point is `.github/workflows/trigger-staging.yml`
-  # on main, which calls this workflow as a reusable workflow pinned to
-  # `@dev` (see workflow_call below) — the actual jobs, secrets, and checks
-  # here are unchanged and never duplicated onto main.
+  push:
+    branches: [staging]
   workflow_dispatch:
-    inputs:
-      apply_migrations:
-        description: "Apply pending TypeORM migrations to staging (unchecked = read-only db:check + RLS/isolation verification only)"
-        type: boolean
-        default: false
-  workflow_call:
     inputs:
       apply_migrations:
         description: "Apply pending TypeORM migrations to staging (unchecked = read-only db:check + RLS/isolation verification only)"
@@ -56,8 +36,6 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: dev
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -65,14 +43,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      # BUG FIXED: this used to run `pnpm lint`, which resolves to the root
-      # package.json's unscoped `eslint .` — a full-repo lint with no
-      # per-workspace config, unlike ci.yml's `pnpm turbo lint` (fans out to
-      # each workspace's own lint script/config via Turborepo). The unscoped
-      # version produced ~490 false-positive `no-explicit-any` errors on the
-      # very first real run of this workflow (it was never dispatchable
-      # before this change, so this was latent since Parte 63). Matches
-      # ci.yml now.
       - run: pnpm turbo lint
       - run: pnpm test
       - run: pnpm build
@@ -91,8 +61,6 @@ jobs:
       NODE_ENV: staging
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: dev
 
       - name: Require staging secrets present
         run: |
@@ -117,7 +85,7 @@ jobs:
       - name: Require explicit authorization to apply pending migrations
         if: steps.check.outcome == 'failure' && inputs.apply_migrations != true
         run: |
-          echo "::error::Pending migrations found on staging, but apply_migrations was not checked. Re-run this workflow (Actions tab) with 'Apply pending TypeORM migrations to staging' checked to authorize."
+          echo "::error::Pending migrations found on staging, but apply_migrations was not checked. Re-run this workflow on branch staging with 'Apply pending TypeORM migrations to staging' checked to authorize."
           exit 1
 
       - name: db:migrate staging (only with explicit authorization)
@@ -139,23 +107,7 @@ jobs:
   deploy-staging:
     name: deploy staging
     needs: [migrations-staging]
-    # BUG FIXED: this used to check `github.ref == 'refs/heads/staging'` — a
-    # branch that structurally can never exist in this project (staging is
-    # an environment, not a branch; topology is dev/main only). That made
-    # this job (and smoke-staging below) permanently unreachable dead code,
-    # regardless of how the workflow was triggered.
-    #
-    # This is now checked via `github.workflow_ref` instead of `github.ref`:
-    # workflow_dispatch can only be triggered from a workflow file present on
-    # the default branch (main), so when this workflow is invoked through
-    # main's trigger-staging.yml proxy, `github.ref` is `refs/heads/main` —
-    # but the actual JOB CONTENT that runs is always pinned to dev via that
-    # proxy's `uses: .../staging.yml@dev`. `github.workflow_ref` reflects
-    # which ref's FILE CONTENT is executing, not which ref triggered the
-    # run, so this guard still correctly blocks any accidental execution of
-    # non-dev job definitions while allowing the legitimate main-triggered,
-    # dev-content-pinned path.
-    if: endsWith(github.workflow_ref, '/staging.yml@refs/heads/dev')
+    if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: staging
@@ -172,14 +124,12 @@ jobs:
   smoke-staging:
     name: smoke staging
     needs: [deploy-staging]
-    if: endsWith(github.workflow_ref, '/staging.yml@refs/heads/dev')
+    if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: staging
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: dev
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -195,7 +145,8 @@ jobs:
           test -n "$API_URL"
           pnpm --filter @music-os-360/api smoke-test
 
-# Regra de promocao:
-# - branch main/producao protegida;
-# - merge para producao somente com este workflow verde no commit promovido;
-# - required status checks: quality, migrations-staging, deploy-staging, smoke-staging.
+# Regra de promoção:
+# - dev recebe desenvolvimento;
+# - staging recebe somente código aprovado em dev;
+# - main recebe somente código validado pela branch staging;
+# - migrations continuam bloqueadas sem autorização explícita.
