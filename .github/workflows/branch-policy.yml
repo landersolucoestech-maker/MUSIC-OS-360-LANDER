@@ -3,6 +3,8 @@ name: Branch Policy
 # Keep repository history limited to the three permanent environment branches.
 on:
   create:
+  pull_request:
+    branches: [main, dev, staging]
   push:
     branches: [main, dev, staging]
   workflow_dispatch: {}
