@@ -38,7 +38,7 @@ export class FinancialCategoriesController {
   list(
     @CurrentTenant() tenant: { id: string },
     @Query() query: QueryFinancialCategoryDto,
-  ) {
+  ): ReturnType<FinancialCategoriesService['list']> {
     return this.service.list(tenant.id, query);
   }
 
@@ -49,7 +49,7 @@ export class FinancialCategoriesController {
   tree(
     @CurrentTenant() tenant: { id: string },
     @Query() query: QueryFinancialCategoryDto,
-  ) {
+  ): ReturnType<FinancialCategoriesService['getTree']> {
     return this.service.getTree(tenant.id, query);
   }
 
@@ -60,7 +60,7 @@ export class FinancialCategoriesController {
   search(
     @CurrentTenant() tenant: { id: string },
     @Query() query: QueryFinancialCategoryDto,
-  ) {
+  ): ReturnType<FinancialCategoriesService['search']> {
     return this.service.search(tenant.id, query);
   }
 
@@ -71,7 +71,7 @@ export class FinancialCategoriesController {
   findById(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): ReturnType<FinancialCategoriesService['findById']> {
     return this.service.findById(tenant.id, id);
   }
 
@@ -81,7 +81,7 @@ export class FinancialCategoriesController {
   descendants(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): ReturnType<FinancialCategoriesService['descendants']> {
     return this.service.descendants(tenant.id, id);
   }
 
@@ -91,7 +91,7 @@ export class FinancialCategoriesController {
   ancestors(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): ReturnType<FinancialCategoriesService['ancestors']> {
     return this.service.ancestors(tenant.id, id);
   }
 
@@ -103,7 +103,7 @@ export class FinancialCategoriesController {
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
     @Body() dto: CreateFinancialCategoryDto,
-  ) {
+  ): ReturnType<FinancialCategoriesService['create']> {
     return this.service.create(tenant.id, user?.userId ?? '', dto);
   }
 
@@ -116,7 +116,7 @@ export class FinancialCategoriesController {
     @CurrentUser() user: JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateFinancialCategoryDto,
-  ) {
+  ): ReturnType<FinancialCategoriesService['update']> {
     return this.service.update(tenant.id, user?.userId ?? '', id, dto);
   }
 
@@ -129,7 +129,7 @@ export class FinancialCategoriesController {
     @CurrentUser() user: JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: MoveFinancialCategoryDto,
-  ) {
+  ): ReturnType<FinancialCategoriesService['move']> {
     return this.service.move(tenant.id, user?.userId ?? '', id, dto);
   }
 
@@ -142,7 +142,7 @@ export class FinancialCategoriesController {
     @CurrentUser() user: JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReorderFinancialCategoryDto,
-  ) {
+  ): ReturnType<FinancialCategoriesService['reorder']> {
     return this.service.reorder(tenant.id, user?.userId ?? '', id, dto);
   }
 
@@ -154,7 +154,7 @@ export class FinancialCategoriesController {
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): ReturnType<FinancialCategoriesService['archive']> {
     return this.service.archive(tenant.id, user?.userId ?? '', id);
   }
 
@@ -166,7 +166,7 @@ export class FinancialCategoriesController {
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): ReturnType<FinancialCategoriesService['restore']> {
     return this.service.restore(tenant.id, user?.userId ?? '', id);
   }
 
@@ -178,7 +178,7 @@ export class FinancialCategoriesController {
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): ReturnType<FinancialCategoriesService['remove']> {
     return this.service.remove(tenant.id, user?.userId ?? '', id);
   }
 }
