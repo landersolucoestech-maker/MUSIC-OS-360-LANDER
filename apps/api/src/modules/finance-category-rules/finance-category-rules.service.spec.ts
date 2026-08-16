@@ -111,3 +111,88 @@ describe('FinanceCategoryRulesService', () => {
     expect(patch).toHaveProperty('deleted_at');
   });
 });
+
+// ── Task W — suggestCategoryForTransaction ─────────────────────────────────────
+
+function makeJoinQueryBuilder(entities: unknown[], raw: unknown[]) {
+  const qb: any = {
+    innerJoin: jest.fn(() => qb),
+    addSelect: jest.fn(() => qb),
+    where: jest.fn(() => qb),
+    andWhere: jest.fn(() => qb),
+    orderBy: jest.fn(() => qb),
+    addOrderBy: jest.fn(() => qb),
+    limit: jest.fn(() => qb),
+    getRawAndEntities: jest.fn(async () => ({ entities, raw })),
+  };
+  return qb;
+}
+
+function makeSuggestService(entities: unknown[], raw: unknown[]) {
+  const repo = {
+    createQueryBuilder: jest.fn(() => makeJoinQueryBuilder(entities, raw)),
+  };
+  const ds = { getRepository: jest.fn(() => repo) } as any;
+  const svc = new FinanceCategoryRulesService(ds);
+  return { svc, repo };
+}
+
+describe('FinanceCategoryRulesService.suggestCategoryForTransaction (Task W)', () => {
+  const activeRule = {
+    id: 'rule-1', category_id: 'cat-1', keywords: ['spotify'],
+    transaction_type: 'DESPESA', priority: 100, active: true,
+  };
+
+  it('retorna a categoria (slug) da regra correspondente', async () => {
+    const { svc, repo } = makeSuggestService([activeRule], [{ category_slug: 'streaming' }]);
+
+    const result = await svc.suggestCategoryForTransaction('tenant-1', 'DESPESA', 'Pagamento Spotify mensal');
+
+    expect(result).toEqual({ categoryId: 'cat-1', categorySlug: 'streaming', ruleId: 'rule-1' });
+    expect(repo.createQueryBuilder).toHaveBeenCalled();
+  });
+
+  it('retorna null quando nenhuma regra corresponde à descrição', async () => {
+    const { svc } = makeSuggestService([activeRule], [{ category_slug: 'streaming' }]);
+    const result = await svc.suggestCategoryForTransaction('tenant-1', 'DESPESA', 'Aluguel do escritório');
+    expect(result).toBeNull();
+  });
+
+  it('retorna null para descrição vazia (não executa a query)', async () => {
+    const { svc, repo } = makeSuggestService([activeRule], [{ category_slug: 'streaming' }]);
+    const result = await svc.suggestCategoryForTransaction('tenant-1', 'DESPESA', '');
+    expect(result).toBeNull();
+    expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('retorna null quando a categoria vinculada não tem slug (categoria removida)', async () => {
+    const { svc } = makeSuggestService([activeRule], [{ category_slug: null }]);
+    const result = await svc.suggestCategoryForTransaction('tenant-1', 'DESPESA', 'Pagamento Spotify');
+    expect(result).toBeNull();
+  });
+});
+
+describe('FinanceCategoryRulesService.suggestCategoryForTransaction — where clauses (Task W)', () => {
+  it('filtra por tenant_id, active=true e transaction_type na query', async () => {
+    const qb: any = {
+      innerJoin: jest.fn(() => qb),
+      addSelect: jest.fn(() => qb),
+      where: jest.fn(() => qb),
+      andWhere: jest.fn(() => qb),
+      orderBy: jest.fn(() => qb),
+      addOrderBy: jest.fn(() => qb),
+      limit: jest.fn(() => qb),
+      getRawAndEntities: jest.fn(async () => ({ entities: [], raw: [] })),
+    };
+    const repo = { createQueryBuilder: jest.fn(() => qb) };
+    const ds = { getRepository: jest.fn(() => repo) } as any;
+    const svc = new FinanceCategoryRulesService(ds);
+
+    await svc.suggestCategoryForTransaction('tenant-9', 'RECEITA', 'Recebimento de show');
+
+    expect(qb.where).toHaveBeenCalledWith('r.tenant_id = :tenantId', { tenantId: 'tenant-9' });
+    expect(qb.andWhere).toHaveBeenCalledWith('r.deleted_at IS NULL');
+    expect(qb.andWhere).toHaveBeenCalledWith('r.active = true');
+    expect(qb.andWhere).toHaveBeenCalledWith('r.transaction_type = :transactionType', { transactionType: 'RECEITA' });
+  });
+});

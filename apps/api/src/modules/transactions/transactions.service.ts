@@ -5,6 +5,7 @@ import { TransactionEntity } from '../../database/entities';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { FinanceCategoryRulesService } from '../finance-category-rules/finance-category-rules.service';
 import type { QueryTransactionDto } from './dto/query-transaction.dto';
 import type { TransactionDetailsDTO } from './dto/transaction-details.dto';
 import type {
@@ -17,6 +18,22 @@ type AnyRecord = Record<string, unknown>;
 
 const PAID_STATUSES      = new Set(['pago', 'confirmado', 'concluido']);
 const CANCELLED_STATUSES = new Set(['cancelado', 'cancelled']);
+
+/**
+ * Categoria "sem escolha real" — nunca oferecida como opção no formulário
+ * manual (só existe como fallback defensivo do backend e como placeholder
+ * fixo da importação OFX, que não tem como saber a categoria real do banco).
+ * Único valor tratado como "elegível para auto-categorização" — qualquer
+ * outra categoria explícita é sempre preservada (nunca sobrescrita).
+ */
+const UNCATEGORIZED_PLACEHOLDER = 'outros';
+
+/** finance_category_keyword_rules só cobre RECEITA/DESPESA — demais tipos (investimento, imposto, transferencia) nunca são elegíveis. */
+function toRuleTransactionType(tipoTransacao: unknown): 'RECEITA' | 'DESPESA' | null {
+  if (tipoTransacao === 'receita') return 'RECEITA';
+  if (tipoTransacao === 'despesa') return 'DESPESA';
+  return null;
+}
 
 function toNumber(value: unknown): number {
   if (typeof value === 'number') return value;
@@ -170,6 +187,7 @@ export class TransactionsService {
     @Inject(DATA_SOURCE) ds: DataSource | null,
     @Optional() private readonly events: EventsService,
     @Optional() private readonly activityLogs: ActivityLogsService,
+    @Optional() private readonly financeCategoryRules: FinanceCategoryRulesService,
   ) {
     if (ds) this.repo = ds.getRepository(TransactionEntity);
   }
@@ -238,7 +256,9 @@ export class TransactionsService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateTransacaoDto): Promise<TransactionEntity> {
-    const entity = this.repo!.create(buildPersistencePayload(tenantId, userId, dto) as Parameters<Repository<TransactionEntity>['create']>[0]);
+    const payload = buildPersistencePayload(tenantId, userId, dto);
+    payload.categoria = await this.resolveCategoria(tenantId, dto, payload.categoria as string);
+    const entity = this.repo!.create(payload as Parameters<Repository<TransactionEntity>['create']>[0]);
     const saved = await this.repo!.save(entity as TransactionEntity);
 
     const valor = String((dto as AnyRecord).valor ?? '0');
@@ -357,6 +377,38 @@ export class TransactionsService {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Task W — auto-categorização por palavra-chave na criação de transações
+   * (cobre criação manual e importação OFX, que reutiliza este mesmo
+   * endpoint). Só atua quando a categoria resolvida é o placeholder
+   * "outros" — qualquer categoria real, escolhida manualmente ou por
+   * qualquer outro fluxo, nunca é sobrescrita. Nunca cruza tenant (a busca
+   * de regras já é escopada por tenantId). Se não houver regra
+   * correspondente, ou o matcher estiver indisponível, mantém "outros".
+   */
+  private async resolveCategoria(
+    tenantId: string,
+    dto: CreateTransacaoDto,
+    currentCategoria: string,
+  ): Promise<string> {
+    if (currentCategoria.trim().toLowerCase() !== UNCATEGORIZED_PLACEHOLDER) {
+      return currentCategoria;
+    }
+
+    const ruleType = toRuleTransactionType((dto as AnyRecord).tipoTransacao);
+    const descricao = (dto as AnyRecord).descricao as string | undefined;
+    if (!ruleType || !descricao || !this.financeCategoryRules) {
+      return currentCategoria;
+    }
+
+    try {
+      const suggestion = await this.financeCategoryRules.suggestCategoryForTransaction(tenantId, ruleType, descricao);
+      return suggestion?.categorySlug ?? currentCategoria;
+    } catch {
+      return currentCategoria;
+    }
+  }
 
   private assertEditable(entity: TransactionEntity): void {
     if (CANCELLED_STATUSES.has(entity.status as string)) {

@@ -3,11 +3,18 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { FinanceCategoryKeywordRuleEntity } from '../../database/entities';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
+import { matchCategoryRule } from './finance-category-matcher.util';
 import type {
   CreateFinanceCategoryRuleDto,
   UpdateFinanceCategoryRuleDto,
   QueryFinanceCategoryRuleDto,
 } from './dto/finance-category-rules.dto';
+
+export interface FinanceCategorySuggestion {
+  categoryId: string;
+  categorySlug: string;
+  ruleId: string;
+}
 
 @Injectable()
 export class FinanceCategoryRulesService {
@@ -73,5 +80,43 @@ export class FinanceCategoryRulesService {
     await this.findById(tenantId, id);
     await this.repository.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
+  }
+
+  /**
+   * Task W — ponto único de auto-categorização por palavra-chave, usado na
+   * criação/importação de transações (ver TransactionsService.create()).
+   * Só considera regras ATIVAS do tenant informado, do mesmo transaction_type,
+   * ordenadas por prioridade (empate: created_at mais antigo primeiro — mesmo
+   * critério de list()). Nunca cruza tenant (WHERE tenant_id sempre presente).
+   * Retorna null se nenhuma regra corresponder — o chamador decide o fallback.
+   */
+  async suggestCategoryForTransaction(
+    tenantId: string,
+    transactionType: 'RECEITA' | 'DESPESA',
+    descricao: string,
+  ): Promise<FinanceCategorySuggestion | null> {
+    if (!this.repo || !descricao?.trim()) return null;
+
+    const { entities, raw } = await this.repo
+      .createQueryBuilder('r')
+      .innerJoin('financial_categories', 'fc', 'fc.id = r.category_id AND fc.deleted_at IS NULL')
+      .addSelect('fc.slug', 'category_slug')
+      .where('r.tenant_id = :tenantId', { tenantId })
+      .andWhere('r.deleted_at IS NULL')
+      .andWhere('r.active = true')
+      .andWhere('r.transaction_type = :transactionType', { transactionType })
+      .orderBy('r.priority', 'ASC')
+      .addOrderBy('r.created_at', 'ASC')
+      .limit(500)
+      .getRawAndEntities();
+
+    const matched = matchCategoryRule(entities, { descricao, transactionType });
+    if (!matched) return null;
+
+    const index = entities.indexOf(matched);
+    const categorySlug = raw[index]?.category_slug as string | undefined;
+    if (!categorySlug) return null;
+
+    return { categoryId: matched.category_id, categorySlug, ruleId: matched.id };
   }
 }
