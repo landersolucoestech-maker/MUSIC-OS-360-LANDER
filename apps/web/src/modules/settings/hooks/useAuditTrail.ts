@@ -37,8 +37,11 @@ export interface AuditTrailFilters {
   offset?: number;
 }
 
+// Referência estável — ver shared/hooks/useDataQuery.ts para o motivo.
+const EMPTY_AUDIT_LOGS: AuditLogEntry[] = [];
+
 export function useAuditTrail(filters: AuditTrailFilters = {}) {
-  return useQuery<AuditLogEntry[]>({
+  const query = useQuery<AuditLogEntry[]>({
     queryKey: ["audit_logs", filters],
     queryFn: async () => {
 
@@ -62,4 +65,5 @@ export function useAuditTrail(filters: AuditTrailFilters = {}) {
     },
     staleTime: 30_000,
   });
+  return { ...query, data: query.data ?? EMPTY_AUDIT_LOGS };
 }

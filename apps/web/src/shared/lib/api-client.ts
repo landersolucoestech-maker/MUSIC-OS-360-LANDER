@@ -16,7 +16,7 @@ import {
   IntegrationError,
   PasswordChangeRequiredError,
 } from "./errors";
-import { API_BASE_URL } from "./env";
+import { API_BASE_URL, DEV_AUTH_BYPASS } from "./env";
 
 export interface ApiResponse<T> {
   data: T;
@@ -146,6 +146,34 @@ export function clearAuthBackoff(): void {
   _authFailUntil = 0;
 }
 
+// Timeout de rede: sem isso, um backend indisponível cuja conexão fica presa
+// em SYN (dropada em vez de recusada — comportamento observado em alguns
+// ambientes/proxies) faz `fetch()` pendurar por dezenas de segundos sem
+// nunca resolver nem rejeitar, mantendo `isLoading` do React Query preso
+// indefinidamente (a UI nunca chega ao estado de erro já previsto). Um
+// timeout finito garante que toda chamada sempre resolve ou rejeita em
+// tempo limitado, deixando a query settlar (sucesso ou erro) normalmente.
+const REQUEST_TIMEOUT_MS = 10_000;
+
+// Combina o AbortSignal externo (ex.: o do React Query — dispara quando a
+// query fica obsoleta: componente desmontou, queryKey mudou) com o timeout
+// interno, sem depender de AbortSignal.any (evita risco de compatibilidade
+// dado o lib/target atual do projeto). Qualquer um dos dois abortando aborta
+// o fetch; o timeout continua funcionando mesmo sem signal externo.
+function combineSignals(a: AbortSignal, b?: AbortSignal): AbortSignal {
+  if (!b) return a;
+  if (a.aborted || b.aborted) {
+    const already = new AbortController();
+    already.abort();
+    return already.signal;
+  }
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  a.addEventListener("abort", onAbort, { once: true });
+  b.addEventListener("abort", onAbort, { once: true });
+  return controller.signal;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   // Short-circuit during auth backoff window — don't hit network.
   if (Date.now() < _authFailUntil) {
@@ -165,15 +193,38 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers["X-Tenant-ID"] = _tenantId;
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/v1${path}`, {
-    ...init,
-    headers,
-    credentials: "include",
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const signal = combineSignals(controller.signal, init.signal ?? undefined);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/v1${path}`, {
+      ...init,
+      headers,
+      credentials: "include",
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new IntegrationError("api", "A API não respondeu a tempo", { statusCode: 0, retryable: true });
+    }
+    throw new IntegrationError("api", "Falha de conexão com a API", { statusCode: 0, retryable: true });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (res.status === 401) {
     setAccessToken(null);
-    if (_authFailUntil < Date.now()) {
+    // DEV ONLY (VITE_DISABLE_AUTH=true): sob o bypass de frontend, chamadas
+    // autenticadas sem token real vão 401 de forma esperada e repetida (o
+    // backend não foi alterado). Não armamos o circuit-breaker de 30s aqui —
+    // ele existe para parar tempestades de pollers quando uma sessão REAL
+    // caiu, não para o caso em que já sabemos, por design, que não há sessão
+    // nenhuma. Cada chamada continua retornando seu próprio erro 401 mapeado
+    // abaixo (mapError) — nada é escondido, só evitamos que a navegação
+    // inteira fique pausada por 30s a cada request autenticado.
+    if (!DEV_AUTH_BYPASS && _authFailUntil < Date.now()) {
       _authFailUntil = Date.now() + AUTH_BACKOFF_MS;
       _authBus.dispatchEvent(new Event('invalid'));
     }
@@ -206,7 +257,7 @@ async function publicRequest<T>(path: string, init: RequestInit = {}): Promise<T
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, options?: { signal?: AbortSignal }) => request<T>(path, { signal: options?.signal }),
   post: <T>(path: string, body: unknown) =>
     request<T>(path, {
       method: "POST",

@@ -6,14 +6,19 @@ import type { Obra, ObraInsert, ObraUpdate, ObraWithRelations } from "../types/c
 
 export type { Obra, ObraInsert, ObraUpdate, ObraWithRelations };
 
-export function useObras() {
+export function useObras(enabled = true, artistaId?: string) {
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
 
   const result = useDataQuery<ObraWithRelations>({
-    queryKey: [...QUERY_KEYS.OBRAS],
+    // artistaId entra na queryKey: sem isso, abrir a Visão 360 do artista A e
+    // depois do artista B reaproveitaria (errado) o cache de A — mesma key,
+    // filtro server-side diferente (ver Task G).
+    queryKey: artistaId ? [...QUERY_KEYS.OBRAS, "by-artist", artistaId] : [...QUERY_KEYS.OBRAS],
     table: "obras",
     select: "*, artistas(*), projetos(id, titulo)",
+    enabled,
+    filters: artistaId ? { artista_id: artistaId } : undefined,
     additionalInvalidateKeys: [[...QUERY_KEYS.PROJETOS]],
     onMutationSuccess: {
       onCreate: (o) =>
@@ -41,6 +46,7 @@ export function useObras() {
     obras: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addObra: result.create,
     updateObra: result.update,
     deleteObra: result.delete,

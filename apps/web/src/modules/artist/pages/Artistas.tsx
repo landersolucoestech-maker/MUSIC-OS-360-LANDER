@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { storage } from "@/shared/lib/storage";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -27,12 +29,13 @@ import { DeezerIcon } from "@/shared/ui/deezer-icon";
 import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
 import { ArtistaPlatformMetrics } from "@/modules/artist/components/ArtistaPlatformMetrics";
 import { useArtistasAssinados } from "@/modules/artist/hooks/useArtistasAssinados";
-import { useContratos } from "@/modules/contracts/hooks/useContratos";
+import { useArtistasPaginated, useArtistasVinculoStats, useGenerosDistintos } from "@/modules/artist/hooks/useArtistasPaginated";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { TablePagination } from "@/shared/ui/table-pagination";
-import { usePagination } from "@/shared/hooks/usePagination";
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
 import { ArtistaFormModal } from "@/modules/artist/components/ArtistaFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
@@ -47,28 +50,11 @@ import { RequirePermission } from "@/shared/components/RequirePermission";
 
 const getXLSX = () => import("xlsx");
 
-const ATIVO_STATUSES_VINCULO = new Set(["ativo", "assinado", "vigente", "vencendo"]);
-
 type VinculoTipo = "exclusivo" | "parceiro" | "independente";
 
-/**
- * Classifica o vínculo do artista por CONTRATO ATIVO — dimensão única e
- * mutuamente exclusiva (soma = total): exclusivo (tem contrato exclusivo ativo)
- * → parceiro (tem contrato ativo, não exclusivo) → independente (sem contrato
- * ativo). O perfil de negócio (`tipo_perfil`: gravadora/editora/…) é OUTRA
- * dimensão e é filtrado à parte (perfilFilter) — não entra nesta contagem.
- */
-function classifyVinculo(
-  cs?: Array<{ status?: string | null; exclusivo?: boolean | null }>,
-): VinculoTipo {
-  const ativos = (cs ?? []).filter((c) =>
-    ATIVO_STATUSES_VINCULO.has((c.status || "").toLowerCase()),
-  );
-  if (ativos.some((c) => c.exclusivo === true)) return "exclusivo";
-  if (ativos.length > 0) return "parceiro";
-  return "independente";
-}
-
+// Task H: vínculo (exclusivo/parceiro/independente) vem pronto do backend
+// (ArtistsService.list()/vinculoStats() — classificação por contrato ativo
+// feita server-side, contra o tenant inteiro, não só a página carregada).
 const VINCULO_BADGE: Record<VinculoTipo, { label: string; status: string }> = {
   exclusivo:    { label: "Exclusivo",    status: "exclusivo" },
   parceiro:     { label: "Parceiro",     status: "parceiro" },
@@ -89,22 +75,6 @@ export default function Artistas() {
   const { artistas: todosArtistas, deleteArtista, addArtista, isLoading: artistasLoading } = useArtistas();
   const excelInputRef = useRef<HTMLInputElement>(null);
 
-  const { contratos } = useContratos();
-
-  const contratosPorArtista = useMemo(() => {
-    const map = new Map<string, Array<{ status?: string | null; data_fim?: string | null; exclusivo?: boolean | null }>>();
-    for (const c of contratos as Array<{ artista_id?: string | null; status?: string | null; data_fim?: string | null; exclusivo?: boolean | null }>) {
-      if (!c.artista_id) continue;
-      const arr = map.get(c.artista_id) ?? [];
-      arr.push({ status: c.status, data_fim: c.data_fim, exclusivo: c.exclusivo });
-      map.set(c.artista_id, arr);
-    }
-    return map;
-  }, [contratos]);
-
-  const getVinculoLabel = (artistaId: string): { label: string; status: string } =>
-    VINCULO_BADGE[classifyVinculo(contratosPorArtista.get(artistaId))];
-
   const isLoading = artistasLoading;
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -118,42 +88,33 @@ export default function Artistas() {
   const [visao360Modal, setVisao360Modal] = useState<{ open: boolean; artista?: Artista }>({ open: false });
   const [selectedArtists, setSelectedArtists] = useState<string[]>([]);
 
-  const generosUnicos = useMemo(() => {
-    const generos = todosArtistas.map((a) => a.genero_musical).filter(Boolean);
-    return ([...new Set(generos)] as string[]).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [todosArtistas]);
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, statusFilter, generoFilter]);
 
-  const kpiArtistas = useMemo(() => {
-    let exclusivos = 0, parceiros = 0, independentes = 0;
-    for (const a of todosArtistas) {
-      switch (classifyVinculo(contratosPorArtista.get(a.id))) {
-        case "exclusivo": exclusivos++; break;
-        case "parceiro":  parceiros++;  break;
-        default:          independentes++; break;
-      }
-    }
-    return { exclusivos, parceiros, independentes };
-  }, [todosArtistas, contratosPorArtista]);
+  const {
+    artistas: pageItemsRaw, total, isLoading: isLoadingPage, error: pageError, refetch: refetchPage,
+  } = useArtistasPaginated({
+    page, pageSize, search: debouncedSearch || undefined,
+    vinculo: statusFilter !== "todos" ? (statusFilter as VinculoTipo) : undefined,
+    genero: generoFilter !== "todos" ? generoFilter : undefined,
+  });
 
-  const artistasFiltrados = useMemo(() => {
-    return todosArtistas.filter((artista) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        artista.nome_artistico.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        artista.nome_civil?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        artista.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        artista.genero_musical?.toLowerCase().includes(searchTerm.toLowerCase());
-      const cs = contratosPorArtista.get(artista.id);
-      const matchesStatus =
-        statusFilter === "todos" || classifyVinculo(cs) === statusFilter;
-      const matchesGenero = generoFilter === "todos" || artista.genero_musical === generoFilter;
-      const tp = (artista.tipo_perfil as string | null | undefined) || "independente";
-      const matchesPerfil = perfilFilter === "todos" || tp === perfilFilter;
-      return matchesSearch && matchesStatus && matchesGenero && matchesPerfil;
-    }).sort((a, b) => a.nome_artistico.localeCompare(b.nome_artistico, "pt-BR", { sensitivity: "base" }));
-  }, [todosArtistas, searchTerm, statusFilter, generoFilter, perfilFilter, contratosPorArtista]);
+  // perfilFilter (tipo_perfil) não é coluna mapeada no TypeORM entity —
+  // refinamento client-side aplicado só sobre a página já carregada
+  // (limitação documentada; não afeta total/paginação, que seguem exatos).
+  const pageItems = useMemo(() => {
+    if (perfilFilter === "todos") return pageItemsRaw;
+    return pageItemsRaw.filter(
+      (a) => ((a.tipo_perfil as string | null | undefined) || "independente") === perfilFilter,
+    );
+  }, [pageItemsRaw, perfilFilter]);
 
-  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(artistasFiltrados, 10);
+  const { stats: vinculoStats } = useArtistasVinculoStats();
+  const { generos: generosUnicos } = useGenerosDistintos();
 
   const handleDelete = () => {
     if (deleteModal.artista) {
@@ -206,10 +167,10 @@ export default function Artistas() {
     nome.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase();
 
   const toggleSelectAll = () => {
-    if (selectedArtists.length === artistasFiltrados.length) {
+    if (selectedArtists.length === pageItems.length) {
       setSelectedArtists([]);
     } else {
-      setSelectedArtists(artistasFiltrados.map((a) => a.id));
+      setSelectedArtists(pageItems.map((a) => a.id));
     }
   };
 
@@ -219,11 +180,12 @@ export default function Artistas() {
     );
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedArtists.length === 0) return;
-    selectedArtists.forEach((id) => deleteArtista.mutate(id));
-    toast.success(`${selectedArtists.length} artista(s) excluído(s) com sucesso`);
+    const ids = selectedArtists;
     setSelectedArtists([]);
+    const result = await runBulkAction(ids, (id) => deleteArtista.mutateAsync(id));
+    reportBulkResult(result, "excluído", "artista");
   };
 
   useEffect(() => {
@@ -231,12 +193,23 @@ export default function Artistas() {
     const found =
       todosArtistas.find((a) => a.id === editIdFromUrl) ||
       artistasComContrato.find((a) => a.id === editIdFromUrl);
-    if (found) setEditModal({ open: true, artista: found });
+    if (found) {
+      setEditModal({ open: true, artista: found });
+      return;
+    }
+    // Task I: artista fora dos primeiros carregados por useArtistas() sem
+    // filtro — busca direto por ID em vez de nunca resolver o deep link.
+    let cancelled = false;
+    storage.findById<Artista>("artistas", editIdFromUrl).then((entity) => {
+      if (cancelled || !entity) return;
+      setEditModal({ open: true, artista: entity });
+    });
+    return () => { cancelled = true; };
   }, [editIdFromUrl, isLoading, todosArtistas, artistasComContrato]);
 
-  if (isLoading) return <ArtistasSkeleton />;
-
   return (
+    <>
+    {isLoading || isLoadingPage ? <ArtistasSkeleton /> : (
     <MainLayout
       title="Artistas"
       description="Visão geral de todos os artistas"
@@ -269,28 +242,28 @@ export default function Artistas() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="Total de Artistas"
-            value={todosArtistas.length}
+            value={vinculoStats.total}
             description="no casting"
             icon={Users}
             accent="primary"
           />
           <MetricCard
             title="Artistas Exclusivos"
-            value={kpiArtistas.exclusivos}
+            value={vinculoStats.exclusivo}
             description="contrato exclusivo ativo"
             icon={Sparkles}
             accent="primary"
           />
           <MetricCard
             title="Artistas Parceiros"
-            value={kpiArtistas.parceiros}
+            value={vinculoStats.parceiro}
             description="vínculo não exclusivo"
             icon={Music}
             accent="warning"
           />
           <MetricCard
             title="Independentes"
-            value={kpiArtistas.independentes}
+            value={vinculoStats.independente}
             description="sem contrato ativo"
             icon={CheckCircle}
             accent="success"
@@ -351,7 +324,7 @@ export default function Artistas() {
           )}
           {hasActiveFilters && (
             <span className="text-xs text-muted-foreground ml-auto" data-testid="text-contagem-artistas">
-              {artistasFiltrados.length} de {todosArtistas.length} artistas
+              {total} de {vinculoStats.total} artistas
             </span>
           )}
         </div>
@@ -360,12 +333,12 @@ export default function Artistas() {
           <CardContent className="p-6 space-y-4">
             <ListSectionHeader
               title="Lista de Artistas"
-              count={artistasFiltrados.length}
+              count={total}
               description="Acompanhe artistas, vínculos, perfis, gêneros e status de contrato"
               action={
                 <div className="flex flex-wrap items-center justify-end gap-3">
                   <Checkbox
-                    checked={selectedArtists.length === artistasFiltrados.length && artistasFiltrados.length > 0}
+                    checked={selectedArtists.length === pageItems.length && pageItems.length > 0}
                     onCheckedChange={toggleSelectAll}
                   />
                   <span className="text-xs text-muted-foreground">
@@ -391,21 +364,25 @@ export default function Artistas() {
 
             {/* ── Artists List ── */}
             <div className="space-y-3">
-          {artistasFiltrados.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title={hasActiveFilters ? "Nenhum resultado" : "Nenhum artista cadastrado"}
-              description={
-                hasActiveFilters
-                  ? "Nenhum artista corresponde aos filtros aplicados. Tente ajustar a busca."
-                  : "Cadastre um contato como artista no CRM e assine um contrato para que ele apareça aqui."
-              }
-              actionLabel={hasActiveFilters ? undefined : "Criar Artista"}
-              onAction={hasActiveFilters ? undefined : () => setCreateModal(true)}
-            />
+          {pageItems.length === 0 ? (
+            pageError && total === 0 ? (
+              <UnavailableState onRetry={() => refetchPage()} />
+            ) : (
+              <EmptyState
+                icon={Users}
+                title={hasActiveFilters ? "Nenhum resultado" : "Nenhum artista cadastrado"}
+                description={
+                  hasActiveFilters
+                    ? "Nenhum artista corresponde aos filtros aplicados. Tente ajustar a busca."
+                    : "Cadastre um contato como artista no CRM e assine um contrato para que ele apareça aqui."
+                }
+                actionLabel={hasActiveFilters ? undefined : "Criar Artista"}
+                onAction={hasActiveFilters ? undefined : () => setCreateModal(true)}
+              />
+            )
           ) : (
             pageItems.map((artista) => {
-              const vinculo = getVinculoLabel(artista.id);
+              const vinculo = VINCULO_BADGE[artista.vinculo ?? "independente"];
 
               return (
                 <div key={artista.id}>
@@ -618,7 +595,7 @@ export default function Artistas() {
               );
             })
           )}
-          {artistasFiltrados.length > 0 && (
+          {pageItems.length > 0 && (
             <TablePagination
               total={total}
               page={page}
@@ -632,8 +609,16 @@ export default function Artistas() {
           </CardContent>
         </Card>
       </div>
+    </MainLayout>
+    )}
 
-      {/* Modals */}
+      {/* Fora do gate de isLoading de propósito: ArtistaFormModal usa
+          useArtistas() internamente (para as mutations). Montá-lo só depois
+          do isLoading virar false criava um observer novo na mesma query;
+          com a query sempre em erro (backend fora do ar), refetchOnMount
+          voltava o status pra "pending", isLoading virava true de novo, o
+          gate desmontava o modal — loop infinito de skeleton a cada retry
+          (~12s). Mantê-lo sempre montado quebra o ciclo. */}
       <ArtistaFormModal open={createModal} onOpenChange={setCreateModal} />
       <ArtistaFormModal
         open={editModal.open}
@@ -655,6 +640,6 @@ export default function Artistas() {
         onOpenChange={(open) => setVisao360Modal({ ...visao360Modal, open })}
         artista={visao360Modal.artista as any}
       />
-    </MainLayout>
+    </>
   );
 }

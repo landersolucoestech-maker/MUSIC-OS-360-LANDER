@@ -325,23 +325,37 @@ export function ArtistaVisao360Modal({
   onOpenChange,
   artista,
 }: ArtistaVisao360ModalProps) {
-  const { obras } = useObras();
-  const { fonogramas } = useFonogramas();
-  const { lancamentos } = useLancamentos();
-  const { projetos } = useProjetos();
+  // Consultas pesadas do hub 360 só fazem sentido com o modal aberto — ver
+  // Task F: mantê-las sempre ativas fazia Dashboard/Artistas baixarem ~11
+  // tabelas inteiras a cada carregamento de página, mesmo com o modal
+  // fechado. `enabled: open` preserva o comportamento de todo outro
+  // consumidor desses hooks (default `true`).
+  //
+  // Task G: cada uma agora também é filtrada por artista_id NO SERVIDOR
+  // (backend já suporta — ver QueryPhonogramDto/QueryContractDto/
+  // QueryTransactionDto/QueryEventDto/projects.dto.ts/artist-goals — works
+  // ganhou o filtro nesta task). Antes, o modal baixava a tabela inteira do
+  // tenant e filtrava no cliente com `.filter(x => x.artista_id === id)`
+  // (padrão que a Task G pede para eliminar) — trocar de artista reaproveitava
+  // até o mesmo cache incorreto, já que a queryKey não distinguia o artista.
+  const artistaId = artista?.id;
+  const { obras: obrasReais } = useObras(open, artistaId);
+  const { fonogramas: fonogramasReais } = useFonogramas(open, artistaId);
+  const { lancamentos: lancamentosReais } = useLancamentos(open, artistaId);
+  const { projetos: projetosReais } = useProjetos(open, artistaId);
   const {
-    metas: metasList,
+    metas: metasReais,
     addMeta,
     updateMeta,
     deleteMeta,
     getProgressPercent: calcProgress,
-  } = useMetas();
-  const { contratos } = useContratos();
-  const { transacoes } = useTransacoes();
-  const { contacts } = useContacts();
-  const { eventos } = useEventos();
-  const { data: marketingContents = [] } = useMarketingContents();
-  const { data: marketingCampaigns = [] } = useMarketingCampaigns();
+  } = useMetas(open, artistaId);
+  const { contratos: contratosReais } = useContratos(open, artistaId);
+  const { transacoes: transacoesArtista } = useTransacoes(open, artistaId);
+  const { contacts } = useContacts(open);
+  const { eventos: eventosReais } = useEventos(open, artistaId);
+  const { data: marketingContents = [] } = useMarketingContents(open);
+  const { data: marketingCampaigns = [] } = useMarketingCampaigns(open);
 
   // Resolve os contatos vinculados (referências) com os dados atuais do CRM.
   const contatosVinculadosResolvidos = useMemo(() => {
@@ -360,26 +374,7 @@ export function ArtistaVisao360Modal({
   const [conteudoFilter, setConteudoFilter] = useState("todos");
   const [contratoFilter, setContratoFilter] = useState("todos");
 
-  // Filter data by artista_id
-  const artistaId = artista?.id;
-  const obrasReais = obras.filter((o: any) => o.artista_id === artistaId);
-  const fonogramasReais = fonogramas.filter(
-    (f: any) => f.artista_id === artistaId,
-  );
-  const lancamentosReais = lancamentos.filter(
-    (l: any) => l.artista_id === artistaId,
-  );
-  const projetosReais = projetos.filter((p: any) => p.artista_id === artistaId);
-  const metasReais = metasList.filter((m: any) => m.artista_id === artistaId);
-  const contratosReais: ContratoWithRelations[] = contratos.filter(
-    (c) => c.artista_id === artistaId,
-  );
-  const transacoesArtista = transacoes.filter(
-    (t) => t.artista_id === artistaId,
-  );
-
   // ── Agenda (eventos do artista) ────────────────────────────────────────
-  const eventosReais = eventos.filter((e) => e.artista_id === artistaId);
   const agendaFiltrada = eventosReais.filter((e) => {
     const cfg = AGENDA_FILTERS.find((f) => f.key === agendaFilter);
     if (!cfg || !cfg.tipos) return true;

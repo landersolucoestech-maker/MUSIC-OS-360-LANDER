@@ -1,30 +1,39 @@
 import { useMemo, useState } from "react";
 import { BarChart3, Disc3, Radio, Search, Share2, Target, TrendingUp, UserRound } from "lucide-react";
 import { Button } from "@/shared/ui/button";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
+import type { Artista } from "@/modules/artist/hooks/useArtistas";
+import { useObras } from "@/modules/catalog/hooks/useObras";
+import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import type { AiGeneratedResult } from "../../types/marketing.types";
 import type { ArtistProfileSources, GenerateAiHandler, TargetOption } from "./iaCriativa.types";
 import { buildArtistProfilePrompt, loadArtistContext, type ArtistProfileContext } from "../../services/musicIntelligenceEngine";
-import { copyResult, EntitySelect, ResultActions, ResultList, ResultText, StructuredResult, WorkflowSection } from "./Shared";
-import { getLatestResult, joinPrompt } from "./iaCriativa.utils";
+import { AsyncEntitySelect, copyResult, ResultActions, ResultList, ResultText, StructuredResult, WorkflowSection } from "./Shared";
+import { getLatestResult } from "./iaCriativa.utils";
 
 type ArtistProfileBundle = ArtistProfileContext;
 
 export function PerfilTab({
-  artistOptions,
   sources,
   onGenerate,
   isGenerating,
 }: {
-  artistOptions: TargetOption[];
   sources: ArtistProfileSources;
   onGenerate: GenerateAiHandler;
   isGenerating: boolean;
 }) {
   const [artist, setArtist] = useState<TargetOption | null>(null);
 
+  // Task J — catálogo do artista selecionado busca direto e escopado por
+  // artista_id (server-side), nunca mais filtrando sources.obras/fonogramas
+  // sem filtro (capadas aos primeiros 50 do tenant).
+  const { entity: artistRecord } = useEntityById<Artista>("artistas", artist?.id);
+  const { obras } = useObras(!!artist, artist?.id);
+  const { fonogramas } = useFonogramas(!!artist, artist?.id);
+
   const bundle = useMemo<ArtistProfileBundle | null>(
-    () => artist ? loadArtistContext(artist, sources) : null,
-    [artist, sources],
+    () => artist ? loadArtistContext(artist, sources, { artistRecord, obras, fonogramas }) : null,
+    [artist, sources, artistRecord, obras, fonogramas],
   );
   const result = useMemo<AiGeneratedResult | null>(() => (
     artist ? getLatestResult(sources.suggestions.filter((item) => item.targetId === artist.id || item.targetName === artist.label), ["analise_artista"]) : null
@@ -56,10 +65,10 @@ export function PerfilTab({
         </>
       }
     >
-      <EntitySelect
+      <AsyncEntitySelect
         label="Artista"
         value={artist?.id ?? ""}
-        options={artistOptions}
+        table="artistas"
         placeholder="Selecione o artista"
         onChange={setArtist}
       />
@@ -70,93 +79,6 @@ export function PerfilTab({
       </Button>
     </WorkflowSection>
   );
-}
-
-function buildArtistProfileBundle(artist: TargetOption, sources: ArtistProfileSources) {
-  const artistRecord = sources.artists.find((item) => item.id === artist.id);
-  const obras = sources.obras.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
-  const fonogramas = sources.fonogramas.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
-  const releases = sources.releases.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
-  const projects = sources.projects.filter((item) => item.artistId === artist.id);
-  const campaigns = sources.campaigns.filter((item) => item.targetType === "artista" && item.targetId === artist.id);
-  const contents = sources.contents.filter((item) => item.targetType === "artista" && item.targetId === artist.id);
-  const tasks = sources.tasks.filter((item) => item.targetType === "artista" && item.targetId === artist.id);
-  const pitchings = sources.suggestions.filter((item) => item.targetId === artist.id || item.targetName === artist.label);
-  const genreCandidates = [
-    artistRecord?.genero_musical,
-    ...obras.map((item) => item.genero),
-    ...fonogramas.map((item) => item.genero_musical),
-    ...releases.map((item) => item.genero),
-  ].filter(Boolean).map(String);
-  const socialSignals = [
-    artistRecord?.instagram ? `Instagram: ${artistRecord.instagram}` : "",
-    artistRecord?.instagram_seguidores ? `Instagram seguidores: ${artistRecord.instagram_seguidores}` : "",
-    artistRecord?.tiktok ? `TikTok: ${artistRecord.tiktok}` : "",
-    artistRecord?.tiktok_seguidores ? `TikTok seguidores: ${artistRecord.tiktok_seguidores}` : "",
-    artistRecord?.spotify_ouvintes ? `Spotify ouvintes: ${artistRecord.spotify_ouvintes}` : "",
-    artistRecord?.youtube_inscritos ? `YouTube inscritos: ${artistRecord.youtube_inscritos}` : "",
-  ].filter(Boolean);
-  const releaseDates = releases.map((item) => item.data_lancamento).filter(Boolean).map(String).sort();
-
-  return {
-    artist,
-    artistRecord,
-    predominantGenre: mostCommon(genreCandidates),
-    subgenres: uniqueStrings([
-      ...fonogramas.map((item) => stringifyValue(item.classificacao)),
-      ...releases.map((item) => stringifyValue(item["subgenero"])),
-    ]),
-    moods: uniqueStrings([
-      ...releases.map((item) => stringifyValue(item["mood"])),
-      ...fonogramas.map((item) => stringifyValue(item["mood"])),
-    ]),
-    references: uniqueStrings([
-      ...obras.map((item) => stringifyValue(item.compositor || item.compositores)),
-      ...fonogramas.map((item) => stringifyValue(item.produtores || item.gravadora || item.agregadora)),
-      ...releases.map((item) => stringifyValue(item.distribuidora || item.gravadora)),
-    ]),
-    publicSignals: socialSignals,
-    catalog: {
-      releases,
-      obras,
-      fonogramas,
-      totalReleases: releases.length,
-      totalTracks: fonogramas.length || obras.length,
-      releaseDates,
-      frequency: estimateReleaseFrequency(releaseDates),
-      isrcs: uniqueStrings([...obras.map((item) => item.isrc), ...fonogramas.map((item) => item.isrc), ...releases.map((item) => item.isrc_global)]),
-    },
-    operations: {
-      projects,
-      campaigns,
-      contents,
-      tasks,
-      pitchings,
-      completedTasks: tasks.filter((item) => item.status === "concluida").length,
-      openTasks: tasks.filter((item) => item.status !== "concluida").length,
-    },
-    careerStage: inferCareerStage(artistRecord?.spotify_ouvintes, artistRecord?.instagram_seguidores, releases.length),
-    growthRhythm: inferGrowthRhythm(releaseDates, socialSignals),
-  };
-}
-
-function buildPrompt(bundle: ArtistProfileBundle) {
-  return joinPrompt([
-    `Executar análise completa de perfil artistico para ${bundle.artist.label}.`,
-    `Cadastro: ${JSON.stringify({
-      nome: bundle.artistRecord?.nome_artistico,
-      genero: bundle.artistRecord?.genero_musical,
-      faseCarreira: bundle.artistRecord?.fase_carreira,
-      tipo: bundle.artistRecord?.tipo,
-      status: bundle.artistRecord?.status,
-    })}`,
-    `Catálogo: ${bundle.catalog.totalReleases} lançamentos, ${bundle.catalog.totalTracks} faixas/fonogramas, frequência ${bundle.catalog.frequency}, ISRCs ${bundle.catalog.isrcs.join(", ") || "pendentes"}.`,
-    `Distribuição e gravadoras/agregadoras: ${bundle.references.join(", ") || "não informado"}.`,
-    `Streams e redes sociais: ${bundle.publicSignals.join(", ") || "sem sinais cadastrados"}.`,
-    `Marketing: ${bundle.operations.campaigns.length} campanhas, ${bundle.operations.contents.length} conteúdos, ${bundle.operations.pitchings.length} pitchings gerados.`,
-    `Histórico operacional: ${bundle.operations.tasks.length} tarefas, ${bundle.operations.completedTasks} concluídas, ${bundle.operations.openTasks} abertas.`,
-    "Gerar diagnóstico executivo com Perfil Artístico, Carreira, Público, Catálogo, Mercado, Estratégia e Diagnóstico. Identificar gênero, subgêneros, mood, identidade sonora, identidade visual, influências, diferenciais, estágio de carreira, evolução, ritmo de crescimento, consistência, público, catálogo, concorrentes, nichos, frequência ideal, melhor formato, colaborações, potencial de playlists, potencial de viralização, pontos fortes, pontos fracos, oportunidades, riscos, recomendações práticas e próximos passos.",
-  ]);
 }
 
 function ProfileDataDashboard({ bundle }: { bundle: ArtistProfileBundle }) {
@@ -233,48 +155,4 @@ function ExecutiveProfileResult({ result, bundle }: { result: AiGeneratedResult;
   );
 }
 
-function mostCommon(values: string[]) {
-  const counts = values.reduce<Record<string, number>>((acc, value) => {
-    acc[value] = (acc[value] ?? 0) + 1;
-    return acc;
-  }, {});
-  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
-}
-
-function uniqueStrings(values: Array<string | null | undefined>) {
-  return Array.from(new Set(values.map((value) => value?.trim()).filter(Boolean) as string[]));
-}
-
-function stringifyValue(value: unknown): string {
-  if (typeof value === "string") return value.trim();
-  if (typeof value === "number") return String(value);
-  if (Array.isArray(value)) return value.map(stringifyValue).filter(Boolean).join(", ");
-  return "";
-}
-
-function estimateReleaseFrequency(dates: string[]) {
-  if (dates.length < 2) return dates.length === 1 ? "catálogo inicial" : "sem agenda de lançamentos cadastrada";
-  const first = new Date(dates[0]).getTime();
-  const last = new Date(dates[dates.length - 1]).getTime();
-  const months = Math.max(1, Math.round((last - first) / 1000 / 60 / 60 / 24 / 30));
-  const releasesPerYear = (dates.length / months) * 12;
-  if (releasesPerYear >= 8) return "alta frequência";
-  if (releasesPerYear >= 4) return "frequência consistente";
-  return "frequência baixa";
-}
-
-function inferCareerStage(spotify?: number | null, instagram?: number | null, releases = 0) {
-  const reach = Math.max(spotify ?? 0, instagram ?? 0);
-  if (reach >= 1_000_000) return "Mainstream";
-  if (reach >= 100_000 || releases >= 12) return "Consolidado";
-  if (reach >= 10_000 || releases >= 4) return "Em crescimento";
-  return "Emergente";
-}
-
-function inferGrowthRhythm(dates: string[], socialSignals: string[]) {
-  if (dates.length >= 6 && socialSignals.length >= 3) return "crescimento com base de catálogo e canais ativos";
-  if (dates.length >= 3) return "crescimento em validação por consistência de lançamentos";
-  if (socialSignals.length >= 2) return "crescimento dependente de presenca digital";
-  return "ritmo ainda pouco mensurável";
-}
 

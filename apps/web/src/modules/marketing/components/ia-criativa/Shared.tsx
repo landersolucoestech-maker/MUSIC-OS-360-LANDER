@@ -7,6 +7,7 @@ import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
 import { cn } from "@/shared/lib/utils";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import { MarketingBadge } from "../index";
 import type { AiAudioMetadata, AiGeneratedResult } from "../../types/marketing.types";
 import type { ResultActionProps, TargetOption } from "./iaCriativa.types";
@@ -81,6 +82,64 @@ export function EntitySelect({
           ))}
         </SelectContent>
       </Select>
+    </Field>
+  );
+}
+
+type EntityRow = Record<string, unknown> & { id: string };
+
+function bestLabel(item: EntityRow): string {
+  return String(
+    item.nome_artistico || item.titulo || item.nome || item.name || item.id,
+  );
+}
+
+/**
+ * Task J — versão server-side de EntitySelect: busca real (useEntityLookup)
+ * em vez de um array `options` estático montado a partir de useArtistas()/
+ * useProjetos() sem filtro (capado aos primeiros 50 do tenant). Mesmo
+ * contrato de onChange(TargetOption) das telas que já usavam EntitySelect,
+ * para não exigir mudança de layout/fluxo — só troca a fonte dos dados.
+ */
+export function AsyncEntitySelect({
+  label,
+  value,
+  table,
+  filters,
+  placeholder,
+  searchPlaceholder,
+  emptyText,
+  onChange,
+  disabled,
+  getHelper,
+}: {
+  label: string;
+  value: string;
+  table: string;
+  filters?: Record<string, unknown>;
+  placeholder: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+  onChange: (option: TargetOption) => void;
+  disabled?: boolean;
+  getHelper?: (item: EntityRow) => string | undefined;
+}) {
+  return (
+    <Field label={label}>
+      <AsyncEntityCombobox<EntityRow>
+        table={table}
+        filters={filters}
+        value={value || null}
+        onChange={(id, item) => {
+          if (!id || !item) return;
+          onChange({ id, label: bestLabel(item), helper: getHelper?.(item) });
+        }}
+        getLabel={bestLabel}
+        placeholder={placeholder}
+        searchPlaceholder={searchPlaceholder ?? "Buscar…"}
+        emptyText={emptyText ?? "Nenhum registro encontrado"}
+        disabled={disabled}
+      />
     </Field>
   );
 }

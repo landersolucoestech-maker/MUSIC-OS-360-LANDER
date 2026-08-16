@@ -40,6 +40,9 @@ interface MainLayoutProps {
   noPadding?: boolean;
 }
 
+// Referência estável — ver shared/hooks/useDataQuery.ts para o motivo.
+const EMPTY_NOTIFICATIONS: Array<{ id: string; title: string; body: string | null; read_at: string | null; created_at: string }> = [];
+
 const ROLE_LABEL: Record<string, string> = {
   owner:        "Proprietário",
   tenant_owner: "Proprietário",
@@ -178,7 +181,7 @@ function NotificationsPopover() {
   // Notificações reais do backend (/notifications). Sem dados fictícios:
   // erro ou backend indisponível ⇒ lista vazia (estado verdadeiro).
   const queryClient = useQueryClient();
-  const { data: rawNotifications = [] } = useQuery({
+  const { data: rawNotifications = EMPTY_NOTIFICATIONS } = useQuery({
     queryKey: ["notifications", "topbar"],
     queryFn: async () => {
       const res = await api.get<{ data?: Array<{ id: string; title: string; body: string | null; read_at: string | null; created_at: string }> } | Array<{ id: string; title: string; body: string | null; read_at: string | null; created_at: string }>>("/notifications?limit=10");

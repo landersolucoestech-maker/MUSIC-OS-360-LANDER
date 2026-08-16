@@ -183,10 +183,15 @@ export function createQueryClient(): QueryClient {
         networkMode: "offlineFirst",
       },
       mutations: {
-        // Retry failed mutations once
-        retry: 1,
-        retryDelay: 1000,
-        
+        // POST/PATCH/DELETE não são seguras para retry automático: se a
+        // requisição chegou ao servidor mas a resposta se perdeu (timeout,
+        // rede caiu), reenviar duplica a escrita (artista duplicado,
+        // transação duplicada, etc.) sem nenhum aviso ao usuário — a UI já
+        // seguiu em frente (toast/fechou modal) antes do retry silencioso
+        // acontecer em background. Falhas de mutation já viram toast.error
+        // (ver useDataQuery); o usuário pode tentar de novo manualmente.
+        retry: 0,
+
         // Network mode
         networkMode: "offlineFirst",
       },

@@ -16,7 +16,8 @@ import {
 } from "@/shared/ui/collapsible";
 import { useState } from "react";
 import { ChevronDown, FileAudio, Music } from "lucide-react";
-import { useObras, type ObraWithRelations } from "@/modules/catalog/hooks/useObras";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
+import type { ObraWithRelations } from "@/modules/catalog/hooks/useObras";
 
 // `compositores` é tipado como string[] no schema, mas em alguns registros
 // legados pode chegar como string ou null. Normaliza com segurança.
@@ -206,7 +207,13 @@ export function FonogramaViewModal({
   const [interpreteOpen, setInterpreteOpen] = useState(true);
   const [musicoOpen, setMusicoOpen] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(true);
-  const { obras } = useObras();
+
+  // Resolve obra vinculada DIRETO por ID (GET /works/:id) quando não veio um
+  // objeto inline — não depende da obra estar entre os primeiros registros
+  // carregados (Task J: antes usava useObras() sem filtro, truncado em 50).
+  const inlineObra = fonograma?.obraVinculada ?? fonograma?.obra ?? null;
+  const lookupObraId = !inlineObra ? (fonograma?.obra_id ?? fonograma?.obraId) : undefined;
+  const { entity: foundObra } = useEntityById<ObraWithRelations>("obras", open ? lookupObraId : undefined);
 
   if (!fonograma) return null;
 
@@ -220,24 +227,16 @@ export function FonogramaViewModal({
     return undefined;
   };
 
-  // Resolve obra vinculada: aceita objeto inline (legacy) ou resolve via obra_id
-  // a partir da lista de obras carregadas pelo hook.
-  let obraVinculada: ObraVinculadaView | null =
-    fonograma.obraVinculada ?? fonograma.obra ?? null;
-  if (!obraVinculada) {
-    const obraId = fonograma.obra_id ?? fonograma.obraId;
-    if (obraId) {
-      const found = obras.find((o: ObraWithRelations) => o.id === obraId);
-      if (found) {
-        obraVinculada = {
-          title: found.titulo ?? "",
-          genero: found.genero ?? "",
-          compositores: compositoresToString(found.compositores),
-        };
-      } else {
-        obraVinculada = { title: "Obra vinculada" };
-      }
-    }
+  // Resolve obra vinculada: aceita objeto inline (legacy) ou resolve via obra_id.
+  let obraVinculada: ObraVinculadaView | null = inlineObra;
+  if (!obraVinculada && lookupObraId) {
+    obraVinculada = foundObra
+      ? {
+          title: foundObra.titulo ?? "",
+          genero: foundObra.genero ?? "",
+          compositores: compositoresToString(foundObra.compositores),
+        }
+      : { title: "Obra vinculada" };
   }
 
   const obraTitulo = obraVinculada?.title || obraVinculada?.titulo || "";

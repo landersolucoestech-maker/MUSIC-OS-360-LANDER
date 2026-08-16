@@ -1,0 +1,156 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { useEntityLookup, useEntityById } from "@/shared/hooks/useEntityLookup";
+import { storage } from "@/shared/lib/storage";
+
+vi.mock("@/shared/lib/storage", async () => {
+  const actual = await vi.importActual<typeof import("@/shared/lib/storage")>("@/shared/lib/storage");
+  return { ...actual, storage: { ...actual.storage, listPaged: vi.fn(), findById: vi.fn() } };
+});
+
+const mockedListPaged = vi.mocked(storage.listPaged);
+const mockedFindById = vi.mocked(storage.findById);
+
+interface FakeRow { id: string; nome: string }
+
+// 75 registros — mais que o antigo limit=50 default do backend.
+const FAKE_DATASET: FakeRow[] = Array.from({ length: 75 }, (_, i) => ({
+  id: `id-${i + 1}`,
+  nome: `Artista ${i + 1}`,
+}));
+
+function fakeBackend(_table: string, options: { page: number; pageSize: number; filters?: Record<string, unknown> }) {
+  const search = (options.filters?.search as string | undefined)?.toLowerCase();
+  const rows = search ? FAKE_DATASET.filter((r) => r.nome.toLowerCase().includes(search)) : FAKE_DATASET.slice(0, options.pageSize);
+  const total = search ? rows.length : FAKE_DATASET.length;
+  return Promise.resolve({
+    items: rows.slice(0, options.pageSize), page: options.page, pageSize: options.pageSize, total,
+    totalPages: Math.max(1, Math.ceil(total / options.pageSize)),
+  });
+}
+
+function createWrapper() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
+
+// Debounce real (300ms em useDebounce) — usamos tempo real em vez de fake
+// timers para não travar o polling interno do waitFor do testing-library.
+const settle = (ms = 350) => new Promise((r) => setTimeout(r, ms));
+
+describe("useEntityLookup", () => {
+  beforeEach(() => {
+    mockedListPaged.mockReset();
+    mockedListPaged.mockImplementation(fakeBackend as typeof storage.listPaged);
+  });
+
+  it("encontra o registro #75 buscando por um trecho do nome (fora do antigo cap de 50)", async () => {
+    const { result, rerender } = renderHook(
+      ({ search }: { search: string }) => useEntityLookup<FakeRow>({ table: "artistas", search, enabled: true }),
+      { wrapper: createWrapper(), initialProps: { search: "" } },
+    );
+
+    rerender({ search: "Artista 75" });
+    await waitFor(() => expect(result.current.items.some((i) => i.id === "id-75")).toBe(true), { timeout: 2000 });
+  });
+
+  it("debounce: digitação rápida não dispara uma request por tecla", async () => {
+    const { rerender } = renderHook(
+      ({ search }: { search: string }) => useEntityLookup<FakeRow>({ table: "artistas", search, enabled: true }),
+      { wrapper: createWrapper(), initialProps: { search: "" } },
+    );
+    mockedListPaged.mockClear();
+
+    for (const partial of ["A", "Ar", "Art", "Arti", "Artis", "Artist", "Artista"]) {
+      rerender({ search: partial });
+      await settle(50); // bem menor que os 300ms de debounce
+    }
+    // Ainda não assentou — nenhuma request deve ter disparado ainda.
+    expect(mockedListPaged).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(mockedListPaged).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect((mockedListPaged.mock.calls[0][1] as { filters?: Record<string, unknown> }).filters?.search).toBe("Artista");
+  });
+
+  it("busca vazia + enabled não gera storm de requests repetidas", async () => {
+    const { rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useEntityLookup<FakeRow>({ table: "artistas", search: "", enabled }),
+      { wrapper: createWrapper(), initialProps: { enabled: false } },
+    );
+    mockedListPaged.mockClear();
+
+    rerender({ enabled: true });
+    await waitFor(() => expect(mockedListPaged).toHaveBeenCalledTimes(1), { timeout: 2000 });
+
+    // Re-renders subsequentes com os mesmos parâmetros não devem re-disparar.
+    rerender({ enabled: true });
+    rerender({ enabled: true });
+    await settle();
+    expect(mockedListPaged).toHaveBeenCalledTimes(1);
+  });
+
+  it("não busca quando enabled=false (ex.: popover fechado)", async () => {
+    renderHook(
+      () => useEntityLookup<FakeRow>({ table: "artistas", search: "qualquer coisa", enabled: false }),
+      { wrapper: createWrapper() },
+    );
+    await settle();
+    expect(mockedListPaged).not.toHaveBeenCalled();
+  });
+
+  it("troca de busca gera uma nova query (queryKey/AbortSignal distintos), nunca reaproveita a request obsoleta", async () => {
+    const signals: AbortSignal[] = [];
+    // Delay artificial: a primeira request precisa continuar "em voo" quando
+    // a segunda busca dispara, para provar que são requests independentes
+    // (não reaproveitadas) mesmo sobrepostas no tempo.
+    mockedListPaged.mockImplementation((async (
+      table: string,
+      options: { page: number; pageSize: number; filters?: Record<string, unknown>; signal?: AbortSignal },
+    ) => {
+      if (options.signal) signals.push(options.signal);
+      await settle(150);
+      return fakeBackend(table, options);
+    }) as typeof storage.listPaged);
+
+    const { rerender } = renderHook(
+      ({ search }: { search: string }) => useEntityLookup<FakeRow>({ table: "artistas", search, enabled: true }),
+      { wrapper: createWrapper(), initialProps: { search: "Artista 1" } },
+    );
+    await waitFor(() => expect(signals.length).toBe(1), { timeout: 2000 });
+    const firstSignal = signals[0];
+
+    // Nova busca antes da primeira resolver (ainda dentro dos 150ms do delay).
+    rerender({ search: "Artista 2" });
+    await waitFor(() => expect(signals.length).toBe(2), { timeout: 2000 });
+
+    // Cada busca recebe seu próprio AbortSignal (React Query nunca reusa o
+    // controller de uma query anterior) — a query obsoleta fica marcada
+    // para cancelamento assim que deixa de ter observers.
+    expect(signals[1]).not.toBe(firstSignal);
+    const secondSearchFilters = (mockedListPaged.mock.calls[1][1] as { filters?: Record<string, unknown> }).filters;
+    expect(secondSearchFilters?.search).toBe("Artista 2");
+  });
+});
+
+describe("useEntityById", () => {
+  beforeEach(() => {
+    mockedFindById.mockReset();
+  });
+
+  it("resolve um registro fora dos primeiros 50 via GET /:resource/:id direto", async () => {
+    mockedFindById.mockResolvedValue({ id: "id-75", nome: "Artista 75" });
+    const { result } = renderHook(() => useEntityById<FakeRow>("artistas", "id-75"), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.entity?.id).toBe("id-75"));
+    expect(mockedFindById).toHaveBeenCalledWith("artistas", "id-75");
+  });
+
+  it("não busca quando id é null/undefined", async () => {
+    renderHook(() => useEntityById<FakeRow>("artistas", undefined), { wrapper: createWrapper() });
+    expect(mockedFindById).not.toHaveBeenCalled();
+  });
+});

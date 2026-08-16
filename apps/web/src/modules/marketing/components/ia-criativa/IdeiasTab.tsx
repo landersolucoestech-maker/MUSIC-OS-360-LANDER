@@ -5,7 +5,7 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import type { AiGeneratedResult, AiSuggestion, AiTaskKind } from "../../types/marketing.types";
 import type { GenerateAiHandler, TargetOption } from "./iaCriativa.types";
-import { BriefingTextarea, copyResult, EntitySelect, Field, ResultActions, StructuredResult, WorkflowSection } from "./Shared";
+import { AsyncEntitySelect, BriefingTextarea, copyResult, EntitySelect, Field, ResultActions, StructuredResult, WorkflowSection } from "./Shared";
 import { getLatestResult } from "./iaCriativa.utils";
 
 const OBJECTIVES: Array<{ value: AiTaskKind; label: string }> = [
@@ -23,15 +23,11 @@ function isIdeaObjective(value: string): value is AiTaskKind {
 }
 
 export function IdeiasTab({
-  artistOptions,
-  projectOptions,
   campaignOptions,
   suggestions,
   onGenerate,
   isGenerating,
 }: {
-  artistOptions: TargetOption[];
-  projectOptions: TargetOption[];
   campaignOptions: TargetOption[];
   suggestions: AiSuggestion[];
   onGenerate: GenerateAiHandler;
@@ -45,7 +41,6 @@ export function IdeiasTab({
   const [customCampaign, setCustomCampaign] = useState("");
 
   const result = useMemo<AiGeneratedResult | null>(() => getLatestResult(suggestions, OBJECTIVES.map((item) => item.value)), [suggestions]);
-  const targetOptions = context === "artista" ? artistOptions : projectOptions;
   const canGenerate = Boolean(target && objective && briefing.trim()) && !isGenerating;
 
   const generate = () => {
@@ -88,10 +83,10 @@ export function IdeiasTab({
             </SelectContent>
           </Select>
         </Field>
-        <EntitySelect
+        <AsyncEntitySelect
           label={context === "artista" ? "Artista" : "Projeto"}
           value={target?.id ?? ""}
-          options={targetOptions}
+          table={context === "artista" ? "artistas" : "projetos"}
           placeholder={context === "artista" ? "Selecione o artista" : "Selecione o projeto"}
           onChange={setTarget}
         />

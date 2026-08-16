@@ -6,15 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { GenerateAiHandler, TargetOption } from "./iaCriativa.types";
 import type { PlanningContext } from "../../services/musicIntelligenceEngine";
 import { generatePlanningDraft } from "../../services/musicIntelligenceEngine";
-import { EntitySelect, Field, ResultList, WorkflowSection } from "./Shared";
+import { AsyncEntitySelect, EntitySelect, Field, ResultList, WorkflowSection } from "./Shared";
 
 export function PlanejamentoTab({
-  artistOptions,
   releaseOptions,
   onGenerate,
   isGenerating,
 }: {
-  artistOptions: TargetOption[];
   releaseOptions: TargetOption[];
   onGenerate: GenerateAiHandler;
   isGenerating: boolean;
@@ -51,7 +49,7 @@ export function PlanejamentoTab({
       }
     >
       <div className="grid gap-4 md:grid-cols-2">
-        <EntitySelect label="Artista opcional" value={artist?.id ?? ""} options={artistOptions} placeholder="Selecionar artista" onChange={setArtist} />
+        <AsyncEntitySelect label="Artista opcional" value={artist?.id ?? ""} table="artistas" placeholder="Selecionar artista" onChange={setArtist} />
         <EntitySelect label="Lançamento opcional" value={release?.id ?? ""} options={releaseOptions} placeholder="Selecionar lançamento" onChange={setRelease} />
         <Field label="Objetivo">
           <Input value={objective} onChange={(event) => setObjective(event.target.value)} />

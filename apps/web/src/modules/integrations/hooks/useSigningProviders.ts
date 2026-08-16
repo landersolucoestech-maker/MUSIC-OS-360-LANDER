@@ -34,8 +34,11 @@ function readDocuSignCreds(): boolean {
  * This informs users which providers are available and how to enable them.
  * The service layer also enforces connectivity at runtime via verifyConnection().
  */
+// Referência estável — ver shared/hooks/useDataQuery.ts para o motivo.
+const EMPTY_PROVIDERS: SigningProviderOption[] = [];
+
 export function useSigningProviders() {
-  return useQuery<SigningProviderOption[]>({
+  const query = useQuery<SigningProviderOption[]>({
     queryKey: ["integrations", "signing-providers"],
     queryFn: async (): Promise<SigningProviderOption[]> => {
       const clicksignConnected = readClicksignCreds();
@@ -71,4 +74,5 @@ export function useSigningProviders() {
     },
     staleTime: 0,
   });
+  return { ...query, data: query.data ?? EMPTY_PROVIDERS };
 }

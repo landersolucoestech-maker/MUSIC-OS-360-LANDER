@@ -4,16 +4,22 @@
  * Hook agregador de métricas cross-módulo para o Dashboard.
  * Pertence ao módulo dashboard — NÃO é shared, pois importa directamente
  * de módulos de domínio. Shared nunca importa de módulos.
+ *
+ * Task G: contagens/somas (totalArtistas, contratosAtivos, contratosVencendo,
+ * receitaMensal) agora vêm de useOperationalDashboard() — GET /analytics/dashboard,
+ * que já calcula tudo via COUNT/SUM no banco (ver AnalyticsService.getDashboard) —
+ * em vez de baixar as tabelas inteiras de contratos/transações/clientes só para
+ * somar no cliente. Só continuam sendo buscadas as listas cujos REGISTROS (não
+ * agregados) são exibidos: artistas e eventos (para "destaques" e "próximos
+ * compromissos"), lançamentos/projetos (para contar por artista nos destaques).
  */
 import { useMemo } from "react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
-import { useEventos } from "@/modules/events/hooks/useEventos";
-import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
+import { useEventos, type EventoWithRelations } from "@/modules/events/hooks/useEventos";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
-import { format, isToday, differenceInDays, startOfMonth, endOfMonth, parseISO, subDays } from "date-fns";
+import { useOperationalDashboard } from "./useOperationalDashboard";
+import { isToday, startOfMonth, endOfMonth, parseISO } from "date-fns";
 
 interface ArtistaDestaque {
   id: string;
@@ -37,25 +43,6 @@ interface ArtistasMetrics {
   receitaTotal: number;
 }
 
-interface CRMMetrics {
-  total: number;
-  ativos: number;
-  leads: number;
-  valorComercialContratado: number;
-  totalContratos: number;
-}
-
-interface FinanceiroMetrics {
-  receitasPagas: number;
-  despesasPagas: number;
-  lucroLiquido: number;
-  contasReceber: number;
-  contasPagar: number;
-  margem: number;
-  receitasPendentes: number;
-  despesasPendentes: number;
-}
-
 interface DashboardMetrics {
   totalArtistas: number;
   contratosAtivos: number;
@@ -68,27 +55,49 @@ interface DashboardMetrics {
 
 export interface UseMetricsReturn {
   artistasMetrics: ArtistasMetrics;
-  crmMetrics: CRMMetrics;
-  financeiroMetrics: FinanceiroMetrics;
   dashboardMetrics: DashboardMetrics;
+  eventos: EventoWithRelations[];
   isLoading: boolean;
+  error: Error | null;
+  refetch: () => void;
 }
 
 export function useMetrics(): UseMetricsReturn {
-  const { artistas, isLoading: loadingArtistas } = useArtistas();
-  const { contratos, isLoading: loadingContratos } = useContratos();
-  const { transacoes, isLoading: loadingTransacoes } = useTransacoes();
-  const { eventos, isLoading: loadingEventos } = useEventos();
-  const { clientes, isLoading: loadingClientes } = useClientes();
-  const { lancamentos: lancamentosData, isLoading: loadingLancamentos } = useLancamentos();
-  const { projetos, isLoading: loadingProjetos } = useProjetos();
-  const isLoading = loadingArtistas || loadingContratos || loadingTransacoes ||
-                    loadingEventos || loadingClientes || loadingLancamentos ||
-                    loadingProjetos;
+  const { artistas, isLoading: loadingArtistas, error: errArtistas, refetch: refetchArtistas } = useArtistas();
+  const { eventos, isLoading: loadingEventos, error: errEventos, refetch: refetchEventos } = useEventos();
+  const { lancamentos: lancamentosData, isLoading: loadingLancamentos, error: errLancamentos, refetch: refetchLancamentos } = useLancamentos();
+  const { projetos, isLoading: loadingProjetos, error: errProjetos, refetch: refetchProjetos } = useProjetos();
+  const { dashboard, isLoading: loadingAgg, error: errAgg, refetch: refetchAgg } = useOperationalDashboard();
+
+  const refetch = () => {
+    refetchArtistas(); refetchEventos(); refetchLancamentos(); refetchProjetos(); refetchAgg();
+  };
+
+  // Nenhuma das 5 fontes carregou com sucesso: KPIs zerados nesse caso são
+  // indisponibilidade, não dado real — Dashboard.tsx usa isto para decidir
+  // entre mostrar os KPIs ou um banner de "não foi possível carregar".
+  const error = (errArtistas || errEventos || errLancamentos || errProjetos || errAgg) &&
+    artistas.length === 0 && eventos.length === 0 && lancamentosData.length === 0 &&
+    projetos.length === 0 && !dashboard
+    ? (errArtistas || errEventos || errLancamentos || errProjetos || errAgg)
+    : null;
+  const isLoading = loadingArtistas || loadingEventos || loadingLancamentos || loadingProjetos || loadingAgg;
 
   const artistasMetrics = useMemo<ArtistasMetrics>(() => {
-    const artistasComContrato = artistas.filter(a => a.contrato_id).length;
-    const artistasAtivos = artistas.filter(a => a.status === "ativo" || a.status === "contratado").length;
+    // Task J: contrato_id/status são regra de negócio 1:1 no backend (artist
+    // só entra em status "contratado" com contrato_id preenchido — ver
+    // ArtistsService.changeStatus) — por isso `artists_by_status.contratado`
+    // do agregado GET /analytics/dashboard (COUNT real no banco, nunca
+    // capado) cobre exatamente "artistas com contrato ativo", sem precisar
+    // de endpoint novo. Cai para o array capado (artistas.length) só se o
+    // agregado ainda não carregou — mesmo padrão de fallback do totalArtistas.
+    const statusCounts = dashboard?.artists_by_status;
+    const artistasComContrato = statusCounts
+      ? (statusCounts["contratado"] ?? 0)
+      : artistas.filter(a => a.contrato_id).length;
+    const artistasAtivos = statusCounts
+      ? (statusCounts["ativo"] ?? 0) + (statusCounts["contratado"] ?? 0)
+      : artistas.filter(a => a.status === "ativo" || a.status === "contratado").length;
     const shows = eventos;
     const totalShows = shows.length;
     const showsAgendados = shows.filter(e => {
@@ -105,7 +114,7 @@ export function useMetrics(): UseMetricsReturn {
 
     return {
       total: artistas.length,
-      totalArtistas: artistas.length,
+      totalArtistas: dashboard?.artists ?? artistas.length,
       comContrato: artistasComContrato,
       ativos: artistasAtivos,
       totalShows,
@@ -113,91 +122,12 @@ export function useMetrics(): UseMetricsReturn {
       showsRealizados,
       receitaTotal,
     };
-  }, [artistas, eventos]);
-
-  const crmMetrics = useMemo<CRMMetrics>(() => {
-    const ativos = clientes.filter(c => c.status === "ativo" || c.status === "cliente_ativo").length;
-    const leads = clientes.filter(c => c.status === "lead").length;
-    const contratosClientes = contratos.filter(c => c.cliente_id);
-    const valorTotalContratos = contratosClientes
-      .filter(c => c.status === "ativo")
-      .reduce((acc, c) => acc + (c.valor || 0), 0);
-
-    return {
-      total: clientes.length,
-      ativos,
-      leads,
-      valorComercialContratado: valorTotalContratos,
-      totalContratos: contratosClientes.length,
-    };
-  }, [clientes, contratos]);
-
-  const financeiroMetrics = useMemo<FinanceiroMetrics>(() => {
-    const receitasPagas = transacoes
-      .filter(t => t.tipo === "receita" && t.status === "pago")
-      .reduce((acc, t) => acc + t.valor, 0);
-    const despesasPagas = transacoes
-      .filter(t => t.tipo === "despesa" && t.status === "pago")
-      .reduce((acc, t) => acc + t.valor, 0);
-    const contasReceber = transacoes
-      .filter(t => t.tipo === "receita" && t.status === "pendente")
-      .reduce((acc, t) => acc + t.valor, 0);
-    const contasPagar = transacoes
-      .filter(t => t.tipo === "despesa" && t.status === "pendente")
-      .reduce((acc, t) => acc + t.valor, 0);
-    const lucroLiquido = receitasPagas - despesasPagas;
-    const margem = receitasPagas > 0 ? Math.round((lucroLiquido / receitasPagas) * 100) : 0;
-    const receitasPendentes = transacoes.filter(t => t.tipo === "receita" && t.status === "pendente").length;
-    const despesasPendentes = transacoes.filter(t => t.tipo === "despesa" && t.status === "pendente").length;
-
-    return {
-      receitasPagas,
-      despesasPagas,
-      lucroLiquido,
-      contasReceber,
-      contasPagar,
-      margem,
-      receitasPendentes,
-      despesasPendentes,
-    };
-  }, [transacoes]);
+  }, [artistas, eventos, dashboard]);
 
   const dashboardMetrics = useMemo<DashboardMetrics>(() => {
     const hoje = new Date();
     const inicioMes = startOfMonth(hoje);
     const fimMes = endOfMonth(hoje);
-
-    const contratosAtivos = contratos.filter(c => {
-      if (c.status !== "ativo") return false;
-      if (!c.data_inicio || !c.data_fim) return false;
-      try {
-        const inicio = parseISO(c.data_inicio as string);
-        const fim = parseISO(c.data_fim as string);
-        return hoje >= inicio && hoje <= fim;
-      } catch { return false; }
-    }).length;
-
-    const contratosVencendo = contratos.filter(c => {
-      if (c.status !== "ativo") return false;
-      if (!c.data_fim) return false;
-      try {
-        const dataFim = parseISO(c.data_fim as string);
-        const diasRestantes = differenceInDays(dataFim, hoje);
-        return diasRestantes >= 0 && diasRestantes <= 30;
-      } catch { return false; }
-    }).length;
-
-    const trintaDiasAtras = subDays(hoje, 30);
-    const receitaMensal = transacoes
-      .filter(t => {
-        if (t.tipo !== "receita" || t.status !== "pago") return false;
-        if (!t.data) return false;
-        try {
-          const dataTransacao = parseISO(t.data as string);
-          return dataTransacao >= trintaDiasAtras && dataTransacao <= hoje;
-        } catch { return false; }
-      })
-      .reduce((acc, t) => acc + t.valor, 0);
 
     // Backend retorna timestamp na coluna `data`; mock usa `data_inicio`.
     // Aceita os dois para evitar contagem zerada em HTTP mode.
@@ -260,24 +190,25 @@ export function useMetrics(): UseMetricsReturn {
       .slice(0, 4);
 
     return {
-      totalArtistas: artistas.length,
-      contratosAtivos,
-      contratosVencendo,
-      receitaMensal,
+      totalArtistas: dashboard?.artists ?? artistas.length,
+      contratosAtivos: dashboard?.active_contracts_count ?? 0,
+      contratosVencendo: dashboard?.contracts_expiring_soon_count ?? 0,
+      receitaMensal: dashboard?.revenue_current_month ?? 0,
       eventosHoje,
       eventosMes,
       artistasDestaque,
     };
-  }, [artistas, contratos, transacoes, eventos, lancamentosData, projetos]);
-
-  void format; // date-fns import kept for potential future use
+  }, [artistas, eventos, lancamentosData, projetos, dashboard]);
 
   return {
     artistasMetrics,
-    crmMetrics,
-    financeiroMetrics,
     dashboardMetrics,
+    // Exposto para quem precisa da lista bruta (ex.: Dashboard.tsx monta os
+    // "próximos compromissos") sem precisar de um segundo observer de
+    // useEventos() só para isso — mesma query, mesmo cache, um único fetch.
+    eventos,
     isLoading,
+    error,
+    refetch,
   };
 }
-

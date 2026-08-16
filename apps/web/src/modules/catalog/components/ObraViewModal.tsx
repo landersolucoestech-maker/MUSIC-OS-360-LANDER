@@ -11,7 +11,8 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Switch } from "@/shared/ui/switch";
 import { Music } from "lucide-react";
 import { ObraTipoBadge } from "@/modules/catalog/components/ObraFormModal";
-import { useObras } from "@/modules/catalog/hooks/useObras";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
+import type { ObraWithRelations } from "@/modules/catalog/hooks/useObras";
 import {
   obraOutrosTitulos,
   obraReferenciasConexas,
@@ -101,12 +102,12 @@ export function ObraViewModal({
   onOpenChange,
   obra: obraProp,
 }: ObraViewModalProps) {
-  const { obras } = useObras();
+  // Busca DIRETO por ID (GET /works/:id) — não depende da obra estar entre
+  // os primeiros registros carregados (Task J: antes usava useObras() sem
+  // filtro, que truncava em 50 obras por tenant).
+  const { entity: fresh } = useEntityById<ObraWithRelations>("obras", open ? obraProp?.id : undefined);
   if (!obraProp) return null;
 
-  const fresh = obraProp?.id
-    ? obras.find((o) => o.id === obraProp.id)
-    : undefined;
   const obra: any = fresh ? { ...obraProp, ...fresh } : obraProp;
 
   const outrosTitulos    = obraOutrosTitulos(obra);

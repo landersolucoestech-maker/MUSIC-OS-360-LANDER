@@ -70,7 +70,7 @@ export interface ContratoRef {
 /** Referência leve a um Funcionário. */
 export interface FuncionarioRef {
   id: string;
-  nome_completo: string;
+  nome: string;
   cargo?: string | null;
 }
 

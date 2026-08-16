@@ -540,7 +540,7 @@ export const ENTITY_CATALOG: Record<string, EntityDefinition> = {
     typesFile:    "modules/rh/types/funcionario.types.ts",
     primaryKey:   "id",
     externalIds:  ["cpf", "pis", "ctps"],
-    requiredFields: ["id", "nome_completo", "cargo", "tipo_contrato"],
+    requiredFields: ["id", "nome", "cargo", "tipo_contrato"],
     relationships: [
       {
         target:      "FeriasAusencia",

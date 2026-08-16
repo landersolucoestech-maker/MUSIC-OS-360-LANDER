@@ -7,6 +7,12 @@ export type { ArtistaAssinado };
 
 const cacheConfig = getCacheConfig([...QUERY_KEYS.ARTISTAS]);
 
+// Referência estável — ver mesmo comentário em shared/hooks/useDataQuery.ts:
+// `query.data ?? []` alocaria um array novo a cada render sem dado (loading
+// ou erro sem sucesso anterior), quebrando useMemo/useEffect que dependem
+// deste array em quem consome o hook.
+const EMPTY_ARTISTAS: readonly ArtistaAssinado[] = [];
+
 export function useArtistasAssinados() {
   const query = useQuery<ArtistaAssinado[], Error, ArtistaAssinado[]>({
     queryKey: [...QUERY_KEYS.ARTISTAS],
@@ -19,7 +25,7 @@ export function useArtistasAssinados() {
   });
 
   return {
-    artistas: query.data ?? [],
+    artistas: query.data ?? EMPTY_ARTISTAS,
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,

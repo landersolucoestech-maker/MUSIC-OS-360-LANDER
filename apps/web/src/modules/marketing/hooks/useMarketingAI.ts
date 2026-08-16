@@ -5,11 +5,15 @@ import { getAiProviderRouter } from "../ai/providers/providerRouter";
 import { MARKETING_QUERY_ROOT } from "./useMarketingResource";
 import type { AiGenerationPayload } from "../types/marketing.types";
 
+// Referência estável — ver shared/hooks/useDataQuery.ts para o motivo.
+const EMPTY_SUGGESTIONS: Awaited<ReturnType<typeof marketingService.getAiSuggestions>> = [];
+
 export function useAiSuggestions() {
-  return useQuery({
+  const query = useQuery({
     queryKey: [MARKETING_QUERY_ROOT, "ai-suggestions"],
     queryFn: () => marketingService.getAiSuggestions(),
   });
+  return { ...query, data: query.data ?? EMPTY_SUGGESTIONS };
 }
 
 export function useGenerateAi() {

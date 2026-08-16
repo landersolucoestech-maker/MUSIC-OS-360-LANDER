@@ -42,9 +42,79 @@ vi.mock("@/modules/catalog/hooks/useObras", () => {
   return { useObras: () => stableReturn };
 });
 
+// Task J: o hook useArtistas() (capped nos primeiros 50 do tenant) fica
+// deliberadamente VAZIO aqui — se a resolução do intérprete em selectObra
+// (FonogramaFormModal.tsx) ainda dependesse de escanear esse array, o teste
+// abaixo falharia. A resolução real deve vir de storage.findById (GET
+// /artists/:id), que funciona para qualquer artista do tenant.
+vi.mock("@/modules/artist/hooks/useArtistas", async () => {
+  const actual = await vi.importActual<typeof import("@/modules/artist/hooks/useArtistas")>(
+    "@/modules/artist/hooks/useArtistas",
+  );
+  return {
+    ...actual,
+    useArtistas: () => ({
+      artistas: [] as any[],
+      isLoading: false,
+      error: null,
+      addArtista: { mutateAsync: vi.fn() },
+      updateArtista: { mutateAsync: vi.fn() },
+      deleteArtista: { mutateAsync: vi.fn() },
+    }),
+  };
+});
+
 vi.mock("@/shared/hooks/useCurrentOrgId", () => ({
   useCurrentOrgId: () => ({ orgId: "org-1", isLoading: false }),
 }));
+
+// Task I: FonogramaFormModal hidrata a obra vinculada via useEntityById
+// (GET /works/:id direto), não mais varrendo a lista de useObras() — o
+// fixture precisa vir de storage.findById, não do mock de useObras() acima.
+vi.mock("@/shared/lib/storage", async () => {
+  const actual = await vi.importActual<typeof import("@/shared/lib/storage")>("@/shared/lib/storage");
+  return {
+    ...actual,
+    storage: {
+      ...actual.storage,
+      findById: vi.fn(async (table: string, id: string) => {
+        if (table === "obras" && id === "obra-1") {
+          return { id: "obra-1", titulo: "Canção Vinculada", genero: "pop", compositores: ["Alice"], status: "registrado" };
+        }
+        // Task J: artista "fora do cap" — nunca estaria entre os primeiros 50
+        // retornados por useArtistas() sem filtro; só é alcançável por GET
+        // /artists/:id direto (ver selectObra em FonogramaFormModal.tsx).
+        if (table === "artistas" && id === "art-99") {
+          return { id: "art-99", nome_artistico: "Artista Fora Do Cap" };
+        }
+        return undefined;
+      }),
+      // Resultado de busca da obra vinculável — usado pelo popover "Buscar
+      // obra" (useEntityLookup dentro de FonogramaFormModal). Um único
+      // registro cujo artista só é resolvível via storage.findById acima.
+      listPaged: vi.fn(async (table: string) => {
+        if (table === "obras") {
+          return {
+            items: [
+              {
+                id: "obra-99",
+                titulo: "Obra Rara",
+                genero: "pop",
+                compositores: [],
+                artista_id: "art-99",
+              },
+            ],
+            page: 1,
+            pageSize: 20,
+            total: 1,
+            totalPages: 1,
+          };
+        }
+        return { items: [], page: 1, pageSize: 20, total: 0, totalPages: 1 };
+      }),
+    },
+  };
+});
 
 vi.mock("@/modules/catalog/components/AbramusSearchRow", () => ({
   AbramusSearchRow: () => null,
@@ -159,5 +229,33 @@ describe("FonogramaFormModal edit mode", () => {
     // regression guard against that ever being reintroduced.
     expect(callArg.org_id).toBeUndefined();
     expect(callArg.orgId).toBeUndefined();
+  });
+
+  // Task J — Lookup Gap Zero: prova que a cadeia de resolução de intérprete
+  // dentro de selectObra (ao vincular uma obra no formulário de Fonograma)
+  // usa busca/lookup real por ID em vez de escanear o array capped de
+  // useArtistas(). O mock de useArtistas() acima devolve uma lista vazia —
+  // se o código regredisse para `artistas.find(...)`, o intérprete nunca
+  // seria preenchido.
+  it("resolves the interprete's artist name via storage.findById, not from the capped artistas list", async () => {
+    renderWithProviders(
+      <FonogramaFormModal
+        open={true}
+        onOpenChange={() => {}}
+        mode="create"
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("button-buscar-obra"));
+
+    const option = await screen.findByTestId("option-obra-obra-99");
+    fireEvent.click(option);
+
+    await waitFor(() => {
+      const nomeInputs = screen
+        .getAllByPlaceholderText("Nome do participante")
+        .map((el) => (el as HTMLInputElement).value);
+      expect(nomeInputs).toContain("Artista Fora Do Cap");
+    });
   });
 });

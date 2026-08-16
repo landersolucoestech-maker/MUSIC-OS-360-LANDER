@@ -6,16 +6,14 @@ import type { AiGeneratedResult } from "../../types/marketing.types";
 import type { GenerateAiHandler, TargetOption } from "./iaCriativa.types";
 import type { IntelligenceSources, TrackDiagnosis } from "../../services/musicIntelligenceEngine";
 import { buildPitchingPrompt, loadReleaseContext } from "../../services/musicIntelligenceEngine";
-import { copyResult, EntitySelect, Field, ResultActions, StructuredResult, WorkflowSection } from "./Shared";
+import { AsyncEntitySelect, copyResult, EntitySelect, Field, ResultActions, StructuredResult, WorkflowSection } from "./Shared";
 import { getLatestResult } from "./iaCriativa.utils";
 
 export function PitchingTab({
-  artistOptions,
   sources,
   onGenerate,
   isGenerating,
 }: {
-  artistOptions: TargetOption[];
   sources: IntelligenceSources;
   onGenerate: GenerateAiHandler;
   isGenerating: boolean;
@@ -106,7 +104,7 @@ export function PitchingTab({
       }
     >
       <div className="grid gap-4 md:grid-cols-2">
-        <EntitySelect label="Artista" value={artist?.id ?? ""} options={artistOptions} placeholder="Selecione o artista" onChange={setArtist} />
+        <AsyncEntitySelect label="Artista" value={artist?.id ?? ""} table="artistas" placeholder="Selecione o artista" onChange={setArtist} />
         <EntitySelect label="Lançamento" value={release?.id ?? ""} options={releaseOptions} placeholder={artist ? "Selecione o lançamento" : "Selecione um artista primeiro"} onChange={setRelease} disabled={!artist} />
       </div>
 

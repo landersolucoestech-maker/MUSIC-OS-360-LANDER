@@ -15,7 +15,7 @@ import {
 } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
 import { formatCurrency, formatDateDashes, getMonetarySemanticClass } from "@/shared/lib/format-utils";
-import { useFuncionarios } from "@/modules/rh/hooks/useFuncionarios";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
 import type { Funcionario, FolhaPagamento, FeriasAusencia } from "@/modules/rh/types/rh.types";
 
 function humanize(value?: string | null): string {
@@ -99,21 +99,21 @@ export function FuncionarioViewModal({
     <ViewShell
       open={open}
       onOpenChange={onOpenChange}
-      title={funcionario.nome_completo || "Funcionário"}
+      title={funcionario.nome || "Funcionário"}
       description="Detalhes do funcionário"
     >
       <Section title="Dados Pessoais">
-        <Row label="Nome completo" value={funcionario.nome_completo} />
+        <Row label="Nome completo" value={funcionario.nome} />
         <Row label="CPF" value={funcionario.cpf} />
         <Row label="E-mail" value={funcionario.email} />
         <Row label="Telefone" value={funcionario.telefone} />
       </Section>
       <Section title="Dados Profissionais">
         <Row label="Cargo" value={funcionario.cargo} />
-        <Row label="Setor" value={humanize(funcionario.setor)} />
+        <Row label="Setor" value={humanize(funcionario.departamento)} />
         <Row label="Tipo de contrato" value={humanize(funcionario.tipo_contrato as string)} />
         <Row label="Data de admissão" value={formatDateDashes(funcionario.data_admissao)} />
-        <Row label="Salário base" value={<span className={getMonetarySemanticClass("neutral")}>{formatCurrency(funcionario.salario_base)}</span>} />
+        <Row label="Salário base" value={<span className={getMonetarySemanticClass("neutral")}>{formatCurrency(funcionario.salario != null ? Number(funcionario.salario) : null)}</span>} />
         <Row
           label="Status"
           value={
@@ -147,9 +147,8 @@ export function FolhaPagamentoViewModal({
   onOpenChange: (open: boolean) => void;
   registro?: FolhaPagamento | null;
 }) {
-  const { funcionarios } = useFuncionarios();
+  const { entity: funcionario } = useEntityById<Funcionario>("funcionarios", registro?.funcionario_id);
   if (!registro) return null;
-  const funcionario = funcionarios.find((f) => f.id === registro.funcionario_id);
   return (
     <ViewShell
       open={open}
@@ -158,7 +157,7 @@ export function FolhaPagamentoViewModal({
       description={registro.periodo || registro.mes_referencia || "Detalhes do pagamento"}
     >
       <Section title="Identificação">
-        <Row label="Funcionário" value={funcionario?.nome_completo} />
+        <Row label="Funcionário" value={funcionario?.nome} />
         <Row label="Período" value={registro.periodo || registro.mes_referencia} />
       </Section>
       <Section title="Valores">
@@ -202,9 +201,8 @@ export function FeriasAusenciasViewModal({
   onOpenChange: (open: boolean) => void;
   ausencia?: FeriasAusencia | null;
 }) {
-  const { funcionarios } = useFuncionarios();
+  const { entity: funcionario } = useEntityById<Funcionario>("funcionarios", ausencia?.funcionario_id);
   if (!ausencia) return null;
-  const funcionario = funcionarios.find((f) => f.id === ausencia.funcionario_id);
   return (
     <ViewShell
       open={open}
@@ -213,7 +211,7 @@ export function FeriasAusenciasViewModal({
       description={humanize(ausencia.tipo as string)}
     >
       <Section title="Identificação">
-        <Row label="Funcionário" value={funcionario?.nome_completo} />
+        <Row label="Funcionário" value={funcionario?.nome} />
         <Row label="Tipo" value={humanize(ausencia.tipo as string)} />
       </Section>
       <Section title="Período">

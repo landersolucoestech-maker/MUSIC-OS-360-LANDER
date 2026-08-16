@@ -3,6 +3,15 @@ import { toast } from "sonner";
 import { getCacheConfig } from "@/shared/lib/query-config";
 import { storage } from "@/shared/lib/storage";
 
+// Referência estável: `query.data || []` alocaria um array novo a cada
+// render enquanto não há dado (loading, ou erro sem sucesso anterior — ex.:
+// backend indisponível). Consumidores que derivam `useMemo`/`useEffect`
+// desse array (ex.: useAgendaParticipants, que combina 4 hooks assim) viam
+// a dependência mudar de identidade a cada render e entravam em loop de
+// re-render infinito ("Maximum update depth exceeded"), reproduzido em
+// SchedulerFormModal quando o backend está fora do ar.
+const EMPTY_LIST: never[] = [];
+
 /**
  * Hook genérico de CRUD usado por todos os módulos.
  *
@@ -68,8 +77,8 @@ export function useDataQuery<T extends object>(
 
   const query = useQuery<T[]>({
     queryKey,
-    queryFn: async () =>
-      (await storage.list<T & { id: string }>(table, { filters, orderBy })) as T[],
+    queryFn: async ({ signal }) =>
+      (await storage.list<T & { id: string }>(table, { filters, orderBy, signal })) as T[],
     enabled,
     staleTime: cacheConfig.staleTime,
     gcTime: cacheConfig.gcTime,
@@ -132,7 +141,7 @@ export function useDataQuery<T extends object>(
   });
 
   return {
-    data: query.data || [],
+    data: query.data || EMPTY_LIST,
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,

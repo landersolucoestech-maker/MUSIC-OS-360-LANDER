@@ -32,9 +32,9 @@ export function useArtistas() {
     artistas: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addArtista: result.create,
     updateArtista: result.update,
     deleteArtista: result.delete,
   };
 }
-

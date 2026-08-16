@@ -1,10 +1,23 @@
+import type { Artista } from "@/modules/artist/hooks/useArtistas";
+import type { ObraWithRelations, FonogramaWithRelations } from "@/modules/catalog/types/catalog.types";
 import type { ArtistProfileContext, IntelligenceEntity, IntelligenceSources } from "./types";
 import { estimateReleaseFrequency, inferCareerStage, mostCommon, score, stringifyValue, uniqueStrings } from "./utils";
 
-export function loadArtistContext(artist: IntelligenceEntity, sources: IntelligenceSources): ArtistProfileContext {
-  const artistRecord = sources.artists.find((item) => item.id === artist.id);
-  const obras = sources.obras.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
-  const fonogramas = sources.fonogramas.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
+/**
+ * Task J — obras/fonogramas/artistRecord chegam já resolvidos pelo chamador
+ * (busca server-side escopada ao artista, via useObras(true, artistaId)/
+ * useFonogramas(true, artistaId)/useEntityById), não mais filtrados de
+ * sources.obras/sources.fonogramas/sources.artists sem filtro (capados aos
+ * primeiros 50 do tenant).
+ */
+export function loadArtistContext(
+  artist: IntelligenceEntity,
+  sources: IntelligenceSources,
+  catalog: { artistRecord?: Artista; obras: ObraWithRelations[]; fonogramas: FonogramaWithRelations[] },
+): ArtistProfileContext {
+  const artistRecord = catalog.artistRecord;
+  const obras = catalog.obras;
+  const fonogramas = catalog.fonogramas;
   const releases = sources.releases.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
   const projects = sources.projects.filter((item) => item.artistId === artist.id);
   const campaigns = sources.campaigns.filter((item) => item.targetType === "artista" && item.targetId === artist.id);

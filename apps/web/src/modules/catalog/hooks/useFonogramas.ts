@@ -11,14 +11,16 @@ import type {
 
 export type { Fonograma, FonogramaInsert, FonogramaUpdate, FonogramaWithRelations };
 
-export function useFonogramas() {
+export function useFonogramas(enabled = true, artistaId?: string) {
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
 
   const result = useDataQuery<FonogramaWithRelations>({
-    queryKey: [...QUERY_KEYS.FONOGRAMAS],
+    queryKey: artistaId ? [...QUERY_KEYS.FONOGRAMAS, "by-artist", artistaId] : [...QUERY_KEYS.FONOGRAMAS],
     table: "fonogramas",
     select: "*, artistas(*)",
+    enabled,
+    filters: artistaId ? { artista_id: artistaId } : undefined,
     onMutationSuccess: {
       onCreate: (f) =>
         emit(DomainEvents.PHONOGRAM_REGISTERED, {
@@ -45,6 +47,7 @@ export function useFonogramas() {
     fonogramas: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addFonograma: result.create,
     updateFonograma: result.update,
     deleteFonograma: result.delete,

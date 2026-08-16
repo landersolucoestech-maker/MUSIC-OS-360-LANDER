@@ -10,10 +10,10 @@ export type { FuncionarioStatus, FuncionarioTipoContrato, FeriasAusenciaTipo, Fe
 export interface Funcionario {
   id: string;
   user_id?: string;
-  nome_completo: string;
+  nome: string;
   cargo?: string | null;
-  setor?: string | null;
-  salario_base?: number | null;
+  departamento?: string | null;
+  salario?: number | string | null;
   tipo_contrato?: FuncionarioTipoContrato | string | null;
   data_admissao?: string | null;
   status?: FuncionarioStatus | string | null;

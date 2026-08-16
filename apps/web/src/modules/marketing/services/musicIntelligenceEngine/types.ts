@@ -1,5 +1,4 @@
 import type { Artista } from "@/modules/artist/hooks/useArtistas";
-import type { FonogramaWithRelations, ObraWithRelations } from "@/modules/catalog/types/catalog.types";
 import type { LancamentoWithRelations } from "@/modules/releases/hooks/useLancamentos";
 import type {
   AiSuggestion,
@@ -11,9 +10,6 @@ import type {
 } from "../../types/marketing.types";
 
 export type IntelligenceSources = {
-  artists: Artista[];
-  obras: ObraWithRelations[];
-  fonogramas: FonogramaWithRelations[];
   releases: LancamentoWithRelations[];
   projects: MarketingProject[];
   campaigns: MarketingCampaign[];

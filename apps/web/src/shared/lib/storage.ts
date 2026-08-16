@@ -9,6 +9,9 @@ export interface ListOptions {
   limit?: number;
   offset?: number;
   _bypassTenant?: boolean;
+  /** Cancela a requisição quando a query que a originou fica obsoleta
+   * (componente desmontou, queryKey mudou) — ver React Query QueryFunctionContext. */
+  signal?: AbortSignal;
 }
 
 export interface AuditEntry {
@@ -33,9 +36,23 @@ interface ListEnvelope<T> {
   };
 }
 
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PagedListOptions extends Omit<ListOptions, "limit" | "offset"> {
+  page: number;
+  pageSize: number;
+}
+
 interface StoragePort {
   runInTransaction<T>(callback: () => Promise<T>): Promise<T>;
   list<T extends StorageRow>(table: string, options?: ListOptions): Promise<T[]>;
+  listPaged<T extends StorageRow>(table: string, options: PagedListOptions): Promise<PagedResult<T>>;
   findById<T extends StorageRow>(table: string, id: string): Promise<T | undefined>;
   getById<T extends StorageRow>(table: string, id: string): Promise<T | undefined>;
   create<T extends StorageRow>(
@@ -115,8 +132,46 @@ const httpStorage: StoragePort = {
     if (options?.limit !== undefined) params.set("limit", String(options.limit));
     if (options?.offset !== undefined) params.set("offset", String(options.offset));
     const qs = params.toString();
-    const response = await api.get<T[] | ListEnvelope<T>>(`${resolved.ep}${qs ? `?${qs}` : ""}`);
+    const response = await api.get<T[] | ListEnvelope<T>>(`${resolved.ep}${qs ? `?${qs}` : ""}`, { signal: options?.signal });
     return unwrapList(response, table);
+  },
+
+  /**
+   * Paginação real server-side (Task G): a API já implementa
+   * skip/take + getManyAndCount para artistas/contratos/obras/fonogramas/
+   * lançamentos/shares/inventário/eventos/projetos/funcionários/licenças/
+   * takedowns/transações (ver PaginationDto/QueryXDto no backend) e devolve
+   * `{ data, meta: { total, offset, limit } }`. Isto só desembrulha esse
+   * envelope corretamente — `storage.list()` acima descarta `meta.total`,
+   * o que é certo para os usos "me dê tudo" (selects/lookups), mas errado
+   * para uma tabela paginada, que precisa saber o total real do tenant.
+   */
+  async listPaged<T extends StorageRow>(table: string, options: PagedListOptions): Promise<PagedResult<T>> {
+    const resolved = resolveTable(table);
+    if ("pending" in resolved) unavailableTable(table, resolved.reason);
+    const { page, pageSize, filters, orderBy, signal } = options;
+    const params = new URLSearchParams();
+    if (filters) {
+      for (const [k, v] of Object.entries(filters)) {
+        if (v != null && v !== "") params.set(k, String(v));
+      }
+    }
+    if (orderBy) {
+      params.set("orderBy", orderBy.column);
+      params.set("ascending", String(orderBy.ascending ?? false));
+    }
+    params.set("limit", String(pageSize));
+    params.set("offset", String(Math.max(0, page - 1) * pageSize));
+    const response = await api.get<T[] | ListEnvelope<T>>(`${resolved.ep}?${params.toString()}`, { signal });
+    const items = unwrapList(response, table);
+    const total = Array.isArray(response) ? items.length : (response.meta?.total ?? items.length);
+    return {
+      items,
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
   },
 
   async findById<T extends StorageRow>(table: string, id: string): Promise<T | undefined> {

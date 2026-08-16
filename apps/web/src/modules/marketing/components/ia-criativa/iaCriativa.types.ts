@@ -1,6 +1,4 @@
 import type { UseMutationResult } from "@tanstack/react-query";
-import type { Artista } from "@/modules/artist/hooks/useArtistas";
-import type { ObraWithRelations, FonogramaWithRelations } from "@/modules/catalog/types/catalog.types";
 import type { LancamentoWithRelations } from "@/modules/releases/hooks/useLancamentos";
 import type {
   AiGenerationPayload,
@@ -27,9 +25,6 @@ export type GenerateAiMutation = UseMutationResult<AiSuggestion, Error, AiGenera
 export type GenerateAiHandler = (payload: AiGenerationPayload) => void;
 
 export type ArtistProfileSources = {
-  artists: Artista[];
-  obras: ObraWithRelations[];
-  fonogramas: FonogramaWithRelations[];
   releases: LancamentoWithRelations[];
   projects: MarketingProject[];
   campaigns: MarketingCampaign[];
