@@ -4,6 +4,7 @@ import {
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.tokens';
 import { AudiovisualTaskEntity, AudiovisualProjectEntity } from '../../../database/entities';
+import { casUpdate } from '../../../common/persistence/optimistic-update.util';
 
 export interface CreateTaskInput {
   title: string;
@@ -14,7 +15,11 @@ export interface CreateTaskInput {
   due_date?: string;
 }
 
-export type UpdateTaskInput = Partial<CreateTaskInput> & { completed_at?: string | null };
+export type UpdateTaskInput = Partial<CreateTaskInput> & {
+  completed_at?: string | null;
+  /** Concorrência otimista (Task L) — ver optimistic-update.util.ts. Opcional. */
+  expectedUpdatedAt?: string;
+};
 
 /**
  * Templates de tarefas auto-geradas por transição de status.
@@ -101,11 +106,18 @@ export class AudiovisualTasksService {
   async update(tenantId: string, userId: string, id: string, input: UpdateTaskInput) {
     const cur = await this.r.findOne({ where: { id, tenant_id: tenantId, deleted_at: null } as never });
     if (!cur) throw new NotFoundException('Tarefa não encontrada');
-    const patch: Record<string, unknown> = { ...input, updated_by: userId, updated_at: new Date() };
+    const { expectedUpdatedAt, ...rest } = input;
+    const patch: Record<string, unknown> = { ...rest, updated_by: userId, updated_at: new Date() };
     if (input.due_date)      patch.due_date = new Date(input.due_date);
     if (input.completed_at)  patch.completed_at = new Date(input.completed_at);
     if (input.status === 'done' && !cur.completed_at) patch.completed_at = new Date();
-    await this.r.update({ id, tenant_id: tenantId } as never, patch as never);
+    await casUpdate(
+      this.r,
+      { id, tenant_id: tenantId } as never,
+      patch as never,
+      expectedUpdatedAt,
+      'Esta tarefa foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
+    );
     return this.r.findOne({ where: { id, tenant_id: tenantId } as never });
   }
 

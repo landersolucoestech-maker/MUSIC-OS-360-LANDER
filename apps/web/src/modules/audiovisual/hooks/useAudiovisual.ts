@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { audiovisualService } from "../services/audiovisual.service";
+import { handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import type {
   AudiovisualProject, AudiovisualProjectStatus, AudiovisualProjectType,
   DeliverableType, ApprovalStatus,
@@ -50,10 +51,13 @@ export function useAudiovisualProjectMutations() {
       onError:   (e: Error) => toast.error(e.message),
     }),
     update: useMutation({
-      mutationFn: ({ id, data }: { id: string; data: Partial<AudiovisualProject> }) =>
+      mutationFn: ({ id, data }: { id: string; data: Partial<AudiovisualProject> & { expectedUpdatedAt?: string } }) =>
         audiovisualService.projects.update(id, data),
       onSuccess: () => { invalidate(); toast.success("Projeto atualizado"); },
-      onError:   (e: Error) => toast.error(e.message),
+      onError:   (e: Error) => {
+        if (handleConcurrencyConflict(e, "projeto")) return;
+        toast.error(e.message);
+      },
     }),
     transition: useMutation({
       mutationFn: ({ id, status, reason }: { id: string; status: AudiovisualProjectStatus; reason?: string }) =>
@@ -83,7 +87,10 @@ export function useBriefingUpsert() {
     mutationFn: ({ projectId, data }: { projectId: string; data: Parameters<typeof audiovisualService.briefings.upsert>[1] }) =>
       audiovisualService.briefings.upsert(projectId, data),
     onSuccess: (_d, vars) => { qc.invalidateQueries({ queryKey: K.briefing(vars.projectId) }); toast.success("Briefing salvo"); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      if (handleConcurrencyConflict(e, "briefing")) return;
+      toast.error(e.message);
+    },
   });
 }
 
@@ -109,7 +116,10 @@ export function useDeliverableMutations(projectId?: string) {
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof audiovisualService.deliverables.update>[1] }) =>
         audiovisualService.deliverables.update(id, data),
       onSuccess: () => { invalidate(); toast.success("Entregável atualizado"); },
-      onError:   (e: Error) => toast.error(e.message),
+      onError:   (e: Error) => {
+        if (handleConcurrencyConflict(e, "entregável")) return;
+        toast.error(e.message);
+      },
     }),
     seedDefaults: useMutation({
       mutationFn: ({ pid, type }: { pid: string; type: string }) =>
@@ -156,7 +166,10 @@ export function useShotMutations(projectId: string) {
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof audiovisualService.shots.update>[1] }) =>
         audiovisualService.shots.update(id, data),
       onSuccess: () => { invalidate(); toast.success("Shot atualizado"); },
-      onError:   (e: Error) => toast.error(e.message),
+      onError:   (e: Error) => {
+        if (handleConcurrencyConflict(e, "shot")) return;
+        toast.error(e.message);
+      },
     }),
     reorder: useMutation({
       mutationFn: (ids: string[]) => audiovisualService.shots.reorder(projectId, ids),
@@ -194,7 +207,10 @@ export function useProductionDayMutations(projectId: string) {
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof audiovisualService.productionDays.update>[1] }) =>
         audiovisualService.productionDays.update(id, data),
       onSuccess: () => { invalidate(); toast.success("Dia atualizado"); },
-      onError:   (e: Error) => toast.error(e.message),
+      onError:   (e: Error) => {
+        if (handleConcurrencyConflict(e, "dia de gravação")) return;
+        toast.error(e.message);
+      },
     }),
     remove: useMutation({
       mutationFn: (id: string) => audiovisualService.productionDays.delete(id),
@@ -227,7 +243,10 @@ export function useTeamMemberMutations(projectId: string) {
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof audiovisualService.team.update>[1] }) =>
         audiovisualService.team.update(id, data),
       onSuccess: () => { invalidate(); toast.success("Membro atualizado"); },
-      onError:   (e: Error) => toast.error(e.message),
+      onError:   (e: Error) => {
+        if (handleConcurrencyConflict(e, "membro da equipe")) return;
+        toast.error(e.message);
+      },
     }),
     remove: useMutation({
       mutationFn: (id: string) => audiovisualService.team.delete(id),
@@ -260,7 +279,10 @@ export function useAssetMutations(projectId: string) {
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof audiovisualService.assets.update>[1] }) =>
         audiovisualService.assets.update(id, data),
       onSuccess: () => { invalidate(); },
-      onError:   (e: Error) => toast.error(e.message),
+      onError:   (e: Error) => {
+        if (handleConcurrencyConflict(e, "arquivo")) return;
+        toast.error(e.message);
+      },
     }),
     remove: useMutation({
       mutationFn: (id: string) => audiovisualService.assets.delete(id),
@@ -293,7 +315,10 @@ export function useTaskMutations(projectId: string) {
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof audiovisualService.tasks.update>[1] }) =>
         audiovisualService.tasks.update(id, data),
       onSuccess: () => { invalidate(); },
-      onError:   (e: Error) => toast.error(e.message),
+      onError:   (e: Error) => {
+        if (handleConcurrencyConflict(e, "tarefa")) return;
+        toast.error(e.message);
+      },
     }),
     remove: useMutation({
       mutationFn: (id: string) => audiovisualService.tasks.delete(id),
@@ -314,10 +339,13 @@ export function useApprovalMutations() {
       onError:   (e: Error) => toast.error(e.message),
     }),
     decide: useMutation({
-      mutationFn: ({ id, status, comments }: { id: string; status: ApprovalStatus; comments?: string }) =>
-        audiovisualService.approvals.decide(id, status, comments),
+      mutationFn: ({ id, status, comments, expectedUpdatedAt }: { id: string; status: ApprovalStatus; comments?: string; expectedUpdatedAt?: string }) =>
+        audiovisualService.approvals.decide(id, status, comments, expectedUpdatedAt),
       onSuccess: () => { invalidate(); toast.success("Decisão registrada"); },
-      onError:   (e: Error) => toast.error(e.message),
+      onError:   (e: Error) => {
+        if (handleConcurrencyConflict(e, "aprovação")) return;
+        toast.error(e.message);
+      },
     }),
   };
 }

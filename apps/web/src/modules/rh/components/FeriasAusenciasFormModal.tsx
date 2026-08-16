@@ -28,7 +28,9 @@ import {
   STATUS_AUSENCIA,
 } from "@/modules/rh/hooks/useFeriasAusencias";
 import type { FeriasAusencia, FeriasAusenciaInsert } from "@/modules/rh/hooks/useFeriasAusencias";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { useFuncionarios, type Funcionario } from "@/modules/rh/hooks/useFuncionarios";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 
 interface FeriasAusenciasFormModalProps {
   open: boolean;
@@ -53,7 +55,7 @@ export function FeriasAusenciasFormModal({
   mode,
 }: FeriasAusenciasFormModalProps) {
   const { addFeriasAusencia, updateFeriasAusencia } = useFeriasAusencias();
-  const { funcionarios, isLoading: loadingFuncionarios } = useFuncionarios();
+  const { isLoading: loadingFuncionarios } = useFuncionarios();
 
   const [funcionarioId, setFuncionarioId] = useState("");
   const [tipo, setTipo] = useState("");
@@ -169,15 +171,14 @@ export function FeriasAusenciasFormModal({
       });
     } else if (mode === "edit" && ausencia) {
       updateFeriasAusencia.mutate(
-        { id: ausencia.id, ...data },
-        { onSuccess: () => onOpenChange(false) }
+        { id: ausencia.id, ...data, expectedUpdatedAt: getExpectedUpdatedAt(ausencia) },
+        {
+          onSuccess: () => onOpenChange(false),
+          onError: (err) => { handleConcurrencyConflict(err, "registro de férias/ausência"); },
+        }
       );
     }
   };
-
-  const funcionariosAtivos = funcionarios.filter(
-    (f: Funcionario) => f.status === "ativo" || f.status === "férias" || f.id === funcionarioId
-  );
 
   const title =
     mode === "create"
@@ -208,28 +209,21 @@ export function FeriasAusenciasFormModal({
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <Label>Funcionário *</Label>
-            <Select
-              value={funcionarioId}
-              onValueChange={(v) => {
-                setFuncionarioId(v);
+            <AsyncEntityCombobox<Funcionario>
+              table="funcionarios"
+              value={funcionarioId || null}
+              getLabel={(f) => f.nome ?? ""}
+              onChange={(id) => {
+                setFuncionarioId(id);
                 clearError("funcionario_id");
               }}
+              placeholder={loadingFuncionarios ? "Carregando…" : "Selecione o funcionário"}
+              searchPlaceholder="Buscar por nome…"
+              emptyText="Nenhum funcionário encontrado"
               disabled={isViewMode}
-            >
-              <SelectTrigger
-                className={errors.funcionario_id ? "border-destructive" : ""}
-                data-testid="select-funcionario-id"
-              >
-                <SelectValue placeholder={loadingFuncionarios ? "Carregando..." : "Selecione o funcionário"} />
-              </SelectTrigger>
-              <SelectContent>
-                {funcionariosAtivos.map((f: Funcionario) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.nome_completo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              invalid={!!errors.funcionario_id}
+              data-testid="select-funcionario-id"
+            />
             {errors.funcionario_id && (
               <p className="text-sm text-destructive">{errors.funcionario_id}</p>
             )}

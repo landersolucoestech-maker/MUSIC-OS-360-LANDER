@@ -49,6 +49,7 @@ export function useShares() {
     shares: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addShare: result.create,
     updateShare: result.update,
     deleteShare: result.delete,

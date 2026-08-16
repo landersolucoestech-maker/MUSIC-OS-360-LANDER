@@ -62,6 +62,8 @@ export interface CreateApiClientInput {
 
 export type UpdateApiClientInput = Partial<CreateApiClientInput> & {
   status?: "active" | "inactive" | "blocked";
+  /** Concorrência otimista (Task L) — ver apps/api optimistic-update.util.ts. */
+  expectedUpdatedAt?: string;
 };
 
 export interface ListApiClientsResult {

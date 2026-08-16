@@ -16,6 +16,14 @@ export interface Usuario {
   created_at: string;
 }
 
+// Referência estável — ver mesmo comentário em shared/hooks/useDataQuery.ts:
+// o default `= []` na desestruturação abaixo alocaria um array novo a cada
+// render enquanto não há dado, quebrando useMemo/useEffect de quem consome
+// (ex.: useAgendaParticipants, que combina esta lista com outras 3 — o loop
+// "Maximum update depth exceeded" reproduzido em SchedulerFormModal vinha
+// daqui).
+const EMPTY_USUARIOS: Usuario[] = [];
+
 interface ApiUser {
   id: string;
   auth_user_id: string;
@@ -68,7 +76,7 @@ export function useUsuarios() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: usuarios = [], isLoading, error } = useQuery<Usuario[]>({
+  const { data: usuarios = EMPTY_USUARIOS, isLoading, error } = useQuery<Usuario[]>({
     queryKey: [...QUERY_KEYS.USUARIOS],
     queryFn: async () => {
       const page = await api.get<UsersPage>("/users?limit=100&offset=0");
@@ -81,11 +89,17 @@ export function useUsuarios() {
       const profilePayload = {
         ...(full_name !== undefined && { fullName: full_name }),
         ...(phone !== undefined && { phone }),
-        ...(status !== undefined && { status: status === "ativo" ? "active" : "inactive" }),
       };
 
       if (Object.keys(profilePayload).length > 0) {
         await api.patch(`/users/${id}`, profilePayload);
+      }
+
+      // Task L: status usa o endpoint dedicado PATCH /users/:id/status (gate
+      // 'owner', protege o último owner) — o PATCH genérico de perfil não
+      // aceita mais este campo.
+      if (status !== undefined) {
+        await api.patch(`/users/${id}/status`, { status: status === "ativo" ? "active" : "inactive" });
       }
 
       const effectiveRole = role ?? cargo;

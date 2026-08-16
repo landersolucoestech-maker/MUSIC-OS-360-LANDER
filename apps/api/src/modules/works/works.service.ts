@@ -4,6 +4,8 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { WorkEntity, WorkParticipantEntity } from '../../database/entities';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { groupCount, GroupStatsResult } from '../../common/stats/group-count.util';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateWorkDto }  from './dto/create-work.dto';
 import type { UpdateWorkDto }  from './dto/update-work.dto';
 import type { QueryWorkDto }   from './dto/query-work.dto';
@@ -66,15 +68,19 @@ export class WorksService {
     return works.map((w) => Object.assign(w, { participantes: byWork.get(w.id) ?? [] }));
   }
 
+  /** Recebe o repo explicitamente (em vez de usar sempre this.participantsRepo)
+   * para poder rodar dentro da MESMA transação do update/create da obra —
+   * ver comentário em update(). */
   private async replaceParticipantes(
+    repo: Repository<WorkParticipantEntity>,
     tenantId: string,
     workId: string,
     participantes: unknown[] | undefined,
   ): Promise<void> {
     if (participantes === undefined) return;
-    await this.participantsRepo!.delete({ work_id: workId, tenant_id: tenantId });
+    await repo.delete({ work_id: workId, tenant_id: tenantId });
     const rows = (participantes as Array<Record<string, unknown>>).map((p, index) =>
-      this.participantsRepo!.create({
+      repo.create({
         id: (typeof p.id === 'string' && p.id) || randomUUID(),
         tenant_id: tenantId,
         work_id: workId,
@@ -85,18 +91,35 @@ export class WorksService {
         ordem: index,
       }),
     );
-    if (rows.length > 0) await this.participantsRepo!.save(rows);
+    if (rows.length > 0) await repo.save(rows);
   }
 
-  async list(tenantId: string, query: QueryWorkDto) {
+  /** QueryBuilder base (tenant + not-deleted + filtros) partilhado por list() e stats(). */
+  private baseQb(tenantId: string, query: QueryWorkDto) {
+    const q = query as Record<string, unknown>;
     const qb = this.repo!
       .createQueryBuilder('w')
       .where('w.tenant_id = :tenantId', { tenantId })
       .andWhere('w.deleted_at IS NULL');
 
-    if ((query as any).status) qb.andWhere('w.status = :status', { status: (query as any).status });
-    if ((query as any).tipo)   qb.andWhere('w.tipo = :tipo',     { tipo:   (query as any).tipo });
-    if ((query as any).search) qb.andWhere('w.titulo ILIKE :search', { search: `%${(query as any).search}%` });
+    if (q['status'])     qb.andWhere('w.status = :status', { status: q['status'] });
+    if (q['tipo_obra'])  qb.andWhere('w.tipo_obra = :tipoObra', { tipoObra: q['tipo_obra'] });
+    if (q['genero'])     qb.andWhere('LOWER(w.genero) = LOWER(:genero)', { genero: q['genero'] });
+    if (q['projeto_id']) {
+      if (q['projeto_id'] === 'no-projeto') qb.andWhere('w.projeto_id IS NULL');
+      else qb.andWhere('w.projeto_id = :projetoId', { projetoId: q['projeto_id'] });
+    }
+    if (q['ecad'] === 'com-ecad')      qb.andWhere("w.cod_ecad IS NOT NULL AND w.cod_ecad <> ''");
+    else if (q['ecad'] === 'sem-ecad') qb.andWhere("(w.cod_ecad IS NULL OR w.cod_ecad = '')");
+    if (q['search']) qb.andWhere('w.titulo ILIKE :search', { search: `%${q['search']}%` });
+    const artistaId = q['artista_id'] ?? q['artistId'];
+    if (artistaId) qb.andWhere('w.artista_id = :artistaId', { artistaId });
+
+    return qb;
+  }
+
+  async list(tenantId: string, query: QueryWorkDto) {
+    const qb = this.baseQb(tenantId, query);
 
     qb.orderBy('w.created_at', (query as any).ascending ? 'ASC' : 'DESC')
       .skip((query as any).offset ?? 0)
@@ -105,6 +128,24 @@ export class WorksService {
     const [data, total] = await qb.getManyAndCount();
     const hydrated = await this.hydrateParticipantes(data);
     return { data: hydrated, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
+  }
+
+  /** Contagem exata por status, tenant inteiro — nunca só a página carregada. */
+  async stats(tenantId: string, query: QueryWorkDto): Promise<GroupStatsResult> {
+    return groupCount(this.baseQb(tenantId, query), 'w', 'status');
+  }
+
+  /** Gêneros distintos do tenant — usado no filtro (dropdown não pode ficar preso aos 50 primeiros registros). */
+  async distinctGeneros(tenantId: string): Promise<string[]> {
+    const rows = await this.repo!
+      .createQueryBuilder('w')
+      .select('DISTINCT w.genero', 'genero')
+      .where('w.tenant_id = :tenantId', { tenantId })
+      .andWhere('w.deleted_at IS NULL')
+      .andWhere('w.genero IS NOT NULL')
+      .orderBy('w.genero', 'ASC')
+      .getRawMany<{ genero: string }>();
+    return rows.map((r) => r.genero);
   }
 
   async findById(tenantId: string, id: string): Promise<WorkWithParticipantes> {
@@ -121,9 +162,18 @@ export class WorksService {
     // works.tipo é NOT NULL; o formulário envia tipo_obra (campo próprio).
     const tipo = dto.tipo ?? dto.tipo_obra ?? 'composicao';
     const { participantes, ...rest } = dto as CreateWorkDto & { participantes?: unknown[] };
-    const entity = this.repo!.create({ tenant_id: tenantId, ...(rest as any), tipo, created_by: userId, updated_by: userId });
-    const saved = (await this.repo!.save(entity as any)) as WorkEntity;
-    await this.replaceParticipantes(tenantId, saved.id, participantes);
+
+    // Obra + participantes na mesma transação: se a gravação dos participantes
+    // falhar, a criação da obra também reverte — nunca fica uma obra "órfã"
+    // sem os participantes que o formulário enviou junto.
+    const saved = await this.ds!.transaction(async (em) => {
+      const workRepo = em.getRepository(WorkEntity);
+      const participantsRepo = em.getRepository(WorkParticipantEntity);
+      const entity = workRepo.create({ tenant_id: tenantId, ...(rest as any), tipo, created_by: userId, updated_by: userId });
+      const savedWork = (await workRepo.save(entity as any)) as WorkEntity;
+      await this.replaceParticipantes(participantsRepo, tenantId, savedWork.id, participantes);
+      return savedWork;
+    });
 
     // Dispara automações nativas internas (ex.: catalog-metadata-validator). Os
     // handlers são assíncronos e à prova de falha — nunca revertem a criação da obra.
@@ -140,10 +190,27 @@ export class WorksService {
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateWorkDto): Promise<WorkWithParticipantes> {
     await this.findById(tenantId, id);
-    const { participantes, ...rest } = dto as UpdateWorkDto & { participantes?: unknown[] };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(rest as any), updated_at: new Date(), updated_by: userId } as any);
-    await this.replaceParticipantes(tenantId, id, participantes);
+    const { participantes, expectedUpdatedAt, ...rest } = dto as UpdateWorkDto & { participantes?: unknown[] };
+
+    // Task L: casUpdate() e replaceParticipantes() rodavam como duas operações
+    // independentes — se a gravação dos participantes falhasse depois do
+    // casUpdate já ter aplicado, a obra ficava com os campos principais
+    // atualizados mas os participantes antigos (ou parcialmente apagados),
+    // um estado inconsistente. Agora ambas rodam na mesma transação: qualquer
+    // falha (incluindo o 409 do CAS) reverte as duas por igual.
+    await this.ds!.transaction(async (em) => {
+      const workRepo = em.getRepository(WorkEntity);
+      const participantsRepo = em.getRepository(WorkParticipantEntity);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await casUpdate(
+        workRepo,
+        { id, tenant_id: tenantId } as any,
+        { ...(rest as any), updated_at: new Date(), updated_by: userId } as any,
+        expectedUpdatedAt,
+        'Esta obra foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
+      );
+      await this.replaceParticipantes(participantsRepo, tenantId, id, participantes);
+    });
     return this.findById(tenantId, id);
   }
 

@@ -13,6 +13,7 @@ import {
   TICKET_STATUS_LABELS, TICKET_PRIORITY_LABELS, TICKET_CATEGORY_LABELS,
 } from "../hooks/useSupport";
 import type { TicketStatus, TicketPriority } from "../types";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 import {
   ArrowLeft, Send, User, Shield, Clock,
   AlertCircle, CheckCircle2, Tag, Calendar,
@@ -195,7 +196,7 @@ export default function SupportTicketDetail() {
               <p className="text-[11px] text-muted-foreground">Status</p>
               <Select
                 value={ticket.status}
-                onValueChange={(v) => updateTicket(ticket.id, { status: v as TicketStatus })}
+                onValueChange={(v) => updateTicket(ticket.id, { status: v as TicketStatus }, getExpectedUpdatedAt(ticket))}
               >
                 <SelectTrigger className="h-8 text-xs" data-testid="select-ticket-status">
                   <SelectValue />
@@ -211,7 +212,7 @@ export default function SupportTicketDetail() {
               <p className="text-[11px] text-muted-foreground">Prioridade</p>
               <Select
                 value={ticket.priority}
-                onValueChange={(v) => updateTicket(ticket.id, { priority: v as TicketPriority })}
+                onValueChange={(v) => updateTicket(ticket.id, { priority: v as TicketPriority }, getExpectedUpdatedAt(ticket))}
               >
                 <SelectTrigger className="h-8 text-xs" data-testid="select-ticket-priority">
                   <SelectValue />
@@ -228,7 +229,7 @@ export default function SupportTicketDetail() {
                 variant="outline"
                 size="sm"
                 className="w-full text-xs gap-1.5 text-green-400 border-green-500/30 hover:bg-green-500/10"
-                onClick={() => updateTicket(ticket.id, { status: "resolved" })}
+                onClick={() => updateTicket(ticket.id, { status: "resolved" }, getExpectedUpdatedAt(ticket))}
                 data-testid="button-resolve-ticket"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" /> Marcar como Resolvido

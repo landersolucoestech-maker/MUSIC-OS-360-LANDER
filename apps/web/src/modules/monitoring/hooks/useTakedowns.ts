@@ -19,6 +19,7 @@ export function useTakedowns() {
     takedowns: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addTakedown: result.create,
     updateTakedown: result.update,
     deleteTakedown: result.delete,

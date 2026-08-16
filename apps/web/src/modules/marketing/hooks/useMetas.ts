@@ -98,16 +98,22 @@ export function getProgressPercent(meta: Pick<Meta, "valorAtual" | "valorAlvo"> 
   );
 }
 
-export function useMetas() {
+const EMPTY_METAS: Meta[] = [];
+
+export function useMetas(enabled = true, artistaId?: string) {
   const createMeta = useCreateMeta();
   const updateMetaMutation = useUpdateMeta();
   const deleteMetaMutation = useDeleteMeta();
   const query = useQuery({
-    queryKey: QUERY_KEY,
-    queryFn: async () => listRows(await api.get<ApiList<GoalRow>>("/artist-goals?limit=100")).map(fromApi),
+    queryKey: artistaId ? [...QUERY_KEY, "by-artist", artistaId] : QUERY_KEY,
+    queryFn: async ({ signal }) => listRows(await api.get<ApiList<GoalRow>>(
+      `/artist-goals?limit=100${artistaId ? `&artista_id=${encodeURIComponent(artistaId)}` : ""}`,
+      { signal },
+    )).map(fromApi),
+    enabled,
   });
   return {
-    metas: query.data ?? [],
+    metas: query.data ?? EMPTY_METAS,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,

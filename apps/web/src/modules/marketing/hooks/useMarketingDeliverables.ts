@@ -9,6 +9,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import {
   marketingService,
   type CreateDeliverableInput,
@@ -40,13 +41,17 @@ export function useMarketingDeliverables() {
   });
 }
 
+// Referência estável — ver shared/hooks/useDataQuery.ts para o motivo.
+const EMPTY_DELIVERABLES: Awaited<ReturnType<typeof marketingService.deliverables.listByTask>> = [];
+
 /** Deliverables produced inside a task. */
 export function useDeliverablesByTask(taskId: ID | null | undefined) {
-  return useQuery({
+  const query = useQuery({
     queryKey: deliverablesByTaskKey(taskId ?? "none"),
     queryFn: () => marketingService.deliverables.listByTask(taskId as ID),
     enabled: Boolean(taskId),
   });
+  return { ...query, data: query.data ?? EMPTY_DELIVERABLES };
 }
 
 /** Deliverables reachable from a linked entity (release/campaign/content/...). */
@@ -80,26 +85,32 @@ export function useCreateDeliverable() {
 export function useUpdateDeliverable() {
   const invalidate = useInvalidateDeliverables();
   return useMutation({
-    mutationFn: ({ id, patch }: { id: ID; patch: Partial<Pick<MarketingDeliverable, "title" | "description" | "type">> }) =>
-      marketingService.deliverables.update(id, patch),
+    mutationFn: ({ id, patch, expectedUpdatedAt }: { id: ID; patch: Partial<Pick<MarketingDeliverable, "title" | "description" | "type">>; expectedUpdatedAt?: string }) =>
+      marketingService.deliverables.update(id, patch, expectedUpdatedAt),
     onSuccess: () => {
       invalidate();
       toast.success("Entregável atualizado");
     },
-    onError: () => toast.error("Erro ao atualizar entregável"),
+    onError: (error: unknown) => {
+      if (handleConcurrencyConflict(error, "entregável")) return;
+      toast.error("Erro ao atualizar entregável");
+    },
   });
 }
 
 export function useAddDeliverableVersion() {
   const invalidate = useInvalidateDeliverables();
   return useMutation({
-    mutationFn: ({ id, file, note }: { id: ID; file: DeliverableFileInput; note?: string }) =>
-      marketingService.deliverables.addVersion(id, file, note),
+    mutationFn: ({ id, file, note, expectedUpdatedAt }: { id: ID; file: DeliverableFileInput; note?: string; expectedUpdatedAt?: string }) =>
+      marketingService.deliverables.addVersion(id, file, note, expectedUpdatedAt),
     onSuccess: () => {
       invalidate();
       toast.success("Nova versão enviada");
     },
-    onError: () => toast.error("Erro ao enviar nova versão"),
+    onError: (error: unknown) => {
+      if (handleConcurrencyConflict(error, "entregável")) return;
+      toast.error("Erro ao enviar nova versão");
+    },
   });
 }
 

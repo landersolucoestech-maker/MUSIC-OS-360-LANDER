@@ -11,15 +11,18 @@ import type {
 
 export type { Lancamento, LancamentoInsert, LancamentoUpdate, LancamentoWithRelations };
 
-export function useLancamentos() {
+export function useLancamentos(enabled = true, artistaId?: string) {
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
 
   const result = useDataQuery<LancamentoWithRelations>({
-    queryKey: [...QUERY_KEYS.LANCAMENTOS],
+    queryKey: artistaId ? [...QUERY_KEYS.LANCAMENTOS, "by-artist", artistaId] : [...QUERY_KEYS.LANCAMENTOS],
     table: "lancamentos",
     select: "*, artistas(*)",
     orderBy: { column: "data_lancamento", ascending: false },
+    enabled,
+    // Backend de releases usa "artistId" (camelCase), não "artista_id" — ver releases.dto.ts/releases.service.ts.
+    filters: artistaId ? { artistId: artistaId } : undefined,
     onMutationSuccess: {
       onCreate: (l) =>
         emit(DomainEvents.RELEASE_CREATED, {
@@ -48,6 +51,7 @@ export function useLancamentos() {
     lancamentos: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addLancamento: result.create,
     updateLancamento: result.update,
     deleteLancamento: result.delete,

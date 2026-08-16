@@ -39,8 +39,8 @@ export function useLeads() {
       await leadsService.create(data);
       await refresh();
     },
-    updateLead: async (id: string, data: Partial<Lead>) => {
-      await leadsService.update(id, data);
+    updateLead: async (id: string, data: Partial<Lead>, expectedUpdatedAt?: string) => {
+      await leadsService.update(id, data, expectedUpdatedAt);
       await refresh();
     },
     deleteLead: async (id: string) => {

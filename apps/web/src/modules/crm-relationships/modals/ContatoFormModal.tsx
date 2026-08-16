@@ -10,7 +10,9 @@
 // ============================================================================
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { MessageSquare, Plus, Trash2, Upload, X } from "lucide-react";
+import { handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -330,6 +332,9 @@ export function ContatoFormModal({ open, onOpenChange, mode, initialValue, onSub
       setSubmitting(true);
       await onSubmit(buildPayload(state));
       onOpenChange(false);
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "contato")) return;
+      toast.error("Erro ao salvar contato. Tente novamente.");
     } finally {
       setSubmitting(false);
     }

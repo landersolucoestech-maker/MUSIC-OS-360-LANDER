@@ -12,7 +12,6 @@ import {
   TrendingUp, TrendingDown, DollarSign, Loader2, RotateCcw, Search,
 } from "lucide-react";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { formatCategoryLabel } from "@/shared/lib/category-labels";
 import { FeatureGate } from '@/shared/components/FeatureGate';
@@ -196,7 +195,6 @@ function PLEmpresaTable({
 
 export default function Contabilidade() {
   const { transacoes, isLoading } = useTransacoes();
-  const { artistas } = useArtistas();
   const [activeTab, setActiveTab] = useState("todos");
   const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -256,18 +254,29 @@ export default function Contabilidade() {
   [filteredTransacoes]);
 
   // ── P&L por Artista ───────────────────────────────────────────────────────
-  const plPorArtista = useMemo(() =>
-    artistas
-      .map((a: any) => {
-        const ts = filteredTransacoes.filter((t: any) => t.artista_id === a.id);
-        const totalRec = sum(ts.filter((t: any) => t.tipo === "receita"), "valor");
-        const totalDes = sum(ts.filter((t: any) => t.tipo === "despesa"), "valor");
-        const lucro = totalRec - totalDes;
-        return { id: a.id, nome: a.nome_artistico ?? a.nome ?? "—", totalRec, totalDes, lucro, margem: totalRec > 0 ? (lucro / totalRec) * 100 : 0 };
-      })
-      .filter((a) => a.totalRec > 0 || a.totalDes > 0)
-      .sort((a, b) => b.lucro - a.lucro),
-  [filteredTransacoes, artistas]);
+  // Agrupa direto pelas transações (já vêm com `artistas` embutido via join
+  // server-side, ver useTransacoes select: "*, artistas(*)") em vez de
+  // percorrer useArtistas() — evita depender de uma segunda lista (capada a
+  // 50 registros/tenant) só para resolver o nome de exibição.
+  const plPorArtista = useMemo(() => {
+    const porArtista = new Map<string, { id: string; nome: string; totalRec: number; totalDes: number }>();
+    for (const t of filteredTransacoes as any[]) {
+      const artistaId = t.artista_id;
+      if (!artistaId) continue;
+      const entry = porArtista.get(artistaId) ?? {
+        id: artistaId,
+        nome: t.artistas?.nome_artistico ?? t.artistas?.nome ?? "—",
+        totalRec: 0,
+        totalDes: 0,
+      };
+      if (t.tipo === "receita") entry.totalRec += t.valor ?? 0;
+      else if (t.tipo === "despesa") entry.totalDes += t.valor ?? 0;
+      porArtista.set(artistaId, entry);
+    }
+    return Array.from(porArtista.values())
+      .map((a) => ({ ...a, lucro: a.totalRec - a.totalDes, margem: a.totalRec > 0 ? ((a.totalRec - a.totalDes) / a.totalRec) * 100 : 0 }))
+      .sort((a, b) => b.lucro - a.lucro);
+  }, [filteredTransacoes]);
 
   if (isLoading) {
     return (

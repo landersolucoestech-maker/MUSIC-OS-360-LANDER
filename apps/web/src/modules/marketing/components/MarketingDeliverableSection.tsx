@@ -60,6 +60,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
 import { cn } from "@/shared/lib/utils";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 import {
   DELIVERABLE_APPROVAL_LABEL,
   DELIVERABLE_APPROVAL_TONE,
@@ -313,6 +314,7 @@ function DeliverableCard({
     addVersion.mutate({
       id: d.id,
       file: { url: URL.createObjectURL(file), name: file.name, mimeType: file.type, size: file.size },
+      expectedUpdatedAt: getExpectedUpdatedAt(d),
     });
   };
 
@@ -556,7 +558,11 @@ function EditDialog({ deliverable, onClose }: { deliverable: MarketingDeliverabl
   const save = () => {
     if (!deliverable || !title.trim()) return;
     update.mutate(
-      { id: deliverable.id, patch: { title: title.trim(), type, description: description.trim() } },
+      {
+        id: deliverable.id,
+        patch: { title: title.trim(), type, description: description.trim() },
+        expectedUpdatedAt: getExpectedUpdatedAt(deliverable),
+      },
       { onSuccess: onClose },
     );
   };

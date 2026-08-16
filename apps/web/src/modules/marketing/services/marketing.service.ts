@@ -53,7 +53,7 @@ function assertValidContent(channel: string, type: string, files: { kind?: strin
 interface ResourceLike<T extends { id: ID; createdAt: string; updatedAt: string }> {
   list(): Promise<T[]>;
   create(input: CreateInput<T>): Promise<T>;
-  update(id: ID, patch: Partial<T>): Promise<T>;
+  update(id: ID, patch: Partial<T>, expectedUpdatedAt?: string): Promise<T>;
   remove(id: ID): Promise<{ id: ID }>;
 }
 
@@ -202,11 +202,11 @@ const campaignsApi: ResourceLike<MarketingCampaign> = {
   async create(input) {
     return campaignFromApi(await api.post<RecordRow>("/marketing/campaigns/draft", campaignToBuilder(input)));
   },
-  async update(id, patch) {
+  async update(id, patch, expectedUpdatedAt) {
     const current = campaignFromApi(await api.get<RecordRow>(`/marketing/campaigns/${id}`));
     return campaignFromApi(await api.patch<RecordRow>(
       `/marketing/campaigns/${id}`,
-      campaignToBuilder({ ...current, ...patch }),
+      { ...campaignToBuilder({ ...current, ...patch }), expectedUpdatedAt },
     ));
   },
   async remove(id) {
@@ -235,9 +235,9 @@ const contentsApi: ResourceLike<MarketingContent> = {
     assertValidContent(input.channel, input.type, input.files ?? []);
     return contentFromApi(await api.post<RecordRow>("/marketing/contents", input));
   },
-  async update(id, patch) {
+  async update(id, patch, expectedUpdatedAt) {
     if (patch.channel && patch.type) assertValidContent(patch.channel, patch.type, patch.files ?? []);
-    return contentFromApi(await api.patch<RecordRow>(`/marketing/contents/${id}`, patch));
+    return contentFromApi(await api.patch<RecordRow>(`/marketing/contents/${id}`, { ...patch, expectedUpdatedAt }));
   },
   async remove(id) {
     await api.delete(`/marketing/contents/${id}`);
@@ -394,11 +394,11 @@ const tasksApi: ResourceLike<MarketingTask> = {
   async create(input) {
     return taskFromApi(await api.post<RecordRow>("/marketing/tasks", taskToApi(input)));
   },
-  async update(id, patch) {
+  async update(id, patch, expectedUpdatedAt) {
     const current = taskFromApi(await api.get<RecordRow>(`/marketing/tasks/${id}`));
     return taskFromApi(await api.patch<RecordRow>(
       `/marketing/tasks/${id}`,
-      taskToApi({ ...current, ...patch }),
+      { ...taskToApi({ ...current, ...patch }), expectedUpdatedAt },
     ));
   },
   async remove(id) {
@@ -552,20 +552,22 @@ const deliverablesApi = {
     });
     return deliverableFromApi(row);
   },
-  async update(id: ID, patch: Partial<Pick<MarketingDeliverable, "title" | "description" | "type">>) {
+  async update(id: ID, patch: Partial<Pick<MarketingDeliverable, "title" | "description" | "type">>, expectedUpdatedAt?: string) {
     return deliverableFromApi(await api.patch<RecordRow>(`/marketing/assets/${id}`, {
       title: patch.title,
       description: patch.description,
       assetType: patch.type?.toUpperCase(),
+      expectedUpdatedAt,
     }));
   },
-  async addVersion(id: ID, file: DeliverableFileInput, note?: string) {
+  async addVersion(id: ID, file: DeliverableFileInput, note?: string, expectedUpdatedAt?: string) {
     return deliverableFromApi(await api.patch<RecordRow>(`/marketing/assets/${id}`, {
       fileUrl: file.url,
       mimeType: file.mimeType,
       sizeBytes: String(file.size),
       changeNotes: note,
       metadata: { fileName: file.name },
+      expectedUpdatedAt,
     }));
   },
   async setApproval(id: ID, approval: DeliverableApproval) {

@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import { useEntityLookup, useEntityById } from "@/shared/hooks/useEntityLookup";
+import { storage } from "@/shared/lib/storage";
 import { MUSICAL_GENRE_LABELS } from "@/constants/musicalGenres";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
@@ -13,10 +15,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { toast } from "sonner";
 import { Plus, Search, ChevronDown, Trash2, Upload, FileAudio, Music, X, Eye } from "lucide-react";
-import { useObras, type ObraWithRelations } from "@/modules/catalog/hooks/useObras";
+import type { ObraWithRelations } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas, type FonogramaInsert, type FonogramaUpdate } from "@/modules/catalog/hooks/useFonogramas";
-import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
-import { useProjetos } from "@/modules/projects/hooks/useProjetos";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
+import type { Artista } from "@/modules/artist/hooks/useArtistas";
+import type { ProjetoWithRelations } from "@/modules/projects/hooks/useProjetos";
 import { ParticipanteViewModal } from "@/modules/catalog/components/ParticipanteViewModal";
 import { useCurrentOrgId } from "@/shared/hooks/useCurrentOrgId";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -171,18 +174,20 @@ const formatFileSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-// ── Autocomplete: busca por nome_artistico, armazena/exibe nome_civil ──
+// ── Autocomplete: busca server-side por nome_artistico/nome_civil (Task I —
+// antes filtrava só os primeiros 50 artistas do tenant carregados via
+// useArtistas() sem filtro; agora cada tecla digitada (debounced) refaz a
+// busca no backend). Texto livre continua permitido.
 interface ArtistNameInputProps {
   value: string;
   onChange: (val: string) => void;
   onSelect?: (a: { id: string; nome_artistico: string; nome_civil?: string | null }) => void;
-  artistas: Array<{ id: string; nome_artistico: string; nome_civil?: string | null }>;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
 }
 
-function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, disabled, className }: ArtistNameInputProps) {
+function ArtistNameInput({ value, onChange, onSelect, placeholder, disabled, className }: ArtistNameInputProps) {
   const [inputText, setInputText] = useState(value);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -199,12 +204,11 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const suggestions = inputText.trim()
-    ? artistas.filter(a =>
-        a.nome_artistico.toLowerCase().includes(inputText.toLowerCase()) ||
-        (a.nome_civil ?? "").toLowerCase().includes(inputText.toLowerCase())
-      )
-    : [];
+  const { items: suggestions } = useEntityLookup<Artista>({
+    table: "artistas",
+    search: inputText,
+    enabled: open && inputText.trim().length > 0,
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
@@ -212,7 +216,7 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
     setOpen(true);
   };
 
-  const handleSelect = (a: typeof artistas[number]) => {
+  const handleSelect = (a: Artista) => {
     const display = a.nome_civil || a.nome_artistico;
     setInputText(display);
     onChange(display);
@@ -230,7 +234,7 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
         disabled={disabled}
         autoComplete="off"
       />
-      {open && suggestions.length > 0 && !disabled && (
+      {open && inputText.trim() && suggestions.length > 0 && !disabled && (
         <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md max-h-48 overflow-y-auto">
           {suggestions.map(a => (
             <button
@@ -250,12 +254,8 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
 }
 
 export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSaved }: FonogramaFormModalProps) {
-  // Obras carregadas via useObras()
-  const { obras } = useObras();
   const { addFonograma, updateFonograma } = useFonogramas();
   const { orgId } = useCurrentOrgId();
-  const { artistas } = useArtistas();
-  const { projetos } = useProjetos();
   const [viewArtista, setViewArtista] = useState<Artista | null>(null);
 
   // Build initial obra vinculada from form-shape OR DB-shape (snake_case).
@@ -383,62 +383,69 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, fonograma]);
 
-  // Hidrata a obra vinculada a partir de fonograma.obra_id assim que a lista
-  // de obras chegar (ou quando o registro mudar). Em modo create, fica null.
+  // Hidrata a obra vinculada a partir de fonograma.obra_id — busca DIRETO por
+  // ID (GET /works/:id via useEntityById), não depende da obra estar entre
+  // os primeiros registros carregados por useObras() (Task I: antes a obra
+  // ficava presa no placeholder "Obra vinculada" para sempre se estivesse
+  // fora dos primeiros 50 do tenant).
+  const hydratedObraId: string | undefined =
+    (fonograma?.obra_id as string | undefined) ??
+    (fonograma as { obraId?: string } | null | undefined)?.obraId;
+  const { entity: hydratedObra } = useEntityById<ObraWithRelations>(
+    "obras",
+    open && !fonograma?.obraVinculada ? hydratedObraId : undefined,
+  );
+
   useEffect(() => {
     if (!open) return;
-    const obraId: string | undefined =
-      (fonograma?.obra_id as string | undefined) ??
-      (fonograma as { obraId?: string } | null | undefined)?.obraId;
     // Se o caller já enviou um objeto pronto (legacy), usa ele
     if (fonograma?.obraVinculada) {
       setObraVinculada(toObraVinculada(fonograma.obraVinculada));
       return;
     }
-    if (!obraId) {
+    if (!hydratedObraId) {
       setObraVinculada(null);
       return;
     }
-    const found = obras.find((o: ObraWithRelations) => o.id === obraId);
-    if (found) {
+    if (hydratedObra) {
       setObraVinculada({
-        id: found.id,
-        title: found.titulo ?? "",
-        genero: found.genero ?? "",
-        compositores: compositoresToString(found.compositores),
-        status: found.status ?? "",
+        id: hydratedObra.id,
+        title: hydratedObra.titulo ?? "",
+        genero: hydratedObra.genero ?? "",
+        compositores: compositoresToString(hydratedObra.compositores),
+        status: hydratedObra.status ?? "",
       });
     } else {
-      // Ainda carregando ou obra fora do filtro — mantém ID com placeholder.
+      // Ainda carregando — mantém ID com placeholder até a busca por ID resolver.
       setObraVinculada({
-        id: obraId,
+        id: hydratedObraId,
         title: "Obra vinculada",
         genero: "",
         compositores: "",
         status: "",
       });
     }
-  }, [open, fonograma, obras]);
+  }, [open, fonograma, hydratedObraId, hydratedObra]);
 
   // Debounce do termo digitado para evitar uma chamada ABRAMUS por tecla.
   const buscaObraDebounced = useDebounce(buscaObra, 300);
 
-  // Lista de obras registradas filtrada pelo termo digitado (busca local
-  // continua respondendo instantaneamente em memória) — limitada a 20.
+  // Busca server-side (Task I) — antes filtrava só as primeiras 50 obras do
+  // tenant carregadas via useObras() sem filtro; agora cada tecla digitada
+  // (debounced) refaz a busca no backend (títulos), alcançando qualquer
+  // obra do tenant. Nota: a busca server-side casa só por título (o backend
+  // não indexa compositores/gênero) — leve estreitamento face à busca local
+  // anterior, mesma concessão já aceita nas demais migrações desta tarefa.
   const LOCAL_RESULTS_LIMIT = 20;
   const collatorFono = new Intl.Collator("pt-BR", { sensitivity: "base" });
-  const obrasRegistradasFiltradasFull: ObraVinculada[] = obras
-    .filter((o: ObraWithRelations) => {
-      if (!buscaObra) return true;
-      const termo = buscaObra.toLowerCase();
-      const compositoresStr = compositoresToString(o.compositores).toLowerCase();
-      return (
-        (o.titulo ?? "").toLowerCase().includes(termo) ||
-        compositoresStr.includes(termo) ||
-        (o.genero ?? "").toLowerCase().includes(termo)
-      );
-    })
-    .map((o: ObraWithRelations) => ({
+  const { items: obrasBusca, total: obrasRegistradasTotal } = useEntityLookup<ObraWithRelations>({
+    table: "obras",
+    search: buscaObraDebounced,
+    pageSize: LOCAL_RESULTS_LIMIT,
+    enabled: buscaOpen,
+  });
+  const obrasRegistradasFiltradas: ObraVinculada[] = obrasBusca
+    .map((o) => ({
       id: o.id,
       title: o.titulo ?? "",
       genero: o.genero ?? "",
@@ -446,9 +453,6 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
       status: o.status ?? "",
     }))
     .sort((a, b) => collatorFono.compare(a.title, b.title));
-  const obrasRegistradasTotal = obrasRegistradasFiltradasFull.length;
-  const obrasRegistradasFiltradas: ObraVinculada[] =
-    obrasRegistradasFiltradasFull.slice(0, LOCAL_RESULTS_LIMIT);
 
   const isViewMode = mode === "view";
   const title = mode === "create" ? "Novo Fonograma" : mode === "edit" ? "Editar Fonograma" : "Detalhes do Fonograma";
@@ -601,7 +605,11 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
       if (mode === "create") {
         await addFonograma.mutateAsync(payload);
       } else if (mode === "edit" && fonograma?.id) {
-        const updatePayload: { id: string } & FonogramaUpdate = { id: fonograma.id, ...payload };
+        const updatePayload: { id: string } & FonogramaUpdate & { expectedUpdatedAt?: string } = {
+          id: fonograma.id,
+          ...payload,
+          expectedUpdatedAt: getExpectedUpdatedAt(fonograma),
+        };
         await updateFonograma.mutateAsync(updatePayload);
       }
       // Warn only after a successful save — avoids misleading the user on
@@ -627,7 +635,8 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
         ].filter(Boolean).join("\n"),
       });
     } catch (err) {
-      // toast já é exibido pelo hook
+      if (handleConcurrencyConflict(err, "fonograma")) return;
+      // demais erros já são exibidos via toast pelo hook
     } finally {
       setSubmitting(false);
     }
@@ -663,7 +672,6 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                     value={p.nome}
                     onChange={(val) => updateParticipante(categoria, p.id, 'nome', val)}
                     onSelect={(a) => updateParticipante(categoria, p.id, 'artista_id', a.id)}
-                    artistas={artistas}
                     placeholder="Nome do participante"
                     disabled={isViewMode}
                     className="flex-1"
@@ -683,8 +691,16 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                     className="text-muted-foreground hover:text-foreground"
                     title="Visualizar participante"
                     disabled={!p.nome}
-                    onClick={() => {
-                      const found = artistas.find(a => a.id === p.artista_id || (a.nome_civil || a.nome_artistico) === p.nome);
+                    onClick={async () => {
+                      // Busca por ID direto — não depende do artista estar entre os
+                      // primeiros carregados; cai para busca por nome só quando o
+                      // participante nunca foi vinculado a um artista cadastrado.
+                      const found = p.artista_id
+                        ? await storage.findById<Artista>("artistas", p.artista_id)
+                        : p.nome
+                          ? (await storage.listPaged<Artista>("artistas", { page: 1, pageSize: 5, filters: { search: p.nome } }))
+                              .items.find(a => (a.nome_civil || a.nome_artistico) === p.nome)
+                          : undefined;
                       if (found) setViewArtista(found as Artista);
                     }}
                   >
@@ -782,7 +798,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                         </p>
                         {obrasRegistradasFiltradas.length > 0 ? (
                           obrasRegistradasFiltradas.map((obra) => {
-                            const selectObra = () => {
+                            const selectObra = async () => {
                               setObraVinculada(obra);
                               // Auto-fill título if blank
                               if (!titulo && obra.title) setTitulo(obra.title);
@@ -793,7 +809,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                                 setGeneroMusical(matched ? matched.toLowerCase() : obra.genero.toLowerCase());
                               }
                               // Fill participação from full obra data
-                              const fullObra = obras.find((o: ObraWithRelations) => o.id === obra.id);
+                              const fullObra = obrasBusca.find((o: ObraWithRelations) => o.id === obra.id);
                               if (fullObra) {
                                 const compositoresStr = Array.isArray(fullObra.compositores)
                                   ? (fullObra.compositores as string[]).join(", ")
@@ -802,10 +818,12 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                                   : typeof fullObra.compositor === "string"
                                   ? fullObra.compositor
                                   : "";
-                                // Resolve músico/arranjador from project producers
+                                // Resolve músico/arranjador from project producers — busca
+                                // DIRETA por ID (Task J: antes escaneava o array `projetos`
+                                // de useProjetos() sem filtro, truncado em 50 por tenant).
                                 let musicosArr: Participante[] = [];
                                 if ((fullObra.projeto_id as string | null | undefined)) {
-                                  const projeto = projetos.find(p => p.id === (fullObra.projeto_id as string));
+                                  const projeto = await storage.findById<ProjetoWithRelations>("projetos", fullObra.projeto_id as string);
                                   if (projeto?.descricao) {
                                     try {
                                       const normT = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -823,18 +841,26 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                                   }
                                 }
                                 // Resolve artista for interprete:
-                                // 1) DB join (non-mock), 2) artista_id lookup, 3) compositor name match
+                                // 1) DB join (non-mock), 2) busca DIRETA por ID (Task J \u2014 antes
+                                // escaneava o array `artistas` de useArtistas() sem filtro,
+                                // truncado em 50 artistas por tenant; GET /artists/:id alcan\u00e7a
+                                // qualquer artista do tenant), 3) compositor name match (s\u00f3
+                                // quando n\u00e3o h\u00e1 artista_id \u2014 mesma concess\u00e3o j\u00e1 aceita em
+                                // outras migra\u00e7\u00f5es desta tarefa).
                                 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
                                 let artistaNome = fullObra.artistas?.nome_artistico as string | undefined;
                                 let artistaId = fullObra.artistas?.id as string | undefined;
                                 if (!artistaNome && (fullObra.artista_id as string | null | undefined)) {
-                                  const byId = artistas.find((a: Artista) => a.id === (fullObra.artista_id as string));
+                                  const byId = await storage.findById<Artista>("artistas", fullObra.artista_id as string);
                                   if (byId) { artistaNome = byId.nome_artistico; artistaId = byId.id; }
                                 }
                                 if (!artistaNome && compositoresStr) {
                                   const firstComp = compositoresStr.split(",")[0]?.trim();
                                   if (firstComp) {
-                                    const byName = artistas.find((a: Artista) =>
+                                    const { items: compMatches } = await storage.listPaged<Artista>("artistas", {
+                                      page: 1, pageSize: 5, filters: { search: firstComp },
+                                    });
+                                    const byName = compMatches.find((a: Artista) =>
                                       norm(a.nome_artistico || "") === norm(firstComp) ||
                                       norm((a as any).nome_civil || "") === norm(firstComp) ||
                                       norm((a as any).nome || "") === norm(firstComp)

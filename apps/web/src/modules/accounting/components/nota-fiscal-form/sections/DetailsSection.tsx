@@ -3,10 +3,12 @@ import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import { isValidCpfCnpj, formatCpfCnpj, formatCEP } from "@/shared/lib/br-validators";
 import { format, parseISO } from "date-fns";
 import type { NfFormData, NfFormRules } from "@/modules/accounting/components/nota-fiscal-form/rules/nf-form-rules";
 import type { NfValidationErrors } from "@/modules/accounting/components/nota-fiscal-form/validation/nf-form-validation";
+import type { NfClienteLookup } from "@/modules/accounting/components/nota-fiscal-form/hooks/useNotaFiscalForm";
 
 const statusOptions = [
   { value: "emitida", label: "Emitida" },
@@ -41,9 +43,8 @@ interface DetailsSectionProps {
   validationErrors: NfValidationErrors;
   disabled: boolean;
   companySettings: any;
-  clientes: any[];
   updateField: <K extends keyof NfFormData>(field: K, value: NfFormData[K]) => void;
-  handleClienteChange: (clienteId: string) => void;
+  handleClienteChange: (clienteId: string, cliente?: NfClienteLookup) => void;
 }
 
 export function DetailsSection({
@@ -52,7 +53,6 @@ export function DetailsSection({
   validationErrors,
   disabled,
   companySettings,
-  clientes,
   updateField,
   handleClienteChange,
 }: DetailsSectionProps) {
@@ -241,22 +241,16 @@ export function DetailsSection({
 
         <div className="space-y-2">
           <Label>{rules.clienteSelectLabel}</Label>
-          <Select
+          <AsyncEntityCombobox<NfClienteLookup>
+            table="clientes"
+            getLabel={(c) => c.nome}
             value={formData.cliente_id}
-            onValueChange={handleClienteChange}
+            onChange={handleClienteChange}
+            placeholder="Selecione um cliente"
+            searchPlaceholder="Buscar cliente…"
             disabled={disabled}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um cliente" />
-            </SelectTrigger>
-            <SelectContent>
-              {clientes.map((c: any) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            data-testid="combobox-cliente-nf"
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

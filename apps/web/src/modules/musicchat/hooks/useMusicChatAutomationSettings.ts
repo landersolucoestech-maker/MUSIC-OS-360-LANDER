@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { musicChatAutomationService } from "../services/musicchat-automation.service";
+import { handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import type { MusicChatAutomationSettings } from "../types/musicchat-automation.types";
 
 export const MUSICCHAT_AUTOMATION_SETTINGS_KEY = ["musicchat", "automation", "settings"] as const;
@@ -13,12 +14,15 @@ export function useMusicChatAutomationSettings() {
   });
 
   const updateSettings = useMutation({
-    mutationFn: (payload: Partial<MusicChatAutomationSettings>) => musicChatAutomationService.updateSettings(payload),
+    mutationFn: (payload: Partial<MusicChatAutomationSettings> & { expectedUpdatedAt?: string }) => musicChatAutomationService.updateSettings(payload),
     onSuccess: (data) => {
       queryClient.setQueryData(MUSICCHAT_AUTOMATION_SETTINGS_KEY, data);
       toast.success("Configurações do MusicChat salvas");
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      if (handleConcurrencyConflict(error, "configuração do MusicChat")) return;
+      toast.error(error.message);
+    },
   });
 
   return {

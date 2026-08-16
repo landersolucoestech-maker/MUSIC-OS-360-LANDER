@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { MessageSquare, Plus, Trash2, Upload, X } from "lucide-react";
+import { handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import {
   Dialog,
   DialogContent,
@@ -448,6 +450,9 @@ export function LeadFormModal({
         empresario:    showEmpresario    ? values.empresario    : undefined,
       });
       onOpenChange(false);
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "lead")) return;
+      toast.error("Erro ao salvar lead. Tente novamente.");
     } finally {
       setSubmitting(false);
     }

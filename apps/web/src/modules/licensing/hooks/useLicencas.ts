@@ -19,6 +19,7 @@ export function useLicencas() {
     licencas: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addLicenca: result.create,
     updateLicenca: result.update,
     deleteLicenca: result.delete,

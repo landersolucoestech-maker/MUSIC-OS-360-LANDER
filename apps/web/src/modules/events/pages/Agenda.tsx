@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from "react";
-import { endOfWeek, format, startOfMonth, startOfWeek, subWeeks, addWeeks, addMonths, subMonths, addYears, subYears } from "date-fns";
+import { fetchAllPages } from "@/shared/lib/exportAll";
+import { endOfWeek, endOfMonth, endOfYear, startOfDay, endOfDay, format, startOfMonth, startOfWeek, startOfYear, subWeeks, addWeeks, addMonths, subMonths, addYears, subYears } from "date-fns";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent } from "@/shared/ui/card";
 import { MetricCard } from "@/shared/components/MetricCard";
@@ -11,10 +12,12 @@ import { cn } from "@/shared/lib/utils";
 import { Calendar, Plus, Loader2, Eye, Pencil, Trash2, CalendarDays, CheckCircle2, Clock, CalendarClock, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useEventos } from "@/modules/events/hooks/useEventos";
+import { useEventosScoped, useEventosStats } from "@/modules/events/hooks/useEventosPaginated";
 import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
 import { SchedulerFormModal } from "@/modules/events/components/SchedulerFormModal";
 import { SchedulerViewModal } from "@/modules/events/components/SchedulerViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FeatureGate } from "@/shared/components/FeatureGate";
 import { toast } from "sonner";
@@ -124,7 +127,7 @@ function ToolbarSelect({
 }
 
 export default function Agenda() {
-  const { eventos: rawEventos, isLoading, deleteEvento, addEvento } = useEventos();
+  const { eventos: rawEventos, isLoading: loadingUnbounded, deleteEvento, addEvento } = useEventos();
   const eventos = rawEventos as Evento[];
   const { getOptionsByKind } = useOperationalSettings();
   const eventTypeOptions = getOptionsByKind("event_type");
@@ -148,6 +151,29 @@ export default function Agenda() {
   const [statusFilter, setStatusFilter] = useState("all-status");
   const excelInputRef = useRef<HTMLInputElement>(null);
 
+  // Bounds do período visível (dia/semana/mês/ano) — o calendário busca só
+  // os eventos desse período (Task H: sem isso, o fetch ficava preso ao
+  // limit=50 default do backend e sumia eventos silenciosamente em
+  // qualquer mês navegado, em tenants com mais de 50 eventos no total).
+  const { periodStart, periodEnd } = useMemo(() => {
+    if (viewMode === "dia") return { periodStart: startOfDay(currentDate), periodEnd: endOfDay(currentDate) };
+    if (viewMode === "mes") return { periodStart: startOfMonth(currentDate), periodEnd: endOfMonth(currentDate) };
+    if (viewMode === "ano") return { periodStart: startOfYear(currentDate), periodEnd: endOfYear(currentDate) };
+    return { periodStart: startOfWeek(currentDate, { weekStartsOn: 1 }), periodEnd: endOfWeek(currentDate, { weekStartsOn: 1 }) };
+  }, [viewMode, currentDate]);
+
+  const {
+    eventos: scopedEventosRaw, isLoading: isLoadingScoped, error: scopedError, refetch: refetchScoped,
+  } = useEventosScoped({
+    dateFrom: periodStart.toISOString(),
+    dateTo: periodEnd.toISOString(),
+    tipo: typeFilter !== "all-type" ? typeFilter : undefined,
+    status: statusFilter !== "all-status" ? statusFilter : undefined,
+  });
+  const scopedEventos = scopedEventosRaw as Evento[];
+
+  const { kpis: metricas } = useEventosStats();
+
   const getEventoParticipants = useMemo(() => (evento: Evento) => {
     const meta = (evento.metadata as Record<string, unknown> | undefined) ?? {};
     const stored = normalizeAgendaParticipants(meta["participants"]);
@@ -157,12 +183,23 @@ export default function Agenda() {
   }, [getArtistParticipantById]);
 
   const handleExcelExport = async () => {
-    if (eventos.length === 0) {
+    // Task I: varredura completa via paginação iterativa server-side —
+    // antes exportava só `eventos` (useEventos() sem filtro, preso ao
+    // limit=50 default do backend). Preserva os filtros de tipo/status
+    // ativos na tela; não escopa ao período do calendário (export é "todos
+    // os eventos que casam com o filtro", não "só o que está visível agora").
+    const filters: Record<string, unknown> = {};
+    if (typeFilter !== "all-type") filters.tipo = typeFilter;
+    if (statusFilter !== "all-status") filters.status = statusFilter;
+
+    const { items: allEventos, truncated } = await fetchAllPages<Evento>("eventos", { filters });
+
+    if (allEventos.length === 0) {
       toast.error("Nenhum evento para exportar");
       return;
     }
-    
-    const exportData = eventos.map(e => ({
+
+    const exportData = allEventos.map(e => ({
       titulo: e.titulo,
       tipo_evento: e.tipo_evento,
       status: e.status,
@@ -180,13 +217,17 @@ export default function Agenda() {
       descricao: e.descricao || "",
       observacoes: e.observacoes || "",
     }));
-    
+
     const XLSX = await getXLSX();
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Agenda");
     XLSX.writeFile(workbook, `agenda_${new Date().toISOString().split('T')[0]}.xlsx`);
-    toast.success(`${eventos.length} evento(s) exportado(s) com sucesso!`);
+    if (truncated) {
+      toast.warning(`Exportação limitada a ${allEventos.length} evento(s) (tenant muito grande) — refine os filtros para exportar o restante.`);
+    } else {
+      toast.success(`${allEventos.length} evento(s) exportado(s) com sucesso!`);
+    }
   };
 
   const handleExcelImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -238,16 +279,18 @@ export default function Agenda() {
     }
   };
 
+  // Tipo/status já aplicados server-side em useEventosScoped(); a busca por
+  // texto continua client-side sobre o período já escopado (título, local E
+  // nome de participante — o backend não indexa nome de participante).
   const filteredEventos = useMemo(() => {
-    return eventos.filter((evento) => {
-      const matchesSearch = evento.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        evento.local?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        summarizeAgendaParticipants(getEventoParticipants(evento)).toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = typeFilter === "all-type" || evento.tipo_evento?.toLowerCase() === typeFilter.toLowerCase();
-      const matchesStatus = statusFilter === "all-status" || evento.status?.toLowerCase() === statusFilter.toLowerCase();
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [eventos, searchTerm, typeFilter, statusFilter, getEventoParticipants]);
+    if (!searchTerm) return scopedEventos;
+    const term = searchTerm.toLowerCase();
+    return scopedEventos.filter((evento) =>
+      evento.titulo?.toLowerCase().includes(term) ||
+      evento.local?.toLowerCase().includes(term) ||
+      summarizeAgendaParticipants(getEventoParticipants(evento)).toLowerCase().includes(term),
+    );
+  }, [scopedEventos, searchTerm, getEventoParticipants]);
 
   const schedulerEvents = useMemo(() => filteredEventos.map((evento) => {
     const start = evento.data_inicio ? new Date(`${evento.data_inicio}T${evento.horario_inicio ?? "00:00"}:00`) : new Date();
@@ -279,29 +322,9 @@ export default function Agenda() {
   })), [schedulerEvents]);
 
   const openEventView = (id: string) => {
-    const evento = eventos.find((ev) => ev.id === id);
+    const evento = scopedEventos.find((ev) => ev.id === id);
     if (evento) setViewModal({ open: true, evento });
   };
-
-  const metricas = useMemo(() => {
-    const confirmados = eventos.filter(e => e.status === "confirmado").length;
-    const pendentes = eventos.filter(e => e.status === "agendado" || e.status === "pendente").length;
-    
-    // Count events in next 7 days
-    const hoje = new Date();
-    const em7Dias = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const proximos7Dias = eventos.filter(e => {
-      const dataEvento = new Date(e.data_inicio);
-      return dataEvento >= hoje && dataEvento <= em7Dias;
-    }).length;
-
-    return {
-      total: eventos.length,
-      confirmados,
-      pendentes,
-      proximos7Dias
-    };
-  }, [eventos]);
 
   const periodLabel = useMemo(() => {
     if (viewMode === "semana") {
@@ -345,16 +368,6 @@ export default function Agenda() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </MainLayout>
-    );
-  }
-
   const createButton = (
     <RequirePermission module="events" action="write">
       <Button size="sm" className="gap-2 bg-primary" onClick={() => setFormModal({ open: true, mode: "create" })}>
@@ -365,6 +378,14 @@ export default function Agenda() {
 
   return (
     <FeatureGate feature="moduleEvents" featureName="Agenda & Eventos">
+    <>
+    {loadingUnbounded || isLoadingScoped ? (
+      <MainLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </MainLayout>
+    ) : (
       <MainLayout title="Agenda" description="Gerencie shows, turnês e compromissos com foco operacional" actions={createButton}>
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -423,23 +444,31 @@ export default function Agenda() {
 
           <div className="space-y-4">
             {filteredEventos.length === 0 ? (
-              <Card>
-                <CardContent className="p-0">
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhum evento encontrado</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-4"
-                      onClick={() => setFormModal({ open: true, mode: "create" })}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Criar primeiro evento
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              scopedError && scopedEventos.length === 0 ? (
+                <Card>
+                  <CardContent className="p-0">
+                    <UnavailableState onRetry={() => refetchScoped()} />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Nenhum evento encontrado</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4"
+                        onClick={() => setFormModal({ open: true, mode: "create" })}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Criar primeiro evento
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
             ) : (
               <EntityCalendarView
                 view={(viewMode === "dia" || viewMode === "semana" || viewMode === "mes" || viewMode === "ano") ? viewMode : "mes"}
@@ -450,30 +479,35 @@ export default function Agenda() {
             )}
           </div>
         </div>
+      </MainLayout>
+    )}
 
-        <SchedulerViewModal
-          open={viewModal.open}
-          onOpenChange={(open) => setViewModal({ ...viewModal, open })}
-          evento={viewModal.evento as any}
-          onEdit={() => {
-            setViewModal({ open: false });
-            setFormModal({ open: true, mode: "edit", evento: viewModal.evento });
-          }}
-        />
-        <SchedulerFormModal
-          open={formModal.open}
-          onOpenChange={(open) => setFormModal({ ...formModal, open })}
-          evento={formModal.evento as any}
-          mode={formModal.mode}
-        />
-      <DeleteConfirmModal 
-        open={deleteModal.open} 
-        onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} 
-        title="Excluir Evento" 
-        description={`Tem certeza que deseja excluir "${deleteModal.evento?.titulo}"?`} 
-        onConfirm={handleDelete} 
+      {/* Fora do gate de isLoading de propósito — mesmo bug de /artistas
+          (Task C): SchedulerFormModal chama useEventos() de novo só para
+          as mutations, a mesma query do isLoading acima. */}
+      <SchedulerViewModal
+        open={viewModal.open}
+        onOpenChange={(open) => setViewModal({ ...viewModal, open })}
+        evento={viewModal.evento as any}
+        onEdit={() => {
+          setViewModal({ open: false });
+          setFormModal({ open: true, mode: "edit", evento: viewModal.evento });
+        }}
       />
-    </MainLayout>
+      <SchedulerFormModal
+        open={formModal.open}
+        onOpenChange={(open) => setFormModal({ ...formModal, open })}
+        evento={formModal.evento as any}
+        mode={formModal.mode}
+      />
+      <DeleteConfirmModal
+        open={deleteModal.open}
+        onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}
+        title="Excluir Evento"
+        description={`Tem certeza que deseja excluir "${deleteModal.evento?.titulo}"?`}
+        onConfirm={handleDelete}
+      />
+    </>
     </FeatureGate>
   );
 }

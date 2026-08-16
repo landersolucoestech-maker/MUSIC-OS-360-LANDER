@@ -114,8 +114,11 @@ export const financeCategorizationRulesService = {
     const rule = await api.post<FinanceCategoryRuleApi>("/financial-categories/rules", toApiRulePayload(draft));
     return mapApiRule(rule);
   },
-  async update(id: string, draft: FinanceCategoryRuleDraft) {
-    const rule = await api.patch<FinanceCategoryRuleApi>(`/financial-categories/rules/${id}`, toApiRulePayload(draft));
+  async update(id: string, draft: FinanceCategoryRuleDraft, expectedUpdatedAt?: string) {
+    const rule = await api.patch<FinanceCategoryRuleApi>(`/financial-categories/rules/${id}`, {
+      ...toApiRulePayload(draft),
+      expectedUpdatedAt,
+    });
     return mapApiRule(rule);
   },
   async remove(id: string) {

@@ -16,12 +16,12 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { format, parseISO } from "date-fns";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
-import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
 import type { ContratoSigner } from "@/modules/contracts/lib/contrato-schema";
 import { useContractServiceTypes } from "@/modules/contracts/hooks/useContractServiceTypes";
@@ -58,7 +58,6 @@ const ContractForm = ({
   artists = [],
 }: ContractFormProps) => {
   const [documentos, setDocumentos] = useState<UploadedFile[]>([]);
-  const { clientes } = useClientes();
   const { lancamentos } = useLancamentos();
 
   const form = useForm<ContratoFormData>({
@@ -138,9 +137,6 @@ const ContractForm = ({
     !typesWithTemplates.some((t) => t.slug === serviceTypeValue)
       ? allServiceTypes.find((t) => t.slug === serviceTypeValue)?.name ?? serviceTypeValue
       : null;
-
-  const contatosPF = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_fisica");
-  const contatosPJ = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_juridica");
 
   const { fields: signerFields, append: appendSigner, remove: removeSigner } = useFieldArray({
     control: form.control,
@@ -594,7 +590,7 @@ export const ContratoFormModal = ({
 }: ContratoFormModalProps) => {
   const { addContrato, updateContrato } = useContratos();
 
-  const handleSubmit = (data: ContratoFormData) => {
+  const handleSubmit = async (data: ContratoFormData) => {
     const {
       title, service_type, status,
       arquivo_url, notas_versao, lancamento_id,
@@ -640,7 +636,16 @@ export const ContratoFormModal = ({
       } else {
         payload.versoes = existingVersions;
       }
-      updateContrato.mutate({ id: contrato.id, ...payload });
+      try {
+        await updateContrato.mutateAsync({
+          id: contrato.id,
+          ...payload,
+          expectedUpdatedAt: getExpectedUpdatedAt(contrato),
+        });
+      } catch (err) {
+        if (handleConcurrencyConflict(err, "contrato")) return;
+        return;
+      }
     } else {
       if (arquivo_url) {
         const firstVersion: ContratoVersao = {
@@ -654,7 +659,11 @@ export const ContratoFormModal = ({
       } else {
         payload.versoes = [];
       }
-      addContrato.mutate(payload as Parameters<typeof addContrato.mutate>[0]);
+      try {
+        await addContrato.mutateAsync(payload as Parameters<typeof addContrato.mutateAsync>[0]);
+      } catch {
+        return;
+      }
     }
 
     onOpenChange(false);
@@ -670,6 +679,7 @@ export const ContratoFormModal = ({
           <ContractForm
             onSubmit={handleSubmit}
             onCancel={() => onOpenChange(false)}
+            isLoading={addContrato.isPending || updateContrato.isPending}
             initialData={
               contrato
                 ? contratoToFormData(contrato)

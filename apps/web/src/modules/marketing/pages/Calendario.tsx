@@ -36,10 +36,12 @@ import {
   SiX,
   SiYoutube,
 } from "react-icons/si";
+import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { FeatureGate } from "@/shared/components/FeatureGate";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { fetchAllLabels } from "@/shared/lib/fetch-all-labels";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 import { useMarketingOAuth } from "@/modules/integrations/hooks/useMarketingOAuth";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
@@ -209,7 +211,7 @@ export default function Calendario() {
 
     if (modalMode === "edit" && selectedContent) {
       updateContent.mutate(
-        { id: selectedContent.id, patch: payload },
+        { id: selectedContent.id, patch: payload, expectedUpdatedAt: getExpectedUpdatedAt(selectedContent) },
         { onSuccess: () => setModalOpen(false) },
       );
       return;
@@ -416,7 +418,13 @@ function ContentScheduleModal({
   const [advancedOpen, setAdvancedOpen] = useState(true);
   const [values, setValues] = useState<ContentFormValues>(() => initialContentForm(initialData));
   const [errors, setErrors] = useState<Partial<Record<keyof ContentFormValues, string>>>({});
-  const { artistas = [] } = useArtistas();
+  // Campo `targetName` guarda o NOME (não o id) filtrado client-side no
+  // <Select> abaixo — fetchAllLabels (paginação real, sem cap) substitui
+  // useArtistas() (capada a 50/tenant) para nunca perder um artista.
+  const { data: artistOptions = [] } = useQuery({
+    queryKey: ["marketing-calendar-artist-names"],
+    queryFn: () => fetchAllLabels("artistas", (a) => (a.nome_artistico ?? a.nome) as string | undefined),
+  });
   const { getConnectionsByCategory } = useMarketingOAuth();
 
   // Regra ITEM 6: apenas conteúdo de Empresa pode publicar via integração.
@@ -435,17 +443,6 @@ function ContentScheduleModal({
 
   const spec = getFormatSpec(values.channel, values.type);
   const projectAssetLibrary = useProjectAssetLibrary(values.releaseId);
-  const artistOptions = useMemo(
-    () =>
-      artistas
-        .map((artist) => ({
-          value: String(artist.nome_artistico ?? artist.nome ?? "").trim(),
-          label: String(artist.nome_artistico ?? artist.nome ?? "").trim(),
-        }))
-        .filter((option) => option.value && option.label)
-        .sort((a, b) => a.label.localeCompare(b.label, "pt-BR")),
-    [artistas],
-  );
 
   const setValue = <K extends keyof ContentFormValues>(key: K, value: ContentFormValues[K]) => {
     setValues((prev) => ({ ...prev, [key]: value }));

@@ -99,8 +99,9 @@ export const leadsService = {
     const created = await api.post<ApiLeadResponse>("/leads", toApiPayload(data));
     return fromApi(created);
   },
-  async update(id: string, data: Partial<Lead>): Promise<Lead> {
+  async update(id: string, data: Partial<Lead>, expectedUpdatedAt?: string): Promise<Lead> {
     const payload: Record<string, unknown> = {};
+    if (expectedUpdatedAt !== undefined) payload.expectedUpdatedAt = expectedUpdatedAt;
     if (data.nomeCompleto !== undefined) payload.name = data.nomeCompleto;
     if (data.nomeArtistico !== undefined) payload.nomeArtistico = data.nomeArtistico;
     if (data.empresa !== undefined) payload.empresa = data.empresa;

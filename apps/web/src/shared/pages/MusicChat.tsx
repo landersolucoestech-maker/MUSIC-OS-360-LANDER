@@ -38,6 +38,7 @@ import { SchedulerFormModal } from "@/modules/events/components/SchedulerFormMod
 import { useMusicChatAutomationSettings } from "@/modules/musicchat/hooks/useMusicChatAutomationSettings";
 import { useMusicChatTriageRules } from "@/modules/musicchat/hooks/useMusicChatTriageRules";
 import { musicChatConversationsService } from "@/modules/musicchat/services/conversations.service";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { useTenant } from "@/app/providers/TenantContext";
 import {
   Archive,
@@ -110,6 +111,8 @@ interface SupportConversation {
     stage: string;
   };
   auditTrail: string[];
+  /** Concorrência otimista (Task M) — ver useConcurrencyConflict. */
+  updated_at: string;
 }
 
 interface SupportMessage {
@@ -618,12 +621,14 @@ function SupportCenterView() {
       const updated = await musicChatConversationsService.update(selectedConversation.id, {
         metadata: { assignee_name: transferTarget },
         service_status: "em_atendimento",
+        expectedUpdatedAt: getExpectedUpdatedAt(selectedConversation),
       });
       setConversations((previous) => previous.map((item) => item.id === updated.id ? updated : item));
       toast.success(`Conversa transferida para ${transferTarget}.`);
       setTransferOpen(false);
       setTransferTarget("");
-    } catch {
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "conversa")) return;
       toast.error("Não foi possível transferir a conversa.");
     }
   };

@@ -25,7 +25,7 @@ import {
 } from "./campaign-builder.helpers";
 import type { BuilderStepProps, CampaignCreative, CampaignObjective, CampaignPlacement, CampaignPlatform, CreativeType, PromotedEntityType } from "./campaign-builder.types";
 import { Badge } from "@/shared/ui/badge";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import { useUsuarios } from "@/modules/settings/hooks/useUsuarios";
 import { useMarketingProjects } from "../../hooks/useMarketingProjects";
 import { useMarketingContents } from "../../hooks/useMarketingContents";
@@ -151,7 +151,6 @@ export function CampaignOutcomeStep({ state, setState }: BuilderStepProps) {
 
 export function CampaignBasicInfoStep({ state, setState }: BuilderStepProps) {
   // Existing system data — no manual typing, keeps relationships consistent.
-  const { artistas } = useArtistas();
   const { usuarios } = useUsuarios();
   const { data: projects } = useMarketingProjects();
 
@@ -161,12 +160,9 @@ export function CampaignBasicInfoStep({ state, setState }: BuilderStepProps) {
   const selectedOwnerId = userList.find((u) => ownerOption(u) === state.owner)?.id ?? "";
 
   const projectList = projects ?? [];
-  // Linked entity options depend on the promoted-entity type: artists for ARTIST,
-  // musical projects otherwise (the two real targets a campaign promotes).
-  const entityList =
-    state.promotedEntityType === "ARTIST"
-      ? (artistas ?? []).map((a) => ({ id: a.id, name: a.nome_artistico }))
-      : projectList.map((p) => ({ id: p.id, name: p.name }));
+  // Linked entity options: projetos musicais (artistas usam AsyncEntityCombobox
+  // abaixo — busca server-side, nunca capado aos primeiros 50/tenant).
+  const entityList = projectList.map((p) => ({ id: p.id, name: p.name }));
 
   // Content-driven flow: only PUBLISHED contents of the selected project can be
   // promoted (no campaigns for inexistent/unpublished assets).
@@ -247,22 +243,36 @@ export function CampaignBasicInfoStep({ state, setState }: BuilderStepProps) {
         </Select>
       </Field>
       <Field label="Entidade vinculada">
-        <Select
-          value={state.promotedEntityId}
-          onValueChange={(id) => {
-            const entity = entityList.find((e) => e.id === id);
-            setState((c) => ({ ...c, promotedEntityId: id, promotedEntityName: entity?.name ?? "" }));
-          }}
-        >
-          <SelectTrigger><SelectValue placeholder="Selecione uma entidade cadastrada" /></SelectTrigger>
-          <SelectContent>
-            {entityList.length === 0 ? (
-              <SelectItem value="__none" disabled>Nenhuma entidade cadastrada</SelectItem>
-            ) : (
-              entityList.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)
-            )}
-          </SelectContent>
-        </Select>
+        {state.promotedEntityType === "ARTIST" ? (
+          <AsyncEntityCombobox<{ id: string; nome_artistico?: string | null }>
+            table="artistas"
+            getLabel={(a) => a.nome_artistico ?? ""}
+            value={state.promotedEntityId}
+            onChange={(id, entity) =>
+              setState((c) => ({ ...c, promotedEntityId: id, promotedEntityName: entity?.nome_artistico ?? "" }))
+            }
+            placeholder="Selecione um artista cadastrado"
+            searchPlaceholder="Buscar artista…"
+            data-testid="combobox-campaign-entity-artist"
+          />
+        ) : (
+          <Select
+            value={state.promotedEntityId}
+            onValueChange={(id) => {
+              const entity = entityList.find((e) => e.id === id);
+              setState((c) => ({ ...c, promotedEntityId: id, promotedEntityName: entity?.name ?? "" }));
+            }}
+          >
+            <SelectTrigger><SelectValue placeholder="Selecione uma entidade cadastrada" /></SelectTrigger>
+            <SelectContent>
+              {entityList.length === 0 ? (
+                <SelectItem value="__none" disabled>Nenhuma entidade cadastrada</SelectItem>
+              ) : (
+                entityList.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)
+              )}
+            </SelectContent>
+          </Select>
+        )}
       </Field>
       <Field label="URL de destino"><Input value={state.destinationUrl} onChange={(event) => setState((c) => ({ ...c, destinationUrl: event.target.value }))} placeholder="https://..." /></Field>
       <Field label="Projeto vinculado">

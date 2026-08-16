@@ -50,15 +50,16 @@ import {
 } from "lucide-react";
 import { useUploadToR2, R2NotConfiguredError } from "@/shared/hooks/useUploadToR2";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import type { Lancamento } from "@/modules/releases/types";
 import { useDistributionPlatforms } from "@/modules/releases/hooks/useDistributionPlatforms";
 import { resolveReleaseStatus, releaseStatusLabel } from "@/modules/releases/lib/release-status";
 import { formatReleaseDate } from "@/modules/releases/lib/release-format";
-import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import type { ProjetoWithRelations } from "@/modules/projects/hooks/useProjetos";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import { useObras } from "@/modules/catalog/hooks/useObras";
-import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
+import type { Artista } from "@/modules/artist/hooks/useArtistas";
+import type { FonogramaWithRelations } from "@/modules/catalog/hooks/useFonogramas";
+import { useEntityLookup, useEntityById } from "@/shared/hooks/useEntityLookup";
+import { storage } from "@/shared/lib/storage";
 import {
   lancamentoToFormFields,
   emptyLancamentoFormFields,
@@ -123,6 +124,23 @@ const splitNames = (s: string | null | undefined): string[] => {
     .filter(Boolean);
   return parts.length > 0 ? parts : [""];
 };
+
+/**
+ * Resolve um fonograma pelo título exato (após normalização) — busca
+ * server-side (ILIKE) em vez de escanear a lista capped de useFonogramas()
+ * sem filtro (Task J). Usado só para autofill best-effort (ISRC de uma faixa
+ * de projeto); poucos resultados bastam, `pageSize` pequeno é intencional.
+ */
+async function findFonogramaByTitulo(titulo: string): Promise<FonogramaWithRelations | undefined> {
+  if (!titulo.trim()) return undefined;
+  const alvo = normStr(titulo);
+  const { items } = await storage.listPaged<FonogramaWithRelations & { id: string }>("fonogramas", {
+    page: 1,
+    pageSize: 5,
+    filters: { search: titulo },
+  });
+  return items.find((f) => normStr(f.titulo ?? "") === alvo);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NEW OPTION LISTS
@@ -376,27 +394,33 @@ function InfoBox({ children }: { children: React.ReactNode }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ArtistAutocompleteInput — texto com dropdown que abre no foco
+// ArtistAutocompleteInput — texto com dropdown que abre no foco. Task J:
+// antes recebia uma lista `suggestions: string[]` pré-computada a partir de
+// useArtistas() sem filtro (primeiros 50 artistas do tenant); agora busca
+// server-side (debounced internamente) a cada tecla, alcançando qualquer
+// artista do tenant. Texto livre continua permitido — nem todo colaborador
+// precisa estar cadastrado.
 // ─────────────────────────────────────────────────────────────────────────────
 function ArtistAutocompleteInput({
   value,
   onChange,
   placeholder,
   disabled,
-  suggestions,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   disabled?: boolean;
-  suggestions: string[];
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const filtered = suggestions.filter((s) =>
-    s.toLowerCase().includes(value.toLowerCase())
-  );
+  const { items: suggestionsData } = useEntityLookup<Artista>({
+    table: "artistas",
+    search: value,
+    enabled: open && value.trim().length > 0,
+  });
+  const filtered = suggestionsData.map((a) => a.nome_artistico ?? "").filter(Boolean);
 
   return (
     <div ref={containerRef} className="relative flex-1">
@@ -443,10 +467,6 @@ export function LancamentoFormModal({
   onCreatedAndDistributed,
 }: LancamentoFormModalProps) {
   const { addLancamento, updateLancamento } = useLancamentos();
-  const { projetos } = useProjetos();
-  const { artistas } = useArtistas();
-  const { obras } = useObras();
-  const { fonogramas } = useFonogramas();
   const { upload: uploadToR2, isUploading: isUploadingCoverR2 } = useUploadToR2();
 
   // ── Core state ────────────────────────────────────────────────────────────
@@ -464,8 +484,6 @@ export function LancamentoFormModal({
   const [projetoOpen, setProjetoOpen] = useState(false);
   const [artistaSearch, setArtistaSearch] = useState("");
   const [artistaOpen, setArtistaOpen] = useState(false);
-  const [selectedObraId, setSelectedObraId] = useState("");
-  const [selectedFonogramaId, setSelectedFonogramaId] = useState("");
 
   // ── Plataformas de distribuição (fonte única: serviço/hook) ────────────────
   // Apenas plataformas realmente conectadas aparecem como selecionáveis.
@@ -476,31 +494,41 @@ export function LancamentoFormModal({
     setExtraFields((prev) => ({ ...prev, [k]: v }));
 
   // ── Derived labels ────────────────────────────────────────────────────────
-  const projetoLabel: string = formData.projetoSeed
-    ? ((projetos.find((p) => p.id === formData.projetoSeed)?.titulo ??
-      projetos.find((p) => p.id === formData.projetoSeed)?.nome ??
-      "") as string)
+  // Task J: busca direto por ID (GET /projects/:id) — não depende do projeto
+  // estar entre os primeiros carregados por useProjetos() sem filtro.
+  const { entity: selectedProjeto } = useEntityById<ProjetoWithRelations>("projetos", formData.projetoSeed || undefined);
+  const projetoLabel: string = selectedProjeto
+    ? ((selectedProjeto.titulo ?? (selectedProjeto.nome as string | undefined) ?? "") as string)
     : "";
-  const artistaLabel = formData.artista_id
-    ? (artistas.find((a) => a.id === formData.artista_id)?.nome_artistico ?? "")
-    : "";
+  // Task I: busca direto por ID (não depende do artista estar entre os
+  // primeiros carregados por useArtistas() sem filtro).
+  const { entity: selectedArtista } = useEntityById<Artista>("artistas", formData.artista_id || undefined);
+  const artistaLabel = selectedArtista?.nome_artistico ?? "";
 
   // ── Filtered lists ────────────────────────────────────────────────────────
   const TIPOS_MUSICAIS = ["album", "ep", "single"];
-  const projetosFiltrados = projetos
-    .filter(
-      (p) => !p.tipo || TIPOS_MUSICAIS.includes(String(p.tipo).toLowerCase()),
-    )
-    .filter(
-      (p) =>
-        !projetoSearch ||
-        normStr(String(p.titulo ?? p.nome ?? "")).includes(normStr(projetoSearch)),
-    );
-  const artistasFiltrados = artistas.filter(
-    (a) =>
-      !artistaSearch ||
-      normStr(a.nome_artistico ?? "").includes(normStr(artistaSearch)),
+  // Task J: busca server-side (debounced internamente) — antes filtrava só
+  // os primeiros 50 projetos do tenant carregados via useProjetos() sem
+  // filtro. O filtro por tipo (album/ep/single) continua client-side sobre
+  // os resultados já buscados — o backend só suporta um único `type=` por
+  // vez, não uma lista (ver QueryProjectDto), então filtrar os 3 tipos
+  // musicais aqui é a mesma concessão já aceita em outras migrações desta
+  // tarefa (leve estreitamento, nunca um cap de 50 no tenant inteiro).
+  const { items: projetosBusca } = useEntityLookup<ProjetoWithRelations>({
+    table: "projetos",
+    search: projetoSearch,
+    enabled: projetoOpen,
+  });
+  const projetosFiltrados = projetosBusca.filter(
+    (p) => !p.tipo || TIPOS_MUSICAIS.includes(String(p.tipo).toLowerCase()),
   );
+  // Task I: busca server-side (debounced internamente) — antes filtrava só
+  // os primeiros 50 artistas do tenant carregados via useArtistas() sem filtro.
+  const { items: artistasFiltrados } = useEntityLookup<Artista>({
+    table: "artistas",
+    search: artistaSearch,
+    enabled: artistaOpen,
+  });
 
   // ── Reset on open ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -531,8 +559,6 @@ export function LancamentoFormModal({
       ...(meta["pricing"] ? { pricing: String(meta["pricing"]) } : {}),
     });
 
-    setSelectedObraId(lancamento?.obra_id ?? "");
-    setSelectedFonogramaId(lancamento?.fonograma_id ?? "");
     setCapaPrincipal(null);
     setProjetoSearch("");
     setArtistaSearch("");
@@ -543,26 +569,24 @@ export function LancamentoFormModal({
   const isViewMode = mode === "view";
 
   // ─────────────────────────────────────────────────────────────────────────
-  // AUTO-FILL HANDLERS  (unchanged from original)
+  // AUTO-FILL HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
-  const handleSelectProjeto = (projetoId: string) => {
-    const projeto: ProjetoWithRelations | undefined = projetos.find(
-      (p) => p.id === projetoId,
-    );
-    if (!projeto) {
-      setFormData((prev) => ({ ...prev, projetoSeed: projetoId }));
-      setProjetoOpen(false);
-      setProjetoSearch("");
-      return;
-    }
+  // Task J: recebe o projeto já resolvido (o item clicado veio direto dos
+  // resultados de busca server-side em `projetosBusca`) em vez de reescanear
+  // um array `projetos` capped por ID — elimina o risco de "not found" para
+  // projetos fora dos primeiros 50 do tenant. O nome/gênero do artista
+  // vinculado e o fonograma cujo título bate com o do projeto/faixa também
+  // são resolvidos por busca direta (storage.findById / busca por título),
+  // nunca varrendo useArtistas()/useFonogramas() sem filtro.
+  const handleSelectProjeto = async (projeto: ProjetoWithRelations) => {
+    const projetoId = projeto.id;
     const seed = projetoToLancamentoSeed(projeto);
-    const rawGenero =
-      seed.genero?.trim() ||
-      artistas.find((a) => a.id === projeto.artista_id)?.genero_musical ||
-      "";
-    const projetoNorm = normStr(projeto.titulo ?? "");
-    const fonoDosProjeto = projetoNorm
-      ? fonogramas.find((f) => normStr(f.titulo ?? "") === projetoNorm)
+    const linkedArtista = projeto.artista_id
+      ? await storage.findById<Artista>("artistas", projeto.artista_id as string)
+      : undefined;
+    const rawGenero = seed.genero?.trim() || linkedArtista?.genero_musical || "";
+    const fonoDosProjeto = projeto.titulo
+      ? await findFonogramaByTitulo(projeto.titulo)
       : undefined;
     setFormData((prev) => ({
       ...prev,
@@ -587,20 +611,11 @@ export function LancamentoFormModal({
           letra?: string;
         }>;
         if (musicas.length > 0) {
-          const artistaNome = projeto.artista_id
-            ? (artistas.find((a) => a.id === projeto.artista_id)
-                ?.nome_artistico ?? "")
-            : "";
-          setFaixas(
-            musicas.map((m, i) => {
-              const faixaNorm = normStr(m.nome ?? "");
+          const artistaNome = linkedArtista?.nome_artistico ?? "";
+          const faixasResolvidas = await Promise.all(
+            musicas.map(async (m, i) => {
               const isrcFaixa =
-                m.isrc?.trim() ||
-                (faixaNorm
-                  ? (fonogramas.find(
-                      (f) => normStr(f.titulo ?? "") === faixaNorm,
-                    )?.isrc ?? "")
-                  : "");
+                m.isrc?.trim() || (m.nome ? (await findFonogramaByTitulo(m.nome))?.isrc ?? "" : "");
               return {
                 ...mkFaixa(i + 1),
                 titulo: m.nome ?? "",
@@ -614,6 +629,7 @@ export function LancamentoFormModal({
               };
             }),
           );
+          setFaixas(faixasResolvidas);
         }
       } catch {
         /* invalid JSON */
@@ -627,83 +643,6 @@ export function LancamentoFormModal({
     setFormData((prev) => ({ ...prev, artista_id: artistaId }));
     setArtistaOpen(false);
     setArtistaSearch("");
-  };
-
-  const handleSelectObra = (obraId: string) => {
-    setSelectedObraId(obraId);
-    const obra = obras.find((o) => o.id === obraId);
-    if (!obra) return;
-    const compArr = splitNames(
-      Array.isArray(obra.compositores)
-        ? (obra.compositores as string[]).join(", ")
-        : typeof obra.compositores === "string"
-          ? obra.compositores
-          : (obra.compositor ?? ""),
-    );
-    setFormData((prev) => ({
-      ...prev,
-      titulo: !prev.titulo.trim() ? (obra.titulo ?? "") : prev.titulo,
-      genero: !prev.genero.trim()
-        ? matchGenero(obra.genero ?? "")
-        : prev.genero,
-      isrcGlobal: !prev.isrcGlobal.trim() ? (obra.isrc ?? "") : prev.isrcGlobal,
-    }));
-    setFaixas((prev) =>
-      prev.map((f, i) =>
-        i !== 0
-          ? f
-          : {
-              ...f,
-              titulo: !f.titulo.trim() ? (obra.titulo ?? "") : f.titulo,
-              isrc: !f.isrc.trim() ? (obra.isrc ?? "") : f.isrc,
-              compositores:
-                f.compositores.join("").trim() === ""
-                  ? compArr
-                  : f.compositores,
-            },
-      ),
-    );
-  };
-
-  const handleSelectFonograma = (fonogramaId: string) => {
-    setSelectedFonogramaId(fonogramaId);
-    const fono = fonogramas.find((f) => f.id === fonogramaId);
-    if (!fono) return;
-    const compArr = splitNames(fono.compositores ?? "");
-    const prodArr = splitNames(fono.produtores ?? "");
-    setFormData((prev) => ({
-      ...prev,
-      artista_id: !prev.artista_id.trim()
-        ? (fono.artista_id ?? "")
-        : prev.artista_id,
-      gravadora: !prev.gravadora.trim()
-        ? (fono.gravadora ?? "")
-        : prev.gravadora,
-      isrcGlobal: !prev.isrcGlobal.trim() ? (fono.isrc ?? "") : prev.isrcGlobal,
-    }));
-    setFaixas((prev) =>
-      prev.map((f, i) =>
-        i !== 0
-          ? f
-          : {
-              ...f,
-              titulo: !f.titulo.trim() ? (fono.titulo ?? "") : f.titulo,
-              isrc: !f.isrc.trim() ? (fono.isrc ?? "") : f.isrc,
-              artista: !f.artista.trim()
-                ? (artistas.find((a) => a.id === fono.artista_id)
-                    ?.nome_artistico ?? f.artista)
-                : f.artista,
-              compositores:
-                f.compositores.join("").trim() === ""
-                  ? compArr
-                  : f.compositores,
-              produtores:
-                f.produtores.length === 0
-                  ? prodArr.map((p) => ({ nome: p, role: "Producer" }))
-                  : f.produtores,
-            },
-      ),
-    );
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -941,7 +880,11 @@ export function LancamentoFormModal({
         }
         // platform_status nunca é editável manualmente — preserva o status existente.
         payload["internal_status"] = lancamento.internal_status ?? lancamento.status ?? null;
-        await updateLancamento.mutateAsync({ id: lancamento.id, ...payload } as never);
+        await updateLancamento.mutateAsync({
+          id: lancamento.id,
+          ...payload,
+          expectedUpdatedAt: getExpectedUpdatedAt(lancamento),
+        } as never);
         toast.success("Lançamento atualizado!");
       } else {
         // Novo lançamento começa como controle interno (rascunho). Sem status de plataforma.
@@ -969,8 +912,9 @@ export function LancamentoFormModal({
         }
       }
       onOpenChange(false);
-    } catch {
-      // mutation onError já exibe o toast de erro — evita toast duplicado
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "lançamento")) return;
+      // demais erros: mutation onError já exibe o toast — evita toast duplicado
     }
   };
 
@@ -984,7 +928,7 @@ export function LancamentoFormModal({
     onAdd,
     onUpdate,
     onRemove,
-    suggestions,
+    withArtistSuggestions,
   }: {
     entries: ArtistEntry[];
     roles: string[];
@@ -992,19 +936,19 @@ export function LancamentoFormModal({
     onAdd: () => void;
     onUpdate: (i: number, k: "nome" | "role", v: string) => void;
     onRemove: (i: number) => void;
-    suggestions?: string[];
+    /** Habilita sugestão de artistas cadastrados (busca server-side) neste campo. */
+    withArtistSuggestions?: boolean;
   }) => {
     return (
     <div className="space-y-2">
       {entries.map((e, i) => (
         <div key={i} className="flex gap-2 items-center">
-          {suggestions ? (
+          {withArtistSuggestions ? (
             <ArtistAutocompleteInput
               value={e.nome}
               onChange={(v) => onUpdate(i, "nome", v)}
               placeholder="Nome"
               disabled={isViewMode}
-              suggestions={suggestions}
             />
           ) : (
             <Input
@@ -1061,8 +1005,6 @@ export function LancamentoFormModal({
   // ─────────────────────────────────────────────────────────────────────────
   // STEP 0 — ALBUM INFO
   // ─────────────────────────────────────────────────────────────────────────
-  const artistSuggestions = artistas.map((a) => a.nome_artistico ?? "").filter(Boolean);
-
   const renderStep0 = () => (
     <div className="space-y-6">
       {/* Vinculações */}
@@ -1131,11 +1073,11 @@ export function LancamentoFormModal({
                           role="option"
                           tabIndex={0}
                           className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-colors"
-                          onClick={() => handleSelectProjeto(p.id)}
+                          onClick={() => handleSelectProjeto(p)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
-                              handleSelectProjeto(p.id);
+                              handleSelectProjeto(p);
                             }
                           }}
                           data-testid={`option-projeto-${p.id}`}
@@ -1147,12 +1089,12 @@ export function LancamentoFormModal({
                             <p className="text-sm font-medium truncate">
                               {String(p.titulo ?? p.nome ?? "—")}
                             </p>
-                            {p.artista_id && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                {artistas.find((a) => a.id === p.artista_id)
-                                  ?.nome_artistico ?? ""}
-                              </p>
-                            )}
+                            {/* ponytail: subtítulo com nome do artista removido — a API real
+                                não embute o artista no /projects (sem join), e resolvê-lo por
+                                linha exigiria N lookups por página de resultados. O valor
+                                selecionado (projetoId) continua correto independentemente
+                                deste subtítulo. Upgrade path: endpoint dedicado que devolva
+                                id+titulo+nome_artistico já agregados, se a UX exigir. */}
                           </div>
                         </div>
                       ))
@@ -1331,7 +1273,7 @@ export function LancamentoFormModal({
               onAdd={addAlbumArtist}
               onUpdate={updAlbumArtist}
               onRemove={removeAlbumArtist}
-              suggestions={artistSuggestions}
+              withArtistSuggestions
             />
           </div>
 
@@ -1685,7 +1627,7 @@ export function LancamentoFormModal({
                   updAE(faixa.id, "artistasAdicionais", i, k, v)
                 }
                 onRemove={(i) => removeAE(faixa.id, "artistasAdicionais", i)}
-                suggestions={artistSuggestions}
+                withArtistSuggestions
               />
             </div>
 

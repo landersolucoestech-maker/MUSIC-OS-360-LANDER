@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
-import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings";
 import { parseTipoOperacao, serializeTipoOperacao } from "@/modules/accounting/lib/nota-fiscal-tipo";
 import { notaFiscalSchema } from "@/modules/accounting/lib/nota-fiscal-schema";
@@ -26,6 +26,19 @@ interface UseNotaFiscalFormOptions {
   onClose: () => void;
 }
 
+/** Formato bruto retornado por GET /clients (ClientsService.mapClient) —
+ * suficiente para o autofill do tomador; não precisa do view-model `Cliente`. */
+export interface NfClienteLookup {
+  id: string;
+  nome: string;
+  document?: string | null;
+  email?: string | null;
+  endereco_completo?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  cep?: string | null;
+}
+
 function numberValue(...values: unknown[]): number | null {
   for (const value of values) {
     if (value === null || value === undefined || value === "") continue;
@@ -44,13 +57,12 @@ export interface UseNotaFiscalFormReturn {
   isSubmitting: boolean;
   setTipoOperacao: (t: TipoOperacaoNF) => void;
   updateField: <K extends keyof NfFormData>(field: K, value: NfFormData[K]) => void;
-  handleClienteChange: (clienteId: string) => void;
+  handleClienteChange: (clienteId: string, cliente?: NfClienteLookup) => void;
   updateItem: (index: number, field: keyof ItemNota, value: any) => void;
   addItem: () => void;
   removeItem: (index: number) => void;
   recalcularTributos: () => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
-  clientes: any[];
   companySettings: any;
 }
 
@@ -62,7 +74,6 @@ export function useNotaFiscalForm({
   onClose,
 }: UseNotaFiscalFormOptions): UseNotaFiscalFormReturn {
   const { addNotaFiscal, updateNotaFiscal } = useNotasFiscais();
-  const { clientes } = useClientes();
   const { companySettings } = useCompanySettings();
 
   const [tipoOperacao, setTipoOperacao] = useState<TipoOperacaoNF>(defaultTipoOperacao ?? "saida");
@@ -152,20 +163,19 @@ export function useNotaFiscalForm({
     });
   }, []);
 
-  const handleClienteChange = useCallback((clienteId: string) => {
-    const cliente = clientes.find((item: any) => item.id === clienteId);
+  const handleClienteChange = useCallback((clienteId: string, cliente?: NfClienteLookup) => {
     setFormData((prev) => cliente ? ({
       ...prev,
       cliente_id: clienteId,
-      tomador_cnpj: cliente.cpf_cnpj || "",
+      tomador_cnpj: cliente.document || "",
       tomador_razao_social: cliente.nome || "",
       tomador_email: cliente.email || "",
-      tomador_endereco: cliente.endereco || cliente.endereco_completo || "",
+      tomador_endereco: cliente.endereco_completo || "",
       tomador_cidade: cliente.cidade || "",
       tomador_uf: cliente.estado || "SP",
       tomador_cep: cliente.cep || "",
     }) : ({ ...prev, cliente_id: clienteId }));
-  }, [clientes]);
+  }, []);
 
   const updateItem = useCallback((index: number, field: keyof ItemNota, value: any) => {
     setFormData((prev) => {
@@ -280,7 +290,13 @@ export function useNotaFiscalForm({
     };
 
     if (mode === "create") addNotaFiscal.mutate(data, { onSuccess: onClose });
-    else updateNotaFiscal.mutate({ id: notaFiscal.id, ...data }, { onSuccess: onClose });
+    else updateNotaFiscal.mutate(
+      { id: notaFiscal.id, ...data, expectedUpdatedAt: getExpectedUpdatedAt(notaFiscal) },
+      {
+        onSuccess: onClose,
+        onError: (err) => { handleConcurrencyConflict(err, "nota fiscal"); },
+      },
+    );
   }, [formData, mode, tipoOperacao, notaFiscal, onClose, addNotaFiscal, updateNotaFiscal]);
 
   return {
@@ -298,7 +314,6 @@ export function useNotaFiscalForm({
     removeItem,
     recalcularTributos,
     handleSubmit,
-    clientes,
     companySettings,
   };
 }

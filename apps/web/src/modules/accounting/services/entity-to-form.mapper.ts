@@ -8,6 +8,8 @@ import type { TransacaoFormData } from "@/modules/accounting/lib/transacao-const
 
 export interface TransacaoFormEntity {
   id?: string;
+  updated_at?: unknown;
+  updatedAt?: unknown;
   tipo?: unknown;
   tipoTransacao?: unknown;
   tipo_transacao?: unknown;

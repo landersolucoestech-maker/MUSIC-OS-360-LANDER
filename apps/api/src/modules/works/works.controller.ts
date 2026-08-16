@@ -28,6 +28,22 @@ export class WorksController {
     return this.service.list(tenant.id, query);
   }
 
+  @Get('stats')
+  @RequireRole('viewer')
+  @RequirePermission('work:read')
+  @ApiOperation({ summary: 'Contagem exata de obras por status (tenant inteiro)' })
+  stats(@CurrentTenant() tenant: { id: string }, @Query() query: QueryWorkDto) {
+    return this.service.stats(tenant.id, query);
+  }
+
+  @Get('stats/generos')
+  @RequireRole('viewer')
+  @RequirePermission('work:read')
+  @ApiOperation({ summary: 'Gêneros distintos das obras do tenant' })
+  distinctGeneros(@CurrentTenant() tenant: { id: string }) {
+    return this.service.distinctGeneros(tenant.id);
+  }
+
   @Get(':id')
   @RequireRole('viewer')
   @RequirePermission('work:read')

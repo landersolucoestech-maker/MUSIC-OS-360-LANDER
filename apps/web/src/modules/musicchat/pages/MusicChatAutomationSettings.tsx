@@ -14,6 +14,7 @@ import { EscalationRulesEditor } from "../components/EscalationRulesEditor";
 import { TriageMenuBuilder } from "../components/TriageMenuBuilder";
 import { useMusicChatAutomationSettings } from "../hooks/useMusicChatAutomationSettings";
 import { useMusicChatTriageRules } from "../hooks/useMusicChatTriageRules";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 import type { MusicChatAutomationSettings } from "../types/musicchat-automation.types";
 
 type EditableSettings = Pick<
@@ -314,6 +315,7 @@ export default function MusicChatAutomationSettings() {
         commands: uniqueCommands(draft.return_to_menu_rule.commands ?? []),
       },
       main_menu_message: draft.main_menu_message || previewMenu,
+      expectedUpdatedAt: getExpectedUpdatedAt(settings),
     });
   };
 

@@ -2,11 +2,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { FileText, Music, Building, DollarSign, Calendar, MapPin, Tv } from "lucide-react";
-import { useObras } from "@/modules/catalog/hooks/useObras";
-import { useDataQuery } from "@/shared/hooks/useDataQuery";
-import { QUERY_KEYS } from "@/shared/lib/query-config";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
 import { formatLicensingDate, formatRemuneration, obraArtistaLabel, midiaLabel, tipoLabel } from "@/modules/licensing/lib/licenca-format";
 import type { Obra } from "@/modules/catalog/types/catalog.types";
+
+interface ClienteOption { id: string; nome: string }
 
 interface LicencaViewModalProps {
   open: boolean;
@@ -34,15 +34,17 @@ function Field({ label, value, icon, valueClassName }: { label: React.ReactNode;
 }
 
 export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewModalProps) {
-  const { obras } = useObras();
-  const { data: clientes } = useDataQuery<{ id: string; nome: string }>({ queryKey: [...QUERY_KEYS.CLIENTES], table: "clientes" });
+  // Busca DIRETO por ID (GET /works/:id, GET /clients/:id) — não depende de
+  // obra/cliente estarem entre os primeiros 50 carregados por useObras() /
+  // uma listagem de clientes sem filtro (Task J).
+  const { entity: obra } = useEntityById<Obra>("obras", open ? licenca?.obra_id ?? undefined : undefined);
+  const { entity: cliente } = useEntityById<ClienteOption>("clientes", open ? licenca?.cliente_id ?? undefined : undefined);
 
   if (!licenca) return null;
 
-  const obra = (obras as Obra[]).find((o) => o.id === licenca.obra_id);
   const obraTitulo = obra?.titulo ?? null;
   const artista = obraArtistaLabel(obra) || null;
-  const clienteNome = clientes.find((c) => c.id === licenca.cliente_id)?.nome ?? null;
+  const clienteNome = cliente?.nome ?? null;
 
   const inicio = formatLicensingDate(licenca.data_inicio);
   const fim = formatLicensingDate(licenca.data_fim);

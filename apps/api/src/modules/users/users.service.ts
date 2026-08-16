@@ -2,6 +2,7 @@ import { Injectable, Inject, NotFoundException, ConflictException, BadRequestExc
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { OrgMemberEntity } from '../../database/entities';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateUserDto, UpdateUserDto, QueryUserDto } from './dto/users.dto';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { MembershipRoleResolverService } from './membership-role-resolver.service';
@@ -102,18 +103,27 @@ export class UsersService {
     return saved;
   }
 
+  /**
+   * Task L: apenas campos de PERFIL (full_name/phone/avatar/metadata) — role
+   * e status (is_active) foram removidos do UpdateUserDto e NÃO são
+   * aceites aqui. Alterações de papel passam por assignRole() (checa
+   * hierarquia via assertCanAssignRole); desativação passa por remove()
+   * (protege o último owner via assertNotLastOwner). Misturar essas
+   * operações RBAC neste update genérico (gate apenas 'manager') permitia
+   * contornar as duas checagens.
+   */
   async update(tenantId: string, id: string, dto: UpdateUserDto): Promise<OrgMemberEntity> {
     const current = await this.findById(tenantId, id);
     const updates: Record<string, unknown> = { updated_at: new Date() };
     if (dto.fullName != null) updates.full_name = dto.fullName;
     if (dto.phone    != null) updates.phone     = dto.phone;
-    // Dual-write (PASSO 12-G): ao mudar `role`, resolve e grava `role_id` junto.
-    if (dto.role     != null) {
-      updates.role    = dto.role;
-      updates.role_id = await this.roleResolver.resolveOrThrow(tenantId, dto.role, { membershipId: id });
-    }
-    if (dto.status   != null) updates.is_active = dto.status === 'active';
-    await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      updates as any,
+      dto.expectedUpdatedAt,
+      'Este utilizador foi alterado por outra pessoa desde que você o carregou. Recarregue e tente novamente.',
+    );
     await this.invalidateMembershipCache(tenantId, current.auth_user_id);
     return this.findById(tenantId, id);
   }
@@ -284,15 +294,31 @@ export class UsersService {
     return { cancelled: true };
   }
 
-  async assignRole(tenantId: string, id: string, role: string, actorRole = 'viewer'): Promise<OrgMemberEntity> {
+  async assignRole(
+    tenantId: string,
+    id: string,
+    role: string,
+    actorRole = 'viewer',
+    expectedUpdatedAt?: string,
+  ): Promise<OrgMemberEntity> {
     const current = await this.findById(tenantId, id);
     await this.assertCanAssignRole(tenantId, actorRole, role);
     if ((current.role === 'owner' || current.role === 'tenant_owner') && role !== current.role) {
       await this.assertNotLastOwner(tenantId, id);
     }
     // Dual-write (PASSO 12-G): grava `role` (legado) E `role_id` (canônico).
+    // A autorização acima (assertCanAssignRole/assertNotLastOwner) roda ANTES
+    // do CAS — a proteção de concorrência nunca substitui nem enfraquece essas
+    // checagens, só evita que duas atribuições de papel concorrentes se
+    // sobrescrevam silenciosamente.
     const roleId = await this.roleResolver.resolveOrThrow(tenantId, role, { membershipId: id });
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { role, role_id: roleId, updated_at: new Date() } as any);
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      { role, role_id: roleId, updated_at: new Date() } as any,
+      expectedUpdatedAt,
+      'Este utilizador foi alterado por outra pessoa desde que você o carregou. Recarregue e tente novamente.',
+    );
     await this.invalidateMembershipCache(tenantId, current.auth_user_id);
     return this.findById(tenantId, id);
   }
@@ -305,6 +331,33 @@ export class UsersService {
     await this.repo!.update({ id, tenant_id: tenantId } as any, { is_active: false, updated_at: new Date() } as any);
     await this.invalidateMembershipCache(tenantId, current.auth_user_id);
     return { deleted: true };
+  }
+
+  /**
+   * Task L: endpoint dedicado para reativar/desativar/suspender — extraído do
+   * PATCH /users/:id genérico (ver comentário em UpdateUserDto). Mesma
+   * proteção de último-owner que remove() já tinha, mais CAS opcional.
+   */
+  async setStatus(
+    tenantId: string,
+    id: string,
+    status: string,
+    expectedUpdatedAt?: string,
+  ): Promise<OrgMemberEntity> {
+    const current = await this.findById(tenantId, id);
+    const willDeactivate = status !== 'active';
+    if (willDeactivate && (current.role === 'owner' || current.role === 'tenant_owner')) {
+      await this.assertNotLastOwner(tenantId, id);
+    }
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      { is_active: status === 'active', updated_at: new Date() } as any,
+      expectedUpdatedAt,
+      'Este utilizador foi alterado por outra pessoa desde que você o carregou. Recarregue e tente novamente.',
+    );
+    await this.invalidateMembershipCache(tenantId, current.auth_user_id);
+    return this.findById(tenantId, id);
   }
 
   private async invalidateMembershipCache(

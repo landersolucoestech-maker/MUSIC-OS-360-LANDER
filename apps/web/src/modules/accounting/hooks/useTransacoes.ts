@@ -11,15 +11,18 @@ import type {
 
 export type { Transacao, TransacaoInsert, TransacaoUpdate, TransacaoWithRelations };
 
-export function useTransacoes() {
+export function useTransacoes(enabled = true, artistaId?: string) {
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
 
   const result = useDataQuery<TransacaoWithRelations>({
-    queryKey: [...QUERY_KEYS.TRANSACOES],
+    queryKey: artistaId ? [...QUERY_KEYS.TRANSACOES, "by-artist", artistaId] : [...QUERY_KEYS.TRANSACOES],
     table: "transacoes",
     select: "*, clientes(*), artistas(*)",
     orderBy: { column: "data", ascending: false },
+    enabled,
+    // Backend de transactions usa "artistId" (camelCase) — ver query-transaction.dto.ts.
+    filters: artistaId ? { artistId: artistaId } : undefined,
     onMutationSuccess: {
       onCreate: (t) =>
         emit(DomainEvents.TRANSACTION_CREATED, {
@@ -52,6 +55,7 @@ export function useTransacoes() {
     transacoes: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addTransacao: result.create,
     updateTransacao: result.update,
     deleteTransacao: result.delete,

@@ -36,14 +36,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { Loader2, Save, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Save, CheckCircle2, XCircle, Plus, Trash2 } from "lucide-react";
 import { FileUpload, type UploadedFile } from "@/shared/components/FileUpload";
 import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
 import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
+import type { Contrato } from "@/modules/contracts/hooks/useContratos";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import { EquipeContatosCRM } from "@/modules/artist/components/EquipeContatosCRM";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { toast } from "sonner";
+import { ArtistStatus } from "@music-os-360/types";
 import type { ArtistaDistribuidoraEntry } from "@/modules/artist/types/artista.types";
 import type { UrlValidationState } from "@/modules/artist/mappers";
+
+// ─── Classificação (DEC-003: campos incorporados de ArtistaCadastro.tsx) ──
+// tipo: usa o vocabulário já oficial ArtistaTipo (shared/types/enums.ts), não
+// a lista ad hoc de ArtistaCadastro.tsx (que conflitava "tipo" com papéis já
+// cobertos por `especialidades`, ex.: compositor/produtor/dj).
+const TIPO_ARTISTA_OPTIONS: { value: string; label: string }[] = [
+  { value: "artista_solo", label: "Solo" },
+  { value: "banda",        label: "Banda" },
+  { value: "duo",          label: "Duo" },
+  { value: "trio",         label: "Trio" },
+  { value: "grupo",        label: "Grupo" },
+  { value: "coletivo",     label: "Coletivo" },
+];
+
+// status: usa o enum real ArtistStatus (@music-os-360/types), não a lista de
+// ArtistaCadastro.tsx (que tinha 2 valores inválidos — "negociando"/"prospect"
+// — que não existem no enum e seriam rejeitados pelo backend com 400).
+const STATUS_ARTISTA_OPTIONS: { value: ArtistStatus; label: string }[] = [
+  { value: ArtistStatus.EM_NEGOCIACAO, label: "Em Negociação" },
+  { value: ArtistStatus.CONTRATADO,    label: "Contratado" },
+  { value: ArtistStatus.ATIVO,         label: "Ativo" },
+  { value: ArtistStatus.ONBOARDING,    label: "Em Onboarding" },
+  { value: ArtistStatus.INATIVO,       label: "Inativo" },
+  { value: ArtistStatus.SUSPENSO,      label: "Suspenso" },
+  { value: ArtistStatus.DESLIGADO,     label: "Desligado" },
+  { value: ArtistStatus.EX_ARTISTA,    label: "Ex-Artista" },
+  { value: ArtistStatus.PROSPECTO,     label: "Prospecto" },
+];
 
 // ─── Helper: URL validation icon ─────────────────────────────────
 
@@ -370,6 +402,30 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const [agenciaBooking, setAgenciaBooking]             = useState("");
   const [labelParceira, setLabelParceira]               = useState("");
   const [documentosList, setDocumentosList]             = useState<{ nome: string; url: string }[]>([]);
+  // Buffers de input para as listas acima (galeria/documentos)
+  const [galeriaInput, setGaleriaInput] = useState("");
+  const [docNomeInput, setDocNomeInput] = useState("");
+  const [docUrlInput, setDocUrlInput]   = useState("");
+
+  const handleAddGaleriaUrl = () => {
+    const url = galeriaInput.trim();
+    if (!url) return;
+    setGaleriaUrls((prev) => [...prev, url]);
+    setGaleriaInput("");
+  };
+  const handleRemoveGaleriaUrl = (index: number) =>
+    setGaleriaUrls((prev) => prev.filter((_, i) => i !== index));
+
+  const handleAddDocumento = () => {
+    const nome = docNomeInput.trim();
+    const url = docUrlInput.trim();
+    if (!nome || !url) return;
+    setDocumentosList((prev) => [...prev, { nome, url }]);
+    setDocNomeInput("");
+    setDocUrlInput("");
+  };
+  const handleRemoveDocumento = (index: number) =>
+    setDocumentosList((prev) => prev.filter((_, i) => i !== index));
 
   // Campos preservados em round-trip (métricas, modelo legado, contrato…)
   const [preserved, setPreserved] = useState<ArtistaPreservedInput>(emptyPreservedInput());
@@ -462,10 +518,16 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       };
 
       if (isEditing) {
-        await updateArtista.mutateAsync({
-          id: artista.id, ...payload, ...passThrough,
-          contrato_id: preserved.contratoId || null,
-        });
+        try {
+          await updateArtista.mutateAsync({
+            id: artista.id, ...payload, ...passThrough,
+            contrato_id: preserved.contratoId || null,
+            expectedUpdatedAt: getExpectedUpdatedAt(artista),
+          });
+        } catch (err) {
+          if (handleConcurrencyConflict(err, "artista")) return;
+          throw err;
+        }
       } else {
         await addCliente.mutateAsync({
           tipo_pessoa: "pessoa_fisica" as const,
@@ -480,7 +542,10 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
           observacoes: values.biografia.trim() || null,
           status:      "ativo",
         });
-        await addArtista.mutateAsync({ ...payload, ...passThrough });
+        await addArtista.mutateAsync({
+          ...payload, ...passThrough,
+          contrato_id: preserved.contratoId || null,
+        });
       }
       handleClose(false);
       onSuccess?.();
@@ -536,6 +601,206 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 </div>
               );
             })}
+
+            {/* ── Classificação e Vínculos (DEC-003: tipo/status/contrato_id) ── */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold">Classificação e Vínculos</h3>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo de Artista</Label>
+                  <Select
+                    value={preserved.tipoArtista || "artista_solo"}
+                    onValueChange={(v) => setPreserved((p) => ({ ...p, tipoArtista: v }))}
+                  >
+                    <SelectTrigger data-testid="select-tipo-artista">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border z-50">
+                      {TIPO_ARTISTA_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={preserved.statusArtista || ArtistStatus.CONTRATADO}
+                    onValueChange={(v) => setPreserved((p) => ({ ...p, statusArtista: v }))}
+                  >
+                    <SelectTrigger data-testid="select-status-artista">
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border z-50">
+                      {STATUS_ARTISTA_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 col-span-2">
+                  <Label>Vincular Contrato</Label>
+                  {/* Task J: busca server-side (AsyncEntityCombobox) — antes
+                      populava o Select com useContratos() sem filtro, truncado
+                      nos primeiros 50 contratos do tenant. */}
+                  <div className="flex gap-2">
+                    <div className="flex-1 min-w-0">
+                      <AsyncEntityCombobox<Contrato>
+                        table="contratos"
+                        getLabel={(c) => c.titulo ?? ""}
+                        value={preserved.contratoId || null}
+                        onChange={(id) => setPreserved((p) => ({ ...p, contratoId: id }))}
+                        placeholder="Selecionar contrato..."
+                        searchPlaceholder="Buscar contrato..."
+                        data-testid="select-contrato"
+                      />
+                    </div>
+                    {preserved.contratoId && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setPreserved((p) => ({ ...p, contratoId: "" }))}
+                        data-testid="button-remover-contrato"
+                      >
+                        Nenhum
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Alterar o status para "Contratado" exige um contrato vinculado.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Equipe de Gestão (DEC-003: campos exclusivos de ArtistaCadastro.tsx) ── */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold">Equipe de Gestão</h3>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Manager / Empresário</Label>
+                  <Input
+                    value={managerNome}
+                    onChange={(e) => setManagerNome(e.target.value)}
+                    placeholder="Nome do manager"
+                    data-testid="input-manager-nome"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contato do Manager</Label>
+                  <Input
+                    value={managerContato}
+                    onChange={(e) => setManagerContato(e.target.value)}
+                    placeholder="Telefone ou email"
+                    data-testid="input-manager-contato"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Produtor Executivo</Label>
+                  <Input
+                    value={produtorExecutivo}
+                    onChange={(e) => setProdutorExecutivo(e.target.value)}
+                    placeholder="Nome do produtor executivo"
+                    data-testid="input-produtor-executivo"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Agência de Booking</Label>
+                  <Input
+                    value={agenciaBooking}
+                    onChange={(e) => setAgenciaBooking(e.target.value)}
+                    placeholder="Nome da agência"
+                    data-testid="input-agencia-booking"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>Label Parceira</Label>
+                  <Input
+                    value={labelParceira}
+                    onChange={(e) => setLabelParceira(e.target.value)}
+                    placeholder="Nome da label"
+                    data-testid="input-label-parceira"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ── Mídia Adicional (DEC-003: galeria_urls / documentos) ── */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold">Mídia Adicional</h3>
+              </div>
+              <Separator />
+
+              <div className="space-y-2">
+                <Label>Galeria de Fotos</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="URL da foto (https://...)"
+                    value={galeriaInput}
+                    onChange={(e) => setGaleriaInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddGaleriaUrl(); } }}
+                    data-testid="input-galeria-url"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddGaleriaUrl} className="shrink-0">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {galeriaUrls.length > 0 && (
+                  <ul className="space-y-1 mt-2">
+                    {galeriaUrls.map((url, i) => (
+                      <li key={`${url}-${i}`} className="flex items-center justify-between gap-2 text-sm border rounded px-2 py-1">
+                        <span className="truncate">{url}</span>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveGaleriaUrl(i)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Documentos</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nome do documento"
+                    value={docNomeInput}
+                    onChange={(e) => setDocNomeInput(e.target.value)}
+                    data-testid="input-documento-nome"
+                  />
+                  <Input
+                    placeholder="URL (https://...)"
+                    value={docUrlInput}
+                    onChange={(e) => setDocUrlInput(e.target.value)}
+                    data-testid="input-documento-url"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddDocumento} className="shrink-0">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {documentosList.length > 0 && (
+                  <ul className="space-y-1 mt-2">
+                    {documentosList.map((doc, i) => (
+                      <li key={`${doc.url}-${i}`} className="flex items-center justify-between gap-2 text-sm border rounded px-2 py-1">
+                        <span className="truncate">{doc.nome}</span>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveDocumento(i)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

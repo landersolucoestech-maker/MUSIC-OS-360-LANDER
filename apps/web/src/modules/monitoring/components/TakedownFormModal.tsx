@@ -14,6 +14,7 @@ import { AlertTriangle, Link2, FileText } from "lucide-react";
 import { takedownSchema, type TakedownFormData } from "@/modules/monitoring/lib/takedown-schema";
 import { useTakedowns } from "@/modules/monitoring/hooks/useTakedowns";
 import { normalizeTakedown } from "@/modules/monitoring/lib/takedown-format";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 
 interface TakedownFormModalProps {
   open: boolean;
@@ -115,12 +116,16 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
     try {
       const payload = buildPayload(data);
       if (mode === "edit" && takedown?.id) {
-        await updateTakedown.mutateAsync({ id: takedown.id as string, data: payload as never });
+        await updateTakedown.mutateAsync({
+          id: takedown.id as string,
+          data: { ...payload, expectedUpdatedAt: getExpectedUpdatedAt(takedown) } as never,
+        });
       } else {
         await addTakedown.mutateAsync(payload as never);
       }
       onOpenChange(false);
-    } catch {
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "takedown")) return;
       toast.error("Erro ao salvar takedown");
     }
   };

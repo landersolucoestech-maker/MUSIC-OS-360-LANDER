@@ -87,7 +87,6 @@ export function NotaFiscalFormModal({
               validationErrors={validationErrors}
               disabled={isViewMode}
               companySettings={form.companySettings}
-              clientes={form.clientes}
               updateField={form.updateField}
               handleClienteChange={form.handleClienteChange}
             />

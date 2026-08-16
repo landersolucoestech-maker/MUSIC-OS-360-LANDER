@@ -13,8 +13,10 @@ import { Textarea } from "@/shared/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { toast } from "sonner";
 import { useShares } from "@/modules/releases/hooks/useShares";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import type { Artista } from "@/modules/artist/hooks/useArtistas";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import { shareSchema } from "@/modules/releases/lib/share-schema";
 import { resolveShareType } from "@/modules/releases/lib/share-format";
 import type { Share, ShareType } from "@/modules/releases/types";
@@ -123,7 +125,6 @@ function shareToForm(share: Share & Record<string, unknown>): ShareFormState {
 export function SharePendenteFormModal({ open, onOpenChange, share, initialLancamentoId, onSuccess }: SharePendenteFormModalProps) {
   const { addShare, updateShare, shares } = useShares();
   const { lancamentos } = useLancamentos();
-  const { artistas } = useArtistas();
   const [formData, setFormData] = useState<ShareFormState>(EMPTY);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -232,7 +233,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
           };
 
       if (isEditing && share?.id) {
-        await updateShare.mutateAsync({ id: share.id, ...payload });
+        await updateShare.mutateAsync({ id: share.id, ...payload, expectedUpdatedAt: getExpectedUpdatedAt(share) });
         toast.success("Share atualizado com sucesso!");
       } else {
         const novaVersao = 1;
@@ -254,7 +255,8 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
       }
       onOpenChange(false);
       onSuccess?.();
-    } catch {
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "share")) return;
       toast.error(isEditing ? "Erro ao atualizar share" : "Erro ao registrar share");
     } finally {
       setIsSubmitting(false);
@@ -347,16 +349,18 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
               </div>
               <div className="space-y-2">
                 <Label>Artista / Projeto vinculado à empresa</Label>
-                <Select value={formData.artista_projeto_id} onValueChange={(v) => handleChange("artista_projeto_id", v)}>
-                  <SelectTrigger data-testid="select-artista-projeto">
-                    <SelectValue placeholder="Selecione o vínculo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {artistas.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.nome_artistico}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/* Task J: busca server-side (AsyncEntityCombobox) — antes populava
+                    o Select com useArtistas() sem filtro, truncado nos primeiros
+                    50 artistas do tenant. */}
+                <AsyncEntityCombobox<Artista>
+                  table="artistas"
+                  getLabel={(a) => a.nome_artistico ?? ""}
+                  value={formData.artista_projeto_id || null}
+                  onChange={(id) => handleChange("artista_projeto_id", id)}
+                  placeholder="Selecione o vínculo"
+                  searchPlaceholder="Buscar artista..."
+                  data-testid="select-artista-projeto"
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

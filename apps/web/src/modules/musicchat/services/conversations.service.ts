@@ -37,6 +37,8 @@ export interface MusicChatConversation {
     stage: string;
   };
   auditTrail: string[];
+  /** Concorrência otimista (Task M) — reenviar como expectedUpdatedAt no update/transfer. */
+  updated_at: string;
 }
 
 export interface MusicChatMessage {
@@ -148,6 +150,7 @@ function mapConversation(row: ApiConversation): MusicChatConversation {
       stage: text(crm.stage, "—"),
     },
     auditTrail: stringList(metadata.audit_trail),
+    updated_at: row.updated_at,
   };
 }
 

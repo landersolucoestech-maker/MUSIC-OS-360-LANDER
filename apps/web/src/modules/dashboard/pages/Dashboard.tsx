@@ -14,9 +14,10 @@ import { Link } from "react-router-dom";
 import { differenceInDays } from "date-fns";
 import { useMetrics } from "../hooks/useMetrics";
 import { useOperationalDashboard } from "../hooks/useOperationalDashboard";
-import { useEventos, type EventoWithRelations } from "@/modules/events/hooks/useEventos";
+import type { EventoWithRelations } from "@/modules/events/hooks/useEventos";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { DashboardSkeleton } from "@/shared/components/PageSkeletons";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
 import { useWsEvent } from "@/shared/hooks/useWsEvent";
 import { cn } from "@/shared/lib/utils";
@@ -365,8 +366,7 @@ function getInitials(nome: string): string {
 
 export default function Dashboard() {
   const [visao360Modal, setVisao360Modal] = useState<{ open: boolean; artista?: any }>({ open: false });
-  const { dashboardMetrics, artistasMetrics, isLoading } = useMetrics();
-  const { eventos } = useEventos();
+  const { dashboardMetrics, artistasMetrics, isLoading, eventos, error: metricsError, refetch: refetchMetrics } = useMetrics();
 
   // ── Activity state ──────────────────────────────────────────────────────────
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -556,11 +556,20 @@ export default function Dashboard() {
     [artistasDestaque],
   );
 
-  if (isLoading) return <DashboardSkeleton />;
-
   return (
+    <>
+    {isLoading ? <DashboardSkeleton /> : (
     <MainLayout title="Dashboard" description="Visão geral do seu negócio musical">
       <div className="space-y-6">
+
+        {metricsError && (
+          <UnavailableState
+            title="Não foi possível carregar o Dashboard"
+            description="A API não respondeu. Os KPIs abaixo não refletem dados reais até a conexão ser restabelecida."
+            onRetry={refetchMetrics}
+            className="py-10"
+          />
+        )}
 
         {/* ── KPI Stats ── */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -883,12 +892,23 @@ export default function Dashboard() {
         </div>
 
       </div>
+    </MainLayout>
+    )}
+
+      {/* Fora do gate de isLoading de propósito — mesmo bug de /artistas
+          (ver Task C): ArtistaVisao360Modal chama useContratos/useTransacoes/
+          useEventos/useLancamentos/useProjetos incondicionalmente, todas
+          usadas no isLoading composto do Dashboard (useMetrics). Montá-lo só
+          depois do isLoading virar false cria observers novos nessas mesmas
+          queries; com elas em erro (backend fora do ar), refetchOnMount
+          reabre isLoading, o gate desmonta o modal de novo — loop infinito.
+          Mantê-lo sempre montado quebra o ciclo. */}
       <ArtistaVisao360Modal
         open={visao360Modal.open}
         onOpenChange={(open) => setVisao360Modal({ ...visao360Modal, open })}
         artista={visao360Modal.artista}
       />
-    </MainLayout>
+    </>
   );
 }
 

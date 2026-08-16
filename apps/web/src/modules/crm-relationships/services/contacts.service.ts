@@ -147,8 +147,8 @@ export const contactsService = {
     const created = await clientsService.create(toApiInput(data));
     return fromApi(created);
   },
-  async update(id: string, data: Partial<Contact>): Promise<Contact> {
-    const updated = await clientsService.update(id, toApiInput(data));
+  async update(id: string, data: Partial<Contact>, expectedUpdatedAt?: string): Promise<Contact> {
+    const updated = await clientsService.update(id, { ...toApiInput(data), expectedUpdatedAt });
     return fromApi(updated);
   },
   async remove(id: string): Promise<void> {

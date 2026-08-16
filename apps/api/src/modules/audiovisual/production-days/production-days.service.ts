@@ -4,6 +4,7 @@ import {
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.tokens';
 import { AudiovisualProductionDayEntity, AudiovisualProjectEntity } from '../../../database/entities';
+import { casUpdate } from '../../../common/persistence/optimistic-update.util';
 
 export interface CreateProductionDayInput {
   shooting_date: string;
@@ -14,6 +15,8 @@ export interface CreateProductionDayInput {
   team_notes?: string;
   production_notes?: string;
   status?: string;
+  /** Concorrência otimista (Task L) — ver optimistic-update.util.ts. Opcional. */
+  expectedUpdatedAt?: string;
 }
 
 @Injectable()
@@ -59,7 +62,14 @@ export class AudiovisualProductionDaysService {
   async update(tenantId: string, id: string, input: Partial<CreateProductionDayInput>) {
     const cur = await this.r.findOne({ where: { id, tenant_id: tenantId } as never });
     if (!cur) throw new NotFoundException('Dia de produção não encontrado');
-    await this.r.update({ id, tenant_id: tenantId } as never, { ...input, updated_at: new Date() } as never);
+    const { expectedUpdatedAt, ...rest } = input;
+    await casUpdate(
+      this.r,
+      { id, tenant_id: tenantId } as never,
+      { ...rest, updated_at: new Date() } as never,
+      expectedUpdatedAt,
+      'Este dia de produção foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.r.findOne({ where: { id, tenant_id: tenantId } as never });
   }
 

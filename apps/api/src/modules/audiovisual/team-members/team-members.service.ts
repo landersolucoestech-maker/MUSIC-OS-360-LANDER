@@ -4,6 +4,7 @@ import {
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.tokens';
 import { AudiovisualTeamMemberEntity, AudiovisualProjectEntity } from '../../../database/entities';
+import { casUpdate } from '../../../common/persistence/optimistic-update.util';
 
 export interface CreateTeamMemberInput {
   user_id?: string;
@@ -13,6 +14,8 @@ export interface CreateTeamMemberInput {
   payment_amount?: number;
   payment_status?: string;
   notes?: string;
+  /** Concorrência otimista (Task L) — ver optimistic-update.util.ts. Opcional. */
+  expectedUpdatedAt?: string;
 }
 
 @Injectable()
@@ -58,9 +61,16 @@ export class AudiovisualTeamMembersService {
   async update(tenantId: string, id: string, input: Partial<CreateTeamMemberInput>) {
     const cur = await this.r.findOne({ where: { id, tenant_id: tenantId, deleted_at: null } as never });
     if (!cur) throw new NotFoundException('Membro de equipe não encontrado');
-    const patch: Record<string, unknown> = { ...input, updated_at: new Date() };
+    const { expectedUpdatedAt, ...rest } = input;
+    const patch: Record<string, unknown> = { ...rest, updated_at: new Date() };
     if (input.payment_amount != null) patch.payment_amount = String(input.payment_amount);
-    await this.r.update({ id, tenant_id: tenantId } as never, patch as never);
+    await casUpdate(
+      this.r,
+      { id, tenant_id: tenantId } as never,
+      patch as never,
+      expectedUpdatedAt,
+      'Este membro de equipe foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.r.findOne({ where: { id, tenant_id: tenantId } as never });
   }
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { formatDate } from "@/shared/lib/format-utils";
 import { ECADViewModal } from "@/modules/monitoring/components/ECADViewModal";
@@ -15,7 +15,7 @@ import { EmptyState } from "@/shared/components/EmptyState";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { EcadIcon } from "@/shared/ui/brand-icons";
 import { useDeteccoes } from "@/modules/monitoring/hooks/useDeteccoes";
-import { useObras } from "@/modules/catalog/hooks/useObras";
+import { useEntityLookup } from "@/shared/hooks/useEntityLookup";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
 import { FeatureGate } from '@/shared/components/FeatureGate';
 
@@ -62,7 +62,10 @@ export default function Monitoramento() {
   };
 
   const { deteccoes, isLoading: loadingDet } = useDeteccoes();
-  const { obras, isLoading: loadingObras } = useObras();
+  // Task J: useDeteccoes já traz a obra relacionada via join (select:
+  // "*, obras(*)") — usar det.obras direto em vez de montar um Map a partir
+  // de useObras() (capada a 50/tenant), que perdia o título de obras fora da
+  // primeira página.
   const ecadResult = useDataQuery<any>({
     queryKey: ["relatorios_ecad"],
     table: "relatorios_ecad",
@@ -70,11 +73,15 @@ export default function Monitoramento() {
   });
   const ecadPeriodos: any[] = ecadResult.data ?? [];
 
-  const obraMap = useMemo(() => {
-    const m = new Map<string, any>();
-    for (const o of obras as any[]) { if (o.id) m.set(o.id, o); }
-    return m;
-  }, [obras]);
+  // "Obras Monitoradas" (aba Proteção de Catálogo) é uma contagem exibida —
+  // pega o `total` real do envelope paginado (pageSize=1, sem baixar
+  // registros) em vez de obras.length sobre uma lista capada a 50/tenant.
+  const { total: totalObras, isLoading: loadingObras } = useEntityLookup<{ id: string }>({
+    table: "obras",
+    search: "",
+    pageSize: 1,
+    enabled: activeTab === "protecao_catalogo",
+  });
 
   const totalDeteccoes = deteccoes.length;
   const pendentes = deteccoes.filter((d: any) => d.status?.toLowerCase() === "pendente").length;
@@ -84,8 +91,7 @@ export default function Monitoramento() {
 
   const filteredDeteccoes = deteccoes.filter((d: any) => {
     if (!search) return true;
-    const obra = obraMap.get(d.obra_id);
-    const titulo = obra?.titulo ?? "";
+    const titulo = d.obras?.titulo ?? "";
     return (
       titulo.toLowerCase().includes(search.toLowerCase()) ||
       d.plataforma?.toLowerCase().includes(search.toLowerCase()) ||
@@ -213,10 +219,9 @@ export default function Monitoramento() {
                     </TableHeader>
                     <TableBody>
                       {filteredDeteccoes.map((det: any) => {
-                        const obra = obraMap.get(det.obra_id);
                         return (
                           <TableRow key={det.id}>
-                            <TableCell className="font-medium">{obra?.titulo ?? det.obra_id}</TableCell>
+                            <TableCell className="font-medium">{det.obras?.titulo ?? det.obra_id}</TableCell>
                             <TableCell className="text-muted-foreground">{det.plataforma || "—"}</TableCell>
                             <TableCell className="text-sm">{det.periodo ? formatDate(det.periodo + "-01") : "—"}</TableCell>
                             <TableCell className="text-right font-sans text-sm">{fmt(det.quantidade ?? 0)}</TableCell>
@@ -318,7 +323,7 @@ export default function Monitoramento() {
                 <Card>
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">Obras Monitoradas</p>
-                    <p className="text-2xl font-semibold">{loadingObras ? "—" : obras?.length ?? 0}</p>
+                    <p className="text-2xl font-semibold">{loadingObras ? "—" : totalObras}</p>
                   </CardContent>
                 </Card>
                 <Card>

@@ -24,7 +24,10 @@ import { toast } from "sonner";
 import { folhaPagamentoSchema } from "@/modules/rh/lib/folha-pagamento-schema";
 import { useFolhaPagamento, STATUS_PAGAMENTO } from "@/modules/rh/hooks/useFolhaPagamento";
 import type { FolhaPagamento } from "@/modules/rh/hooks/useFolhaPagamento";
-import { useFuncionarios } from "@/modules/rh/hooks/useFuncionarios";
+import type { Funcionario } from "@/modules/rh/hooks/useFuncionarios";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 
 interface FolhaPagamentoFormModalProps {
   open: boolean;
@@ -40,7 +43,6 @@ export function FolhaPagamentoFormModal({
   mode,
 }: FolhaPagamentoFormModalProps) {
   const { addFolhaPagamento, updateFolhaPagamento } = useFolhaPagamento();
-  const { funcionarios } = useFuncionarios();
 
   const [funcionarioId, setFuncionarioId] = useState("");
   const [mesReferencia, setMesReferencia] = useState("");
@@ -145,11 +147,16 @@ export function FolhaPagamentoFormModal({
       if (mode === "create") {
         await addFolhaPagamento.mutateAsync(data);
       } else if (registro) {
-        await updateFolhaPagamento.mutateAsync({ id: registro.id, ...data });
+        await updateFolhaPagamento.mutateAsync({
+          id: registro.id,
+          ...data,
+          expectedUpdatedAt: getExpectedUpdatedAt(registro),
+        });
       }
       onOpenChange(false);
-    } catch {
-      // error handled by hook
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "registro de pagamento")) return;
+      // demais erros: toast já é exibido pelo hook
     } finally {
       setIsSubmitting(false);
     }
@@ -162,13 +169,9 @@ export function FolhaPagamentoFormModal({
         ? "Editar Registro de Pagamento"
         : "Visualizar Registro de Pagamento";
 
-  const funcionariosAtivos = (funcionarios || []).filter(
-    (f) => f.status === "ativo" || f.status === "férias"
-  );
-
-  const funcionarioSelecionado = (funcionarios || []).find(
-    (f) => f.id === funcionarioId
-  );
+  // Task I: resolve por ID direto (não depende do funcionário estar entre
+  // os primeiros carregados por useFuncionarios() sem filtro).
+  const { entity: funcionarioSelecionado } = useEntityById<Funcionario>("funcionarios", funcionarioId || undefined);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -185,27 +188,22 @@ export function FolhaPagamentoFormModal({
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <Label>Funcionário *</Label>
-            <Select
-              value={funcionarioId}
-              onValueChange={setFuncionarioId}
+            <AsyncEntityCombobox<Funcionario>
+              table="funcionarios"
+              value={funcionarioId || null}
+              getLabel={(f) => `${f.nome ?? ""} - ${f.cargo || "Sem cargo"}`}
+              onChange={setFuncionarioId}
+              placeholder="Selecione o funcionário"
+              searchPlaceholder="Buscar por nome…"
+              emptyText="Nenhum funcionário encontrado"
               disabled={isViewMode}
-            >
-              <SelectTrigger data-testid="select-funcionario-id">
-                <SelectValue placeholder="Selecione o funcionário" />
-              </SelectTrigger>
-              <SelectContent>
-                {funcionariosAtivos.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.nome_completo} - {f.cargo || "Sem cargo"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              data-testid="select-funcionario-id"
+            />
             {funcionarioSelecionado && (
               <p className="text-xs text-muted-foreground">
                 Salário base: R${" "}
-                {funcionarioSelecionado.salario_base
-                  ? Number(funcionarioSelecionado.salario_base).toLocaleString(
+                {funcionarioSelecionado.salario
+                  ? Number(funcionarioSelecionado.salario).toLocaleString(
                       "pt-BR",
                       { minimumFractionDigits: 2 }
                     )

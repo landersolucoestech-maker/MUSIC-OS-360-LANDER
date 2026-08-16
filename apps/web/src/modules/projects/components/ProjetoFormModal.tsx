@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { type Artista } from "@/modules/artist/hooks/useArtistas";
+import { useEntityLookup } from "@/shared/hooks/useEntityLookup";
 import { useProjetos, type ProjetoInsert, type ProjetoUpdate } from "@/modules/projects/hooks/useProjetos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
@@ -9,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/shared/ui/textarea";
 import { FormTextarea } from "@/shared/components/FormField";
 import { toast } from "sonner";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { projetoSchema } from "@/modules/projects/lib/projeto-schema";
 import { MUSICAL_GENRES } from "@/constants/musicalGenres";
 import { LANGUAGES } from "@/constants/languages";
@@ -96,16 +98,18 @@ function normEnum(v: string | undefined, fallback: string): string {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") || fallback;
 }
 
-// ── Autocomplete input: busca por nome_artistico, armazena/exibe nome_civil ──
+// ── Autocomplete: busca server-side por nome_artistico/nome_civil (Task I —
+// antes filtrava só os primeiros 50 artistas do tenant carregados via
+// useArtistas() sem filtro; agora cada tecla digitada (debounced) refaz a
+// busca no backend). Texto livre continua permitido.
 interface ArtistNameInputProps {
   value: string;
   onChange: (val: string) => void;
-  artistas: Array<{ id: string; nome_artistico: string; nome_civil?: string | null }>;
   placeholder?: string;
   disabled?: boolean;
 }
 
-function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: ArtistNameInputProps) {
+function ArtistNameInput({ value, onChange, placeholder, disabled }: ArtistNameInputProps) {
   const [inputText, setInputText] = useState(value);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -124,11 +128,11 @@ function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: A
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const suggestions = inputText.trim()
-    ? artistas.filter(a =>
-        a.nome_artistico.toLowerCase().includes(inputText.toLowerCase())
-      )
-    : [];
+  const { items: suggestions } = useEntityLookup<Artista>({
+    table: "artistas",
+    search: inputText,
+    enabled: open && inputText.trim().length > 0,
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
@@ -136,7 +140,7 @@ function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: A
     setOpen(true);
   };
 
-  const handleSelect = (a: typeof artistas[number]) => {
+  const handleSelect = (a: Artista) => {
     const display = a.nome_civil || a.nome_artistico;
     setInputText(display);
     onChange(display);
@@ -173,7 +177,6 @@ function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: A
 }
 
 export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluido }: ProjetoFormModalProps) {
-  const { artistas } = useArtistas();
   const { addProjeto, updateProjeto } = useProjetos();
   const uploadFile = async (_file: File): Promise<{ url: string } | null> => null;
 
@@ -273,15 +276,20 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
         const created = await addProjeto.mutateAsync(insertPayload) as { id: string };
         savedId = created?.id;
       } else if (projeto?.id) {
-        await updateProjeto.mutateAsync({ id: projeto.id as string, ...basePayload });
+        await updateProjeto.mutateAsync({
+          id: projeto.id as string,
+          ...basePayload,
+          expectedUpdatedAt: getExpectedUpdatedAt(projeto),
+        });
         savedId = projeto.id as string;
       }
       onOpenChange(false);
       if (status === "concluido" && savedId) {
         onConcluido?.(savedId);
       }
-    } catch {
-      // error toast is handled by useDataQuery
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "projeto")) return;
+      // demais erros: toast já é exibido por useDataQuery
     } finally {
       setIsSubmitting(false);
     }
@@ -478,7 +486,6 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
               <ArtistNameInput
                 value={comp}
                 onChange={(v) => updateItemInMusica(musica.id, 'compositores', idx, v)}
-                artistas={artistas}
                 placeholder="Nome do compositor"
                 disabled={isViewMode}
               />
@@ -508,7 +515,6 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
               <ArtistNameInput
                 value={int}
                 onChange={(v) => updateItemInMusica(musica.id, 'interpretes', idx, v)}
-                artistas={artistas}
                 placeholder="Nome do intérprete"
                 disabled={isViewMode}
               />
@@ -538,7 +544,6 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
               <ArtistNameInput
                 value={prod}
                 onChange={(v) => updateItemInMusica(musica.id, 'produtores', idx, v)}
-                artistas={artistas}
                 placeholder="Nome do produtor"
                 disabled={isViewMode}
               />

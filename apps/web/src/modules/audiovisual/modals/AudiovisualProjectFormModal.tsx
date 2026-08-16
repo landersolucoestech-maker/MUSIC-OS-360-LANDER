@@ -191,9 +191,11 @@ export function AudiovisualProjectFormModal({
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
   const handleMusicSelect = (music: AudiovisualMusicCatalogOption) => setForm((current) => ({ ...current, music_id: music.id, music_title: music.title, artist_name: music.primaryArtist }));
   const handleSubmit = () => {
+    // Task L: não fecha o modal aqui — o fechamento é responsabilidade do
+    // chamador via callback onSuccess do mutate() (só some se a gravação
+    // realmente foi bem-sucedida; em caso de 409 de concorrência ou outro
+    // erro, o modal permanece aberto com os dados do usuário intactos).
     onSubmit?.(buildAudiovisualProjectPayload(form, mode, project));
-    if (mode === "create") setForm(initialForm);
-    onClose();
   };
 
   const title = mode === "create" ? "Nova Produção Audiovisual" : "Editar Produção Audiovisual";

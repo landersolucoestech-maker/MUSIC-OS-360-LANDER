@@ -12,7 +12,7 @@ export const musicChatAutomationService = {
     return api.get<MusicChatAutomationSettings>(`${BASE}/settings`);
   },
 
-  updateSettings(payload: Partial<MusicChatAutomationSettings>) {
+  updateSettings(payload: Partial<MusicChatAutomationSettings> & { expectedUpdatedAt?: string }) {
     return api.patch<MusicChatAutomationSettings>(`${BASE}/settings`, payload);
   },
 

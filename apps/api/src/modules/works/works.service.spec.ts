@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { Test }              from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import { plainToInstance }   from 'class-transformer';
 import { validate }          from 'class-validator';
 import { WorksService }      from './works.service';
@@ -69,8 +69,14 @@ const buildMockDs = (getOneValue: any = mockWork, participantRows: any[] = []) =
     _qb: qb,
   };
   const participantsRepo = buildMockParticipantsRepo(participantRows);
+  const getRepository = jest.fn((entity: any) => (entity === WorkParticipantEntity ? participantsRepo : repo));
   return {
-    getRepository: jest.fn((entity: any) => (entity === WorkParticipantEntity ? participantsRepo : repo)),
+    getRepository,
+    // Task L: create()/update() agora rodam dentro de uma transação (obra +
+    // participantes atômicos) — o mock executa o callback com um "EntityManager"
+    // que resolve para os MESMOS mocks de repo, então as asserções existentes
+    // contra mockDs._repo/_participantsRepo continuam válidas inalteradas.
+    transaction: jest.fn((cb: any) => cb({ getRepository })),
     _repo: repo,
     _participantsRepo: participantsRepo,
   };
@@ -256,6 +262,55 @@ describe('WorksService', () => {
 
     it('update() não mexe em participantes quando o DTO não envia o campo', async () => {
       await service.update(TENANT, 'u1', WORK_ID, { observacoes: 'x' } as any);
+      expect(mockDs._participantsRepo.delete).not.toHaveBeenCalled();
+      expect(mockDs._participantsRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Task L — atomicidade obra + participantes (casUpdate + replaceParticipantes na mesma transação)', () => {
+    it('update() roda dentro de ds.transaction() (obra e participantes não são operações independentes)', async () => {
+      await service.update(TENANT, 'u1', WORK_ID, {
+        observacoes: 'x',
+        participantes: [{ id: 'p1', nome: 'X', classeFuncao: 'compositor/autor', link: '', percentual: '100' }],
+      } as any);
+      expect(mockDs.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('create() também roda obra + participantes na mesma transação', async () => {
+      await service.create(TENANT, 'u1', {
+        titulo: 'Nova', tipo: 'original',
+        participantes: [{ id: 'p1', nome: 'X', classeFuncao: 'compositor/autor', link: '', percentual: '100' }],
+      } as any);
+      expect(mockDs.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('se a gravação dos participantes falhar, update() inteiro rejeita — nunca reporta sucesso com obra e participantes inconsistentes entre si', async () => {
+      mockDs._participantsRepo.save.mockRejectedValueOnce(new Error('constraint violation'));
+      await expect(
+        service.update(TENANT, 'u1', WORK_ID, {
+          observacoes: 'x',
+          participantes: [{ id: 'p1', nome: 'X', classeFuncao: 'compositor/autor', link: '', percentual: '100' }],
+        } as any),
+      ).rejects.toThrow('constraint violation');
+      // A mesma chamada de transaction() que tentou o update da obra é a que
+      // falhou nos participantes — não há um segundo commit "parcial" da obra
+      // fora dessa transação.
+      expect(mockDs.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('cenário A/B: B tenta salvar obra+participantes contra versão já sobrescrita por A -> 409, participantes de B nunca são persistidos', async () => {
+      // A e B leram updated_at = T0. Simulamos que A já salvou (WHERE do CAS
+      // de B não bate mais -> 0 linhas afetadas).
+      mockDs._repo.update.mockResolvedValueOnce({ affected: 0 });
+      await expect(
+        service.update(TENANT, 'u1', WORK_ID, {
+          observacoes: 'edição de B',
+          participantes: [{ id: 'pB', nome: 'Participante de B', classeFuncao: 'compositor/autor', link: '', percentual: '100' }],
+          expectedUpdatedAt: new Date('2026-08-14T10:00:00.000Z').toISOString(),
+        } as any),
+      ).rejects.toThrow(ConflictException);
+      // casUpdate lança ANTES de replaceParticipantes ser chamado (mesma
+      // transação, ordem sequencial) — os dados de B nunca tocam o banco.
       expect(mockDs._participantsRepo.delete).not.toHaveBeenCalled();
       expect(mockDs._participantsRepo.save).not.toHaveBeenCalled();
     });

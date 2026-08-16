@@ -18,6 +18,7 @@ import {
 } from '../../database/entities';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { RealtimeService }              from '../../core/realtime/realtime.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type {
   CreateConversationDto,
   UpdateConversationDto,
@@ -168,7 +169,13 @@ export class ConversationsService {
       };
     }
 
-    await this.convRepo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    await casUpdate(
+      this.convRepo!,
+      { id, tenant_id: tenantId } as any,
+      updates as any,
+      dto.expectedUpdatedAt,
+      'Esta conversa foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
+    );
 
     const result = await this.findConversationById(tenantId, id);
 
@@ -322,13 +329,16 @@ export class ConversationsService {
       ],
     };
 
-    await this.convRepo!.update(
+    await casUpdate(
+      this.convRepo!,
       { id: conversationId, tenant_id: tenantId } as any,
       {
         assigned_to: dto.assignee_id ?? conv.assigned_to,
         metadata,
         updated_at: new Date(),
       } as any,
+      dto.expectedUpdatedAt,
+      'Esta conversa foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
     );
 
     this.ws.sendToTenant(tenantId, 'conversation:transferred', {

@@ -13,9 +13,10 @@ import {
 import { Button } from "@/shared/ui/button";
 import type { Share, ShareHistoricoEntry } from "../types";
 import { formatDate } from "@/shared/lib/format-utils";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import type { Artista } from "@/modules/artist/hooks/useArtistas";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
-import { useObras } from "@/modules/catalog/hooks/useObras";
+import type { ObraWithRelations } from "@/modules/catalog/hooks/useObras";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
 import {
   resolveShareType,
   shareTypeLabel,
@@ -52,14 +53,21 @@ function Field({
 }
 
 export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProps) {
-  const { artistas } = useArtistas();
   const { lancamentos } = useLancamentos();
-  const { obras } = useObras();
+
+  const s = (share ?? {}) as Share & Record<string, unknown>;
+  const str = (k: string): string => (typeof s[k] === "string" ? (s[k] as string) : "");
+
+  // Resolução DIRETA por ID (GET /works/:id, GET /artists/:id) — não depende
+  // de obra/artista estarem entre os primeiros 50 carregados por
+  // useObras()/useArtistas() sem filtro (Task J).
+  const { entity: obraVinculada } = useEntityById<ObraWithRelations>("obras", open ? str("obra_id") || undefined : undefined);
+  const { entity: artistaResolved } = useEntityById<Artista>("artistas", open ? share?.artista_id ?? undefined : undefined);
+  const vinculoArtistaId = str("artista_projeto_id") || share?.artista_id || undefined;
+  const { entity: vinculoArtistaResolved } = useEntityById<Artista>("artistas", open ? vinculoArtistaId : undefined);
 
   if (!share) return null;
 
-  const s = share as Share & Record<string, unknown>;
-  const str = (k: string): string => (typeof s[k] === "string" ? (s[k] as string) : "");
   const historico: ShareHistoricoEntry[] = Array.isArray(share.historico) ? share.historico : [];
   const shareType = resolveShareType(s);
   const isInternal = shareType === "internal_release";
@@ -69,7 +77,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
    * (obra_id → lançamento_id → nome_musica), com fallbacks seguros adicionais.
    */
   const pickShareTitle = (): string | null => {
-    const obraTitulo = obras.find((o) => o.id === str("obra_id"))?.titulo;
+    const obraTitulo = obraVinculada?.titulo;
     const lancTitulo = lancamentos.find((l) => l.id === str("lancamento_id"))?.titulo;
     return (
       obraTitulo ||
@@ -86,9 +94,9 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
   const releaseTitulo = pickShareTitle();
 
   // Participante: artista vinculado (artista_id) → detentor (igual à coluna Detentor da tabela)
-  const participanteNome = artistas.find((a) => a.id === (share.artista_id ?? ""))?.nome_artistico ?? str("detentor") ?? null;
-  const artistaNome = artistas.find((a) => a.id === (share.artista_id ?? ""))?.nome_artistico ?? null;
-  const vinculoNome = artistas.find((a) => a.id === str("artista_projeto_id") || a.id === (share.artista_id ?? ""))?.nome_artistico ?? null;
+  const participanteNome = artistaResolved?.nome_artistico ?? str("detentor") ?? null;
+  const artistaNome = artistaResolved?.nome_artistico ?? null;
+  const vinculoNome = vinculoArtistaResolved?.nome_artistico ?? null;
 
   const direcaoLabel = str("direcao") === "a_receber" ? "A Receber" : str("direcao") === "a_enviar" ? "A Enviar" : null;
   const registradoEm = str("created_at") ? formatDate(str("created_at")) : null;

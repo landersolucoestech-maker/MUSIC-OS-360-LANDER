@@ -12,14 +12,16 @@ import type {
 
 export type { Contrato, ContratoInsert, ContratoUpdate, ContratoVersao, ContratoWithRelations };
 
-export function useContratos() {
+export function useContratos(enabled = true, artistaId?: string) {
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
 
   const result = useDataQuery<ContratoWithRelations>({
-    queryKey: [...QUERY_KEYS.CONTRATOS],
+    queryKey: artistaId ? [...QUERY_KEYS.CONTRATOS, "by-artist", artistaId] : [...QUERY_KEYS.CONTRATOS],
     table: "contratos",
     select: "*, artistas(*), clientes(*)",
+    enabled,
+    filters: artistaId ? { artista_id: artistaId } : undefined,
     additionalInvalidateKeys: [[...QUERY_KEYS.ARTISTAS]],
     onMutationSuccess: {
       onCreate: (c) =>
@@ -49,6 +51,7 @@ export function useContratos() {
     contratos: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addContrato: result.create,
     updateContrato: result.update,
     deleteContrato: result.delete,

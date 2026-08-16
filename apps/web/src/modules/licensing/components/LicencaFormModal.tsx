@@ -13,12 +13,13 @@ import { toast } from "sonner";
 import { FileText, Music, DollarSign, Building } from "lucide-react";
 import { licencaSchema, type LicencaFormData } from "@/modules/licensing/lib/licenca-schema";
 import { useLicencas } from "@/modules/licensing/hooks/useLicencas";
-import { useObras } from "@/modules/catalog/hooks/useObras";
-import { useDataQuery } from "@/shared/hooks/useDataQuery";
-import { QUERY_KEYS } from "@/shared/lib/query-config";
-import { EntityCombobox } from "@/modules/licensing/components/EntityCombobox";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import { obraArtistaLabel } from "@/modules/licensing/lib/licenca-format";
 import type { Obra } from "@/modules/catalog/types/catalog.types";
+
+interface ClienteOption { id: string; nome: string }
 
 interface LicencaFormModalProps {
   open: boolean;
@@ -59,11 +60,6 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
   const isViewMode = mode === "view";
   const title = mode === "create" ? "Nova Licença de Sync" : mode === "edit" ? "Editar Licença" : "Detalhes da Licença";
   const { addLicenca, updateLicenca } = useLicencas();
-  const { obras } = useObras();
-  const { data: clientes } = useDataQuery<{ id: string; nome: string }>({ queryKey: [...QUERY_KEYS.CLIENTES], table: "clientes" });
-
-  const obraItems = useMemo(() => (obras as Obra[]).map((o) => ({ id: o.id, label: o.titulo })), [obras]);
-  const clienteItems = useMemo(() => clientes.map((c) => ({ id: c.id, label: c.nome })), [clientes]);
 
   const {
     register,
@@ -76,13 +72,13 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
     defaultValues: DEFAULT_VALUES,
   });
 
-  // Artista é derivado da obra selecionada (read-only, não persistido)
+  // Artista é derivado da obra selecionada (read-only, não persistido) —
+  // busca DIRETA por ID (GET /works/:id), não depende da obra estar entre
+  // os primeiros 50 carregados por useObras() sem filtro (Task J).
   const obraId = useWatch({ control, name: "obraId" });
   const remunerationType = useWatch({ control, name: "remunerationType" });
-  const artistaDerivado = useMemo(
-    () => obraArtistaLabel((obras as Obra[]).find((o) => o.id === obraId)),
-    [obras, obraId],
-  );
+  const { entity: obraSelecionada } = useEntityById<Obra>("obras", obraId || undefined);
+  const artistaDerivado = useMemo(() => obraArtistaLabel(obraSelecionada), [obraSelecionada]);
   const showMonetary = remunerationType === "FIXED" || remunerationType === "FIXED_PLUS_PERCENTAGE";
   const showPercentage = remunerationType === "PERCENTAGE" || remunerationType === "FIXED_PLUS_PERCENTAGE";
 
@@ -142,14 +138,19 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
     try {
       const payload = buildPayload(data);
       if (mode === "edit" && licenca?.id) {
-        await updateLicenca.mutateAsync({ id: licenca.id as string, data: payload as never });
+        await updateLicenca.mutateAsync({
+          id: licenca.id as string,
+          data: payload as never,
+          expectedUpdatedAt: getExpectedUpdatedAt(licenca),
+        });
         toast.success("Licença atualizada com sucesso.");
       } else {
         await addLicenca.mutateAsync(payload as never);
         toast.success("Licença criada com sucesso.");
       }
       onOpenChange(false);
-    } catch {
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "licença")) return;
       toast.error("Erro ao salvar licença");
     }
   };
@@ -211,10 +212,11 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
                   name="obraId"
                   control={control}
                   render={({ field }) => (
-                    <EntityCombobox
-                      items={obraItems}
+                    <AsyncEntityCombobox<Obra>
+                      table="obras"
+                      getLabel={(o) => o.titulo ?? ""}
                       value={field.value}
-                      onChange={field.onChange}
+                      onChange={(id) => field.onChange(id)}
                       placeholder="Selecione a obra"
                       searchPlaceholder="Buscar obra…"
                       disabled={isViewMode}
@@ -251,10 +253,11 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
                   name="clienteId"
                   control={control}
                   render={({ field }) => (
-                    <EntityCombobox
-                      items={clienteItems}
+                    <AsyncEntityCombobox<ClienteOption>
+                      table="clientes"
+                      getLabel={(c) => c.nome ?? ""}
                       value={field.value}
-                      onChange={field.onChange}
+                      onChange={(id) => field.onChange(id)}
                       placeholder="Selecione o cliente"
                       searchPlaceholder="Buscar cliente…"
                       disabled={isViewMode}

@@ -4,12 +4,15 @@ import type { Evento, EventoInsert, EventoUpdate, EventoWithRelations } from "..
 
 export type { Evento, EventoInsert, EventoUpdate, EventoWithRelations };
 
-export function useEventos() {
+export function useEventos(enabled = true, artistaId?: string) {
   const result = useDataQuery<EventoWithRelations>({
-    queryKey: [...QUERY_KEYS.EVENTOS],
+    queryKey: artistaId ? [...QUERY_KEYS.EVENTOS, "by-artist", artistaId] : [...QUERY_KEYS.EVENTOS],
     table: "eventos",
     select: "*, artistas(*)",
     orderBy: { column: "data_inicio", ascending: true },
+    enabled,
+    // Backend de events usa "artistId" (camelCase) — ver events.dto.ts/events.service.ts.
+    filters: artistaId ? { artistId: artistaId } : undefined,
   }, {
     create: { success: "Evento criado com sucesso!", error: "Erro ao criar evento" },
     update: { success: "Evento atualizado com sucesso!", error: "Erro ao atualizar evento" },
@@ -20,6 +23,7 @@ export function useEventos() {
     eventos: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addEvento: result.create,
     updateEvento: result.update,
     deleteEvento: result.delete,

@@ -52,6 +52,7 @@ export interface AudiovisualProject {
   campaign_name?: string | null;
   created_by_name?: string | null;
   created_at?: string | null;
+  updated_at?: string | null;
   thumbnail_url?: string | null;
   cover_url?: string | null;
   preview_image?: string | null;

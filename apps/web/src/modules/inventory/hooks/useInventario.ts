@@ -18,6 +18,7 @@ export function useInventario() {
     inventario: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addInventario: result.create,
     updateInventario: result.update,
     deleteInventario: result.delete,

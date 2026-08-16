@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { IntegrationError } from "@/shared/lib/errors";
 import {
   initialFormData,
   type TransacaoFormData,
@@ -22,12 +23,6 @@ import {
   getHiddenFieldResets,
 } from "@/modules/accounting/components/transacao-form/rules/financial-reset-rules";
 
-interface Projeto {
-  id: string;
-  artista_id?: string | null;
-  titulo: string;
-}
-
 interface Evento {
   id: string;
   artista_id?: string | null;
@@ -40,7 +35,6 @@ export interface UseTransacaoFormControllerOptions {
   mode: "create" | "edit" | "view";
   transacao?: TransacaoFormEntity;
   onClose: () => void;
-  projetos: Projeto[];
   eventos: Evento[];
 }
 
@@ -98,7 +92,6 @@ export function useTransacaoFormController({
   mode,
   transacao,
   onClose,
-  projetos,
   eventos,
 }: UseTransacaoFormControllerOptions): UseTransacaoFormControllerReturn {
   const [formData, setFormData] = useState<TransacaoFormData>(initialFormData);
@@ -116,7 +109,6 @@ export function useTransacaoFormController({
 
   const visibleRules = useFinancialRules({
     formData,
-    projetos,
     eventos,
   });
 
@@ -237,15 +229,25 @@ export function useTransacaoFormController({
       const transacaoId = transacao?.id;
 
       if (mode === "edit" && transacaoId) {
-        const updatePayload = { id: transacaoId, ...payload, entityLinks } as UpdateTransacaoInput;
+        const expectedUpdatedAt = (transacao?.updated_at ?? transacao?.updatedAt) as string | undefined;
+        const updatePayload = {
+          id: transacaoId,
+          ...payload,
+          entityLinks,
+          ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+        } as UpdateTransacaoInput;
         await updateTransacao.mutateAsync(updatePayload);
       } else {
         await addTransacao.mutateAsync({ ...payload, entityLinks } as AddTransacaoInput);
       }
 
       handleClose();
-    } catch {
-      toast.error("Erro ao salvar transação. Tente novamente.");
+    } catch (err) {
+      if (err instanceof IntegrationError && err.statusCode === 409) {
+        toast.error("Esta transação foi alterada por outra pessoa. Feche e reabra o formulário para ver a versão mais recente.");
+      } else {
+        toast.error("Erro ao salvar transação. Tente novamente.");
+      }
       setIsSubmitting(false);
     }
   }, [

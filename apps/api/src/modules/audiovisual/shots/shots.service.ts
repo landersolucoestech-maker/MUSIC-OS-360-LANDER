@@ -1,9 +1,10 @@
 import {
-  Injectable, Inject, NotFoundException, ServiceUnavailableException,
+  Injectable, Inject, NotFoundException, ServiceUnavailableException, ConflictException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.tokens';
 import { AudiovisualShotEntity, AudiovisualProjectEntity } from '../../../database/entities';
+import { casUpdate } from '../../../common/persistence/optimistic-update.util';
 
 export interface CreateShotInput {
   scene_title?: string;
@@ -20,14 +21,18 @@ export interface CreateShotInput {
 
 export interface UpdateShotInput extends Partial<CreateShotInput> {
   shooting_status?: string;
+  /** Concorrência otimista (Task L) — ver optimistic-update.util.ts. Opcional. */
+  expectedUpdatedAt?: string;
 }
 
 @Injectable()
 export class AudiovisualShotsService {
+  private readonly ds: DataSource | null;
   private readonly repo: Repository<AudiovisualShotEntity> | null;
   private readonly projects: Repository<AudiovisualProjectEntity> | null;
 
   constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    this.ds        = ds;
     this.repo     = ds?.getRepository(AudiovisualShotEntity) ?? null;
     this.projects = ds?.getRepository(AudiovisualProjectEntity) ?? null;
   }
@@ -69,7 +74,14 @@ export class AudiovisualShotsService {
   async update(tenantId: string, id: string, input: UpdateShotInput) {
     const cur = await this.r.findOne({ where: { id, tenant_id: tenantId, deleted_at: null } as never });
     if (!cur) throw new NotFoundException('Shot não encontrado');
-    await this.r.update({ id, tenant_id: tenantId } as never, { ...input, updated_at: new Date() } as never);
+    const { expectedUpdatedAt, ...rest } = input;
+    await casUpdate(
+      this.r,
+      { id, tenant_id: tenantId } as never,
+      { ...rest, updated_at: new Date() } as never,
+      expectedUpdatedAt,
+      'Este shot foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.r.findOne({ where: { id, tenant_id: tenantId } as never });
   }
 
@@ -78,21 +90,45 @@ export class AudiovisualShotsService {
     return { deleted: true };
   }
 
+  /**
+   * Task M — auditoria de concorrência: reorder() fazia N updates sequenciais
+   * sem transação (falha no meio deixava ordering parcialmente aplicado) e
+   * sem checar se a lista de ids ainda batia com o estado atual (dois
+   * usuários reordenando ao mesmo tempo, ou um shot criado/removido entre a
+   * leitura e o submit, produzia ordering corrompido em silêncio). Corrigido
+   * com transação real (tudo ou nada) + checagem de "mesmo conjunto de ids"
+   * como guarda de staleness — não requer coluna de versão nova.
+   */
   async reorder(tenantId: string, projectId: string, ids: string[]) {
     await this.assertProject(tenantId, projectId);
+    if (!this.ds) throw new ServiceUnavailableException('Database unavailable');
     // ids vem do corpo da requisição: materializa uma lista local validada
     // (apenas strings) antes de iterar, evitando iteração sobre objeto
     // controlado pelo usuário (CWE-915).
     const safeIds = (Array.isArray(ids) ? ids : []).filter(
       (id): id is string => typeof id === 'string',
     );
-    for (let i = 0; i < safeIds.length; i++) {
-      await this.r.update(
-        { id: safeIds[i], tenant_id: tenantId, audiovisual_project_id: projectId } as never,
-        { ordering: i, updated_at: new Date() } as never,
-      );
-    }
-    return { reordered: safeIds.length };
+    return this.ds.transaction(async (em) => {
+      const repo = em.getRepository(AudiovisualShotEntity);
+      const current = await repo.find({
+        where: { tenant_id: tenantId, audiovisual_project_id: projectId, deleted_at: null } as never,
+        select: ['id'] as never,
+      });
+      const currentIds = new Set(current.map((s) => s.id));
+      const sameSet = currentIds.size === safeIds.length && safeIds.every((id) => currentIds.has(id));
+      if (!sameSet) {
+        throw new ConflictException(
+          'A lista de shots foi alterada por outro usuário (adição/remoção) desde que você a carregou. Recarregue e tente novamente.',
+        );
+      }
+      for (let i = 0; i < safeIds.length; i++) {
+        await repo.update(
+          { id: safeIds[i], tenant_id: tenantId, audiovisual_project_id: projectId } as never,
+          { ordering: i, updated_at: new Date() } as never,
+        );
+      }
+      return { reordered: safeIds.length };
+    });
   }
 
   private async nextOrdering(tenantId: string, projectId: string): Promise<number> {

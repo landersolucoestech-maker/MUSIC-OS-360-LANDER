@@ -12,12 +12,16 @@ export const CONTRACTS_DOC_KEYS = {
   documents: ["contracts", "documents"] as const,
 };
 
+// Referência estável — ver shared/hooks/useDataQuery.ts para o motivo.
+const EMPTY_DOCUMENTS: VinculadoDocument[] = [];
+
 export function useDocuments() {
-  return useQuery({
+  const query = useQuery({
     queryKey: CONTRACTS_DOC_KEYS.documents,
     queryFn:  async (): Promise<VinculadoDocument[]> => [],
     staleTime: 1000 * 30,
   });
+  return { ...query, data: query.data ?? EMPTY_DOCUMENTS };
 }
 
 export function useSaveDocument() {

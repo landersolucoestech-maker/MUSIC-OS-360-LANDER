@@ -5,9 +5,9 @@ import type { Cliente, ClienteInsert, ClienteSegmento, ClienteUpdate, Contact } 
 
 export type { Cliente, ClienteInsert, ClienteUpdate, ClienteSegmento, Contact };
 
-export function useContacts() {
+export function useContacts(enabled = true) {
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
 
   async function refresh() {
@@ -23,8 +23,9 @@ export function useContacts() {
   }
 
   useEffect(() => {
-    void refresh();
-  }, []);
+    if (enabled) void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
   return {
     contacts,
@@ -41,8 +42,8 @@ export function useContacts() {
       await refresh();
       return created;
     },
-    updateContact: async (id: string, data: Partial<Contact>) => {
-      await contactsService.update(id, data);
+    updateContact: async (id: string, data: Partial<Contact>, expectedUpdatedAt?: string) => {
+      await contactsService.update(id, data, expectedUpdatedAt);
       await refresh();
     },
     deleteContact: async (id: string) => {

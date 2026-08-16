@@ -119,6 +119,20 @@ export function hasRequiredForSubmission(release: Lancamento & Record<string, un
  * depois `internal_status`/`status` legado. `planejado` vira pendente/incompleto
  * conforme presença de dados obrigatórios.
  */
+/**
+ * Mesma classificação de resolveReleaseStatus(), mas a partir de valores já
+ * agregados no backend (GET /releases/stats: GROUP BY status + "campos
+ * obrigatórios preenchidos?"), sem precisar da row completa. `platform_status`/
+ * `internal_status` nunca existem em `releases` (colunas nunca criadas no
+ * schema — resolveReleaseStatus() sempre cai no `status` legado na prática),
+ * então a única outra entrada de que a classificação depende é `hasRequired`.
+ */
+export function resolveStatusFromRawStatus(status: string, hasRequired: boolean): ReleaseStatus {
+  const key = (status || "").toLowerCase();
+  if (key === "planejado") return hasRequired ? "pendente" : "incompleto";
+  return LEGACY_TO_DISPLAY[key] ?? "incompleto";
+}
+
 export function resolveReleaseStatus(release: Lancamento & Record<string, unknown>): ReleaseStatus {
   const platform = str(release.platform_status).toLowerCase();
   if (platform && PLATFORM_TO_DISPLAY[platform]) return PLATFORM_TO_DISPLAY[platform];

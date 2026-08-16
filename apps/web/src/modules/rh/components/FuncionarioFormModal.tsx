@@ -30,6 +30,7 @@ import {
 import type { Funcionario } from "@/modules/rh/hooks/useFuncionarios";
 import { useUsuarios } from "@/modules/settings/hooks/useUsuarios";
 import { maskCPF, maskPhone } from "@/shared/lib/masks";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { toast } from "sonner";
 import { funcionarioSchema } from "@/modules/rh/lib/funcionario-schema";
 
@@ -74,7 +75,7 @@ export function FuncionarioFormModal({
   useEffect(() => {
     if (open) {
       if ((mode === "edit" || mode === "view") && funcionario) {
-        setNomeCompleto((funcionario.nome_completo as string) || "");
+        setNomeCompleto((funcionario.nome as string) || "");
         setCpf((funcionario.cpf as string) || "");
         setRg((funcionario.rg as string) || "");
         setDataNascimento((funcionario.data_nascimento as string) || "");
@@ -82,10 +83,10 @@ export function FuncionarioFormModal({
         setTelefone((funcionario.telefone as string) || "");
         setEndereco((funcionario.endereco as string) || "");
         setCargo((funcionario.cargo as string) || "");
-        setSetor((funcionario.setor as string) || "");
+        setSetor((funcionario.departamento as string) || "");
         setTipoContrato((funcionario.tipo_contrato as string) || "");
         setDataAdmissao((funcionario.data_admissao as string) || "");
-        setSalarioBase((funcionario.salario_base as number) ?? "");
+        setSalarioBase(funcionario.salario != null ? Number(funcionario.salario) : "");
         setStatus((funcionario.status as string) || "ativo");
         setObservacoes((funcionario.observacoes as string) || "");
         setVinculoUsuarioId((funcionario.vinculo_usuario_id as string) || "");
@@ -158,31 +159,31 @@ export function FuncionarioFormModal({
     setSaving(true);
 
     const data: Record<string, unknown> = {
-      nome_completo: nomeCompleto.trim(),
+      nome: nomeCompleto.trim(),
       cpf: cpf.trim() || null,
-      rg: rg.trim() || null,
-      data_nascimento: dataNascimento || null,
       email: email.trim() || null,
       telefone: telefone.trim() || null,
-      endereco: endereco.trim() || null,
       cargo: cargo.trim() || null,
-      setor: setor || null,
+      departamento: setor || null,
       tipo_contrato: tipoContrato || null,
       data_admissao: dataAdmissao || null,
-      salario_base: salarioBase !== "" ? Number(salarioBase) : null,
+      salario: salarioBase !== "" ? String(salarioBase) : null,
       status,
-      observacoes: observacoes.trim() || null,
-      vinculo_usuario_id: vinculoUsuarioId || null,
     };
 
     try {
       if (mode === "create") {
         await addFuncionario.mutateAsync(data as any);
       } else if (mode === "edit" && funcionario) {
-        await updateFuncionario.mutateAsync({ id: funcionario.id, ...data } as any);
+        await updateFuncionario.mutateAsync({
+          id: funcionario.id,
+          ...data,
+          expectedUpdatedAt: getExpectedUpdatedAt(funcionario),
+        } as any);
       }
       onOpenChange(false);
-    } catch {
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "funcionário")) return;
       toast.error("Erro ao salvar funcionário");
     } finally {
       setSaving(false);

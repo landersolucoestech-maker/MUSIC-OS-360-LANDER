@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { useEntityLookup, useEntityById } from "@/shared/hooks/useEntityLookup";
+import { storage } from "@/shared/lib/storage";
 import { MUSICAL_GENRE_LABELS } from "@/constants/musicalGenres";
 import { LANGUAGE_LABELS } from "@/constants/languages";
 import {
@@ -40,13 +42,11 @@ import {
   Briefcase,
   Eye,
 } from "lucide-react";
-import {
-  useProjetos,
-  type ProjetoWithRelations,
-} from "@/modules/projects/hooks/useProjetos";
-import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
+import type { ProjetoWithRelations } from "@/modules/projects/hooks/useProjetos";
+import type { Artista } from "@/modules/artist/hooks/useArtistas";
 import { ParticipanteViewModal } from "@/modules/catalog/components/ParticipanteViewModal";
 import { useObras } from "@/modules/catalog/hooks/useObras";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { useCurrentOrgId } from "@/shared/hooks/useCurrentOrgId";
 import { AbramusSearchRow } from "@/modules/catalog/components/AbramusSearchRow";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -69,18 +69,21 @@ import {
 } from "@/modules/catalog/mappers";
 import { obraSchema } from "@/modules/catalog/lib/obra-schema";
 
-// ── Autocomplete: busca por nome_artistico, armazena/exibe nome_civil ──
+// ── Autocomplete: busca server-side por nome_artistico/nome_civil (Task I —
+// antes filtrava só os primeiros 50 artistas do tenant, carregados via
+// useArtistas() sem filtro; agora cada tecla digitada (debounced) refaz a
+// busca no backend, alcançando qualquer artista do tenant). Texto livre
+// continua permitido — nem todo participante precisa estar cadastrado.
 interface ArtistNameInputProps {
   value: string;
   onChange: (val: string) => void;
   onSelect?: (a: { id: string; nome_artistico: string; nome_civil?: string | null }) => void;
-  artistas: Array<{ id: string; nome_artistico: string; nome_civil?: string | null }>;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
 }
 
-function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, disabled }: ArtistNameInputProps) {
+function ArtistNameInput({ value, onChange, onSelect, placeholder, disabled }: ArtistNameInputProps) {
   const [inputText, setInputText] = useState(value);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -97,12 +100,11 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const suggestions = inputText.trim()
-    ? artistas.filter(a =>
-        a.nome_artistico.toLowerCase().includes(inputText.toLowerCase()) ||
-        (a.nome_civil ?? "").toLowerCase().includes(inputText.toLowerCase())
-      )
-    : [];
+  const { items: suggestions } = useEntityLookup<Artista>({
+    table: "artistas",
+    search: inputText,
+    enabled: open && inputText.trim().length > 0,
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
@@ -110,7 +112,7 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
     setOpen(true);
   };
 
-  const handleSelect = (a: typeof artistas[number]) => {
+  const handleSelect = (a: Artista) => {
     const display = a.nome_civil || a.nome_artistico;
     setInputText(display);
     onChange(display);
@@ -129,7 +131,7 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
         autoComplete="off"
         className="min-w-0"
       />
-      {open && suggestions.length > 0 && !disabled && (
+      {open && inputText.trim() && suggestions.length > 0 && !disabled && (
         <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md max-h-48 overflow-y-auto">
           {suggestions.map(a => (
             <button
@@ -220,10 +222,8 @@ export function ObraFormModal({
   tipoObra: tipoObraProp,
   onSaved,
 }: ObraFormModalProps) {
-  const { projetos } = useProjetos();
   const { addObra, updateObra } = useObras();
   const { orgId } = useCurrentOrgId();
-  const { artistas } = useArtistas();
 
   // Resolução do tipo da obra. Em criação vem do seletor (prop). Em
   // edição/visualização vem do próprio registro. Default = referencia.
@@ -296,43 +296,44 @@ export function ObraFormModal({
     setAceitaTermos(false);
   }, [open, obra]);
 
-  // Hidrata o projeto vinculado a partir de obra.projeto_id assim que a lista
-  // de projetos chegar (ou quando o registro mudar). Em modo create, fica null.
+  // Hidrata o projeto vinculado a partir de obra.projeto_id — busca DIRETO por
+  // ID (GET /projects/:id), não depende do projeto estar entre os primeiros
+  // registros carregados (Task J: antes usava useProjetos() sem filtro, que
+  // truncava em 50 projetos por tenant).
+  const linkedProjetoId: string | undefined = obra?.projeto_id ?? obra?.projetoId;
+  const { entity: linkedProjeto } = useEntityById<ProjetoWithRelations>(
+    "projetos",
+    open ? linkedProjetoId : undefined,
+  );
   useEffect(() => {
     if (!open) return;
-    const projetoId: string | undefined = obra?.projeto_id ?? obra?.projetoId;
-    if (!projetoId) {
+    if (!linkedProjetoId) {
       setProjetoSelecionado(null);
       return;
     }
-    const found = projetos.find(
-      (p: ProjetoWithRelations) => p.id === projetoId,
-    );
-    if (found) {
+    if (linkedProjeto) {
       setProjetoSelecionado({
-        id: found.id,
-        nome: found.titulo ?? (found.nome as string) ?? "",
-        artistaNome: (found.artistas?.nome_artistico ?? null) as string | null,
+        id: linkedProjeto.id,
+        nome: linkedProjeto.titulo ?? (linkedProjeto.nome as string) ?? "",
+        artistaNome: (linkedProjeto.artistas?.nome_artistico ?? null) as string | null,
       });
     } else {
-      // Ainda carregando ou projeto fora do filtro — mantém ID com placeholder.
-      setProjetoSelecionado({ id: projetoId, nome: "Projeto vinculado" });
+      // Ainda carregando — mantém ID com placeholder até a busca por ID resolver.
+      setProjetoSelecionado({ id: linkedProjetoId, nome: "Projeto vinculado" });
     }
-  }, [open, obra, projetos]);
+  }, [open, linkedProjetoId, linkedProjeto]);
 
-  // Lista de projetos concluídos filtrada pelo termo digitado
-  const projetosConcluidosFiltrados: ProjetoWithRelations[] = [];
-  for (const p of projetos as ProjetoWithRelations[]) {
-    const pStatus = p.status as string | null | undefined;
-    if (pStatus !== "concluido") continue;
-    if (buscaProjeto) {
-      const termo = buscaProjeto.toLowerCase();
-      const pNome = (p.titulo ?? (p as { nome?: string }).nome ?? "") as string;
-      const pArtistaNome = (p.artistas?.nome_artistico ?? "") as string;
-      if (!pNome.toLowerCase().includes(termo) && !pArtistaNome.toLowerCase().includes(termo)) continue;
-    }
-    projetosConcluidosFiltrados.push(p);
-  }
+  // Busca server-side de projetos concluídos (Task J) — antes filtrava
+  // localmente só os primeiros 50 projetos do tenant carregados via
+  // useProjetos() sem filtro; agora cada tecla digitada (debounced
+  // internamente) refaz a busca no backend, alcançando qualquer projeto
+  // concluído do tenant.
+  const { items: projetosConcluidosFiltrados } = useEntityLookup<ProjetoWithRelations>({
+    table: "projetos",
+    search: buscaProjeto,
+    filters: { status: "concluido" },
+    enabled: buscaProjetoOpen,
+  });
 
   const [participacaoOpen, setParticipacaoOpen] = useState(true);
   const [outrosTitulosOpen, setOutrosTitulosOpen] = useState(false);
@@ -490,7 +491,7 @@ export function ObraFormModal({
 
     try {
       if (mode === "edit" && obra?.id) {
-        await updateObra.mutateAsync({ id: obra.id, ...payload });
+        await updateObra.mutateAsync({ id: obra.id, ...payload, expectedUpdatedAt: getExpectedUpdatedAt(obra) });
       } else {
         await addObra.mutateAsync(payload as any);
       }
@@ -519,8 +520,9 @@ export function ObraFormModal({
         titulo: `Cessão de Obras – ${tituloObra}`,
         observacoes: obsLinhas.join("\n"),
       });
-    } catch {
-      // Erros já são exibidos via toast pelo hook useDataQuery.
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "obra")) return;
+      // demais erros já são exibidos via toast pelo hook useDataQuery.
     }
   };
 
@@ -619,7 +621,7 @@ export function ObraFormModal({
                             (p as { nome?: string }).nome ??
                             "") as string;
                           const pArtistaNomeDisplay = (p.artistas?.nome_artistico ?? "") as string;
-                          const selectProjeto = () => {
+                          const selectProjeto = async () => {
                             setProjetoSelecionado({
                               id: pId,
                               nome: pNomeDisplay,
@@ -633,10 +635,13 @@ export function ObraFormModal({
                               const matched = generosMusicais.find(g => norm(g) === norm(generoRaw));
                               setGeneroMusical(matched ? matched.toLowerCase() : generoRaw.toLowerCase());
                             }
-                            // Resolve artista via artistas array (joins not available in mock mode)
+                            // Resolve artista por ID direto \u2014 n\u00e3o depende do artista estar
+                            // entre os primeiros registros carregados (Task J).
                             const artistaId = p.artista_id as string | null | undefined;
-                            const artistaFound = artistas.find((a: any) => a.id === artistaId);
-                            const artistaNomeResolved = artistaFound?.nome_artistico || artistaFound?.nome || pArtistaNomeDisplay;
+                            const artistaFound = artistaId
+                              ? await storage.findById<Artista>("artistas", artistaId)
+                              : undefined;
+                            const artistaNomeResolved = artistaFound?.nome_artistico || pArtistaNomeDisplay;
                             // Parse descricao JSON for composers/producers from project songs
                             let autoParticipantes: Participante[] = [];
                             try {
@@ -1164,7 +1169,6 @@ export function ObraFormModal({
                             value={p.nome}
                             onChange={(val) => updateParticipante(p.id, "nome", val)}
                             onSelect={(a) => updateParticipante(p.id, "artista_id", a.id)}
-                            artistas={artistas}
                             placeholder="Nome do participante"
                             disabled={isViewMode}
                           />
@@ -1227,8 +1231,16 @@ export function ObraFormModal({
                             className="h-8 w-8 text-muted-foreground hover:text-foreground"
                             title="Visualizar participante"
                             disabled={!p.nome}
-                            onClick={() => {
-                              const found = artistas.find(a => a.id === p.artista_id || (a.nome_civil || a.nome_artistico) === p.nome);
+                            onClick={async () => {
+                              // Busca por ID direto (não depende do artista estar entre os
+                              // primeiros carregados) — cai para busca por nome só quando o
+                              // participante nunca foi vinculado a um artista cadastrado.
+                              const found = p.artista_id
+                                ? await storage.findById<Artista>("artistas", p.artista_id)
+                                : p.nome
+                                  ? (await storage.listPaged<Artista>("artistas", { page: 1, pageSize: 5, filters: { search: p.nome } }))
+                                      .items.find(a => (a.nome_civil || a.nome_artistico) === p.nome)
+                                  : undefined;
                               if (found) setViewArtista(found as Artista);
                             }}
                           >

@@ -15,11 +15,12 @@ import {
 import { Textarea } from "@/shared/ui/textarea";
 import { FormField, FormTextarea, FieldError } from "@/shared/components/FormField";
 import { toast } from "sonner";
-import { Clock } from "lucide-react";
+import { Clock, Search } from "lucide-react";
 import { format, parse, parseISO, isValid } from "date-fns";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
-import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import { useEventos } from "@/modules/events/hooks/useEventos";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import {
   agendaParticipantKey,
   normalizeAgendaParticipants,
@@ -35,6 +36,17 @@ interface SchedulerFormModalProps {
   onOpenChange: (open: boolean) => void;
   evento?: any;
   mode: "create" | "edit" | "view";
+}
+
+/** Formato bruto de GET /clients (ClientsService.mapClient) — usado para o
+ * local do CRM (contatos PJ), sem depender do view-model `Cliente`. */
+interface LocalCRMLookup {
+  id: string;
+  nome: string;
+  phone?: string | null;
+  endereco_completo?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
 }
 
 const tiposEvento = [
@@ -203,15 +215,13 @@ const validationFieldLabels: Record<string, string> = {
 
 export function SchedulerFormModal({ open, onOpenChange, evento, mode }: SchedulerFormModalProps) {
   const queryClient = useQueryClient();
-  const { clientes } = useClientes();
   const { getOptionsByKind } = useOperationalSettings();
   const operationalEventTypeOptions = getOptionsByKind("event_type");
   const eventTypeOptions = operationalEventTypeOptions.length > 0 ? operationalEventTypeOptions : tiposEvento;
-  const { participants, getParticipantByKey, getArtistParticipantById } = useAgendaParticipants();
-  
-  // Filtrar apenas contatos PJ do CRM para o campo de local
-  const locaisCRM = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_juridica");
-  
+  const [participantSearch, setParticipantSearch] = useState("");
+  const legacyArtistaId = evento?.artista || evento?.artista_id || evento?.artistId || null;
+  const { participants, getParticipantByKey, getArtistParticipantById, pendingArtist } = useAgendaParticipants(participantSearch, legacyArtistaId);
+
   const hydrateFormData = (currentEvento?: any) => {
     const initial = getInitialFormData(currentEvento);
     if (initial.participantes.length === 0 && initial.artista) {
@@ -232,7 +242,12 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
   useEffect(() => {
     setFormData(hydrateFormData(open ? evento : undefined));
     setErrors({});
-  }, [evento, mode, open, participants]);
+    // `pendingArtist` (não `participants`) de propósito: `participants` muda a
+    // cada busca digitada no picker de participantes, o que resetaria o
+    // formulário inteiro enquanto o usuário digita. `pendingArtist` só muda
+    // quando o artista legado do evento (campo `artista`) termina de resolver.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evento, mode, open, pendingArtist]);
 
   const isViewMode = mode === "view";
   const title = mode === "create" ? "Novo Evento na Agenda" : mode === "edit" ? "Editar Evento" : "Visualizar Evento";
@@ -271,14 +286,13 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
   };
 
   // Atualizar dados de contato quando selecionar um local do CRM
-  const handleLocalCRMChange = (localId: string) => {
-    const localSelecionado = locaisCRM.find(l => l.id === localId);
-    if (localSelecionado) {
+  const handleLocalCRMChange = (localId: string, local?: LocalCRMLookup) => {
+    if (local) {
       setFormData({
         ...formData,
         nomeLocal: localId,
-        contatoLocal: localSelecionado.telefone || "",
-        endereco: [localSelecionado.endereco, localSelecionado.cidade, localSelecionado.estado].filter(Boolean).join(", ")
+        contatoLocal: local.phone || "",
+        endereco: [local.endereco_completo, local.cidade, local.estado].filter(Boolean).join(", ")
       });
     } else {
       setFormData({ ...formData, nomeLocal: localId });
@@ -485,14 +499,21 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
           toast.error("Não foi possível atualizar: evento sem identificador.");
           return;
         }
-        await updateEvento.mutateAsync({ id: evento.id, ...buildPayload(validatedFormData, true) });
+        await updateEvento.mutateAsync({
+          id: evento.id,
+          ...buildPayload(validatedFormData, true),
+          expectedUpdatedAt: getExpectedUpdatedAt(evento),
+        });
       } else {
         await addEvento.mutateAsync(buildPayload(validatedFormData, false));
       }
       await queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.EVENTOS] });
       onOpenChange(false);
     } catch (error) {
-      // A mutação já dispara toast de erro, mas mantemos o loader controlado.
+      // A mutação já dispara toast de erro genérico; aqui só precisamos do
+      // aviso específico de conflito de concorrência (409), que a mutação
+      // sozinha não sabe diferenciar de um erro qualquer.
+      handleConcurrencyConflict(error, "evento");
     } finally {
       setIsSubmitting(false);
     }
@@ -552,7 +573,7 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
 
             <div className="space-y-2">
               <Label>Participantes do Evento</Label>
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={(open) => { if (!open) setParticipantSearch(""); }}>
                 <DropdownMenuTrigger asChild disabled={isViewMode}>
                   <Button type="button" variant="outline" className="h-8 w-full justify-between font-normal">
                     <span className={selectedParticipantsSummary ? "truncate" : "text-muted-foreground"}>
@@ -561,8 +582,19 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="max-h-72 w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto">
+                  <div className="relative p-1.5 pb-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      value={participantSearch}
+                      onChange={(e) => setParticipantSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      placeholder="Buscar artista ou funcionário…"
+                      className="h-7 pl-7 text-xs"
+                      data-testid="input-buscar-participante"
+                    />
+                  </div>
                   {participants.length === 0 ? (
-                    <div className="p-2 text-sm text-muted-foreground">Nenhum participante cadastrado</div>
+                    <div className="p-2 text-sm text-muted-foreground">Nenhum participante encontrado</div>
                   ) : participants.map((participant) => {
                     const key = agendaParticipantKey(participant);
                     return (
@@ -670,22 +702,17 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
               <div className="space-y-2">
                 <Label>Nome do Local</Label>
                 {shouldUseCRMLocal ? (
-                  <Select 
-                    value={formData.nomeLocal} 
-                    onValueChange={handleLocalCRMChange} 
+                  <AsyncEntityCombobox<LocalCRMLookup>
+                    table="clientes"
+                    getLabel={(local) => local.nome}
+                    value={formData.nomeLocal}
+                    onChange={handleLocalCRMChange}
+                    filters={{ type: "pessoa_juridica" }}
+                    placeholder="Selecione o local (CRM)"
+                    searchPlaceholder="Buscar local…"
                     disabled={isViewMode}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o local (CRM)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locaisCRM.map((local) => (
-                        <SelectItem key={local.id} value={local.id}>
-                          {local.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    data-testid="combobox-local-crm"
+                  />
                 ) : (
                   <Input
                     value={formData.nomeLocal}

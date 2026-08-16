@@ -13,6 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { inventarioSchema, type InventarioFormData } from "@/modules/inventory/lib/inventario-schema";
 import { FieldError } from "@/shared/components/FormField";
 import { useInventario } from "@/modules/inventory/hooks/useInventario";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 
 interface InventarioFormModalProps {
   open: boolean;
@@ -158,12 +159,16 @@ export function InventarioFormModal({ open, onOpenChange, item, mode }: Inventar
         observacoes:         data.observacoes || undefined,
       };
       if (mode === "edit" && item?.id) {
-        await updateInventario.mutateAsync({ id: item.id as string, data: payload as never });
+        await updateInventario.mutateAsync({
+          id: item.id as string,
+          data: { ...payload, expectedUpdatedAt: getExpectedUpdatedAt(item) } as never,
+        });
       } else {
         await addInventario.mutateAsync(payload as never);
       }
       onOpenChange(false);
-    } catch {
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "item de inventário")) return;
       toast.error("Erro ao salvar item. Tente novamente.");
     }
   };

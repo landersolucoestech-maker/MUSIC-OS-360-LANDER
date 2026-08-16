@@ -52,6 +52,8 @@ export class UpdateConversationDto {
   @ApiPropertyOptional() @IsOptional() @IsEnum(ConversationServiceStatus) service_status?: ConversationServiceStatus;
   @ApiPropertyOptional() @IsOptional() @IsArray() tags?: string[];
   @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryConversationDto {
@@ -86,6 +88,8 @@ export class TransferConversationDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() sector_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() assignee_id?: string | null;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) reason?: string;
+  /** Concorrência otimista (Task M) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class CloseConversationDto {

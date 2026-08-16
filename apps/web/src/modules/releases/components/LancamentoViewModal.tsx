@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
+import { storage } from "@/shared/lib/storage";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Badge } from "@/shared/ui/badge";
 import { Separator } from "@/shared/ui/separator";
@@ -11,9 +13,10 @@ import {
   Mic2,
   UserRound,
 } from "lucide-react";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
+import type { Artista } from "@/modules/artist/hooks/useArtistas";
+import type { FonogramaWithRelations } from "@/modules/catalog/hooks/useFonogramas";
 import { useShares } from "@/modules/releases/hooks/useShares";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
@@ -103,8 +106,9 @@ function aggregateField(faixas: any[], key: string): string {
 }
 
 export function LancamentoViewModal({ open, onOpenChange, lancamento }: LancamentoViewModalProps) {
-  const { artistas } = useArtistas();
-  const { fonogramas } = useFonogramas();
+  // Artista principal do lançamento — busca DIRETO por ID (GET /artists/:id),
+  // não depende de estar entre os primeiros 50 carregados (Task J).
+  const { entity: artista } = useEntityById<Artista>("artistas", open ? lancamento?.artista_id ?? undefined : undefined);
   const { shares } = useShares();
   const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
     table: "lancamentos",
@@ -117,6 +121,48 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
     lancamento?.id,
     open,
   );
+
+  // Fallback de faixas (só usado quando metadata.faixas está vazio — releases
+  // antigos) e nomes de artista por share vinculado — resolvidos por ID
+  // direto via storage.findById, nunca escaneando useFonogramas()/
+  // useArtistas() sem filtro (Task J).
+  const fonogramaIds = useMemo(
+    () => (Array.isArray(lancamento?.fonograma_ids) ? (lancamento!.fonograma_ids as string[]) : []),
+    [lancamento],
+  );
+  const [resolvedFonogramas, setResolvedFonogramas] = useState<Record<string, FonogramaWithRelations>>({});
+  useEffect(() => {
+    if (!open || fonogramaIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(fonogramaIds.map((id) => storage.findById<FonogramaWithRelations & { id: string }>("fonogramas", id)))
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, FonogramaWithRelations> = {};
+        results.forEach((f, i) => { if (f) map[fonogramaIds[i]] = f; });
+        setResolvedFonogramas(map);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open, fonogramaIds]);
+
+  const shareArtistaIds = useMemo(
+    () => Array.from(new Set(shares.filter((s) => (s as Record<string, unknown>)["lancamento_id"] === lancamento?.id && s.artista_id).map((s) => s.artista_id as string))),
+    [shares, lancamento?.id],
+  );
+  const [resolvedShareArtistas, setResolvedShareArtistas] = useState<Record<string, Artista>>({});
+  useEffect(() => {
+    if (!open || shareArtistaIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(shareArtistaIds.map((id) => storage.findById<Artista & { id: string }>("artistas", id)))
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, Artista> = {};
+        results.forEach((a, i) => { if (a) map[shareArtistaIds[i]] = a; });
+        setResolvedShareArtistas(map);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open, shareArtistaIds]);
 
   if (!lancamento) return null;
 
@@ -132,17 +178,14 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
   );
   const tipo = String(lancamento.tipo ?? "single").toLowerCase();
   const tipoInfo = TIPO_MAP[tipo] ?? { label: tipo.toUpperCase(), color: "bg-muted text-muted-foreground" };
-  const artista = artistas.find((a: any) => a.id === lancamento.artista_id);
   const capaUrl = (lancamento.capa_url as string | null | undefined) ?? textValue(assets["capa_url"]);
   const dataFormatada = formatReleaseDate(lancamento.data_lancamento);
   const idiomaRaw = lancamento.idioma ?? metadata["idioma"];
   const idioma = IDIOMAS[String(idiomaRaw ?? "")] ?? textValue(idiomaRaw);
 
-  const faixasCatalogo = Array.isArray(lancamento.fonograma_ids)
-    ? (lancamento.fonograma_ids as string[])
-        .map((id) => fonogramas.find((f: any) => f.id === id))
-        .filter(Boolean)
-    : [];
+  const faixasCatalogo = fonogramaIds
+    .map((id) => resolvedFonogramas[id])
+    .filter(Boolean);
   const faixas = metadataFaixas.length > 0 ? metadataFaixas : faixasCatalogo;
   const compositores = aggregateField(faixas, "compositores");
   const interpretes = aggregateField(faixas, "interpretes");
@@ -397,7 +440,7 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
                 {linkedShares.map((s) => {
                   const sr = s as Record<string, unknown>;
                   const nome =
-                    artistas.find((a) => a.id === s.artista_id)?.nome_artistico ??
+                    (s.artista_id ? resolvedShareArtistas[s.artista_id]?.nome_artistico : undefined) ??
                     textValue(sr["detentor"]) ??
                     textValue(sr["nome_musica"]) ??
                     "—";

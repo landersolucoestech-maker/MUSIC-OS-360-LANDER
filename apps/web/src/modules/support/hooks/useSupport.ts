@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTenant } from "@/app/providers/TenantContext";
 import { api } from "@/shared/lib/api-client";
+import { handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import type {
   SupportTicket, SupportMessage, ChatRoom, ChatMessage, SupportRequest,
   KnowledgeArticle,
@@ -26,12 +27,15 @@ function supportUnavailable(): void {
 
 /* ── Tickets (backend real) ── */
 
+// Referência estável — ver shared/hooks/useDataQuery.ts para o motivo.
+const EMPTY_TICKETS: SupportTicket[] = [];
+
 export function useTickets() {
   const { tenant } = useTenant();
   const tenantId   = tenant.id;
   const queryClient = useQueryClient();
 
-  const { data: tickets = [], isLoading } = useQuery<SupportTicket[]>({
+  const { data: tickets = EMPTY_TICKETS, isLoading } = useQuery<SupportTicket[]>({
     queryKey: ["support_tickets", tenantId],
     queryFn: async (): Promise<SupportTicket[]> =>
       api.get<SupportTicket[]>("/support-tickets?limit=200"),
@@ -50,9 +54,13 @@ export function useTickets() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, changes }: { id: string; changes: Partial<SupportTicket> }) =>
-      api.patch<SupportTicket>(`/support-tickets/${id}`, changes),
+    mutationFn: async ({ id, changes, expectedUpdatedAt }: { id: string; changes: Partial<SupportTicket>; expectedUpdatedAt?: string }) =>
+      api.patch<SupportTicket>(`/support-tickets/${id}`, { ...changes, expectedUpdatedAt }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["support_tickets", tenantId] }),
+    onError: (error: unknown) => {
+      if (handleConcurrencyConflict(error, "ticket")) return;
+      toast.error("Erro ao atualizar ticket. Tente novamente.");
+    },
   });
 
   const addTicket = useCallback(
@@ -64,8 +72,8 @@ export function useTickets() {
   );
 
   const updateTicket = useCallback(
-    (id: string, changes: Partial<SupportTicket>) => {
-      updateMutation.mutate({ id, changes });
+    (id: string, changes: Partial<SupportTicket>, expectedUpdatedAt?: string) => {
+      updateMutation.mutate({ id, changes, expectedUpdatedAt });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tenantId],

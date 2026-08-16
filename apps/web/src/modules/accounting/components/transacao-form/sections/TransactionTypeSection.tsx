@@ -1,5 +1,8 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Label } from "@/shared/ui/label";
+import { FieldError } from "@/shared/components/FormField";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import type { TransacaoFormData } from "@/modules/accounting/lib/transacao-constants";
 import type { FinancialRulesResult } from "@/modules/accounting/components/transacao-form/hooks/useFinancialRules";
 import type { ValidationErrors } from "@/modules/accounting/components/transacao-form/validation/financial-form-validation";
@@ -19,7 +22,6 @@ import {
 interface Artista { id: string; nome_artistico: string }
 interface Projeto { id: string; titulo: string }
 interface Evento { id: string; titulo: string; data_inicio?: string | null }
-interface Cliente { id: string; nome: string }
 
 interface TransactionTypeSectionProps {
   formData: TransacaoFormData;
@@ -28,10 +30,6 @@ interface TransactionTypeSectionProps {
   errors: ValidationErrors;
   disabled: boolean;
   updateField: (field: keyof TransacaoFormData, value: string) => void;
-  artistas: Artista[];
-  clientes: Cliente[];
-  projetos: Projeto[];
-  projetosFiltrados: Projeto[];
   eventosFiltrados: Evento[];
 }
 
@@ -42,10 +40,6 @@ export function TransactionTypeSection({
   errors,
   disabled,
   updateField,
-  artistas,
-  clientes,
-  projetos,
-  projetosFiltrados,
   eventosFiltrados,
 }: TransactionTypeSectionProps) {
   const transactionTypeOptions = useMemo(() => getTransactionTypes(categoryRules), [categoryRules]);
@@ -154,29 +148,39 @@ export function TransactionTypeSection({
           )}
 
           {selectedLink === "Artista" && (
-            <FormSelectField
-              label="Artista Vinculado"
-              value={formData.artistaVinculado}
-              onChange={(value) => updateField("artistaVinculado", value)}
-              options={artistas.map((artista) => ({ value: artista.id, label: artista.nome_artistico }))}
-              placeholder="Selecione o artista"
-              error={errors.artistaVinculado}
-              disabled={disabled}
-              required
-            />
+            <div className="space-y-2">
+              <Label className="text-sm">Artista Vinculado *</Label>
+              <AsyncEntityCombobox<Artista>
+                table="artistas"
+                getLabel={(a) => a.nome_artistico}
+                value={formData.artistaVinculado}
+                onChange={(id) => updateField("artistaVinculado", id)}
+                placeholder="Selecione o artista"
+                searchPlaceholder="Buscar artista…"
+                disabled={disabled}
+                invalid={Boolean(errors.artistaVinculado)}
+                data-testid="combobox-artista-vinculado"
+              />
+              <FieldError error={errors.artistaVinculado} />
+            </div>
           )}
 
           {selectedLink === "Projeto" && (
-            <FormSelectField
-              label="Projeto Vinculado"
-              value={formData.projetoVinculado}
-              onChange={(value) => updateField("projetoVinculado", value)}
-              options={projetos.map((projeto) => ({ value: projeto.id, label: projeto.titulo }))}
-              placeholder={projetos.length === 0 ? "Nenhum projeto encontrado" : "Selecione o projeto"}
-              error={errors.projetoVinculado}
-              disabled={disabled || projetos.length === 0}
-              required
-            />
+            <div className="space-y-2">
+              <Label className="text-sm">Projeto Vinculado *</Label>
+              <AsyncEntityCombobox<Projeto>
+                table="projetos"
+                getLabel={(p) => p.titulo}
+                value={formData.projetoVinculado}
+                onChange={(id) => updateField("projetoVinculado", id)}
+                placeholder="Selecione o projeto"
+                searchPlaceholder="Buscar projeto…"
+                disabled={disabled}
+                invalid={Boolean(errors.projetoVinculado)}
+                data-testid="combobox-projeto-vinculado"
+              />
+              <FieldError error={errors.projetoVinculado} />
+            </div>
           )}
 
           {selectedLink === "Contrato" && (
@@ -257,16 +261,24 @@ export function TransactionTypeSection({
           )}
 
           {selectedLink === "Projeto" && rules.exibirProjeto && formData.artistaVinculado && (
-            <FormSelectField
-              label={`Projeto / Música${rules.projetoObrigatorio ? "" : " (opcional)"}`}
-              value={formData.projetoVinculado}
-              onChange={(value) => updateField("projetoVinculado", value)}
-              options={projetosFiltrados.map((projeto) => ({ value: projeto.id, label: projeto.titulo }))}
-              placeholder={projetosFiltrados.length === 0 ? "Nenhum projeto encontrado" : "Selecione o projeto"}
-              error={errors.projetoVinculado}
-              disabled={disabled || projetosFiltrados.length === 0}
-              required={rules.projetoObrigatorio}
-            />
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Projeto / Música{rules.projetoObrigatorio ? "" : " (opcional)"}
+              </Label>
+              <AsyncEntityCombobox<Projeto>
+                table="projetos"
+                getLabel={(p) => p.titulo}
+                value={formData.projetoVinculado}
+                onChange={(id) => updateField("projetoVinculado", id)}
+                filters={{ artistId: formData.artistaVinculado }}
+                placeholder="Selecione o projeto"
+                searchPlaceholder="Buscar projeto…"
+                disabled={disabled}
+                invalid={Boolean(errors.projetoVinculado)}
+                data-testid="combobox-projeto-musica"
+              />
+              <FieldError error={errors.projetoVinculado} />
+            </div>
           )}
         </div>
       </CardContent>

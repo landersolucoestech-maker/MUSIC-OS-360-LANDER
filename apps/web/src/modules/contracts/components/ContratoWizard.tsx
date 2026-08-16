@@ -18,8 +18,8 @@ import {
 import { useTemplatesContratos } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import type { TemplateContrato, ContractVariable, WizardSignerRecord } from "@/modules/contracts/types/contracts.types";
 import type { ContratoWithRelations, ContratoInsert } from "@/modules/contracts/hooks/useContratos";
 import type { SigningPlatform } from "@/modules/contracts/types/contracts.types";
@@ -376,13 +376,11 @@ function StepTemplate({
 // ── Step 2 — Partes ────────────────────────────────────────────────────────
 
 function PartyCard({
-  role, party, onChange, clientes, artistas,
+  role, party, onChange,
 }: {
   role: string;
   party: PartyData;
   onChange: (p: PartyData) => void;
-  clientes: Array<Record<string, unknown>>;
-  artistas: Array<Record<string, unknown>>;
 }) {
   const set = useCallback(
     (patch: Partial<PartyData>) => onChange({ ...party, ...patch }),
@@ -430,72 +428,56 @@ function PartyCard({
       {party.origin === "crm" && (
         <div className="space-y-1">
           <Label className="text-xs">Selecionar do CRM</Label>
-          <Select
-            value={party.sourceId || ""}
-            onValueChange={(id) => {
-              const c = clientes.find((x) => x.id === id);
+          <AsyncEntityCombobox<Record<string, unknown> & { id: string }>
+            table="clientes"
+            value={party.sourceId || null}
+            getLabel={(c) => String(c.nome || "")}
+            placeholder="Selecionar contato…"
+            searchPlaceholder="Buscar por nome…"
+            emptyText="Nenhum contato encontrado"
+            data-testid="combobox-crm-contato"
+            onChange={(id, c) => {
               if (!c) return;
+              const isPF = c.tipo_pessoa === "pessoa_fisica";
+              const doc = String(c.document || "");
               set({
                 sourceId: id,
                 nome: String(c.nome || ""),
-                cpf: String(c.cpf || ""),
-                cnpj: String(c.cnpj || ""),
+                cpf: isPF ? doc : "",
+                cnpj: !isPF ? doc : "",
                 email: String(c.email || ""),
-                telefone: String(c.telefone || ""),
-                endereco: String(c.endereco || ""),
+                telefone: String(c.phone || ""),
+                endereco: String(c.address || c.endereco_completo || ""),
                 razao_social: String(c.razao_social || c.nome || ""),
-                representante_legal: String(c.responsavel || ""),
+                representante_legal: String(c.responsavel_nome || ""),
               });
             }}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Selecionar contato…" />
-            </SelectTrigger>
-            <SelectContent>
-              {clientes.length === 0 && (
-                <div className="px-2 py-1 text-xs text-muted-foreground">Nenhum contato no CRM</div>
-              )}
-              {clientes.map((c) => (
-                <SelectItem key={String(c.id)} value={String(c.id)}>
-                  {String(c.nome || "")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
       )}
 
       {party.origin === "artistas" && (
         <div className="space-y-1">
           <Label className="text-xs">Selecionar Artista</Label>
-          <Select
-            value={party.sourceId || ""}
-            onValueChange={(id) => {
-              const a = artistas.find((x) => x.id === id);
+          <AsyncEntityCombobox<Record<string, unknown> & { id: string }>
+            table="artistas"
+            value={party.sourceId || null}
+            getLabel={(a) => String(a.nome_artistico || a.nome_civil || "")}
+            placeholder="Selecionar artista…"
+            searchPlaceholder="Buscar por nome…"
+            emptyText="Nenhum artista encontrado"
+            data-testid="combobox-artista"
+            onChange={(id, a) => {
               if (!a) return;
               set({
                 sourceId: id,
                 nome_artistico: String(a.nome_artistico || ""),
-                nome_civil: String(a.nome_real || a.nome_civil || ""),
+                nome_civil: String(a.nome_civil || ""),
                 cpf: String(a.cpf || ""),
                 email: String(a.email || ""),
               });
             }}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Selecionar artista…" />
-            </SelectTrigger>
-            <SelectContent>
-              {artistas.length === 0 && (
-                <div className="px-2 py-1 text-xs text-muted-foreground">Nenhum artista cadastrado</div>
-              )}
-              {artistas.map((a) => (
-                <SelectItem key={String(a.id)} value={String(a.id)}>
-                  {String(a.nome_artistico || a.nome_real || a.id)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
       )}
 
@@ -938,8 +920,6 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
   const [isSaving, setIsSaving] = useState(false);
 
   const { addContrato, updateContrato } = useContratos();
-  const { clientes } = useClientes();
-  const { artistas } = useArtistas();
   const { categories } = useCategoryRegistry();
   const { templates } = useTemplatesContratos();
 
@@ -1138,9 +1118,22 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
       };
 
       if (isEdit && contrato) {
-        updateContrato.mutate({ id: contrato.id, ...payload });
+        try {
+          await updateContrato.mutateAsync({
+            id: contrato.id,
+            ...payload,
+            expectedUpdatedAt: getExpectedUpdatedAt(contrato),
+          });
+        } catch (err) {
+          if (handleConcurrencyConflict(err, "contrato")) return;
+          return;
+        }
       } else {
-        addContrato.mutate(payload);
+        try {
+          await addContrato.mutateAsync(payload);
+        } catch {
+          return;
+        }
       }
 
       if (sendForSignature) {
@@ -1183,8 +1176,6 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
                   role={role}
                   party={state.parties[role] || EMPTY_PARTY}
                   onChange={(p) => updateParty(role, p)}
-                  clientes={clientes as Array<Record<string, unknown>>}
-                  artistas={artistas as Array<Record<string, unknown>>}
                 />
               ))
             )}
@@ -1263,7 +1254,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
       default:
         return null;
     }
-  }, [step, state, handleSelectTemplate, categories, clientes, artistas, updateParty, updateVariable, updateSigner, removeSigner, addSigner, updateMeta, selectedTemplate]);
+  }, [step, state, handleSelectTemplate, categories, updateParty, updateVariable, updateSigner, removeSigner, addSigner, updateMeta, selectedTemplate]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 

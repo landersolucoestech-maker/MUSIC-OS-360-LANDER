@@ -53,6 +53,7 @@ import {
   useRemoveCampaign,
   useUpdateCampaign,
 } from "../hooks/useMarketingCampaigns";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 import { CampaignBuilderModal } from "../components/campaign-builder/CampaignBuilderModal";
 import {
   CAMPAIGN_STATUS_LABEL,
@@ -209,7 +210,7 @@ export default function Campanhas() {
   const handleBuilderSubmit = (input: Parameters<typeof createCampaign.mutate>[0]) => {
     if (builderCampaign) {
       updateCampaign.mutate(
-        { id: builderCampaign.id, patch: input },
+        { id: builderCampaign.id, patch: input, expectedUpdatedAt: getExpectedUpdatedAt(builderCampaign) },
         { onSuccess: () => setBuilderOpen(false) },
       );
       return;
