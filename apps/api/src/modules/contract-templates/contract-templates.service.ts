@@ -2,6 +2,7 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ContractTemplateEntity } from '../../database/entities';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateContractTemplateDto } from './dto/create-contract-template.dto';
 import type { UpdateContractTemplateDto } from './dto/update-contract-template.dto';
 
@@ -47,8 +48,16 @@ export class ContractTemplatesService {
 
   async update(tenantId: string, id: string, dto: UpdateContractTemplateDto): Promise<ContractTemplateEntity> {
     await this.findById(tenantId, id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date() } as any);
+    const updates: Record<string, unknown> = { ...(dto as any), updated_at: new Date() };
+    const expectedUpdatedAt = updates['expectedUpdatedAt'] as string | undefined;
+    delete updates['expectedUpdatedAt'];
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      updates as any,
+      expectedUpdatedAt,
+      'Este template foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

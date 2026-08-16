@@ -9,6 +9,7 @@
  * edição de template retornava 400 (forbidNonWhitelisted).
  */
 import 'reflect-metadata';
+import { ConflictException } from '@nestjs/common';
 import { ContractTemplatesService } from './contract-templates.service';
 import type { CreateContractTemplateDto } from './dto/create-contract-template.dto';
 import type { UpdateContractTemplateDto } from './dto/update-contract-template.dto';
@@ -98,5 +99,78 @@ describe('ContractTemplatesService — contrato real do formulário (Task U)', (
     expect(row['content']).toBeUndefined();
     expect(row['variables']).toBeUndefined();
     expect(row['metadata']).toBeUndefined();
+  });
+});
+
+/**
+ * Task W — CAS/expectedUpdatedAt em Contract Templates (item 1 do DEPOIS):
+ * update() antes sobrescrevia incondicionalmente. Mesmo padrão de
+ * shares/finance-category-rules — sem expectedUpdatedAt, comportamento
+ * idêntico ao anterior; com ele desatualizado, 409 em vez de perder a edição
+ * concorrente silenciosamente.
+ */
+describe('ContractTemplatesService — concorrência otimista (Task W)', () => {
+  const NOW = new Date('2026-08-16T12:00:00.000Z');
+
+  function makeCasRepo(updateResult: { affected: number } = { affected: 1 }) {
+    return {
+      update: jest.fn(async () => updateResult),
+      createQueryBuilder: jest.fn(() => {
+        const qb: Record<string, jest.Mock> = {};
+        const chain = () => qb;
+        qb['where'] = jest.fn(chain);
+        qb['andWhere'] = jest.fn(chain);
+        qb['getOne'] = jest.fn(async () => ({ id: 'template-1', tenant_id: 'tenant-1', updated_at: NOW }));
+        return qb;
+      }),
+    };
+  }
+
+  function makeCasService(updateResult?: { affected: number }) {
+    const repo = makeCasRepo(updateResult);
+    const ds = { getRepository: jest.fn(() => repo) } as never;
+    const svc = new ContractTemplatesService(ds);
+    return { svc, repo };
+  }
+
+  it('sem expectedUpdatedAt: aplica update incondicional (compatibilidade retroativa)', async () => {
+    const { svc, repo } = makeCasService();
+    await svc.update('tenant-1', 'template-1', { nome: 'Novo nome' } as unknown as UpdateContractTemplateDto);
+
+    const [criteria] = (repo.update as jest.Mock).mock.calls[0];
+    expect(criteria).toEqual({ id: 'template-1', tenant_id: 'tenant-1' });
+  });
+
+  it('com expectedUpdatedAt correto: inclui updated_at no critério do UPDATE', async () => {
+    const { svc, repo } = makeCasService();
+    await svc.update('tenant-1', 'template-1', {
+      nome: 'Novo nome',
+      expectedUpdatedAt: NOW.toISOString(),
+    } as unknown as UpdateContractTemplateDto);
+
+    const [criteria] = (repo.update as jest.Mock).mock.calls[0];
+    expect(criteria).toEqual({ id: 'template-1', tenant_id: 'tenant-1', updated_at: NOW });
+  });
+
+  it('com expectedUpdatedAt desatualizado (0 linhas afetadas): lança ConflictException, não sobrescreve', async () => {
+    const { svc } = makeCasService({ affected: 0 });
+
+    await expect(
+      svc.update('tenant-1', 'template-1', {
+        nome: 'Edição concorrente',
+        expectedUpdatedAt: new Date('2026-08-16T11:00:00.000Z').toISOString(),
+      } as unknown as UpdateContractTemplateDto),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('expectedUpdatedAt nunca é persistido como coluna', async () => {
+    const { svc, repo } = makeCasService();
+    await svc.update('tenant-1', 'template-1', {
+      nome: 'X',
+      expectedUpdatedAt: NOW.toISOString(),
+    } as unknown as UpdateContractTemplateDto);
+
+    const [, row] = (repo.update as jest.Mock).mock.calls[0];
+    expect(row['expectedUpdatedAt']).toBeUndefined();
   });
 });

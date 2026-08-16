@@ -37,6 +37,7 @@ import type {
 import { parseContractText } from "@/modules/contracts/services/semantic-parser.service";
 import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
 import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -509,6 +510,7 @@ export function ContractImportWorkspace({
             variables_manifest: JSON.stringify(manifest),
             header_image: headerImage ?? null,
             footer_image: footerImage ?? null,
+            expectedUpdatedAt: getExpectedUpdatedAt(template),
           }),
         );
       } else {

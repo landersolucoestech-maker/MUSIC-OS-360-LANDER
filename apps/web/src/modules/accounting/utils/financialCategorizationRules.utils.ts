@@ -10,12 +10,6 @@ export interface FinanceRuleValidationResult {
   errors: string[];
 }
 
-export interface FinanceRuleMatchInput {
-  description?: string;
-  entityText?: string;
-  transactionType?: FinanceRuleTransactionType;
-}
-
 const TRANSACTION_TYPES: FinanceRuleTransactionType[] = ["RECEITA", "DESPESA"];
 const RULE_ORIGINS: FinanceCategoryRuleOrigin[] = ["SISTEMA", "PERSONALIZADA"];
 
@@ -63,16 +57,4 @@ export function validateRule(
   }
 
   return { valid: errors.length === 0, errors };
-}
-
-export function matchTransactionCategory(
-  rules: FinanceCategoryRule[],
-  transaction: FinanceRuleMatchInput,
-): FinanceCategoryRule | null {
-  const haystack = normalizeKeyword(`${transaction.description ?? ""} ${transaction.entityText ?? ""}`);
-  const ordered = rules
-    .filter((rule) => rule.active && (!transaction.transactionType || rule.transactionType === transaction.transactionType))
-    .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
-
-  return ordered.find((rule) => rule.keywords.some((keyword) => haystack.includes(normalizeKeyword(keyword)))) ?? null;
 }

@@ -5,6 +5,7 @@ import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
+import type { JwtAuth }  from '../../core/guards/auth.guard';
 import { ContractTemplatesService }    from './contract-templates.service';
 import { CreateContractTemplateDto }   from './dto/create-contract-template.dto';
 import { UpdateContractTemplateDto }   from './dto/update-contract-template.dto';
@@ -37,8 +38,8 @@ export class ContractTemplatesController {
   @RequirePermission('contract_template:create')
   @Audit('contract_template.created')
   @ApiOperation({ summary: 'Criar template' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateContractTemplateDto) {
-    return this.svc.create(t.id, u?.sub ?? '', dto);
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Body() dto: CreateContractTemplateDto) {
+    return this.svc.create(t.id, u?.userId ?? '', dto);
   }
 
   @Patch(':id')
