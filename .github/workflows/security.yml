@@ -13,6 +13,7 @@ on:
 permissions:
   contents: read
   security-events: write # required for CodeQL / Sarif upload
+  actions: read # required by CodeQL Action to read workflow-run status
 
 env:
   NODE_VERSION: "20"
