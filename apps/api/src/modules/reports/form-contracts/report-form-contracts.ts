@@ -614,11 +614,18 @@ const LEADS_CONTRACT: ReportFormContract = {
     meta('endereco', 'payload_servico'), meta('tipo_lead', 'payload_servico'),
     meta('servico', 'payload_servico'), meta('nome_artista_servico', 'payload_servico'),
     meta('descricao', 'payload_servico'), meta('data_entrada', 'payload_servico'),
-    meta('origemLead', 'dados_internos_crm'), meta('campanha_marketing', 'dados_internos_crm'),
+    // origemLead é coluna própria (origem_lead), não uma chave dentro de
+    // dados_internos_crm — declará-la como meta() fazia o SELECT trazer o
+    // jsonb inteiro sob esse alias (descartado na exportação por não ser
+    // escalar) em vez do valor real da coluna.
+    col('origem_lead'), meta('campanha_marketing', 'dados_internos_crm'),
     meta('responsavel', 'dados_internos_crm'), meta('prioridade', 'dados_internos_crm'),
     meta('proximoFollowUp', 'dados_internos_crm'), meta('valorEstimado', 'dados_internos_crm'),
     meta('temperatura', 'dados_internos_crm'), meta('statusLead', 'dados_internos_crm'),
     ro('uploads'),
+    // tags é coluna própria (text[]) do lead, sem input no formulário
+    // (gerida fora do DTO) — somente exportação.
+    ro('tags'),
   ],
   excludedFormFields: {
     phone: 'campo legado do DTO sem input no formulário real (telefone/WhatsApp usa o campo whatsapp)',
