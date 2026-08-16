@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { MonthPickerField } from "@/shared/ui/month-picker-field";
 import { toast } from "sonner";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -10,7 +11,9 @@ import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { TablePagination } from "@/shared/ui/table-pagination";
-import { usePagination } from "@/shared/hooks/usePagination";
+import { useDebounce } from "@/shared/hooks/useDebounce";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import { Checkbox } from "@/shared/ui/checkbox";
 import {
   Select,
@@ -58,6 +61,7 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { formatCurrency, formatDate, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import {
   useFuncionarios,
@@ -72,6 +76,10 @@ import {
   STATUS_AUSENCIA,
 } from "@/modules/rh/hooks/useFeriasAusencias";
 import type { FeriasAusencia } from "@/modules/rh/hooks/useFeriasAusencias";
+import {
+  useFuncionariosPaginated, useFuncionariosStats,
+  useFolhaPaginated, useFeriasPaginated,
+} from "@/modules/rh/hooks/useRHPaginated";
 import { useUsuarios } from "@/modules/settings/hooks/useUsuarios";
 import {
   useDocumentosFuncionario,
@@ -102,20 +110,22 @@ const STATUS_VARIANT_AUSENCIA: Record<string, BadgeVariant> = {
   "concluído": "neutral",
 };
 
+/** Resolve o nome do funcionário direto por ID (GET /hr/employees/:id) — nunca
+ * escaneando a lista capada de useFuncionarios() (Task J). */
+function FuncionarioNomeCell({ id }: { id: string | null }) {
+  const { entity, isLoading } = useEntityById<Funcionario>("funcionarios", id);
+  if (!id) return <>N/A</>;
+  if (isLoading) return <>…</>;
+  return <>{entity?.nome || "N/A"}</>;
+}
+
 export default function RH() {
   const {
-    funcionarios = [],
     isLoading: loadingFuncionarios,
-    error: errorFuncionarios,
     deleteFuncionario,
-    refetch: refetchFuncionarios,
   } = useFuncionarios();
 
-  const {
-    folhaPagamento = [],
-    isLoading: loadingFolha,
-    deleteFolhaPagamento,
-  } = useFolhaPagamento();
+  const { deleteFolhaPagamento } = useFolhaPagamento();
 
   const { usuarios = [] } = useUsuarios();
   const getUsuarioNome = (userId: string | null) => {
@@ -125,8 +135,6 @@ export default function RH() {
   };
 
   const {
-    feriasAusencias,
-    isLoading: loadingFerias,
     updateFeriasAusencia,
     deleteFeriasAusencia,
   } = useFeriasAusencias();
@@ -155,11 +163,12 @@ export default function RH() {
     }
   };
   const toggleSelectFunc = (id: string) => setSelectedFuncIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const handleBulkDeleteFuncs = () => {
+  const handleBulkDeleteFuncs = async () => {
     if (selectedFuncIds.length === 0) return;
-    selectedFuncIds.forEach(id => deleteFuncionario.mutate(id));
-    toast.success(`${selectedFuncIds.length} funcionário(s) excluído(s) com sucesso`);
+    const ids = selectedFuncIds;
     setSelectedFuncIds([]);
+    const result = await runBulkAction(ids, (id) => deleteFuncionario.mutateAsync(id));
+    reportBulkResult(result, "excluído", "funcionário");
   };
 
   const [folhaSearch, setFolhaSearch] = useState("");
@@ -206,76 +215,66 @@ export default function RH() {
     deleteDocumento,
   } = useDocumentosFuncionario(docFuncionarioId || undefined);
 
-  const kpiCounts = useMemo(() => {
-    const counts = {
-      total: funcionarios.length,
-      ativos: 0,
-      ferias: 0,
-      afastados: 0,
-    };
-    funcionarios.forEach((f) => {
-      if (f.status === "ativo") counts.ativos++;
-      else if (f.status === "férias") counts.ferias++;
-      else if (f.status === "afastado") counts.afastados++;
-    });
-    return counts;
-  }, [funcionarios]);
-
-  const filteredFuncionarios = useMemo(() => {
-    return funcionarios.filter((f) => {
-      const matchesSearch =
-        funcSearch === "" ||
-        f.nome_completo?.toLowerCase().includes(funcSearch.toLowerCase()) ||
-        f.email?.toLowerCase().includes(funcSearch.toLowerCase()) ||
-        f.cargo?.toLowerCase().includes(funcSearch.toLowerCase()) ||
-        f.cpf?.includes(funcSearch);
-      const matchesStatus =
-        funcStatusFilter === "all" || f.status === funcStatusFilter;
-      const matchesSetor =
-        funcSetorFilter === "all" || f.setor === funcSetorFilter;
-      return matchesSearch && matchesStatus && matchesSetor;
-    });
-  }, [funcionarios, funcSearch, funcStatusFilter, funcSetorFilter]);
-
-  const filteredFolha = useMemo(() => {
-    return folhaPagamento.filter((fp) => {
-      const func = funcionarios.find((f) => f.id === fp.funcionario_id);
-      const funcName = func?.nome_completo || "";
-      const matchesSearch =
-        folhaSearch === "" ||
-        funcName.toLowerCase().includes(folhaSearch.toLowerCase()) ||
-        fp.mes_referencia?.includes(folhaSearch);
-      const matchesMes =
-        !folhaMesFilter || fp.mes_referencia === folhaMesFilter;
-      const matchesStatus =
-        folhaStatusFilter === "all" || fp.status === folhaStatusFilter;
-      return matchesSearch && matchesMes && matchesStatus;
-    });
-  }, [folhaPagamento, funcionarios, folhaSearch, folhaMesFilter, folhaStatusFilter]);
-
-  const filteredFerias = useMemo(() => {
-    return feriasAusencias.filter((fa) => {
-      const func = funcionarios.find((f) => f.id === fa.funcionario_id);
-      const funcName = func?.nome_completo || "";
-      const matchesSearch =
-        feriasSearch === "" ||
-        funcName.toLowerCase().includes(feriasSearch.toLowerCase()) ||
-        fa.tipo?.toLowerCase().includes(feriasSearch.toLowerCase());
-      const matchesStatus =
-        feriasStatusFilter === "all" || fa.status === feriasStatusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [feriasAusencias, funcionarios, feriasSearch, feriasStatusFilter]);
-
-  const funcionariosPg = usePagination(filteredFuncionarios, 10);
-  const folhaPg = usePagination(filteredFolha, 10);
-  const feriasPg = usePagination(filteredFerias, 10);
-
-  const getFuncionarioNome = (id: string | null) => {
-    if (!id) return "N/A";
-    const func = funcionarios.find((f) => f.id === id);
-    return func?.nome_completo || "N/A";
+  // KPIs — agregação exata do tenant inteiro (GET /hr/employees/stats),
+  // nunca calculada só sobre a página carregada (Task H).
+  const { stats: funcionariosStats } = useFuncionariosStats();
+  const kpiCounts = {
+    total: funcionariosStats.total,
+    ativos: funcionariosStats.byGroup["ativo"] ?? 0,
+    ferias: funcionariosStats.byGroup["férias"] ?? 0,
+    afastados: funcionariosStats.byGroup["afastado"] ?? 0,
   };
+
+  const debouncedFuncSearch = useDebounce(funcSearch, 300);
+  const debouncedFolhaSearch = useDebounce(folhaSearch, 300);
+  const debouncedFeriasSearch = useDebounce(feriasSearch, 300);
+
+  const [funcPage, setFuncPage] = useState(0);
+  const [funcPageSize, setFuncPageSize] = useState(10);
+  const [folhaPage, setFolhaPage] = useState(0);
+  const [folhaPageSize, setFolhaPageSize] = useState(10);
+  const [feriasPage, setFeriasPage] = useState(0);
+  const [feriasPageSize, setFeriasPageSize] = useState(10);
+
+  useEffect(() => { setFuncPage(0); }, [debouncedFuncSearch, funcStatusFilter, funcSetorFilter]);
+  useEffect(() => { setFolhaPage(0); }, [debouncedFolhaSearch, folhaMesFilter, folhaStatusFilter]);
+  useEffect(() => { setFeriasPage(0); }, [debouncedFeriasSearch, feriasStatusFilter]);
+
+  const {
+    funcionarios: funcPageItems, total: funcTotal, isLoading: isLoadingFuncPage,
+    error: funcPageError, refetch: refetchFuncPage,
+  } = useFuncionariosPaginated({
+    page: funcPage, pageSize: funcPageSize, search: debouncedFuncSearch || undefined,
+    status: funcStatusFilter !== "all" ? funcStatusFilter : undefined,
+    setor: funcSetorFilter !== "all" ? funcSetorFilter : undefined,
+    enabled: activeTab === "funcionarios",
+  });
+  const filteredFuncionarios = funcPageItems;
+  const funcionariosPg = { pageItems: funcPageItems, total: funcTotal, page: funcPage, pageSize: funcPageSize, setPage: setFuncPage, setPageSize: setFuncPageSize };
+
+  const {
+    folhaPagamento: folhaPageItems, total: folhaTotal, isLoading: isLoadingFolhaPage,
+    error: folhaPageError, refetch: refetchFolhaPage,
+  } = useFolhaPaginated({
+    page: folhaPage, pageSize: folhaPageSize, search: debouncedFolhaSearch || undefined,
+    competencia: folhaMesFilter || undefined,
+    status: folhaStatusFilter !== "all" ? folhaStatusFilter : undefined,
+    enabled: activeTab === "folha",
+  });
+  const filteredFolha = folhaPageItems;
+  const folhaPg = { pageItems: folhaPageItems, total: folhaTotal, page: folhaPage, pageSize: folhaPageSize, setPage: setFolhaPage, setPageSize: setFolhaPageSize };
+
+  const {
+    feriasAusencias: feriasPageItems, total: feriasTotal, isLoading: isLoadingFeriasPage,
+    error: feriasPageError, refetch: refetchFeriasPage,
+  } = useFeriasPaginated({
+    page: feriasPage, pageSize: feriasPageSize, search: debouncedFeriasSearch || undefined,
+    status: feriasStatusFilter !== "all" ? feriasStatusFilter : undefined,
+    enabled: activeTab === "ferias",
+  });
+  const filteredFerias = feriasPageItems;
+  const feriasPg = { pageItems: feriasPageItems, total: feriasTotal, page: feriasPage, pageSize: feriasPageSize, setPage: setFeriasPage, setPageSize: setFeriasPageSize };
+
 
   const handleDeleteFuncionario = () => {
     if (funcDeleteModal.funcionario) {
@@ -301,10 +300,12 @@ export default function RH() {
     setSelectedFolhaIds((current) => allSelected ? current.filter((id) => !ids.includes(id)) : Array.from(new Set([...current, ...ids])));
   };
 
-  const handleBulkDeleteFolha = () => {
-    folhaBulkDeleteModal.ids.forEach((id) => deleteFolhaPagamento.mutate(id));
-    setSelectedFolhaIds((current) => current.filter((id) => !folhaBulkDeleteModal.ids.includes(id)));
+  const handleBulkDeleteFolha = async () => {
+    const ids = folhaBulkDeleteModal.ids;
+    setSelectedFolhaIds((current) => current.filter((id) => !ids.includes(id)));
     setFolhaBulkDeleteModal({ open: false, ids: [] });
+    const result = await runBulkAction(ids, (id) => deleteFolhaPagamento.mutateAsync(id));
+    reportBulkResult(result, "excluído", "registro de folha");
   };
 
   const handleDeleteFerias = () => {
@@ -324,10 +325,12 @@ export default function RH() {
     setSelectedFeriasIds((current) => allSelected ? current.filter((id) => !ids.includes(id)) : Array.from(new Set([...current, ...ids])));
   };
 
-  const handleBulkDeleteFerias = () => {
-    feriasBulkDeleteModal.ids.forEach((id) => deleteFeriasAusencia.mutate(id));
-    setSelectedFeriasIds((current) => current.filter((id) => !feriasBulkDeleteModal.ids.includes(id)));
+  const handleBulkDeleteFerias = async () => {
+    const ids = feriasBulkDeleteModal.ids;
+    setSelectedFeriasIds((current) => current.filter((id) => !ids.includes(id)));
     setFeriasBulkDeleteModal({ open: false, ids: [] });
+    const result = await runBulkAction(ids, (id) => deleteFeriasAusencia.mutateAsync(id));
+    reportBulkResult(result, "excluído", "registro de férias");
   };
 
   const handleApproveReject = (ausencia: FeriasAusencia, newStatus: string) => {
@@ -366,18 +369,16 @@ export default function RH() {
     setDocTipoDocumento("");
   };
 
-  if (loadingFuncionarios) {
-    return (
+  return (
+    <FeatureGate feature="moduleRh" featureName="Recursos Humanos">
+    <>
+    {loadingFuncionarios || isLoadingFuncPage ? (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </MainLayout>
-    );
-  }
-
-  return (
-    <FeatureGate feature="moduleRh" featureName="Recursos Humanos">
+    ) : (
     <MainLayout
       title="Recursos Humanos"
       description="Gestão de funcionários, folha de pagamento, férias e documentos"
@@ -408,7 +409,7 @@ export default function RH() {
       }
     >
       <div className="space-y-6">
-        {errorFuncionarios && (
+        {(funcPageError || folhaPageError || feriasPageError) && (
           <div
             className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3"
             data-testid="rh-load-warning"
@@ -416,7 +417,13 @@ export default function RH() {
             <p className="text-sm text-muted-foreground">
               Não foi possível carregar os dados de RH agora. Exibindo a página vazia.
             </p>
-            <Button variant="outline" size="sm" onClick={() => refetchFuncionarios()} className="gap-2" data-testid="button-retry">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { refetchFuncPage(); refetchFolhaPage(); refetchFeriasPage(); }}
+              className="gap-2"
+              data-testid="button-retry"
+            >
               <Loader2 className="h-4 w-4" />
               Tentar novamente
             </Button>
@@ -594,22 +601,26 @@ export default function RH() {
 
           <TabsContent value="funcionarios" className="mt-6 space-y-6">
             {filteredFuncionarios.length === 0 ? (
-              <EmptyState
-                icon={Users}
-                title="Nenhum funcionário encontrado"
-                description="Adicione seu primeiro funcionário para começar a gerenciar a equipe."
-                action={{
-                  label: "Novo Funcionário",
-                  onClick: () => setFuncFormModal({ open: true, mode: "create" }),
-                }}
-              />
+              funcPageError && funcTotal === 0 ? (
+                <UnavailableState onRetry={() => refetchFuncPage()} />
+              ) : (
+                <EmptyState
+                  icon={Users}
+                  title="Nenhum funcionário encontrado"
+                  description="Adicione seu primeiro funcionário para começar a gerenciar a equipe."
+                  action={{
+                    label: "Novo Funcionário",
+                    onClick: () => setFuncFormModal({ open: true, mode: "create" }),
+                  }}
+                />
+              )
             ) : (
               <>
               <Card>
               <CardContent className="pt-0">
               <ListSectionHeader
                 title="Lista de Funcionários"
-                count={filteredFuncionarios.length}
+                count={funcTotal}
                 description="Acompanhe funcionários, cargos, setores, vínculo, salário, status e usuário associado."
                 action={
                   <div className="flex flex-wrap items-center justify-end gap-3">
@@ -653,19 +664,19 @@ export default function RH() {
                           checked={selectedFuncIds.includes(f.id)}
                           onCheckedChange={() => toggleSelectFunc(f.id)}
                           data-testid={`checkbox-funcionario-${f.id}`}
-                          aria-label={`Selecionar ${f.nome_completo}`}
+                          aria-label={`Selecionar ${f.nome}`}
                         />
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{f.nome_completo}</p>
+                          <p className="font-medium">{f.nome}</p>
                           {f.email && <p className="text-xs text-muted-foreground">{f.email}</p>}
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{f.cargo || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{f.setor || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{f.departamento || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{f.tipo_contrato || "—"}</TableCell>
-                      <TableCell className={`text-right ${getMonetarySemanticClass("neutral")}`}>{f.salario_base ? formatCurrency(Number(f.salario_base)) : "—"}</TableCell>
+                      <TableCell className={`text-right ${getMonetarySemanticClass("neutral")}`}>{f.salario ? formatCurrency(Number(f.salario)) : "—"}</TableCell>
                       <TableCell>
                         <Badge variant={STATUS_VARIANT_FUNCIONARIO[f.status || "ativo"] || "neutral"}>
                           {(f.status || "ativo").charAt(0).toUpperCase() + (f.status || "ativo").slice(1)}
@@ -713,27 +724,31 @@ export default function RH() {
           </TabsContent>
 
           <TabsContent value="folha" className="mt-6 space-y-6">
-            {loadingFolha ? (
+            {isLoadingFolhaPage ? (
               <div className="flex items-center justify-center h-32">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : filteredFolha.length === 0 ? (
-              <EmptyState
-                icon={DollarSign}
-                title="Nenhum registro de pagamento"
-                description="Adicione registros de folha de pagamento para controlar os salários."
-                action={{
-                  label: "Novo Registro",
-                  onClick: () => setFolhaFormModal({ open: true, mode: "create" }),
-                }}
-              />
+              folhaPageError && folhaTotal === 0 ? (
+                <UnavailableState onRetry={() => refetchFolhaPage()} />
+              ) : (
+                <EmptyState
+                  icon={DollarSign}
+                  title="Nenhum registro de pagamento"
+                  description="Adicione registros de folha de pagamento para controlar os salários."
+                  action={{
+                    label: "Novo Registro",
+                    onClick: () => setFolhaFormModal({ open: true, mode: "create" }),
+                  }}
+                />
+              )
             ) : (
               <>
               <Card>
               <CardContent className="pt-0">
               <ListSectionHeader
                 title="Folha de Pagamento"
-                count={filteredFolha.length}
+                count={folhaTotal}
                 action={
                   <div className="flex flex-wrap items-center justify-end gap-3">
                     {selectedFolhaIds.length > 0 && (
@@ -788,7 +803,7 @@ export default function RH() {
                           data-testid={`checkbox-folha-${fp.id}`}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{getFuncionarioNome(fp.funcionario_id ?? null)}</TableCell>
+                      <TableCell className="font-medium"><FuncionarioNomeCell id={fp.funcionario_id ?? null} /></TableCell>
                       <TableCell className="text-muted-foreground">{fp.mes_referencia || "—"}</TableCell>
                       <TableCell className={`text-right ${getMonetarySemanticClass("neutral")}`}>{formatCurrency(Number(fp.salario_bruto) || 0)}</TableCell>
                       <TableCell className={`text-right ${getMonetarySemanticClass("negative")}`}>
@@ -845,27 +860,31 @@ export default function RH() {
           </TabsContent>
 
           <TabsContent value="ferias" className="mt-6 space-y-6">
-            {loadingFerias ? (
+            {isLoadingFeriasPage ? (
               <div className="flex items-center justify-center h-32">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : filteredFerias.length === 0 ? (
-              <EmptyState
-                icon={CalendarDays}
-                title="Nenhum registro de férias/ausência"
-                description="Registre férias e ausências dos funcionários aqui."
-                action={{
-                  label: "Nova Ausência",
-                  onClick: () => setFeriasFormModal({ open: true, mode: "create" }),
-                }}
-              />
+              feriasPageError && feriasTotal === 0 ? (
+                <UnavailableState onRetry={() => refetchFeriasPage()} />
+              ) : (
+                <EmptyState
+                  icon={CalendarDays}
+                  title="Nenhum registro de férias/ausência"
+                  description="Registre férias e ausências dos funcionários aqui."
+                  action={{
+                    label: "Nova Ausência",
+                    onClick: () => setFeriasFormModal({ open: true, mode: "create" }),
+                  }}
+                />
+              )
             ) : (
               <>
               <Card>
               <CardContent className="pt-0">
               <ListSectionHeader
                 title="Férias e Ausências"
-                count={filteredFerias.length}
+                count={feriasTotal}
                 action={
                   <div className="flex flex-wrap items-center justify-end gap-3">
                     {selectedFeriasIds.length > 0 && (
@@ -918,7 +937,7 @@ export default function RH() {
                           data-testid={`checkbox-ferias-${fa.id}`}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{getFuncionarioNome(fa.funcionario_id ?? null)}</TableCell>
+                      <TableCell className="font-medium"><FuncionarioNomeCell id={fa.funcionario_id ?? null} /></TableCell>
                       <TableCell className="text-muted-foreground">
                         {fa.tipo ? fa.tipo.charAt(0).toUpperCase() + fa.tipo.slice(1) : "—"}
                       </TableCell>
@@ -983,18 +1002,18 @@ export default function RH() {
           <TabsContent value="documentos" className="mt-6 space-y-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2 flex-1">
-                <Select value={docFuncionarioId} onValueChange={setDocFuncionarioId}>
-                  <SelectTrigger className="w-[250px]" data-testid="select-doc-funcionario">
-                    <SelectValue placeholder="Selecione um funcionário" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {funcionarios.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.nome_completo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="w-[250px]">
+                  <AsyncEntityCombobox<Funcionario>
+                    table="funcionarios"
+                    value={docFuncionarioId || null}
+                    onChange={(id) => setDocFuncionarioId(id || "")}
+                    getLabel={(f) => f.nome ?? ""}
+                    placeholder="Selecione um funcionário"
+                    searchPlaceholder="Buscar por nome…"
+                    emptyText="Nenhum funcionário encontrado"
+                    data-testid="select-doc-funcionario"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1114,7 +1133,12 @@ export default function RH() {
           </TabsContent>
         </Tabs>
       </div>
+    </MainLayout>
+    )}
 
+      {/* Fora do gate de isLoading de propósito — mesmo bug de /artistas
+          (Task C): FuncionarioFormModal chama useFuncionarios() de novo só
+          para as mutations, a mesma query de loadingFuncionarios acima. */}
       <FuncionarioFormModal
         open={funcFormModal.open && funcFormModal.mode !== "view"}
         onOpenChange={(open) => setFuncFormModal({ ...funcFormModal, open })}
@@ -1156,7 +1180,7 @@ export default function RH() {
         onOpenChange={(open) => setFuncDeleteModal({ ...funcDeleteModal, open })}
         onConfirm={handleDeleteFuncionario}
         title="Excluir Funcionário"
-        description={`Tem certeza que deseja excluir "${funcDeleteModal.funcionario?.nome_completo}"? Esta ação não pode ser desfeita.`}
+        description={`Tem certeza que deseja excluir "${funcDeleteModal.funcionario?.nome}"? Esta ação não pode ser desfeita.`}
       />
 
       <DeleteConfirmModal
@@ -1198,7 +1222,7 @@ export default function RH() {
         title="Excluir Documento"
         description={`Tem certeza que deseja excluir o documento "${docDeleteModal.documento?.nome_arquivo}"? Esta ação não pode ser desfeita.`}
       />
-    </MainLayout>
+    </>
     </FeatureGate>
   );
 }

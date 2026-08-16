@@ -60,11 +60,16 @@ export class CreateAudiovisualProjectDto {
   @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
 }
 
-export class UpdateAudiovisualProjectDto extends PartialType(CreateAudiovisualProjectDto) {}
+export class UpdateAudiovisualProjectDto extends PartialType(CreateAudiovisualProjectDto) {
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class TransitionProjectStatusDto {
   @ApiProperty({ enum: PROJECT_STATUSES }) @IsIn(PROJECT_STATUSES) status!: typeof PROJECT_STATUSES[number];
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) reason?: string;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryAudiovisualProjectDto extends PaginationDto {
@@ -116,6 +121,8 @@ export class UpsertBriefingDto {
   @ApiPropertyOptional() @IsOptional() @IsString() manager_notes?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() technical_notes?: string;
   @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 // ── Deliverables ──────────────────────────────────────────────────────────────
@@ -136,6 +143,8 @@ export class UpdateDeliverableDto extends PartialType(CreateDeliverableDto) {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() approved?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() published?: boolean;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryDeliverableDto extends PaginationDto {
@@ -152,6 +161,8 @@ export class RequestApprovalDto {
 export class ApprovalDecisionDto {
   @ApiProperty({ enum: APPROVAL_STATUSES }) @IsIn(APPROVAL_STATUSES) status!: typeof APPROVAL_STATUSES[number];
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(4000) comments?: string;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryApprovalDto extends PaginationDto {

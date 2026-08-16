@@ -133,6 +133,12 @@ export class UpdateMarketingAssetDto extends PartialType(CreateMarketingAssetDto
   @IsOptional()
   @IsString()
   changeNotes?: string | null;
+
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  expectedUpdatedAt?: string;
 }
 
 export class QueryMarketingAssetDto extends PaginationDto {

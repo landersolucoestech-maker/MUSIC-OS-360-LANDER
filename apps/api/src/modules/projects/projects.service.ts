@@ -4,10 +4,12 @@ import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ProjectEntity, ProjectTrackEntity, ProjectTrackParticipantEntity } from '../../database/entities';
+import { groupCount, type GroupStatsResult } from '../../common/stats/group-count.util';
 import type { CreateProjectDto, UpdateProjectDto, QueryProjectDto } from './dto/projects.dto';
 import { ProjectStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 type TrackRole = 'compositor' | 'interprete' | 'produtor';
 
@@ -161,10 +163,15 @@ export class ProjectsService {
       .where('p.tenant_id = :tenantId', { tenantId })
       .andWhere('p.deleted_at IS NULL');
 
-    if (q['status'])     qb.andWhere('p.status = :status',         { status:    q['status'] });
-    if (q['tipo'])       qb.andWhere('p.tipo = :tipo',             { tipo:      q['tipo'] });
-    if (q['artista_id']) qb.andWhere('p.artista_id = :artistaId',  { artistaId: q['artista_id'] });
-    if (q['search'])     qb.andWhere('p.titulo ILIKE :search',     { search: `%${q['search']}%` });
+    // Task H: chaves alinhadas com QueryProjectDto (type/artistId, não
+    // tipo/artista_id — bug pré-existente: o DTO valida "type"/"artistId",
+    // mas o service lia "tipo"/"artista_id", que nunca existiam no objeto
+    // validado; os dois filtros eram efetivamente inertes).
+    if (q['status'])   qb.andWhere('p.status = :status',         { status:    q['status'] });
+    if (q['type'])     qb.andWhere('p.tipo = :tipo',              { tipo:      q['type'] });
+    if (q['artistId']) qb.andWhere('p.artista_id = :artistaId',   { artistaId: q['artistId'] });
+    if (q['genero'])   qb.andWhere('p.genero = :genero',          { genero:    q['genero'] });
+    if (q['search'])   qb.andWhere('p.titulo ILIKE :search',      { search: `%${q['search']}%` });
 
     qb.orderBy('p.created_at', q['ascending'] ? 'ASC' : 'DESC')
       .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
@@ -180,6 +187,19 @@ export class ProjectsService {
         limit:  typeof q['limit']  === 'number' ? q['limit']  : 50,
       },
     };
+  }
+
+  /**
+   * Contagem por status, sobre o tenant inteiro (não a página atual) —
+   * Task H: KPIs exatos sem baixar a tabela inteira. Sem SUM (KPI de
+   * Projetos é só contagem por status — ativos/concluídos/rascunhos/total).
+   */
+  async stats(tenantId: string): Promise<GroupStatsResult> {
+    const qb = this.repo!
+      .createQueryBuilder('p')
+      .where('p.tenant_id = :tenantId', { tenantId })
+      .andWhere('p.deleted_at IS NULL');
+    return groupCount(qb, 'p', 'status');
   }
 
   async findById(
@@ -223,8 +243,9 @@ export class ProjectsService {
     const dtoMap  = dto as Record<string, unknown>;
     const statusChanging = dtoMap['status'] != null && dtoMap['status'] !== current.status;
 
-    const { status: _s, musicas, ...restFields } = dtoMap as Record<string, unknown> & { musicas?: Record<string, unknown>[] };
+    const { status: _s, musicas, expectedUpdatedAt, ...restFields } = dtoMap as Record<string, unknown> & { musicas?: Record<string, unknown>[]; expectedUpdatedAt?: string };
     void _s;
+    const conflictMessage = 'Este projeto foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.';
 
     const nonStatusUpdates: Record<string, unknown> = {
       updated_at: new Date(),
@@ -245,17 +266,27 @@ export class ProjectsService {
       };
       await this.ds!.transaction(async (em) => {
         await this.workflowService.transitionInTx(req, em);
-        await em.update(ProjectEntity, { id, tenant_id: tenantId }, {
-          ...nonStatusUpdates,
-          status: dtoMap['status'] as ProjectStatus,
-        });
+        // CAS na mesma transação da mudança de status — se o projeto foi
+        // editado por outra pessoa desde a leitura de `current`, a transação
+        // inteira (incluindo o histórico já gravado por transitionInTx) faz
+        // rollback, nunca aplica uma transição validada contra status stale.
+        await casUpdate(
+          em.getRepository(ProjectEntity),
+          { id, tenant_id: tenantId },
+          { ...nonStatusUpdates, status: dtoMap['status'] as ProjectStatus },
+          expectedUpdatedAt as string | undefined,
+          conflictMessage,
+        );
       });
 
       this.emitStatusEvents(tenantId, userId, current, dtoMap['status'] as string);
     } else {
-      await this.repo!.update(
+      await casUpdate(
+        this.repo!,
         { id, tenant_id: tenantId } as FindOptionsWhere<ProjectEntity>,
         nonStatusUpdates as QueryDeepPartialEntity<ProjectEntity>,
+        expectedUpdatedAt as string | undefined,
+        conflictMessage,
       );
     }
 

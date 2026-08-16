@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsIn } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -12,4 +12,9 @@ export class QueryArtistDto extends PaginationDto {
   @IsOptional()
   @IsString()
   genre?: string;
+
+  @ApiPropertyOptional({ enum: ['exclusivo', 'parceiro', 'independente'] })
+  @IsOptional()
+  @IsIn(['exclusivo', 'parceiro', 'independente'])
+  vinculo?: 'exclusivo' | 'parceiro' | 'independente';
 }

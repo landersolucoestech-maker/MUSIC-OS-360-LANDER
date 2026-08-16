@@ -79,7 +79,10 @@ export class CreateInvoiceDto {
   @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
 }
 
-export class UpdateInvoiceDto extends PartialType(CreateInvoiceDto) {}
+export class UpdateInvoiceDto extends PartialType(CreateInvoiceDto) {
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class QueryInvoiceDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;

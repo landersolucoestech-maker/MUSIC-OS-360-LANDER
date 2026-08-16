@@ -28,6 +28,22 @@ export class PhonogramsController {
     return this.service.list(tenant.id, query);
   }
 
+  @Get('stats')
+  @RequireRole('viewer')
+  @RequirePermission('phonogram:read')
+  @ApiOperation({ summary: 'Contagem exata de fonogramas por status (tenant inteiro)' })
+  stats(@CurrentTenant() tenant: { id: string }, @Query() query: QueryPhonogramDto) {
+    return this.service.stats(tenant.id, query);
+  }
+
+  @Get('stats/generos')
+  @RequireRole('viewer')
+  @RequirePermission('phonogram:read')
+  @ApiOperation({ summary: 'Gêneros distintos dos fonogramas do tenant' })
+  distinctGeneros(@CurrentTenant() tenant: { id: string }) {
+    return this.service.distinctGeneros(tenant.id);
+  }
+
   @Get(':id')
   @RequireRole('viewer')
   @RequirePermission('phonogram:read')

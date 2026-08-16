@@ -67,7 +67,12 @@ export class CreateFinancialCategoryDto {
   sort_order?: number;
 }
 
-export class UpdateFinancialCategoryDto extends PartialType(CreateFinancialCategoryDto) {}
+export class UpdateFinancialCategoryDto extends PartialType(CreateFinancialCategoryDto) {
+  @ApiPropertyOptional({ description: 'updated_at lido pelo cliente antes de editar — detecta edição concorrente (409 se divergir)' })
+  @IsOptional()
+  @IsString()
+  expectedUpdatedAt?: string;
+}
 
 export class QueryFinancialCategoryDto extends PaginationDto {
   @ApiPropertyOptional()

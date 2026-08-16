@@ -31,6 +31,14 @@ export class ContractsController {
     return this.service.list(tenant.id, query);
   }
 
+  @Get('stats')
+  @RequireRole('viewer')
+  @RequirePermission('contract:read')
+  @ApiOperation({ summary: 'Contagem + soma de valor por status, sobre o tenant inteiro' })
+  stats(@CurrentTenant() tenant: { id: string }) {
+    return this.service.stats(tenant.id);
+  }
+
   @Get(':id')
   @RequireRole('viewer')
   @RequirePermission('contract:read')

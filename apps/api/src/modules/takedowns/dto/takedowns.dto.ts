@@ -36,7 +36,10 @@ export class CreateTakedownDto {
   @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
 }
 
-export class UpdateTakedownDto extends PartialType(CreateTakedownDto) {}
+export class UpdateTakedownDto extends PartialType(CreateTakedownDto) {
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class QueryTakedownDto extends PaginationDto {
   @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;

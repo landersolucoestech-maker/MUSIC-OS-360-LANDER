@@ -134,7 +134,10 @@ export class CreateMarketingProjectDto {
   metadata?: Record<string, unknown>;
 }
 
-export class UpdateMarketingProjectDto extends PartialType(CreateMarketingProjectDto) {}
+export class UpdateMarketingProjectDto extends PartialType(CreateMarketingProjectDto) {
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class QueryMarketingProjectDto extends PaginationDto {
   @ApiPropertyOptional({ enum: MARKETING_PROJECT_TYPES })

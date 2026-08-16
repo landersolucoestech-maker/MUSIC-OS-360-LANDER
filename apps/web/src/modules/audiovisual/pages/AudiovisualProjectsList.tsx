@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
 import { Plus, Film, ClipboardList, CalendarDays, PackageCheck, DollarSign } from "lucide-react";
 import { useAudiovisualProjects, useAudiovisualProjectMutations } from "../hooks/useAudiovisual";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 import type { AudiovisualProject } from "../types/audiovisual.types";
 import {
   AudiovisualFilterBar,
@@ -142,7 +144,10 @@ export function AudiovisualProjectsList() {
 
   const handleUpdate = (payload: Partial<AudiovisualProject>) => {
     if (!editProject) return;
-    mutations.update.mutate({ id: editProject.id, data: payload });
+    mutations.update.mutate(
+      { id: editProject.id, data: { ...payload, expectedUpdatedAt: getExpectedUpdatedAt(editProject) } },
+      { onSuccess: () => setEditProject(null) },
+    );
   };
 
   const handleDelete = () => {
@@ -151,11 +156,12 @@ export function AudiovisualProjectsList() {
     setDeleteProject(null);
   };
 
-  const handleBulkDelete = (ids: string[]) => {
-    ids.forEach((id) => mutations.remove.mutate(id));
+  const handleBulkDelete = async (ids: string[]) => {
     setViewProject((current) => (current && ids.includes(current.id) ? null : current));
     setEditProject((current) => (current && ids.includes(current.id) ? null : current));
     setDeleteProject((current) => (current && ids.includes(current.id) ? null : current));
+    const result = await runBulkAction(ids, (id) => mutations.remove.mutateAsync(id));
+    reportBulkResult(result, "excluída", "produção");
   };
 
   return (
@@ -203,7 +209,7 @@ export function AudiovisualProjectsList() {
         <AudiovisualNewProjectModal
           open={isNewOpen}
           onClose={() => setIsNewOpen(false)}
-          onCreate={(payload) => mutations.create.mutate(payload)}
+          onCreate={(payload) => mutations.create.mutate(payload, { onSuccess: () => setIsNewOpen(false) })}
         />
         <AudiovisualProjectDetailsModal
           open={!!viewProject}

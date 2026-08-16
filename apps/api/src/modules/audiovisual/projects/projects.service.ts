@@ -13,6 +13,7 @@ import type {
   CreateAudiovisualProjectDto, UpdateAudiovisualProjectDto,
   QueryAudiovisualProjectDto, TransitionProjectStatusDto, QueryDashboardDto,
 } from '../dto/audiovisual.dto';
+import { casUpdate } from '../../../common/persistence/optimistic-update.util';
 
 /**
  * AudiovisualProjectsService — CRUD + ciclo de status + dashboard.
@@ -83,10 +84,17 @@ export class AudiovisualProjectsService {
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateAudiovisualProjectDto): Promise<AudiovisualProjectEntity> {
     await this.findById(tenantId, id);
-    const patch: Record<string, unknown> = { ...dto, updated_by: userId, updated_at: new Date() };
+    const { expectedUpdatedAt, ...rest } = dto as UpdateAudiovisualProjectDto & { expectedUpdatedAt?: string };
+    const patch: Record<string, unknown> = { ...rest, updated_by: userId, updated_at: new Date() };
     if (dto.budget_estimated != null) patch.budget_estimated = String(dto.budget_estimated);
     if (dto.budget_actual    != null) patch.budget_actual    = String(dto.budget_actual);
-    await this.r.update({ id, tenant_id: tenantId } as never, patch as never);
+    await casUpdate(
+      this.r,
+      { id, tenant_id: tenantId } as never,
+      patch as never,
+      expectedUpdatedAt,
+      'Este projeto audiovisual foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 
@@ -98,7 +106,13 @@ export class AudiovisualProjectsService {
     };
     if (dto.status === 'delivered') patch.completed_at = new Date();
     if (dto.status === 'published') patch.publish_date = patch.publish_date ?? new Date().toISOString().slice(0, 10);
-    await this.r.update({ id, tenant_id: tenantId } as never, patch as never);
+    await casUpdate(
+      this.r,
+      { id, tenant_id: tenantId } as never,
+      patch as never,
+      dto.expectedUpdatedAt,
+      'Este projeto audiovisual foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
 
     // Auto-cria tarefas padrão do novo estágio (idempotente — não duplica)
     if (dto.status !== 'cancelled' && dto.status !== current.status) {

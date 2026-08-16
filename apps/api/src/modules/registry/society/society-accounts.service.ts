@@ -4,6 +4,7 @@ import { DATA_SOURCE } from '../../../database/database.module';
 import { SocietyAccountEntity } from '../../../database/entities';
 import { SocietyAccountStatus } from '@music-os-360/types';
 import type { CreateSocietyAccountDto, UpdateSocietyAccountDto } from '../dto/society.dto';
+import { casUpdate } from '../../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class SocietyAccountsService {
@@ -48,16 +49,23 @@ export class SocietyAccountsService {
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateSocietyAccountDto): Promise<SocietyAccountEntity> {
-    const current = await this.findById(tenantId, id);
-    Object.assign(current, {
+    await this.findById(tenantId, id);
+    const updates: Record<string, unknown> = {
       ...(dto.account_name != null ? { account_name: dto.account_name.trim() } : {}),
       ...(dto.member_code != null ? { member_code: dto.member_code } : {}),
       ...(dto.credentials_ref != null ? { credentials_ref: dto.credentials_ref } : {}),
       ...(dto.status != null ? { status: dto.status } : {}),
       ...(dto.driver != null ? { driver: dto.driver } : {}),
       updated_by: userId || null,
-    });
-    return this.repository.save(current);
+    };
+    await casUpdate(
+      this.repository,
+      { id, tenant_id: tenantId } as never,
+      updates as never,
+      dto.expectedUpdatedAt,
+      'Esta conta de sociedade foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
+    );
+    return this.findById(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {

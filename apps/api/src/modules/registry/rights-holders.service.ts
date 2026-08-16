@@ -11,6 +11,7 @@ import { RightsHolderEntity } from '../../database/entities';
 import { HolderType } from '@music-os-360/types';
 import type { CreateRightsHolderDto, UpdateRightsHolderDto, QueryRightsHolderDto } from './dto/rights-holder.dto';
 import { isValidDocument } from './validators/registry-validators';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class RightsHoldersService {
@@ -77,7 +78,7 @@ export class RightsHoldersService {
       await this.assertUniqueDocument(tenantId, dto.document_number, id);
     }
 
-    Object.assign(current, {
+    const updates: Record<string, unknown> = {
       ...(dto.legal_name != null ? { legal_name: dto.legal_name.trim() } : {}),
       ...(dto.artistic_name != null ? { artistic_name: dto.artistic_name } : {}),
       ...(dto.document_type != null ? { document_type: dto.document_type } : {}),
@@ -88,8 +89,15 @@ export class RightsHoldersService {
       ...(dto.society_member_code != null ? { society_member_code: dto.society_member_code } : {}),
       ...(dto.holder_type != null ? { holder_type: dto.holder_type } : {}),
       updated_by: userId || null,
-    });
-    return this.repository.save(current);
+    };
+    await casUpdate(
+      this.repository,
+      { id, tenant_id: tenantId } as never,
+      updates as never,
+      dto.expectedUpdatedAt,
+      'Este titular foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
+    return this.findById(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {

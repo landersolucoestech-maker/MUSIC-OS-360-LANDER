@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { storage } from "@/shared/lib/storage";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { TablePagination } from "@/shared/ui/table-pagination";
-import { usePagination } from "@/shared/hooks/usePagination";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -18,10 +20,9 @@ import { LicencaViewModal } from "@/modules/licensing/components/LicencaViewModa
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { useLicencas } from "@/modules/licensing/hooks/useLicencas";
-import { useObras } from "@/modules/catalog/hooks/useObras";
-import { useDataQuery } from "@/shared/hooks/useDataQuery";
-import { QUERY_KEYS } from "@/shared/lib/query-config";
+import { useLicencasPaginated, useLicencasStats } from "@/modules/licensing/hooks/useLicencasPaginated";
 import { formatRemuneration, obraArtistaLabel, midiaLabel } from "@/modules/licensing/lib/licenca-format";
 import type { Obra } from "@/modules/catalog/types/catalog.types";
 import { formatCurrency } from "@/shared/lib/format-utils";
@@ -38,24 +39,10 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function Licenciamento() {
+  // Task H: useLicencas() (fetch-all) fica só para mutations (delete) e o
+  // gate de isLoading inicial — as tabelas abaixo agora leem de
+  // useLicencasPaginated() (server-side, uma página por vez).
   const { licencas, isLoading, deleteLicenca } = useLicencas();
-  const { obras } = useObras();
-  const { data: clientes } = useDataQuery<{ id: string; nome: string }>({ queryKey: [...QUERY_KEYS.CLIENTES], table: "clientes" });
-
-  const obraById = useMemo(() => {
-    const m = new Map<string, Obra>();
-    (obras as Obra[]).forEach((o) => m.set(o.id, o));
-    return m;
-  }, [obras]);
-  const clienteById = useMemo(() => {
-    const m = new Map<string, string>();
-    clientes.forEach((c) => m.set(c.id, c.nome));
-    return m;
-  }, [clientes]);
-
-  const obraTituloDe = (l: any) => (l.obra_id ? obraById.get(l.obra_id)?.titulo ?? null : null);
-  const artistaDe = (l: any) => (l.obra_id ? obraArtistaLabel(obraById.get(l.obra_id)) : "");
-  const clienteNomeDe = (l: any) => (l.cliente_id ? clienteById.get(l.cliente_id) ?? null : null);
 
   const [activeTab, setActiveTab] = useState("catalogo");
   const [licencaModal, setLicencaModal] = useState<{ open: boolean; mode: "create" | "edit"; licenca?: any }>({ open: false, mode: "create" });
@@ -68,29 +55,85 @@ export default function Licenciamento() {
   const [midiaFilter, setMidiaFilter] = useState("all");
   const [selectedLicencaIds, setSelectedLicencaIds] = useState<string[]>([]);
 
-  const filteredLicencas = licencas.filter(licenca => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = searchTerm === "" ||
-      licenca.titulo?.toLowerCase().includes(term) ||
-      (obraTituloDe(licenca) ?? "").toLowerCase().includes(term) ||
-      artistaDe(licenca).toLowerCase().includes(term) ||
-      (clienteNomeDe(licenca) ?? "").toLowerCase().includes(term);
+  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || midiaFilter !== "all";
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
-    const matchesStatus = statusFilter === "all" || licenca.status === statusFilter;
+  // Task H: paginação real server-side — a página muda de request (nunca
+  // recorta uma lista já baixada). Só a aba "catalogo" tem busca/filtro de
+  // mídia; "propostas"/"ativas" são um status fixo aplicado no backend.
+  // Como só a aba ativa é renderizada por vez, uma única chamada paginada
+  // basta — o filtro `status` é que muda com `activeTab`.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  useEffect(() => { setPage(0); }, [debouncedSearch, statusFilter, midiaFilter, activeTab]);
 
-    const matchesMidia = midiaFilter === "all" ||
-      (licenca.midia_destino ?? "").toLowerCase().includes(midiaFilter.toLowerCase());
+  const tabStatus =
+    activeTab === "propostas" ? "negociacao,proposta" :
+    activeTab === "ativas" ? "ativa" :
+    (statusFilter !== "all" ? statusFilter : undefined);
 
-    return matchesSearch && matchesStatus && matchesMidia;
+  const {
+    licencas: pageItems,
+    total,
+    isLoading: isLoadingPage,
+    error: pageError,
+    refetch: refetchPage,
+  } = useLicencasPaginated({
+    page,
+    pageSize,
+    search: activeTab === "catalogo" ? (debouncedSearch || undefined) : undefined,
+    status: tabStatus,
+    midia: activeTab === "catalogo" && midiaFilter !== "all" ? midiaFilter : undefined,
   });
 
-  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || midiaFilter !== "all";
+  // Task J: título de obra/nome de cliente por linha, resolvidos por ID
+  // direto (GET /works/:id, GET /clients/:id) só para os registros da
+  // página atual — antes escaneava useObras()/uma listagem de clientes sem
+  // filtro, truncados nos primeiros 50 do tenant.
+  const [resolvedObras, setResolvedObras] = useState<Record<string, Obra>>({});
+  const [resolvedClientes, setResolvedClientes] = useState<Record<string, { id: string; nome: string }>>({});
+  const licencaObraIds = useMemo(
+    () => Array.from(new Set(pageItems.map((l: any) => l.obra_id).filter(Boolean))) as string[],
+    [pageItems],
+  );
+  const licencaClienteIds = useMemo(
+    () => Array.from(new Set(pageItems.map((l: any) => l.cliente_id).filter(Boolean))) as string[],
+    [pageItems],
+  );
+  useEffect(() => {
+    if (licencaObraIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(licencaObraIds.map((id) => storage.findById<Obra & { id: string }>("obras", id)))
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, Obra> = {};
+        results.forEach((o, i) => { if (o) map[licencaObraIds[i]] = o; });
+        setResolvedObras((prev) => ({ ...prev, ...map }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [licencaObraIds]);
+  useEffect(() => {
+    if (licencaClienteIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(licencaClienteIds.map((id) => storage.findById<{ id: string; nome: string }>("clientes", id)))
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, { id: string; nome: string }> = {};
+        results.forEach((c, i) => { if (c) map[licencaClienteIds[i]] = c; });
+        setResolvedClientes((prev) => ({ ...prev, ...map }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [licencaClienteIds]);
 
-  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredLicencas, 10);
-  const propostasLicencas = useMemo(() => licencas.filter((l) => l.status === "negociacao" || l.status === "proposta"), [licencas]);
-  const ativasLicencas = useMemo(() => licencas.filter((l) => l.status === "ativa"), [licencas]);
-  const propostasPg = usePagination(propostasLicencas, 10);
-  const ativasPg = usePagination(ativasLicencas, 10);
+  const obraTituloDe = (l: any) => (l.obra_id ? resolvedObras[l.obra_id]?.titulo ?? null : null);
+  const artistaDe = (l: any) => (l.obra_id ? obraArtistaLabel(resolvedObras[l.obra_id]) : "");
+  const clienteNomeDe = (l: any) => (l.cliente_id ? resolvedClientes[l.cliente_id]?.nome ?? null : null);
+
+  // KPIs: contagem + soma de valor por status SOBRE O TENANT INTEIRO (não a
+  // página atual) — GET /licenses/stats, agregado no banco.
+  const { stats } = useLicencasStats();
 
   const toggleSelectLicenca = (id: string) => {
     setSelectedLicencaIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
@@ -150,29 +193,21 @@ export default function Licenciamento() {
     }
   };
 
-  const handleBulkDelete = () => {
-    bulkDeleteModal.ids.forEach((id) => deleteLicenca.mutate(id));
-    setSelectedLicencaIds((current) => current.filter((id) => !bulkDeleteModal.ids.includes(id)));
+  const handleBulkDelete = async () => {
+    const ids = bulkDeleteModal.ids;
+    setSelectedLicencaIds((current) => current.filter((id) => !ids.includes(id)));
     setBulkDeleteModal({ open: false, ids: [] });
+    const result = await runBulkAction(ids, (id) => deleteLicenca.mutateAsync(id));
+    reportBulkResult(result, "excluída", "licença");
   };
 
   const metricas = useMemo(() => ({
-    total: licencas.length,
-    ativas: licencas.filter(l => l.status === "ativa").length,
-    propostas: licencas.filter(l => l.status === "negociacao" || l.status === "proposta").length,
-    expiradas: licencas.filter(l => l.status === "expirada").length,
-    valorTotal: licencas.filter(l => l.status === "ativa").reduce((acc, l) => acc + (l.amount ?? l.valor ?? 0), 0),
-  }), [licencas]);
-
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </MainLayout>
-    );
-  }
+    total: stats.total,
+    ativas: stats.byGroup["ativa"] ?? 0,
+    propostas: (stats.byGroup["negociacao"] ?? 0) + (stats.byGroup["proposta"] ?? 0),
+    expiradas: stats.byGroup["expirada"] ?? 0,
+    valorTotal: stats.sumByGroup?.["ativa"] ?? 0,
+  }), [stats]);
 
   const headerActions = (
     <RequirePermission module="licensing" action="write">
@@ -184,6 +219,14 @@ export default function Licenciamento() {
 
   return (
     <FeatureGate feature="moduleLicensing" featureName="Licenciamento" requiredPlan="enterprise">
+    <>
+    {isLoading || isLoadingPage ? (
+      <MainLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </MainLayout>
+    ) : (
     <MainLayout title="Licenciamento" description="Gestão de licenças e sincronização" actions={headerActions}>
       <div className="space-y-6">
 
@@ -241,13 +284,13 @@ export default function Licenciamento() {
 
             <Card>
               <CardContent className="p-6 space-y-4">
-              {filteredLicencas.length > 0 ? (
+              {pageItems.length > 0 ? (
                 <>
                 <ListSectionHeader
                   title="Lista de Licenças"
-                  count={filteredLicencas.length}
+                  count={total}
                   description="Acompanhe licenças, clientes, mídias e valores contratados"
-                  action={renderSelectAction(filteredLicencas, "checkbox-select-all-licencas")}
+                  action={renderSelectAction(pageItems, "checkbox-select-all-licencas")}
                 />
                 <Table>
                   <TableHeader>
@@ -320,6 +363,8 @@ export default function Licenciamento() {
                   itemLabel="licenças"
                 />
                 </>
+              ) : pageError && total === 0 ? (
+                <UnavailableState onRetry={() => refetchPage()} />
               ) : (
                 <EmptyState
                   icon={FileText}
@@ -339,11 +384,11 @@ export default function Licenciamento() {
             <CardContent className="p-6">
               <ListSectionHeader
                 title="Propostas em Andamento"
-                count={propostasLicencas.length}
+                count={total}
                 description="Acompanhe propostas de licenciamento em negociação e aguardando resposta"
-                action={renderSelectAction(propostasLicencas, "checkbox-select-all-propostas")}
+                action={renderSelectAction(pageItems, "checkbox-select-all-propostas")}
               />
-              {propostasLicencas.length > 0 ? (
+              {pageItems.length > 0 ? (
                 <>
                   <Table>
                     <TableHeader>
@@ -359,7 +404,7 @@ export default function Licenciamento() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {propostasPg.pageItems.map((licenca) => (
+                      {pageItems.map((licenca) => (
                         <TableRow key={licenca.id}>
                           <TableCell>
                             <Checkbox
@@ -408,14 +453,16 @@ export default function Licenciamento() {
                     </TableBody>
                   </Table>
                   <TablePagination
-                    total={propostasPg.total}
-                    page={propostasPg.page}
-                    pageSize={propostasPg.pageSize}
-                    onPageChange={propostasPg.setPage}
-                    onPageSizeChange={propostasPg.setPageSize}
+                    total={total}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={setPageSize}
                     itemLabel="propostas"
                   />
                 </>
+              ) : pageError && total === 0 ? (
+                <UnavailableState onRetry={() => refetchPage()} />
               ) : (
                 <EmptyState
                   icon={Clock}
@@ -432,11 +479,11 @@ export default function Licenciamento() {
             <CardContent className="p-6">
               <ListSectionHeader
                 title="Licenças Ativas"
-                count={ativasLicencas.length}
+                count={total}
                 description="Acompanhe licenças ativas, clientes, mídias, vigência e valores"
-                action={renderSelectAction(ativasLicencas, "checkbox-select-all-ativas")}
+                action={renderSelectAction(pageItems, "checkbox-select-all-ativas")}
               />
-              {ativasLicencas.length > 0 ? (
+              {pageItems.length > 0 ? (
                 <>
                   <Table>
                     <TableHeader>
@@ -452,7 +499,7 @@ export default function Licenciamento() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {ativasPg.pageItems.map((licenca) => (
+                      {pageItems.map((licenca) => (
                         <TableRow key={licenca.id}>
                           <TableCell>
                             <Checkbox
@@ -501,14 +548,16 @@ export default function Licenciamento() {
                     </TableBody>
                   </Table>
                   <TablePagination
-                    total={ativasPg.total}
-                    page={ativasPg.page}
-                    pageSize={ativasPg.pageSize}
-                    onPageChange={ativasPg.setPage}
-                    onPageSizeChange={ativasPg.setPageSize}
+                    total={total}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={setPageSize}
                     itemLabel="licenças"
                   />
                 </>
+              ) : pageError && total === 0 ? (
+                <UnavailableState onRetry={() => refetchPage()} />
               ) : (
                 <EmptyState
                   icon={Music}
@@ -520,12 +569,21 @@ export default function Licenciamento() {
           </Card>
         )}
       </div>
+    </MainLayout>
+    )}
 
+      {/* Fora do gate de isLoading de propósito — mesmo bug de /artistas
+          (Task C): LicencaFormModal chama useLicencas() de novo só para as
+          mutations de create/update, a mesma query do isLoading acima.
+          Montá-lo só depois do isLoading virar false criava um observer
+          novo nessa query; em erro (backend fora do ar), refetchOnMount
+          reabria isLoading, o gate desmontava o modal de novo — loop
+          infinito de loading. Mantê-los sempre montados quebra o ciclo. */}
       <LicencaFormModal open={licencaModal.open} onOpenChange={(open) => setLicencaModal({ ...licencaModal, open })} licenca={licencaModal.licenca} mode={licencaModal.mode} />
       <LicencaViewModal open={viewModal.open} onOpenChange={(open) => setViewModal({ ...viewModal, open })} licenca={viewModal.licenca} />
       <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Licença" description={`Tem certeza que deseja excluir "${deleteModal.licenca?.titulo}"?`} onConfirm={handleDelete} />
       <DeleteConfirmModal open={bulkDeleteModal.open} onOpenChange={(open) => setBulkDeleteModal({ ...bulkDeleteModal, open })} title="Excluir licencas selecionadas" description={`Tem certeza que deseja excluir ${bulkDeleteModal.ids.length} licenca(s) selecionada(s)?`} onConfirm={handleBulkDelete} />
-    </MainLayout>
+    </>
     </FeatureGate>
   );
 }

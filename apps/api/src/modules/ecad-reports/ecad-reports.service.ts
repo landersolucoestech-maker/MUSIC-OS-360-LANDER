@@ -3,6 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { EcadReportEntity } from '../../database/entities';
 import type { CreateEcadReportDto } from './dto/create-ecad-report.dto';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class EcadReportsService {
@@ -46,8 +47,15 @@ export class EcadReportsService {
 
   async update(tenantId: string, id: string, dto: any): Promise<EcadReportEntity> {
     await this.findById(tenantId, id);
+    const { expectedUpdatedAt, ...rest } = dto ?? {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date() } as any);
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      { ...rest, updated_at: new Date() } as any,
+      expectedUpdatedAt,
+      'Este relatório ECAD foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

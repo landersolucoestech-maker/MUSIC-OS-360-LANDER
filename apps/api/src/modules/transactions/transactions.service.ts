@@ -2,6 +2,7 @@ import { Injectable, Inject, Optional, NotFoundException, BadRequestException, F
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { TransactionEntity } from '../../database/entities';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { QueryTransactionDto } from './dto/query-transaction.dto';
@@ -173,25 +174,54 @@ export class TransactionsService {
     if (ds) this.repo = ds.getRepository(TransactionEntity);
   }
 
-  async list(tenantId: string, query: QueryTransactionDto) {
+  private baseQb(tenantId: string, query: QueryTransactionDto) {
+    const q = query as AnyRecord;
     const qb = this.repo!
       .createQueryBuilder('t')
       .where('t.tenant_id = :tenantId', { tenantId })
       .andWhere('t.deleted_at IS NULL');
 
-    if ((query as AnyRecord).status) qb.andWhere('t.status = :status', { status: (query as AnyRecord).status });
-    if ((query as AnyRecord).tipo) qb.andWhere('t.tipo = :tipo', { tipo: (query as AnyRecord).tipo });
-    if ((query as AnyRecord).categoria) qb.andWhere('t.categoria = :categoria', { categoria: (query as AnyRecord).categoria });
-    if ((query as AnyRecord).artista_id) qb.andWhere('t.artista_id = :artistaId', { artistaId: (query as AnyRecord).artista_id });
-    if ((query as AnyRecord).dateFrom) qb.andWhere('t.data >= :dateFrom', { dateFrom: (query as AnyRecord).dateFrom });
-    if ((query as AnyRecord).dateTo) qb.andWhere('t.data <= :dateTo', { dateTo: (query as AnyRecord).dateTo });
+    if (q.status)     qb.andWhere('t.status = :status', { status: q.status });
+    if (q.tipo)       qb.andWhere('t.tipo = :tipo', { tipo: q.tipo });
+    if (q.categoria)  qb.andWhere('t.categoria = :categoria', { categoria: q.categoria });
+    if (q.artista_id) qb.andWhere('t.artista_id = :artistaId', { artistaId: q.artista_id });
+    if (q.dateFrom)   qb.andWhere('t.data >= :dateFrom', { dateFrom: q.dateFrom });
+    if (q.dateTo)     qb.andWhere('t.data <= :dateTo', { dateTo: q.dateTo });
+    if (q.search)     qb.andWhere('t.descricao ILIKE :search', { search: `%${q.search}%` });
 
-    qb.orderBy('t.data', (query as AnyRecord).ascending ? 'ASC' : 'DESC')
-      .skip((query as AnyRecord).offset as number ?? 0)
-      .take((query as AnyRecord).limit as number ?? 50);
+    return qb;
+  }
+
+  async list(tenantId: string, query: QueryTransactionDto) {
+    const q = query as AnyRecord;
+    const qb = this.baseQb(tenantId, query);
+
+    qb.orderBy('t.data', q.ascending ? 'ASC' : 'DESC')
+      .skip((q.offset as number) ?? 0)
+      .take((q.limit as number) ?? 50);
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, meta: { total, offset: (query as AnyRecord).offset ?? 0, limit: (query as AnyRecord).limit ?? 50 } };
+    return { data, meta: { total, offset: q.offset ?? 0, limit: q.limit ?? 50 } };
+  }
+
+  /**
+   * Distribuição exata tipo×status + soma de valor (tenant inteiro, ignora
+   * os filtros de data/busca da tabela — os KPIs sempre refletem o total
+   * real, nunca a página ou o intervalo de datas atualmente visível).
+   */
+  async stats(tenantId: string): Promise<Array<{ tipo: string; status: string; cnt: number; sum: number }>> {
+    const qb = this.repo!
+      .createQueryBuilder('t')
+      .where('t.tenant_id = :tenantId', { tenantId })
+      .andWhere('t.deleted_at IS NULL')
+      .select('t.tipo', 'tipo')
+      .addSelect('t.status', 'status')
+      .addSelect('COUNT(*)::int', 'cnt')
+      .addSelect('COALESCE(SUM(t.valor::numeric), 0)', 'sum')
+      .groupBy('t.tipo')
+      .addGroupBy('t.status');
+    const rows = await qb.getRawMany<{ tipo: string; status: string; cnt: string; sum: string }>();
+    return rows.map((r) => ({ tipo: r.tipo, status: r.status, cnt: parseInt(r.cnt, 10) || 0, sum: parseFloat(r.sum) || 0 }));
   }
 
   private async findEntityById(tenantId: string, id: string): Promise<TransactionEntity> {
@@ -252,9 +282,12 @@ export class TransactionsService {
     this.assertEditable(existing);
 
     const newStatus = (dto as AnyRecord).status as string | undefined;
-    await this.repo!.update(
+    await casUpdate(
+      this.repo!,
       { id, tenant_id: tenantId } as AnyRecord,
-      { ...buildPersistencePayload(tenantId, userId, dto, existing), updated_at: new Date() } as AnyRecord,
+      { ...buildPersistencePayload(tenantId, userId, dto, existing), updated_at: new Date() },
+      (dto as AnyRecord).expectedUpdatedAt as string | undefined,
+      'Esta transação foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
     );
     const updated = await this.findEntityById(tenantId, id);
     await this.emitStatusEvents(tenantId, userId, existing, updated, newStatus);
@@ -266,9 +299,12 @@ export class TransactionsService {
     this.assertEditable(existing);
 
     const newStatus = (dto as AnyRecord).status as string | undefined;
-    await this.repo!.update(
+    await casUpdate(
+      this.repo!,
       { id, tenant_id: tenantId } as AnyRecord,
-      { ...buildPersistencePayload(tenantId, userId, dto, existing), updated_at: new Date() } as AnyRecord,
+      { ...buildPersistencePayload(tenantId, userId, dto, existing), updated_at: new Date() },
+      (dto as AnyRecord).expectedUpdatedAt as string | undefined,
+      'Esta transação foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
     );
     const updated = await this.findEntityById(tenantId, id);
     await this.emitStatusEvents(tenantId, userId, existing, updated, newStatus);

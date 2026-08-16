@@ -1,7 +1,9 @@
-import { useCallback, useState, useMemo, useRef, useEffect } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
+import { storage } from "@/shared/lib/storage";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -22,14 +24,16 @@ import { LancamentoFormModal } from "@/modules/releases/components/LancamentoFor
 import { LancamentoViewModal } from "@/modules/releases/components/LancamentoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { TablePagination } from "@/shared/ui/table-pagination";
-import { usePagination } from "@/shared/hooks/usePagination";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import { useLancamentosPaginated, useLancamentosDistributionStats } from "@/modules/releases/hooks/useLancamentosPaginated";
 import { useShares } from "@/modules/releases/hooks/useShares";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { AsyncEntityCombobox } from "@/shared/components/AsyncEntityCombobox";
 import { useImageContrast } from "@/shared/hooks/useImageContrast";
 import { contrastText, contrastSubtext, contrastChrome, contrastScrim } from "@/shared/lib/image-contrast";
-import { cardStatusClasses, resolveReleaseStatus, RELEASE_STATUS_OPTIONS } from "@/modules/releases/lib/release-status";
+import { cardStatusClasses, RELEASE_STATUS_OPTIONS } from "@/modules/releases/lib/release-status";
 import { formatReleaseDate } from "@/modules/releases/lib/release-format";
 import { shareFlowFromReleaseUrl } from "@/modules/releases/services/share-from-release";
 import type { Lancamento } from "@/modules/releases/types";
@@ -197,23 +201,23 @@ function ReleaseCard({ release, artista, now, selected, onToggleSelect, onView, 
 export default function Lancamentos() {
   const { lancamentos, isLoading, deleteLancamento, addLancamento } = useLancamentos();
   const { shares, addShare } = useShares();
-  const { artistas } = useArtistas();
   const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredReleases.length && filteredReleases.length > 0) {
+    if (selectedIds.length === pageItems.length && pageItems.length > 0) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredReleases.map((r: any) => r.id));
+      setSelectedIds(pageItems.map((r: any) => r.id));
     }
   };
   const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    selectedIds.forEach(id => deleteLancamento.mutate(id));
-    toast.success(`${selectedIds.length} lançamento(s) excluído(s) com sucesso`);
+    const ids = selectedIds;
     setSelectedIds([]);
+    const result = await runBulkAction(ids, (id) => deleteLancamento.mutateAsync(id));
+    reportBulkResult(result, "excluído", "lançamento");
   };
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; lancamento?: any }>({ open: false, mode: "create" });
   const [viewModal, setViewModal] = useState<{ open: boolean; lancamento?: any }>({ open: false });
@@ -224,18 +228,30 @@ export default function Lancamentos() {
     "edit",
     lancamentos,
     useCallback((lancamento) => setFormModal({ open: true, mode: "edit", lancamento }), []),
+    "lancamentos",
   );
 
-  // Support ?view=<id> to directly open the view modal (e.g., navigated from ContratoViewModal)
+  // Support ?view=<id> to directly open the view modal (e.g., navigated from
+  // ContratoViewModal) — busca por ID direto quando o lançamento não está
+  // entre os primeiros carregados por useLancamentos() sem filtro (Task I).
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const viewId = searchParams.get("view");
-    if (!viewId || lancamentos.length === 0) return;
+    if (!viewId) return;
     const target = lancamentos.find((l) => l.id === viewId);
     if (target) {
       setViewModal({ open: true, lancamento: target });
       setSearchParams((prev) => { prev.delete("view"); return prev; }, { replace: true });
+      return;
     }
+    if (lancamentos.length === 0) return;
+    let cancelled = false;
+    storage.findById<Lancamento & { id: string }>("lancamentos", viewId).then((found) => {
+      if (cancelled || !found) return;
+      setViewModal({ open: true, lancamento: found });
+      setSearchParams((prev) => { prev.delete("view"); return prev; }, { replace: true });
+    });
+    return () => { cancelled = true; };
   }, [searchParams, lancamentos, setSearchParams]);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -249,39 +265,50 @@ export default function Lancamentos() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const getArtistaById = (id: string | null) => id ? artistas.find(a => a.id === id) : undefined;
-
-  // KPIs operacionais de distribuição — calculados dinamicamente do estado real (7-set).
-  const distributionKPIs = useMemo(() => {
-    const list = Array.isArray(lancamentos) ? lancamentos : [];
-    let distributed = 0;
-    let pending = 0;
-    let waitingAction = 0;
-    for (const l of list) {
-      const s = resolveReleaseStatus(l as Lancamento & Record<string, unknown>);
-      if (s === "distribuido") distributed++;
-      else if (s === "pendente") pending++;
-      else if (s === "em_espera" || s === "incompleto" || s === "rejeitado" || s === "takedown") waitingAction++;
-    }
-    return { total: list.length, distributed, pending, waitingAction };
-  }, [lancamentos]);
-
-  const filteredReleases = useMemo(() => {
-    return lancamentos.filter((release) => {
-      const artista = getArtistaById(release.artista_id ?? null);
-      const matchesSearch = release.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        artista?.nome_artistico?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = typeFilter === "all-type" || release.tipo?.toLowerCase() === typeFilter.toLowerCase();
-      const matchesStatus = statusFilter === "all-status" ||
-        resolveReleaseStatus(release as Lancamento & Record<string, unknown>) === statusFilter;
-      const matchesArtist = artistFilter === "all-artist" || release.artista_id === artistFilter;
-      return matchesSearch && matchesType && matchesStatus && matchesArtist;
-    });
-  }, [lancamentos, searchTerm, typeFilter, statusFilter, artistFilter, artistas]);
+  // KPIs operacionais de distribuição — agregação exata do tenant inteiro
+  // (GET /releases/stats), nunca calculada só sobre a página carregada (Task H).
+  const { kpis: distributionKPIs } = useLancamentosDistributionStats();
 
   const hasActiveFilters = searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status" || artistFilter !== "all-artist";
 
-  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredReleases, 12);
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(12);
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, typeFilter, statusFilter, artistFilter]);
+
+  const {
+    lancamentos: pageItems, total, isLoading: isLoadingPage, error: pageError, refetch: refetchPage,
+  } = useLancamentosPaginated({
+    page, pageSize, search: debouncedSearch || undefined,
+    status: statusFilter !== "all-status" ? statusFilter : undefined,
+    type: typeFilter !== "all-type" ? typeFilter : undefined,
+    artistId: artistFilter !== "all-artist" ? artistFilter : undefined,
+  });
+
+  // Task J: nome/gênero do artista por card, resolvidos por ID direto (GET
+  // /artists/:id) só para os releases da página atual — antes escaneava
+  // useArtistas() sem filtro, truncado nos primeiros 50 do tenant.
+  const [resolvedArtistas, setResolvedArtistas] = useState<Record<string, Artista>>({});
+  const pageArtistaIds = useMemo(
+    () => Array.from(new Set(pageItems.map((r) => r.artista_id).filter((id): id is string => !!id))),
+    [pageItems],
+  );
+  useEffect(() => {
+    if (pageArtistaIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(pageArtistaIds.map((id) => storage.findById<Artista & { id: string }>("artistas", id)))
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, Artista> = {};
+        results.forEach((a, i) => { if (a) map[pageArtistaIds[i]] = a; });
+        setResolvedArtistas((prev) => ({ ...prev, ...map }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [pageArtistaIds]);
+  const getArtistaById = (id: string | null) => id ? resolvedArtistas[id] : undefined;
 
   const handleClearFilters = () => {
     setSearchTerm("");
@@ -299,7 +326,11 @@ export default function Lancamentos() {
 
   const ensureInitialShare = useCallback(async (release: Lancamento) => {
     if (!release.id || shares.some((share) => share.lancamento_id === release.id)) return;
-    const artista = getArtistaById(release.artista_id ?? null);
+    // Busca DIRETO por ID — o release recém-criado pode não estar (ainda)
+    // no batch resolvido para a página atual (Task J).
+    const artista = release.artista_id
+      ? await storage.findById<Artista & { id: string }>("artistas", release.artista_id)
+      : undefined;
 
     await addShare.mutateAsync({
       share_type: "internal_release",
@@ -321,7 +352,7 @@ export default function Lancamentos() {
         descricao: "Share inicial criado pelo fluxo de distribuição automática.",
       }],
     } as never);
-  }, [addShare, shares, artistas]);
+  }, [addShare, shares]);
 
   const handleReleaseCreatedAndDistributed = useCallback(async (release: Lancamento) => {
     await ensureInitialShare(release);
@@ -334,16 +365,6 @@ export default function Lancamentos() {
     if (releaseId) navigate(shareFlowFromReleaseUrl(releaseId));
   };
 
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </MainLayout>
-    );
-  }
-
   const headerActions = (
     <Button size="sm" className="gap-2 bg-primary" data-testid="button-novo-lancamento" onClick={() => setFormModal({ open: true, mode: "create" })}>
       <Plus className="h-4 w-4" />
@@ -352,6 +373,14 @@ export default function Lancamentos() {
   );
 
   return (
+    <>
+    {isLoading || isLoadingPage ? (
+      <MainLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </MainLayout>
+    ) : (
     <MainLayout title="Lançamentos" description="Gestão de lançamentos e distribuição" actions={headerActions}>
       <div className="space-y-6">
         {/* KPIs operacionais de distribuição */}
@@ -420,17 +449,20 @@ export default function Lancamentos() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={artistFilter} onValueChange={setArtistFilter}>
-            <SelectTrigger className="h-8 w-[150px] shrink-0 bg-card border-border text-sm">
-              <SelectValue placeholder="Todos Artistas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-artist">Todos Artistas</SelectItem>
-              {artistas.map((artist) => (
-                <SelectItem key={artist.id} value={artist.id}>{artist.nome_artistico}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Task J: busca server-side (AsyncEntityCombobox) — antes populava o
+              Select com useArtistas() sem filtro, truncado nos primeiros 50
+              artistas do tenant. "Todos Artistas" volta via o botão Limpar. */}
+          <div className="h-8 w-[180px] shrink-0">
+            <AsyncEntityCombobox<Artista>
+              table="artistas"
+              getLabel={(a) => a.nome_artistico ?? ""}
+              value={artistFilter !== "all-artist" ? artistFilter : null}
+              onChange={(id) => setArtistFilter(id)}
+              placeholder="Todos Artistas"
+              searchPlaceholder="Buscar artista..."
+              data-testid="select-filter-artista"
+            />
+          </div>
           {hasActiveFilters && (
             <Button variant="outline" size="sm" onClick={handleClearFilters}>Limpar</Button>
           )}
@@ -440,12 +472,12 @@ export default function Lancamentos() {
             <CardContent>
               <ListSectionHeader
                 title="Lista de Lançamentos"
-                count={filteredReleases.length}
+                count={total}
                 description="Acompanhe todos os seus lançamentos musicais"
-                action={lancamentos.length > 0 ? (
+                action={total > 0 ? (
                   <div className="flex flex-wrap items-center justify-end gap-3">
                     <Checkbox
-                      checked={selectedIds.length === filteredReleases.length && filteredReleases.length > 0}
+                      checked={selectedIds.length === pageItems.length && pageItems.length > 0}
                       onCheckedChange={toggleSelectAll}
                       aria-label="Selecionar todos os lançamentos"
                       data-testid="checkbox-select-all-lancamentos"
@@ -462,7 +494,7 @@ export default function Lancamentos() {
                   </div>
                 ) : undefined}
               />
-              {filteredReleases.length > 0 ? (
+              {pageItems.length > 0 ? (
                 <>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   {pageItems.map((release) => (
@@ -489,6 +521,8 @@ export default function Lancamentos() {
                   itemLabel="lançamentos"
                 />
                 </>
+              ) : pageError && total === 0 ? (
+                <UnavailableState onRetry={() => refetchPage()} />
               ) : (
                 <EmptyState
                   icon={Radio}
@@ -501,7 +535,12 @@ export default function Lancamentos() {
             </CardContent>
           </Card>
       </div>
+    </MainLayout>
+    )}
 
+      {/* Fora do gate de isLoading de propósito — mesmo bug de /artistas
+          (Task C): LancamentoFormModal chama useLancamentos() de novo só
+          para as mutations, a mesma query do isLoading acima. */}
       <LancamentoFormModal
         open={formModal.open}
         onOpenChange={(open) => setFormModal({ ...formModal, open })}
@@ -539,6 +578,6 @@ export default function Lancamentos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </MainLayout>
+    </>
   );
 }

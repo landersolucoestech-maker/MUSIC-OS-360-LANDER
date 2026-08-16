@@ -1,10 +1,9 @@
-import { useState, useMemo } from "react";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { TablePagination } from "@/shared/ui/table-pagination";
-import { usePagination } from "@/shared/hooks/usePagination";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -20,26 +19,44 @@ import { InventarioViewModal } from "@/modules/inventory/components/InventarioVi
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { useInventario } from "@/modules/inventory/hooks/useInventario";
+import { useInventarioPaginated, useInventarioStats } from "@/modules/inventory/hooks/useInventarioPaginated";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { FeatureGate } from '@/shared/components/FeatureGate';
 
+// Filtros do dropdown → valores reais gravados no banco (status/localizacao).
+// Mesma tradução que existia no .filter() client-side antes da migração.
+const STATUS_FILTER_MAP: Record<string, string> = {
+  "em-uso": "em_uso",
+  disponivel: "disponivel",
+  manutencao: "manutencao",
+};
+const LOCAL_FILTER_MAP: Record<string, string> = {
+  estudio1: "Estúdio 1",
+  estudio2: "Estúdio 2",
+  escritorio: "Escritório",
+  estoque: "Estoque",
+};
+
 export default function Inventario() {
-  const { inventario, isLoading, deleteInventario, addInventario } = useInventario();
+  const { isLoading, deleteInventario, addInventario } = useInventario();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredEquipamentos.length && filteredEquipamentos.length > 0) {
+    if (selectedIds.length === pageItems.length && pageItems.length > 0) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredEquipamentos.map((i: any) => i.id));
+      setSelectedIds(pageItems.map((i: any) => i.id));
     }
   };
   const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    selectedIds.forEach(id => deleteInventario.mutate(id));
-    toast.success(`${selectedIds.length} item(ns) excluído(s) com sucesso`);
+    const ids = selectedIds;
     setSelectedIds([]);
+    const result = await runBulkAction(ids, (id) => deleteInventario.mutateAsync(id));
+    reportBulkResult(result, "excluído", "item");
   };
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; item?: any }>({ open: false, mode: "create" });
   const [viewModal, setViewModal] = useState<{ open: boolean; item?: any }>({ open: false });
@@ -48,27 +65,34 @@ export default function Inventario() {
   const [categoryFilter, setCategoryFilter] = useState("all-category");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [localFilter, setLocalFilter] = useState("all-local");
-
-  const filteredEquipamentos = useMemo(() => inventario.filter((item) => {
-    const matchesSearch = item.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.localizacao?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === "all-category" || item.categoria?.toLowerCase() === categoryFilter.toLowerCase();
-    const matchesStatus = statusFilter === "all-status" || 
-      (statusFilter === "em-uso" && item.status === "em_uso") ||
-      (statusFilter === "disponivel" && item.status === "disponivel") ||
-      (statusFilter === "manutencao" && item.status === "manutencao");
-    const matchesLocal = localFilter === "all-local" || 
-      (localFilter === "estudio1" && item.localizacao === "Estúdio 1") ||
-      (localFilter === "estudio2" && item.localizacao === "Estúdio 2") ||
-      (localFilter === "escritorio" && item.localizacao === "Escritório") ||
-      (localFilter === "estoque" && item.localizacao === "Estoque");
-    return matchesSearch && matchesCategory && matchesStatus && matchesLocal;
-  }), [inventario, searchTerm, categoryFilter, statusFilter, localFilter]);
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   const hasActiveFilters = searchTerm !== "" || categoryFilter !== "all-category" || statusFilter !== "all-status" || localFilter !== "all-local";
 
-  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredEquipamentos, 10);
+  // Task H: paginação real server-side — a página muda de request (nunca
+  // recorta uma lista já baixada), e volta pra página 0 quando um filtro muda.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  useEffect(() => { setPage(0); }, [debouncedSearch, categoryFilter, statusFilter, localFilter]);
+
+  const {
+    inventario: pageItems,
+    total,
+    isLoading: isLoadingPage,
+    error: pageError,
+    refetch: refetchPage,
+  } = useInventarioPaginated({
+    page,
+    pageSize,
+    search: debouncedSearch || undefined,
+    status: statusFilter !== "all-status" ? STATUS_FILTER_MAP[statusFilter] : undefined,
+    categoria: categoryFilter !== "all-category" ? categoryFilter : undefined,
+    localizacao: localFilter !== "all-local" ? LOCAL_FILTER_MAP[localFilter] : undefined,
+  });
+
+  // KPIs: contagem por status + soma de valor patrimonial SOBRE O TENANT
+  // INTEIRO (não a página atual) — GET /inventory/stats, agregado no banco.
+  const { stats: inventarioStats } = useInventarioStats();
 
   const handleClearFilters = () => {
     setSearchTerm("");
@@ -84,23 +108,13 @@ export default function Inventario() {
     }
   };
 
-  const metricas = useMemo(() => ({
-    total: inventario.length,
-    emUso: inventario.filter(e => e.status === "em_uso").length,
-    disponiveis: inventario.filter(e => e.status === "disponivel").length,
-    emManutencao: inventario.filter(e => e.status === "manutencao").length,
-    valorTotal: inventario.reduce((sum, item) => sum + (Number(item.valor_unitario) || 0) * (Number(item.quantidade) || 1), 0),
-  }), [inventario]);
-
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </MainLayout>
-    );
-  }
+  const metricas = {
+    total: inventarioStats.total,
+    emUso: inventarioStats.byGroup["em_uso"] ?? 0,
+    disponiveis: inventarioStats.byGroup["disponivel"] ?? 0,
+    emManutencao: inventarioStats.byGroup["manutencao"] ?? 0,
+    valorTotal: inventarioStats.totalSum ?? 0,
+  };
 
   const headerActions = (
     <RequirePermission module="inventory" action="write">
@@ -110,6 +124,14 @@ export default function Inventario() {
 
   return (
     <FeatureGate feature="moduleInventory" featureName="Estoque & Inventário">
+    <>
+    {isLoading || isLoadingPage ? (
+      <MainLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </MainLayout>
+    ) : (
     <MainLayout title="Inventário" description="Controle de equipamentos e patrimônio" actions={headerActions}>
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -132,12 +154,12 @@ export default function Inventario() {
           <CardContent className="pt-0">
             <ListSectionHeader
               title="Lista de Equipamentos"
-              count={filteredEquipamentos.length}
+              count={total}
               description="Inventário completo de equipamentos e instrumentos"
               action={
                 <div className="flex flex-wrap items-center justify-end gap-3">
                   <Checkbox
-                    checked={selectedIds.length === filteredEquipamentos.length && filteredEquipamentos.length > 0}
+                    checked={selectedIds.length === pageItems.length && pageItems.length > 0}
                     onCheckedChange={toggleSelectAll}
                     data-testid="checkbox-select-all"
                     aria-label="Selecionar todos"
@@ -154,7 +176,7 @@ export default function Inventario() {
                 </div>
               }
             />
-            {filteredEquipamentos.length > 0 ? (
+            {pageItems.length > 0 ? (
               <>
               <Table>
                 <TableHeader>
@@ -233,6 +255,8 @@ export default function Inventario() {
                 itemLabel="equipamentos"
               />
               </>
+            ) : pageError && total === 0 ? (
+              <UnavailableState onRetry={() => refetchPage()} />
             ) : (
               <EmptyState
                 icon={Package}
@@ -245,11 +269,16 @@ export default function Inventario() {
           </CardContent>
         </Card>
       </div>
+    </MainLayout>
+    )}
 
+      {/* Fora do gate de isLoading de propósito — mesmo bug de /artistas
+          (Task C): InventarioFormModal chama useInventario() de novo só
+          para as mutations, a mesma query do isLoading acima. */}
       <InventarioViewModal open={viewModal.open} onOpenChange={(open) => setViewModal({ ...viewModal, open })} item={viewModal.item} />
       <InventarioFormModal open={formModal.open} onOpenChange={(open) => setFormModal({ ...formModal, open })} item={formModal.item} mode={formModal.mode} />
       <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Item" description={`Tem certeza que deseja excluir "${deleteModal.item?.nome}"?`} onConfirm={handleDelete} />
-    </MainLayout>
+    </>
     </FeatureGate>
   );
 }

@@ -7,6 +7,7 @@ import { AudiovisualDeliverableEntity, AudiovisualProjectEntity } from '../../..
 import type {
   CreateDeliverableDto, UpdateDeliverableDto, QueryDeliverableDto,
 } from '../dto/audiovisual.dto';
+import { casUpdate } from '../../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class AudiovisualDeliverablesService {
@@ -53,9 +54,16 @@ export class AudiovisualDeliverablesService {
 
   async update(tenantId: string, id: string, dto: UpdateDeliverableDto) {
     await this.findById(tenantId, id);
-    const patch: Record<string, unknown> = { ...dto, updated_at: new Date() };
+    const { expectedUpdatedAt, ...rest } = dto as UpdateDeliverableDto & { expectedUpdatedAt?: string };
+    const patch: Record<string, unknown> = { ...rest, updated_at: new Date() };
     if (dto.published === true) patch.published_at = new Date();
-    await this.r.update({ id, tenant_id: tenantId } as never, patch as never);
+    await casUpdate(
+      this.r,
+      { id, tenant_id: tenantId } as never,
+      patch as never,
+      expectedUpdatedAt,
+      'Este entregável foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

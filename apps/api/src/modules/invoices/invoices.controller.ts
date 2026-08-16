@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseUUIDPipe, UseInterceptors } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader } from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
+import { IdempotencyInterceptor } from '../../core/interceptors/idempotency.interceptor';
 import type { JwtAuth }  from '../../core/guards/auth.guard';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto, UpdateInvoiceDto, QueryInvoiceDto } from './dto/invoices.dto';
@@ -35,7 +36,9 @@ export class InvoicesController {
   @RequireRole('financial')
   @RequirePermission('invoice:create')
   @Audit('invoice.created')
+  @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: 'Criar nota fiscal (financial+)' })
+  @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne duplicação de nota fiscal em duplo-clique/retry', required: false })
   create(
     @CurrentTenant() t: { id: string },
     @CurrentUser() u: JwtAuth,

@@ -5,6 +5,7 @@ import { ADMIN_DATA_SOURCE, DATA_SOURCE } from '../../database/database.module';
 import { DatabaseContextService } from '../../database/database-context.service';
 import { LeadEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type {
   CreateLeadDto,
   UpdateLeadDto,
@@ -173,6 +174,35 @@ export class LeadsService {
     const phone = dto.phone?.trim() ?? '';
     if (!tenant) throw new NotFoundException('Organização não encontrada ou inativa');
 
+    // Formulário público sem autenticação: duplo-clique/retry no submit é o
+    // cenário normal, não uma exceção. Idempotency-Key não se aplica (não há
+    // como garantir que o embed externo do formulário o envie). Em vez
+    // disso, deduplicamos por e-mail dentro de uma janela curta — email é
+    // criptografado (IV aleatório), então não dá para comparar via SQL;
+    // varremos só os candidatos recentes (mesmo tenant+origem, últimos 5min).
+    // ponytail: scan limitado (20 linhas) em vez de índice — se o volume de
+    // candidaturas por tenant crescer muito, considerar HMAC determinístico
+    // do e-mail como coluna de dedupe indexável.
+    const recentCandidates = await this.repo!
+      .createQueryBuilder('l')
+      .where('l.tenant_id = :tenantId', { tenantId: tenant.id })
+      .andWhere(`l.created_at > now() - interval '5 minutes'`)
+      .andWhere('l.fonte = :fonte', { fonte: 'public_artist_application' })
+      .orderBy('l.created_at', 'DESC')
+      .limit(20)
+      .getMany();
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const duplicate = recentCandidates.find(
+      (l) => this.enc.decryptNullable(l.email_encrypted) === normalizedEmail,
+    );
+    if (duplicate) {
+      return {
+        id: duplicate.id,
+        protocol: duplicate.id.replace(/-/g, '').slice(-8).toUpperCase(),
+        accepted: true,
+      };
+    }
+
     const saved = await this.dbContext.runInTenantContext(
       { tenantId: tenant.id, orgId: tenant.org_id, role: 'system' },
       async () => {
@@ -329,9 +359,12 @@ export class LeadsService {
     const dtoMap  = dto as Record<string, unknown>;
     const statusChanging = dtoMap['status'] != null && dtoMap['status'] !== current.status;
     const toStatus = dtoMap['status'] as string | undefined;
+    const expectedUpdatedAt = dtoMap['expectedUpdatedAt'] as string | undefined;
+    const conflictMessage = 'Este lead foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.';
 
-    const { status: _s, email, phone, ...restFields } = dtoMap;
+    const { status: _s, email, phone, expectedUpdatedAt: _eua, ...restFields } = dtoMap;
     void _s;
+    void _eua;
 
     const nonStatusUpdates: Record<string, unknown> = {
       updated_at: new Date(),
@@ -354,10 +387,19 @@ export class LeadsService {
       };
       await this.ds!.transaction(async (em) => {
         await this.workflowService.transitionInTx(req, em);
-        await em.update(LeadEntity, { id, tenant_id: tenantId }, {
-          ...nonStatusUpdates,
-          status: toStatus as LeadStatus,
-        });
+        // CAS dentro da mesma transação da mudança de status: se o lead foi
+        // editado por outra pessoa desde a leitura de `current` acima, a
+        // transação inteira (incluindo o histórico de transição já gravado
+        // por transitionInTx) faz rollback — nunca aplica uma transição
+        // validada contra um fromStatus desatualizado (mesmo padrão de
+        // ContractsService.update()).
+        await casUpdate(
+          em.getRepository(LeadEntity),
+          { id, tenant_id: tenantId },
+          { ...nonStatusUpdates, status: toStatus as LeadStatus },
+          expectedUpdatedAt,
+          conflictMessage,
+        );
       });
 
       // Emit WORKFLOW_TRANSITIONED for every lead status change
@@ -397,9 +439,12 @@ export class LeadsService {
         });
       }
     } else {
-      await this.repo!.update(
+      await casUpdate(
+        this.repo!,
         { id, tenant_id: tenantId } as FindOptionsWhere<LeadEntity>,
         nonStatusUpdates as QueryDeepPartialEntity<LeadEntity>,
+        expectedUpdatedAt,
+        conflictMessage,
       );
     }
 

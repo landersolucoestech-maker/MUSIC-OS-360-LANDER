@@ -6,6 +6,7 @@ import { ClientEntity, ClientAttachmentEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { StorageService, type UploadCategory } from '../../storage/storage.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateClientDto, UpdateClientDto, QueryClientDto } from './dto/clients.dto';
 
 const TIMELINE_ENTITY_TYPE = 'client';
@@ -54,6 +55,7 @@ export class ClientsService {
     if (q['status'])   qb.andWhere('c.status = :status',      { status:   q['status'] });
     if (q['type'])     qb.andWhere('c.tipo_pessoa = :type',   { type:     q['type'] });
     if (q['category']) qb.andWhere('c.categoria = :category', { category: q['category'] });
+    if (q['search'])   qb.andWhere('c.nome ILIKE :search',    { search: `%${q['search']}%` });
 
     qb.orderBy('c.created_at', q['ascending'] ? 'ASC' : 'DESC')
       .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
@@ -103,7 +105,14 @@ export class ClientsService {
     if (email    !== undefined) updates['email_encrypted']    = this.enc.encryptNullable(email as string | null);
     if (phone    !== undefined) updates['telefone_encrypted']  = this.enc.encryptNullable(phone as string | null);
     if (document !== undefined) updates['cpf_cnpj_encrypted'] = this.enc.encryptNullable(document as string | null);
-    await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    delete updates['expectedUpdatedAt'];
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      updates as any,
+      (dto as Record<string, unknown>)['expectedUpdatedAt'] as string | undefined,
+      'Este cliente foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     await this.recordActivity(tenantId, userId, id, 'updated', 'Cliente atualizado', {
       fields: Object.keys(updates).filter((k) => k !== 'updated_at' && k !== 'updated_by'),
     });

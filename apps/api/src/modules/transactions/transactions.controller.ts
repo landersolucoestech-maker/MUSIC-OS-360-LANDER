@@ -35,6 +35,14 @@ export class TransactionsController {
     return this.service.list(tenant.id, query);
   }
 
+  @Get('stats')
+  @RequireRole('viewer')
+  @RequirePermission('transaction:read')
+  @ApiOperation({ summary: 'Distribuição exata tipo×status + soma de valor (tenant inteiro)' })
+  stats(@CurrentTenant() tenant: { id: string }) {
+    return this.service.stats(tenant.id);
+  }
+
   @Get(':id')
   @RequireRole('viewer')
   @RequirePermission('transaction:read')

@@ -24,6 +24,8 @@ export class CreateClientDto {
 export class UpdateClientDto extends PartialType(CreateClientDto) {
   @ApiPropertyOptional({ enum: ['active', 'inactive', 'blocked'] })
   @IsOptional() @IsIn(['active', 'inactive', 'blocked']) status?: string;
+  @ApiPropertyOptional({ description: 'updated_at lido pelo cliente antes de editar — detecta edição concorrente (409 se divergir)' })
+  @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryClientDto extends PaginationDto {

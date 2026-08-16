@@ -3,6 +3,7 @@ import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ReleaseEntity, ArtistEntity } from '../../database/entities';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateReleaseDto, UpdateReleaseDto, QueryReleaseDto } from './dto/releases.dto';
 import { ReleaseStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
@@ -26,7 +27,7 @@ export class ReleasesService {
     }
   }
 
-  async list(tenantId: string, q: QueryReleaseDto) {
+  private baseQb(tenantId: string, q: QueryReleaseDto) {
     const qb = this.repo!
       .createQueryBuilder('r')
       .leftJoinAndMapOne(
@@ -44,12 +45,40 @@ export class ReleasesService {
     if (q.distributor) qb.andWhere('r.distribuidora = :distribuidora', { distribuidora: q.distributor });
     if (q.search)      qb.andWhere('r.titulo ILIKE :search',           { search:      `%${q.search}%` });
 
+    return qb;
+  }
+
+  async list(tenantId: string, q: QueryReleaseDto) {
+    const qb = this.baseQb(tenantId, q);
+
     qb.orderBy('r.created_at', q.ascending ? 'ASC' : 'DESC')
       .skip(q.offset ?? 0)
       .take(q.limit ?? 50);
 
     const [data, total] = await qb.getManyAndCount();
     return { data, meta: { total, offset: q.offset ?? 0, limit: q.limit ?? 50 } };
+  }
+
+  /**
+   * Distribuição exata por `status` (+ se os campos obrigatórios de submissão
+   * estão preenchidos, único outro fator do qual a classificação de exibição
+   * depende — ver resolveStatusFromRawStatus() no frontend). Tenant inteiro,
+   * nunca só a página carregada.
+   */
+  async stats(tenantId: string, q: QueryReleaseDto): Promise<Array<{ status: string; has_required: boolean; cnt: number }>> {
+    const qb = this.baseQb(tenantId, q);
+    qb.select('r.status', 'status')
+      .addSelect(
+        `CASE WHEN r.titulo IS NOT NULL AND r.titulo <> '' AND r.artista_id IS NOT NULL
+              AND r.genero IS NOT NULL AND r.genero <> '' AND r.tipo IS NOT NULL AND r.tipo <> ''
+         THEN true ELSE false END`,
+        'has_required',
+      )
+      .addSelect('COUNT(*)::int', 'cnt')
+      .groupBy('r.status')
+      .addGroupBy('has_required');
+    const rows = await qb.getRawMany<{ status: string; has_required: boolean; cnt: string }>();
+    return rows.map((r) => ({ status: r.status, has_required: r.has_required, cnt: parseInt(r.cnt, 10) || 0 }));
   }
 
   async findById(
@@ -134,6 +163,8 @@ export class ReleasesService {
   ): Promise<ReleaseEntity & { allowed_transitions: { to: string; label?: string }[] }> {
     const current = await this.findById(tenantId, id, actorRole);
     const statusChanging = dto.status != null && dto.status !== current.status;
+    const expectedUpdatedAt = dto.expectedUpdatedAt;
+    const conflictMessage = 'Este lançamento foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.';
 
     const nonStatusUpdates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
     if (dto.title       != null) nonStatusUpdates.titulo          = dto.title;
@@ -168,10 +199,17 @@ export class ReleasesService {
       };
       await this.ds!.transaction(async (em) => {
         await this.workflowService.transitionInTx(req, em);
-        await em.update(ReleaseEntity, { id, tenant_id: tenantId }, {
-          ...nonStatusUpdates,
-          status: dto.status,
-        });
+        // CAS na mesma transação da mudança de status — se o lançamento foi
+        // editado por outra pessoa desde a leitura de `current`, a transação
+        // inteira (incluindo o histórico já gravado por transitionInTx) faz
+        // rollback, nunca aplica uma transição validada contra status stale.
+        await casUpdate(
+          em.getRepository(ReleaseEntity),
+          { id, tenant_id: tenantId },
+          { ...nonStatusUpdates, status: dto.status },
+          expectedUpdatedAt,
+          conflictMessage,
+        );
       });
 
       // Emit WORKFLOW_TRANSITIONED for all status changes
@@ -242,9 +280,12 @@ export class ReleasesService {
         });
       }
     } else {
-      await this.repo!.update(
+      await casUpdate(
+        this.repo!,
         { id, tenant_id: tenantId } as FindOptionsWhere<ReleaseEntity>,
         nonStatusUpdates as QueryDeepPartialEntity<ReleaseEntity>,
+        expectedUpdatedAt,
+        conflictMessage,
       );
     }
 

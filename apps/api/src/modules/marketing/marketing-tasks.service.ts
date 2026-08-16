@@ -13,6 +13,7 @@ import type {
   QueryMarketingTaskDto,
   UpdateMarketingTaskDto,
 } from './dto/marketing-tasks.dto';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class MarketingTasksService {
@@ -91,24 +92,30 @@ export class MarketingTasksService {
     if (dto.marketingProjectId && dto.marketingProjectId !== current.marketing_project_id) {
       await this.assertProject(tenantId, dto.marketingProjectId);
     }
-    await this.repo.update({ id, tenant_id: tenantId } as never, {
-      marketing_project_id: dto.marketingProjectId,
-      title: dto.title,
-      description: dto.description,
-      status: dto.status,
-      priority: dto.priority,
-      kind: dto.kind,
-      assigned_to: dto.assignedTo,
-      due_date: dto.dueDate === undefined ? undefined : dto.dueDate ? new Date(dto.dueDate) : null,
-      dependencies: dto.dependencies,
-      metrics: dto.metrics,
-      metadata: dto.metadata,
-      completed_at: dto.status === 'completed' || dto.status === 'concluida'
-        ? current.completed_at ?? new Date()
-        : undefined,
-      updated_by: userId,
-      updated_at: new Date(),
-    } as never);
+    await casUpdate(
+      this.repo,
+      { id, tenant_id: tenantId } as never,
+      {
+        marketing_project_id: dto.marketingProjectId,
+        title: dto.title,
+        description: dto.description,
+        status: dto.status,
+        priority: dto.priority,
+        kind: dto.kind,
+        assigned_to: dto.assignedTo,
+        due_date: dto.dueDate === undefined ? undefined : dto.dueDate ? new Date(dto.dueDate) : null,
+        dependencies: dto.dependencies,
+        metrics: dto.metrics,
+        metadata: dto.metadata,
+        completed_at: dto.status === 'completed' || dto.status === 'concluida'
+          ? current.completed_at ?? new Date()
+          : undefined,
+        updated_by: userId,
+        updated_at: new Date(),
+      } as never,
+      dto.expectedUpdatedAt,
+      'Esta tarefa de marketing foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

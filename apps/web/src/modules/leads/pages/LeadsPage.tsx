@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 import { Download, GitBranch, Plus, Users } from "lucide-react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
@@ -406,7 +408,10 @@ export default function LeadsPage() {
                 setModalOpen(true);
               }}
               onDelete={(lead) => void deleteLead(lead.id)}
-              onBulkDelete={(rows) => rows.forEach((l) => void deleteLead(l.id))}
+              onBulkDelete={async (rows) => {
+                const result = await runBulkAction(rows.map((l) => l.id), deleteLead);
+                reportBulkResult(result, "excluído", "lead");
+              }}
             />
           </div>
         </TabsContent>
@@ -419,7 +424,7 @@ export default function LeadsPage() {
         onOpenChange={(next) => setModalOpen(next)}
         onSubmit={async (formPayload) => {
           const leadPayload = payloadToLead(formPayload);
-          if (editingLead) await updateLead(editingLead.id, leadPayload);
+          if (editingLead) await updateLead(editingLead.id, leadPayload, getExpectedUpdatedAt(editingLead));
           else await createLead(leadPayload);
         }}
       />

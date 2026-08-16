@@ -110,7 +110,10 @@ export class CreateMarketingContentDto {
   metadata?: Record<string, unknown>;
 }
 
-export class UpdateMarketingContentDto extends PartialType(CreateMarketingContentDto) {}
+export class UpdateMarketingContentDto extends PartialType(CreateMarketingContentDto) {
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class QueryMarketingContentDto extends PaginationDto {
   @ApiPropertyOptional({ enum: MARKETING_CONTENT_CHANNELS })

@@ -1,5 +1,5 @@
 import {
-  Injectable, Inject, NotFoundException, BadRequestException, ServiceUnavailableException,
+  Injectable, Inject, NotFoundException, BadRequestException, ConflictException, ServiceUnavailableException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.tokens';
@@ -88,17 +88,34 @@ export class AudiovisualApprovalsService {
     };
     if (dto.status === 'approved') {
       patch.approved_by = userId; patch.approved_at = now;
-      // Se aprovação de entregável, marca deliverable.approved = true
-      if (current.deliverable_id && this.deliverables) {
-        await this.deliverables.update(
-          { id: current.deliverable_id, tenant_id: tenantId } as never,
-          { approved: true, status: 'approved', updated_at: now } as never,
-        );
-      }
     } else if (dto.status === 'rejected' || dto.status === 'revision_requested') {
       patch.rejected_by = userId; patch.rejected_at = now;
     }
-    await this.r.update({ id, tenant_id: tenantId } as never, patch as never);
+
+    // Guarda status='pending' na PRÓPRIA condição do UPDATE (não só no
+    // pre-check acima) — fecha a janela entre o findById e este UPDATE em
+    // que duas decisões concorrentes (dois managers) poderiam sobrescrever
+    // uma à outra silenciosamente. 0 linhas afetadas = outra decisão já
+    // venceu a corrida (ou o registro mudou desde expectedUpdatedAt).
+    const criteria: Record<string, unknown> = { id, tenant_id: tenantId, status: 'pending' };
+    if (dto.expectedUpdatedAt) {
+      const expected = new Date(dto.expectedUpdatedAt);
+      if (Number.isNaN(expected.getTime())) throw new BadRequestException('expectedUpdatedAt inválido');
+      criteria.updated_at = expected;
+    }
+    const result = await this.r.update(criteria as never, patch as never);
+    if (result.affected === 0) {
+      throw new ConflictException('Esta aprovação já foi decidida (ou alterada) por outro usuário. Recarregue e tente novamente.');
+    }
+
+    // Se aprovação de entregável, marca deliverable.approved = true — só
+    // depois que a decisão em si foi persistida com sucesso.
+    if (dto.status === 'approved' && current.deliverable_id && this.deliverables) {
+      await this.deliverables.update(
+        { id: current.deliverable_id, tenant_id: tenantId } as never,
+        { approved: true, status: 'approved', updated_at: now } as never,
+      );
+    }
     return this.findById(tenantId, id);
   }
 }

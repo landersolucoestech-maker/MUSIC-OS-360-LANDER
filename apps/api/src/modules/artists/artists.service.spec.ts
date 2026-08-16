@@ -80,6 +80,10 @@ function makeDataSource(getOneValue: unknown = artistA) {
 
   return {
     getRepository: jest.fn(() => repo),
+    // Task H: list() enriquece cada artista com o vínculo (exclusivo/
+    // parceiro/independente) via uma query bruta restrita aos IDs da
+    // página — sem nenhum contrato mockado, isso resolve pra "independente".
+    query: jest.fn().mockResolvedValue([]),
     _repo: repo,
   };
 }
@@ -100,6 +104,7 @@ describe('ArtistsService', () => {
       telefone: null,
       cpf_cnpj: null,
       manager_contato: null,
+      vinculo: 'independente',
     }]);
     expect(result.data[0]).not.toHaveProperty('email_encrypted');
     expect(result.meta.total).toBe(1);

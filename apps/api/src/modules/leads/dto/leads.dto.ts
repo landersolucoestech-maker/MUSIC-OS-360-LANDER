@@ -47,6 +47,8 @@ export class CreateLeadDto {
 export class UpdateLeadDto extends PartialType(CreateLeadDto) {
   @ApiPropertyOptional({ enum: LeadStatus }) @IsOptional() @IsIn(STATUSES) status?: string;
   @ApiPropertyOptional({ enum: STAGES })     @IsOptional() @IsIn(STAGES)   stage?: string;
+  @ApiPropertyOptional({ description: 'updated_at lido pelo cliente antes de editar — detecta edição concorrente (409 se divergir)' })
+  @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryLeadDto extends PaginationDto {

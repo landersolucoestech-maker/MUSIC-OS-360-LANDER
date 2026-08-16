@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsUUID, IsIn } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -42,4 +42,14 @@ export class QueryPhonogramDto extends PaginationDto {
   @IsOptional()
   @IsString()
   genre?: string;
+
+  @ApiPropertyOptional({ enum: ['com-obra', 'sem-obra'] })
+  @IsOptional()
+  @IsIn(['com-obra', 'sem-obra'])
+  obra_vinculada?: string;
+
+  @ApiPropertyOptional({ enum: ['com-ecad', 'sem-ecad'] })
+  @IsOptional()
+  @IsIn(['com-ecad', 'sem-ecad'])
+  ecad?: string;
 }

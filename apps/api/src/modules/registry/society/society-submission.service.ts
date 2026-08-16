@@ -22,6 +22,7 @@ import {
 } from '@music-os-360/types';
 import { allowedNext, canTransition, REQUIRES_SNAPSHOT } from './society-submission.state';
 import type { QuerySubmissionDto, UpdateSubmissionStatusDto } from '../dto/society.dto';
+import { casUpdate } from '../../../common/persistence/optimistic-update.util';
 
 export interface CreateSubmissionInput {
   society: SocietyName;
@@ -159,18 +160,28 @@ export class SocietySubmissionService {
     }
 
     const now = new Date();
-    sub.status = to;
-    if (dto.protocol) sub.protocol = dto.protocol;
-    if (dto.external_id) sub.external_id = dto.external_id;
+    const updates: Record<string, unknown> = { status: to };
+    if (dto.protocol) updates.protocol = dto.protocol;
+    if (dto.external_id) updates.external_id = dto.external_id;
     if (to === SocietySubmissionStatus.SUBMITTED) {
-      sub.submitted_at = now;
-      sub.submitted_by = userId || null;
+      updates.submitted_at = now;
+      updates.submitted_by = userId || null;
     }
-    if (to === SocietySubmissionStatus.APPROVED) sub.approved_at = now;
-    if (to === SocietySubmissionStatus.REJECTED) sub.rejected_at = now;
-    if (to === SocietySubmissionStatus.FAILED && dto.failure_reason) sub.failure_reason = dto.failure_reason;
+    if (to === SocietySubmissionStatus.APPROVED) updates.approved_at = now;
+    if (to === SocietySubmissionStatus.REJECTED) updates.rejected_at = now;
+    if (to === SocietySubmissionStatus.FAILED && dto.failure_reason) updates.failure_reason = dto.failure_reason;
 
-    const saved = await this.repo.save(sub);
+    // CAS: se a submissão foi alterada por outra pessoa/processo desde a
+    // leitura de `sub` (ex.: duas transições concorrentes), rejeita com 409
+    // em vez de aplicar uma transição validada contra um status já obsoleto.
+    await casUpdate(
+      this.repo,
+      { id, tenant_id: tenantId } as never,
+      updates as never,
+      dto.expectedUpdatedAt,
+      'Esta submissão foi alterada por outro processo desde que você a carregou. Recarregue e tente novamente.',
+    );
+    const saved = await this.findById(tenantId, id);
     await this.recordEvent(tenantId, userId, id, {
       eventType: dto.protocol && !sub.protocol ? SocietySubmissionEventType.PROTOCOL_ASSIGNED : SocietySubmissionEventType.STATUS_CHANGED,
       fromStatus: from,

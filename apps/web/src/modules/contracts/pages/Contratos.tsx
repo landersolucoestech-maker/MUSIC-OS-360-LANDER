@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { useNavigate } from "react-router-dom";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
 import { MainLayout } from "@/shared/components/MainLayout";
@@ -21,9 +22,12 @@ import { ContratoWizard } from "@/modules/contracts/components/ContratoWizard";
 import { ContratoViewModal } from "@/modules/contracts/components/ContratoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
+import { useContratosPaginated, useContratosStats } from "@/modules/contracts/hooks/useContratosPaginated";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { formatCurrency, formatDateDashes, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import { formatCategoryLabel } from "@/shared/lib/category-labels";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { TablePagination } from "@/shared/ui/table-pagination";
@@ -45,29 +49,46 @@ export default function Contratos() {
     "edit",
     contratos,
     useCallback((contrato) => setFormModal({ open: true, mode: "edit", contrato }), []),
+    "contratos",
   );
 
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all-type");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [platformFilter, setPlatformFilter] = useState("all-platform");
-
-  const filteredContratos = contratos.filter((contrato) => {
-    const matchesSearch =
-      searchTerm === "" ||
-      contrato.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contrato.artistas?.nome_artistico?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === "all-type" || contrato.tipo === typeFilter;
-    const matchesStatus = statusFilter === "all-status" || contrato.status === statusFilter;
-    const matchesPlatform =
-      platformFilter === "all-platform" ||
-      (platformFilter === "none" ? !contrato.signing_platform : contrato.signing_platform === platformFilter);
-    return matchesSearch && matchesType && matchesStatus && matchesPlatform;
-  });
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   const hasActiveFilters = searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status" || platformFilter !== "all-platform";
 
-  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredContratos, 10);
+  // Task H: paginação real server-side — a página muda de request (nunca
+  // recorta uma lista já baixada), e volta pra página 0 quando um filtro
+  // muda (senão a página 5 de um filtro que só tem 2 páginas fica presa).
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  useEffect(() => { setPage(0); }, [debouncedSearch, typeFilter, statusFilter, platformFilter]);
+
+  const {
+    contratos: pageItems,
+    total,
+    isLoading: isLoadingPage,
+    error: pageError,
+    refetch: refetchPage,
+  } = useContratosPaginated({
+    page,
+    pageSize,
+    search: debouncedSearch || undefined,
+    status: statusFilter !== "all-status" ? statusFilter : undefined,
+    tipo: typeFilter !== "all-type" ? typeFilter : undefined,
+    signingPlatform: platformFilter !== "all-platform" ? platformFilter : undefined,
+  });
+  const filteredContratos = pageItems;
+
+  // KPIs: contagem + soma de valor por status SOBRE O TENANT INTEIRO (não a
+  // página atual) — GET /contracts/stats, agregado no banco. O bucket-mapping
+  // (vigente/assinado/aguardando/análise/encerrado) é o mesmo de sempre, só
+  // que agora itera sobre {status: count} (5-10 entradas) em vez da lista
+  // completa de contratos.
+  const { stats: contratosStats } = useContratosStats();
 
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredContratos.length && filteredContratos.length > 0) {
@@ -78,11 +99,12 @@ export default function Contratos() {
   };
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    selectedIds.forEach((id) => deleteContrato.mutate(id));
-    toast.success(`${selectedIds.length} contrato(s) excluído(s) com sucesso`);
+    const ids = selectedIds;
     setSelectedIds([]);
+    const result = await runBulkAction(ids, (id) => deleteContrato.mutateAsync(id));
+    reportBulkResult(result, "excluído", "contrato");
   };
 
   const handleClearFilters = () => {
@@ -118,25 +140,23 @@ export default function Contratos() {
 
   const tally = { vigente: 0, assinado: 0, aguardando: 0, analise: 0, encerrado: 0 };
   let valorEfetivo = 0;
-  for (const c of contratos) {
-    const b = bucketOf(c.status);
-    tally[b] += 1;
-    if (b === "vigente" || b === "assinado") valorEfetivo += Number(c.valor ?? 0) || 0;
+  for (const [status, count] of Object.entries(contratosStats.byGroup)) {
+    const b = bucketOf(status);
+    tally[b] += count;
+    if (b === "vigente" || b === "assinado") valorEfetivo += contratosStats.sumByGroup?.[status] ?? 0;
   }
-  const totalContratos = contratos.length;
+  const totalContratos = contratosStats.total;
   const today = new Date();
 
-  if (isLoading) {
-    return (
+  return (
+    <>
+    {isLoading || isLoadingPage ? (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </MainLayout>
-    );
-  }
-
-  return (
+    ) : (
     <MainLayout
       title="Contratos"
       description="Gerencie contratos e documentação legal"
@@ -269,7 +289,7 @@ export default function Contratos() {
           )}
           {hasActiveFilters && (
             <span className="text-xs text-muted-foreground ml-auto">
-              {filteredContratos.length} de {contratos.length} contratos
+              {total} de {contratosStats.total} contratos
             </span>
           )}
         </div>
@@ -279,7 +299,7 @@ export default function Contratos() {
           <CardContent className="pt-0">
             <ListSectionHeader
               title="Lista de Contratos"
-              count={filteredContratos.length}
+              count={total}
               description="Acompanhe todos os contratos e seus vencimentos"
               action={
                 <div className="flex flex-wrap items-center justify-end gap-3">
@@ -392,6 +412,8 @@ export default function Contratos() {
                 itemLabel="contratos"
               />
               </>
+            ) : pageError && total === 0 ? (
+              <UnavailableState onRetry={() => refetchPage()} />
             ) : (
               <EmptyState
                 icon={FileText}
@@ -408,7 +430,16 @@ export default function Contratos() {
           </CardContent>
         </Card>
       </div>
+    </MainLayout>
+    )}
 
+      {/* Fora do gate de isLoading de propósito — mesmo bug de /artistas
+          (Task C): ContratoWizard chama useContratos() de novo só para as
+          mutations de create/update, a mesma query do isLoading acima.
+          Montá-lo só depois do isLoading virar false criava um observer
+          novo nessa query; em erro (backend fora do ar), refetchOnMount
+          reabria isLoading, o gate desmontava o wizard de novo — loop
+          infinito de loading. Mantê-los sempre montados quebra o ciclo. */}
       <ContratoViewModal
         open={viewModal.open}
         onOpenChange={(open) => setViewModal({ ...viewModal, open })}
@@ -431,7 +462,7 @@ export default function Contratos() {
         description={`Tem certeza que deseja excluir o contrato "${deleteModal.contrato?.titulo}"?`}
         onConfirm={handleDelete}
       />
-    </MainLayout>
+    </>
   );
 }
 

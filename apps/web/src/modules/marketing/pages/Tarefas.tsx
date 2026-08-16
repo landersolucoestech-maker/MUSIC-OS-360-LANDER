@@ -6,6 +6,8 @@
  */
 
 import { useMemo, useState, type ComponentType } from "react";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 import { AlertTriangle, CalendarClock, CheckCircle, Download, Eye, ListChecks, MoreHorizontal, Music, Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { MetricCard } from "@/shared/components/MetricCard";
@@ -73,9 +75,9 @@ import {
 } from "../forms/marketing-forms";
 import { formatDate } from "../utils/marketing-format";
 import type { MarketingTask } from "../types/marketing.types";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { useQuery } from "@tanstack/react-query";
+import { fetchAllLabels } from "@/shared/lib/fetch-all-labels";
 import { useMarketingProjects } from "../hooks/useMarketingProjects";
-import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
 import { useOperationalSettings } from "@/modules/settings/hooks/useOperationalSettings";
 
 type TaskModalMode = "create" | "edit";
@@ -100,9 +102,18 @@ export default function Tarefas() {
   const removeTask = useRemoveTask();
 
   // Real registries powering the "Projeto musical, artista ou empresa" picker.
-  const { artistas = [] } = useArtistas();
+  // Campo `targetName` guarda o NOME (não o id) e é filtrado client-side
+  // (searchable: true no FieldDef) — por isso usa fetchAllLabels (paginação
+  // real, sem cap) em vez de useArtistas()/useClientes() (capadas a 50/tenant).
+  const { data: artistaNameOptions = [] } = useQuery({
+    queryKey: ["marketing-task-target-names", "artistas"],
+    queryFn: () => fetchAllLabels("artistas", (a) => a.nome_artistico as string | undefined),
+  });
+  const { data: empresaNameOptions = [] } = useQuery({
+    queryKey: ["marketing-task-target-names", "clientes"],
+    queryFn: () => fetchAllLabels("clientes", (c) => c.nome as string | undefined),
+  });
   const { data: projects = [] } = useMarketingProjects();
-  const { clientes = [] } = useClientes();
   const { getOptionsByKind } = useOperationalSettings();
   const marketingContextOptions = getOptionsByKind("marketing_context");
   const marketingSectorOptions = getOptionsByKind("marketing_sector");
@@ -110,17 +121,13 @@ export default function Tarefas() {
 
   const targetOptions = useMemo<TaskTargetOptions>(
     () => ({
-      artista: artistas
-        .map((a) => ({ value: a.nome_artistico ?? "", label: a.nome_artistico ?? "" }))
-        .filter((o) => o.value),
+      artista: artistaNameOptions,
       projeto_musical: projects
         .map((p) => ({ value: p.name, label: p.name }))
         .filter((o) => o.value),
-      empresa: clientes
-        .map((c) => ({ value: c.nome, label: c.nome }))
-        .filter((o) => o.value),
+      empresa: empresaNameOptions,
     }),
-    [artistas, projects, clientes],
+    [artistaNameOptions, projects, empresaNameOptions],
   );
 
   const [search, setSearch] = useState("");
@@ -186,9 +193,10 @@ export default function Tarefas() {
     setSelectedTaskIds((current) => allSelected ? current.filter((id) => !ids.includes(id)) : Array.from(new Set([...current, ...ids])));
   };
 
-  const bulkDeleteTasks = (ids: string[]) => {
-    ids.forEach((id) => removeTask.mutate(id));
+  const bulkDeleteTasks = async (ids: string[]) => {
     setSelectedTaskIds((current) => current.filter((id) => !ids.includes(id)));
+    const result = await runBulkAction(ids, (id) => removeTask.mutateAsync(id));
+    reportBulkResult(result, "excluída", "tarefa");
   };
 
   const columns: Column<MarketingTask>[] = [
@@ -265,7 +273,7 @@ export default function Tarefas() {
     }
     if (modalMode === "edit" && selectedTask) {
       updateTask.mutate(
-        { id: selectedTask.id, patch: input },
+        { id: selectedTask.id, patch: input, expectedUpdatedAt: getExpectedUpdatedAt(selectedTask) },
         { onSuccess: () => setModalOpen(false) },
       );
     }

@@ -4,6 +4,7 @@ import { DATA_SOURCE } from '../../database/database.tokens';
 import { MarketingContentPostEntity } from '../../database/entities';
 import { MarketingPublishingQueueService } from '../../queues/services/marketing-publishing-queue.service';
 import type { CreateMarketingContentDto, QueryMarketingContentDto, UpdateMarketingContentDto } from './dto/marketing-contents.dto';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class MarketingContentsService {
@@ -94,28 +95,34 @@ export class MarketingContentsService {
       current.publication_status === 'pending'
     );
 
-    await this.r.update({ id, tenant_id: tenantId } as never, {
-      title: dto.title ?? current.title,
-      target_type: dto.targetType ?? current.target_type,
-      target_name: dto.targetName ?? current.target_name,
-      channel: dto.channel ?? current.channel,
-      content_type: dto.type ?? current.content_type,
-      status,
-      publication_status: shouldRequeue ? 'queued' : current.publication_status,
-      publish_date: publishDate,
-      publish_time: publishTime,
-      scheduled_for: scheduledFor,
-      copy: dto.copy ?? current.copy,
-      notes: dto.notes !== undefined ? dto.notes : current.notes,
-      owner: dto.owner !== undefined ? dto.owner : current.owner,
-      campaign_id: dto.campaignId !== undefined ? dto.campaignId : current.campaign_id,
-      project_id: dto.releaseId !== undefined ? dto.releaseId : current.project_id,
-      format: dto.format !== undefined ? dto.format : current.format,
-      files: dto.files !== undefined ? this.normalizeFiles(dto.files) : current.files,
-      metadata: dto.metadata ?? current.metadata,
-      publication_error: shouldRequeue ? null : current.publication_error,
-      updated_by: userId,
-    } as never);
+    await casUpdate(
+      this.r,
+      { id, tenant_id: tenantId } as never,
+      {
+        title: dto.title ?? current.title,
+        target_type: dto.targetType ?? current.target_type,
+        target_name: dto.targetName ?? current.target_name,
+        channel: dto.channel ?? current.channel,
+        content_type: dto.type ?? current.content_type,
+        status,
+        publication_status: shouldRequeue ? 'queued' : current.publication_status,
+        publish_date: publishDate,
+        publish_time: publishTime,
+        scheduled_for: scheduledFor,
+        copy: dto.copy ?? current.copy,
+        notes: dto.notes !== undefined ? dto.notes : current.notes,
+        owner: dto.owner !== undefined ? dto.owner : current.owner,
+        campaign_id: dto.campaignId !== undefined ? dto.campaignId : current.campaign_id,
+        project_id: dto.releaseId !== undefined ? dto.releaseId : current.project_id,
+        format: dto.format !== undefined ? dto.format : current.format,
+        files: dto.files !== undefined ? this.normalizeFiles(dto.files) : current.files,
+        metadata: dto.metadata ?? current.metadata,
+        publication_error: shouldRequeue ? null : current.publication_error,
+        updated_by: userId,
+      } as never,
+      dto.expectedUpdatedAt,
+      'Este conteúdo foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
 
     const updated = await this.r.findOne({ where: { id, tenant_id: tenantId } as never });
     if (updated && shouldRequeue) await this.scheduleIfNeeded(updated, userId);

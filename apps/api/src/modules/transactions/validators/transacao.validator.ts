@@ -278,6 +278,11 @@ export const updateTransacaoSchema = z.object({
   valor:         valorField,
   dataTransacao: z.string().optional(),
   ...commonFields,
+  // Concorrência otimista (Task J — fase de continuidade): quando enviado, o
+  // update só é aplicado se updated_at no banco ainda for exatamente este —
+  // detecta "lost update" quando dois usuários editam a mesma transação em
+  // paralelo. Opcional para não quebrar chamadores existentes.
+  expectedUpdatedAt: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (data.valor !== undefined) {
     if (isNaN(parseFloat(data.valor)) || parseFloat(data.valor) <= 0) {
@@ -304,6 +309,8 @@ export const patchTransacaoSchema = z.object({
   valor:         valorField,
   dataTransacao: z.string().optional(),
   ...commonFields,
+  // Concorrência otimista — ver comentário em updateTransacaoSchema.
+  expectedUpdatedAt: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (data.valor !== undefined) {
     if (isNaN(parseFloat(data.valor)) || parseFloat(data.valor) <= 0) {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Button } from "@/shared/ui/button";
@@ -155,10 +156,12 @@ export default function TemplatesContratos() {
     }
   };
 
-  const handleBulkDeleteConfirm = () => {
-    selectedTemplateIds.forEach((id) => deleteTemplate.mutate(id));
+  const handleBulkDeleteConfirm = async () => {
+    const ids = selectedTemplateIds;
     setSelectedTemplateIds([]);
     setIsBulkDeleteOpen(false);
+    const result = await runBulkAction(ids, (id) => deleteTemplate.mutateAsync(id));
+    reportBulkResult(result, "excluído", "template");
   };
 
   const handleViewClick = (template: TemplateContrato) => {

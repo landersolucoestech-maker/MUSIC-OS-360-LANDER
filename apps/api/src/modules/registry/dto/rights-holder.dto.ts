@@ -58,6 +58,10 @@ export class UpdateRightsHolderDto {
 
   @IsOptional() @IsEnum(HolderType)
   holder_type?: HolderType;
+
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @IsOptional() @IsString()
+  expectedUpdatedAt?: string;
 }
 
 export class QueryRightsHolderDto {

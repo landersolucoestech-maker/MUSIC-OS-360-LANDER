@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsNumber, IsDate, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, IsDate, IsDateString, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -40,10 +40,20 @@ export class CreateEventDto {
 
 export class UpdateEventDto extends PartialType(CreateEventDto) {
   @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryEventDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
+
+  // Nomes efetivamente lidos por EventsService.list() (tipo/artista_id PT,
+  // já usados antes desta migração; type/artistId acima nunca foram lidos
+  // pelo service — mantidos só por compatibilidade, sem uso real).
+  @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() artista_id?: string;
+  @ApiPropertyOptional({ type: String, format: 'date-time' }) @IsOptional() @IsDateString() dateFrom?: string;
+  @ApiPropertyOptional({ type: String, format: 'date-time' }) @IsOptional() @IsDateString() dateTo?: string;
 }

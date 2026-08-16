@@ -9,6 +9,7 @@ import {
   MusicChatAutomationSettingsEntity,
 } from '../../database/entities';
 import { NotificationsService } from '../notifications/notifications.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type {
   MusicChatEscalationRuleDto,
   MusicChatInboundMessageDto,
@@ -130,12 +131,19 @@ export class MusicChatAutomationService {
   async updateSettings(tenantId: string, userId: string, dto: UpdateMusicChatAutomationSettingsDto) {
     const current = await this.getSettings(tenantId);
     const menuOptions = dto.menu_options ?? (current.menu_options as MusicChatMenuOptionDto[]);
+    const { expectedUpdatedAt, ...restDto } = dto;
     const updates = {
-      ...dto,
+      ...restDto,
       ...(dto.menu_options ? { main_menu_message: dto.main_menu_message ?? buildMainMenu(menuOptions) } : {}),
       updated_by: userId,
     };
-    await this.settingsRepo!.update({ id: current.id, tenant_id: tenantId } as any, updates as any);
+    await casUpdate(
+      this.settingsRepo!,
+      { id: current.id, tenant_id: tenantId } as any,
+      updates as any,
+      expectedUpdatedAt,
+      'Estas configurações do MusicChat foram alteradas por outro usuário desde que você as carregou. Recarregue e tente novamente.',
+    );
     await this.recordEvent(tenantId, null, 'automation.settings_updated', 'Configurações de automação do MusicChat atualizadas', { keys: Object.keys(dto) }, userId);
     return this.getSettings(tenantId);
   }

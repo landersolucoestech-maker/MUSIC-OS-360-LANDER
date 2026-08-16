@@ -66,7 +66,10 @@ export class CreateMarketingTaskDto {
   metadata?: Record<string, unknown>;
 }
 
-export class UpdateMarketingTaskDto extends PartialType(CreateMarketingTaskDto) {}
+export class UpdateMarketingTaskDto extends PartialType(CreateMarketingTaskDto) {
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class QueryMarketingTaskDto extends PaginationDto {
   @ApiPropertyOptional()

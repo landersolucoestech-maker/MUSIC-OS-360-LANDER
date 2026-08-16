@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
 import { MainLayout } from "@/shared/components/MainLayout";
@@ -17,20 +17,23 @@ import {
   Eye, Pencil, Trash2, X, MoreHorizontal,
 } from "lucide-react";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
+import { useTransacoesPaginated, useFinanceiroStats } from "@/modules/accounting/hooks/useTransacoesPaginated";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { formatCategoryLabel } from "@/shared/lib/category-labels";
 import { TransacaoFormModal } from "@/modules/accounting/components/TransacaoFormModal";
 import { TransacaoViewModal } from "@/modules/accounting/components/TransacaoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { TablePagination } from "@/shared/ui/table-pagination";
-import { usePagination } from "@/shared/hooks/usePagination";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { cn } from "@/shared/lib/utils";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { toast } from "sonner";
 import { FeatureGate } from '@/shared/components/FeatureGate';
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 
 type Transacao = Record<string, any>;
 
@@ -38,34 +41,9 @@ export default function Financeiro() {
   const { transacoes, deleteTransacao, addTransacao } = useTransacoes();
   const ofxInputRef = useRef<HTMLInputElement>(null);
 
-  const safeTransacoes = useMemo(() => Array.isArray(transacoes) ? transacoes : [], [transacoes]);
-  const metricas = useMemo(() => {
-    const receitasPagas = safeTransacoes
-      .filter((t) => t.tipo === "receita" && t.status === "pago")
-      .reduce((acc, t) => acc + Number(t.valor ?? 0), 0);
-    const despesasPagas = safeTransacoes
-      .filter((t) => t.tipo === "despesa" && t.status === "pago")
-      .reduce((acc, t) => acc + Number(t.valor ?? 0), 0);
-    const contasReceber = safeTransacoes
-      .filter((t) => t.tipo === "receita" && t.status === "pendente")
-      .reduce((acc, t) => acc + Number(t.valor ?? 0), 0);
-    const contasPagar = safeTransacoes
-      .filter((t) => t.tipo === "despesa" && t.status === "pendente")
-      .reduce((acc, t) => acc + Number(t.valor ?? 0), 0);
-    const lucroLiquido = receitasPagas - despesasPagas;
-    const margem = receitasPagas > 0 ? Math.round((lucroLiquido / receitasPagas) * 100) : 0;
-
-    return {
-      receitasPagas,
-      despesasPagas,
-      lucroLiquido,
-      contasReceber,
-      contasPagar,
-      margem,
-      receitasPendentes: safeTransacoes.filter((t) => t.tipo === "receita" && t.status === "pendente").length,
-      despesasPendentes: safeTransacoes.filter((t) => t.tipo === "despesa" && t.status === "pendente").length,
-    };
-  }, [safeTransacoes]);
+  // KPIs — agregação exata do tenant inteiro (GET /transactions/stats),
+  // nunca calculada só sobre a página/filtro de data atualmente exibido (Task H).
+  const { kpis: metricas } = useFinanceiroStats();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; transacao?: Transacao }>({ open: false, mode: "create" });
@@ -76,6 +54,7 @@ export default function Financeiro() {
     "edit",
     transacoes,
     useCallback((transacao: Transacao) => setFormModal({ open: true, mode: "edit", transacao }), []),
+    "transacoes",
   );
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -157,32 +136,27 @@ export default function Financeiro() {
     return transactions;
   };
 
-  const filteredTransacoes = useMemo(() => {
-    return safeTransacoes.filter((transacao) => {
-      const descricao = String(transacao.descricao ?? "");
-      const categoria = String(transacao.categoria ?? "");
-      const status = String(transacao.status ?? "");
-      const data = String(transacao.data ?? "");
-      const matchesSearch =
-        descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        categoria.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType =
-        typeFilter === "all-type" ||
-        (typeFilter === "receita" && transacao.tipo === "receita") ||
-        (typeFilter === "despesa" && transacao.tipo === "despesa");
-      const matchesStatus = statusFilter === "all-status" || status.toLowerCase() === statusFilter.toLowerCase();
-      const matchesCategory = categoryFilter === "all-category" || categoria.toLowerCase() === categoryFilter.toLowerCase();
-      const matchesStartDate = !startDate || data >= startDate;
-      const matchesEndDate = !endDate || data <= endDate;
-      return matchesSearch && matchesType && matchesStatus && matchesCategory && matchesStartDate && matchesEndDate;
-    });
-  }, [safeTransacoes, searchTerm, typeFilter, statusFilter, categoryFilter, startDate, endDate]);
-
   const hasActiveFilters =
     searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status" ||
     categoryFilter !== "all-category" || startDate !== "" || endDate !== "";
 
-  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredTransacoes, 10);
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, typeFilter, statusFilter, categoryFilter, startDate, endDate]);
+
+  const {
+    transacoes: pageItems, total, isLoading: isLoadingPage, error: pageError, refetch: refetchPage,
+  } = useTransacoesPaginated({
+    page, pageSize, search: debouncedSearch || undefined,
+    tipo: typeFilter !== "all-type" ? typeFilter : undefined,
+    status: statusFilter !== "all-status" ? statusFilter : undefined,
+    categoria: categoryFilter !== "all-category" ? categoryFilter : undefined,
+    dateFrom: startDate || undefined,
+    dateTo: endDate || undefined,
+  });
 
   const handleClearFilters = () => {
     setSearchTerm(""); setStartDate(""); setEndDate("");
@@ -190,19 +164,20 @@ export default function Financeiro() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredTransacoes.length && filteredTransacoes.length > 0) {
+    if (selectedIds.length === pageItems.length && pageItems.length > 0) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredTransacoes.map((t: any) => t.id));
+      setSelectedIds(pageItems.map((t: any) => t.id));
     }
   };
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    selectedIds.forEach((id) => deleteTransacao.mutate(id));
-    toast.success(`${selectedIds.length} transação(ões) excluída(s) com sucesso`);
+    const ids = selectedIds;
     setSelectedIds([]);
+    const result = await runBulkAction(ids, (id) => deleteTransacao.mutateAsync(id));
+    reportBulkResult(result, "excluída", "transação");
   };
 
   const handleDelete = () => {
@@ -348,7 +323,7 @@ export default function Financeiro() {
           )}
           {hasActiveFilters && (
             <span className="text-xs text-muted-foreground ml-auto">
-              {filteredTransacoes.length} de {safeTransacoes.length} transações
+              {total} de {metricas.total} transações
             </span>
           )}
         </div>
@@ -358,12 +333,12 @@ export default function Financeiro() {
           <CardContent className="pt-0">
             <ListSectionHeader
               title="Transações"
-              count={filteredTransacoes.length}
+              count={total}
               description="Fluxo de receitas e despesas"
               action={
                 <div className="flex flex-wrap items-center justify-end gap-3">
                   <Checkbox
-                    checked={selectedIds.length === filteredTransacoes.length && filteredTransacoes.length > 0}
+                    checked={selectedIds.length === pageItems.length && pageItems.length > 0}
                     onCheckedChange={toggleSelectAll}
                     data-testid="checkbox-select-all"
                     aria-label="Selecionar todos"
@@ -381,18 +356,22 @@ export default function Financeiro() {
               }
             />
 
-            {filteredTransacoes.length === 0 ? (
-              <EmptyState
-                icon={DollarSign}
-                title={hasActiveFilters ? "Nenhuma transação encontrada" : "Nenhuma transação cadastrada"}
-                description={
-                  hasActiveFilters
-                    ? "Nenhuma transação corresponde aos filtros aplicados."
-                    : "Crie sua primeira transação ou importe um arquivo OFX."
-                }
-                actionLabel={hasActiveFilters ? undefined : "Nova Transação"}
-                onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
-              />
+            {pageItems.length === 0 ? (
+              pageError && total === 0 ? (
+                <UnavailableState onRetry={() => refetchPage()} />
+              ) : (
+                <EmptyState
+                  icon={DollarSign}
+                  title={hasActiveFilters ? "Nenhuma transação encontrada" : "Nenhuma transação cadastrada"}
+                  description={
+                    hasActiveFilters
+                      ? "Nenhuma transação corresponde aos filtros aplicados."
+                      : "Crie sua primeira transação ou importe um arquivo OFX."
+                  }
+                  actionLabel={hasActiveFilters ? undefined : "Nova Transação"}
+                  onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
+                />
+              )
             ) : (
               <>
               <Table>

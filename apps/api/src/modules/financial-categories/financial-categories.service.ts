@@ -191,16 +191,36 @@ export class FinancialCategoriesService {
     set('updated_by', userId || null);
     assignments.push('updated_at = NOW()');
 
+    // CAS opcional: se o chamador enviou o updated_at que leu, exige que a
+    // linha ainda esteja nesse estado — 0 linhas afetadas = outra pessoa
+    // editou a categoria entretanto (mesmo mecanismo de casUpdate(), só que
+    // esta service usa SQL cru em vez de Repository<T>, então o WHERE
+    // condicional é montado manualmente aqui).
+    let casWhere = '';
+    if (dto.expectedUpdatedAt) {
+      const expected = new Date(dto.expectedUpdatedAt);
+      if (Number.isNaN(expected.getTime())) {
+        throw new BadRequestException('expectedUpdatedAt inválido');
+      }
+      values.push(expected);
+      casWhere = ` AND updated_at = $${values.length}`;
+    }
+
     try {
       const rows = await this.db.query<FinancialCategoryRow[]>(
         `UPDATE financial_categories
             SET ${assignments.join(', ')}
-          WHERE tenant_id = $1 AND id = $2
+          WHERE tenant_id = $1 AND id = $2${casWhere}
           RETURNING *`,
         values,
       );
       const updated = rows[0];
-      if (!updated) throw new NotFoundException('Categoria financeira não encontrada');
+      if (!updated) {
+        if (dto.expectedUpdatedAt) {
+          throw new ConflictException('Esta categoria financeira foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.');
+        }
+        throw new NotFoundException('Categoria financeira não encontrada');
+      }
       this.emit('financial_category.updated', tenantId, userId, id, { before: current, after: updated });
       return updated;
     } catch (error) {

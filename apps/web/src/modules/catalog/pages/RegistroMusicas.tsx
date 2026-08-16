@@ -4,7 +4,7 @@ import { MainLayout } from "@/shared/components/MainLayout";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { TablePagination } from "@/shared/ui/table-pagination";
-import { usePagination } from "@/shared/hooks/usePagination";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -25,9 +25,18 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { ContratoFormModal } from "@/modules/contracts/components/ContratoFormModal";
 import { toast } from "sonner";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
+import { useEntityById } from "@/shared/hooks/useEntityLookup";
+import { storage } from "@/shared/lib/storage";
+import type { ProjetoWithRelations } from "@/modules/projects/hooks/useProjetos";
+import {
+  useObrasPaginated, useObrasStats, useObrasGeneros,
+  useFonogramasPaginated, useFonogramasStats, useFonogramasGeneros,
+} from "@/modules/catalog/hooks/useCatalogPaginated";
 import type { Obra, Fonograma } from "@/modules/catalog/types/catalog.types";
 import { projetoToObraSeed } from "@/modules/catalog/mappers";
 import { parseMusicasFromProjeto } from "@/modules/projects/lib/musica-helpers";
@@ -79,34 +88,36 @@ export default function RegistroMusicas() {
   const [activeTab, setActiveTab] = useState("obras");
   const [selectedObraIds, setSelectedObraIds] = useState<string[]>([]);
   const toggleSelectAllObras = () => {
-    if (selectedObraIds.length === filteredObras.length && filteredObras.length > 0) {
+    if (selectedObraIds.length === obrasPg.pageItems.length && obrasPg.pageItems.length > 0) {
       setSelectedObraIds([]);
     } else {
-      setSelectedObraIds(filteredObras.map((o) => o.id));
+      setSelectedObraIds(obrasPg.pageItems.map((o) => o.id));
     }
   };
   const toggleSelectObra = (id: string) => setSelectedObraIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const handleBulkDeleteObras = () => {
+  const handleBulkDeleteObras = async () => {
     if (selectedObraIds.length === 0) return;
-    selectedObraIds.forEach(id => deleteObra.mutate(id));
-    toast.success(`${selectedObraIds.length} obra(s) excluída(s) com sucesso`);
+    const ids = selectedObraIds;
     setSelectedObraIds([]);
+    const result = await runBulkAction(ids, (id) => deleteObra.mutateAsync(id));
+    reportBulkResult(result, "excluída", "obra");
   };
 
   const [selectedFonogramaIds, setSelectedFonogramaIds] = useState<string[]>([]);
   const toggleSelectAllFonogramas = () => {
-    if (selectedFonogramaIds.length === filteredFonogramas.length && filteredFonogramas.length > 0) {
+    if (selectedFonogramaIds.length === fonogramasPg.pageItems.length && fonogramasPg.pageItems.length > 0) {
       setSelectedFonogramaIds([]);
     } else {
-      setSelectedFonogramaIds(filteredFonogramas.map((f) => f.id));
+      setSelectedFonogramaIds(fonogramasPg.pageItems.map((f) => f.id));
     }
   };
   const toggleSelectFonograma = (id: string) => setSelectedFonogramaIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const handleBulkDeleteFonogramas = () => {
+  const handleBulkDeleteFonogramas = async () => {
     if (selectedFonogramaIds.length === 0) return;
-    selectedFonogramaIds.forEach(id => deleteFonograma.mutate(id));
-    toast.success(`${selectedFonogramaIds.length} fonograma(s) excluído(s) com sucesso`);
+    const ids = selectedFonogramaIds;
     setSelectedFonogramaIds([]);
+    const result = await runBulkAction(ids, (id) => deleteFonograma.mutateAsync(id));
+    reportBulkResult(result, "excluído", "fonograma");
   };
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all-status");
@@ -136,22 +147,29 @@ export default function RegistroMusicas() {
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; item?: Obra | Fonograma; type?: string }>({ open: false, item: undefined, type: undefined });
   const [contratoModal, setContratoModal] = useState<{ open: boolean; prefill?: { titulo: string; observacoes: string } }>({ open: false });
 
-  const isLoading = loadingObras || loadingFonogramas;
-
   // Apply incoming ?projeto=:id (and optional ?obra=:id) coming from the Projetos screen
   const [searchParams, setSearchParams] = useSearchParams();
+  const obraParam = searchParams.get("obra");
+  const editObraParam = searchParams.get("editObra");
+  const fonogramaParam = searchParams.get("fonograma");
+  // Deep-link resolution DIRETO por ID (Task J) — antes escaneava obras/
+  // fonogramas de useObras()/useFonogramas() sem filtro, truncados nos
+  // primeiros 50 do tenant; GET /works/:id e /phonograms/:id alcançam
+  // qualquer registro do tenant.
+  const { entity: deepLinkObra, isLoading: loadingDeepLinkObra } = useEntityById<Obra>("obras", obraParam ?? undefined);
+  const { entity: deepLinkEditObra, isLoading: loadingDeepLinkEditObra } = useEntityById<Obra>("obras", editObraParam ?? undefined);
+  const { entity: deepLinkFonograma, isLoading: loadingDeepLinkFonograma } = useEntityById<Fonograma>("fonogramas", fonogramaParam ?? undefined);
+
   useEffect(() => {
     const projetoParam = searchParams.get("projeto");
     const newObraParam = searchParams.get("newObra");
-    const obraParam = searchParams.get("obra");
-    const editObraParam = searchParams.get("editObra");
-    const fonogramaParam = searchParams.get("fonograma");
     if (!projetoParam && !newObraParam && !obraParam && !editObraParam && !fonogramaParam) return;
 
     // If we still need to resolve an obra/fonograma but data are loading,
     // wait so we don't clear the URL before having a chance to open the modal.
-    if ((obraParam || editObraParam) && loadingObras) return;
-    if (fonogramaParam && loadingFonogramas) return;
+    if (obraParam && loadingDeepLinkObra) return;
+    if (editObraParam && loadingDeepLinkEditObra) return;
+    if (fonogramaParam && loadingDeepLinkFonograma) return;
 
     const next = new URLSearchParams(searchParams);
     let consumed = false;
@@ -173,10 +191,9 @@ export default function RegistroMusicas() {
     }
 
     if (obraParam) {
-      const target = obras.find((o) => o.id === obraParam);
-      if (target) {
+      if (deepLinkObra) {
         setActiveTab("obras");
-        setObraViewModal({ open: true, obra: target });
+        setObraViewModal({ open: true, obra: deepLinkObra });
       }
       // Whether or not the obra was found, drop the param so we don't loop.
       next.delete("obra");
@@ -184,20 +201,18 @@ export default function RegistroMusicas() {
     }
 
     if (editObraParam) {
-      const target = obras.find((o) => o.id === editObraParam);
-      if (target) {
+      if (deepLinkEditObra) {
         setActiveTab("obras");
-        setObraModal({ open: true, mode: "edit", obra: target });
+        setObraModal({ open: true, mode: "edit", obra: deepLinkEditObra });
       }
       next.delete("editObra");
       consumed = true;
     }
 
     if (fonogramaParam) {
-      const target = fonogramas.find((f) => f.id === fonogramaParam);
-      if (target) {
+      if (deepLinkFonograma) {
         setActiveTab("fonogramas");
-        setFonogramaModal({ open: true, mode: "edit", fonograma: target });
+        setFonogramaModal({ open: true, mode: "edit", fonograma: deepLinkFonograma });
       }
       next.delete("fonograma");
       consumed = true;
@@ -206,87 +221,81 @@ export default function RegistroMusicas() {
     if (consumed) {
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, obras, fonogramas, loadingObras, loadingFonogramas, setSearchParams]);
+  }, [
+    searchParams, obraParam, editObraParam, fonogramaParam,
+    deepLinkObra, deepLinkEditObra, deepLinkFonograma,
+    loadingDeepLinkObra, loadingDeepLinkEditObra, loadingDeepLinkFonograma,
+    setSearchParams,
+  ]);
 
   const collator = useMemo(() => new Intl.Collator("pt-BR", { sensitivity: "base" }), []);
 
-  // Filter fonogramas + sort alphabetically
-  const filteredFonogramas = useMemo(() => {
-    const filtered = fonogramas.filter((fonograma) => {
-      const matchesSearch = searchTerm === "" ||
-        fonograma.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        fonograma.compositores?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === "all-status" ||
-        fonograma.status?.toLowerCase().includes(statusFilter);
-      const fonogramaGenero = getFonogramaGenero(fonograma);
-      const matchesGenre = genreFilter === "all-genre" ||
-        fonogramaGenero.toLowerCase() === genreFilter.toLowerCase();
-      const matchesObraVinculada = obraVinculadaFilter === "all-obras" ||
-        (obraVinculadaFilter === "sem-obra" ? !fonograma.obra_id : !!fonograma.obra_id);
-      const fonogramaEcadCode = (fonograma.cod_ecad ?? "").toString().trim();
-      const matchesFonogramaEcad = fonogramaEcadFilter === "all-ecad" ||
-        (fonogramaEcadFilter === "com-ecad" ? fonogramaEcadCode !== "" : fonogramaEcadCode === "");
-      return matchesSearch && matchesStatus && matchesGenre && matchesObraVinculada && matchesFonogramaEcad;
-    });
-
-    return fonogramaSort
-      ? sortTableRows(filtered, fonogramaSort, getFonogramaSortValue)
-      : filtered.sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? ""));
-  }, [fonogramas, searchTerm, statusFilter, genreFilter, obraVinculadaFilter, fonogramaEcadFilter, fonogramaSort, collator]);
-
+  // Sort continua client-side (só ordena a página atual) — busca/filtros/
+  // paginação em si são server-side (Task H); reordenar por coluna em todo
+  // o tenant exigiria mapear cada SortableTableHead pra uma coluna real no
+  // backend, fora do escopo desta migração (limitação documentada).
   const toggleFonogramaSort = (key: string) => {
     setFonogramaSort((current) => nextTableSortState(current, key));
   };
-
-  // Filter obras + sort alphabetically
-  const filteredObras = useMemo(() => {
-    const filtered = obras.filter((obra) => {
-      const matchesSearch = searchTerm === "" ||
-        obra.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (Array.isArray(obra.compositores) ? obra.compositores.join(" ") : (obra.compositores ?? "")).toLowerCase().includes(searchTerm.toLowerCase()) ||
-        obra.projetos?.titulo?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === "all-status" ||
-        obra.status?.toLowerCase().includes(statusFilter);
-      const matchesTipo = tipoObraFilter === "all-tipos" || (obra.tipo_obra ?? "").toString() === tipoObraFilter;
-      const matchesGenre = genreFilter === "all-genre" ||
-        obra.genero?.toLowerCase() === genreFilter.toLowerCase();
-      const matchesProjeto = projetoFilter === "all-projetos" ||
-        (projetoFilter === "no-projeto" ? !obra.projeto_id : obra.projeto_id === projetoFilter);
-      const ecadCode = (obra.cod_ecad ?? "").toString().trim();
-      const matchesEcad = ecadFilter === "all-ecad" ||
-        (ecadFilter === "com-ecad" ? ecadCode !== "" : ecadCode === "");
-      return matchesSearch && matchesStatus && matchesTipo && matchesGenre && matchesProjeto && matchesEcad;
-    });
-
-    return obraSort
-      ? sortTableRows(filtered, obraSort, getObraSortValue)
-      : filtered.sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? ""));
-  }, [obras, searchTerm, statusFilter, tipoObraFilter, genreFilter, projetoFilter, ecadFilter, obraSort, collator]);
-
   const toggleObraSort = (key: string) => {
     setObraSort((current) => nextTableSortState(current, key));
   };
 
-  const obrasPg = usePagination(filteredObras, 10);
-  const fonogramasPg = usePagination(filteredFonogramas, 10);
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const [obraPage, setObraPage] = useState(0);
+  const [obraPageSize, setObraPageSize] = useState(10);
+  const [fonogramaPage, setFonogramaPage] = useState(0);
+  const [fonogramaPageSize, setFonogramaPageSize] = useState(10);
+  useEffect(() => {
+    setObraPage(0);
+    setFonogramaPage(0);
+  }, [debouncedSearch, statusFilter, genreFilter, tipoObraFilter, projetoFilter, obraVinculadaFilter, ecadFilter, fonogramaEcadFilter]);
 
-  // Distinct projetos available for the project filter:
-  // include every project (even those without obras yet) plus any project ids
-  // referenced by existing obras, so deep links from /projetos always work.
-  const generosUnicos = useMemo(() => {
-    const seen = new Set<string>();
-    const unique: string[] = [];
-    const src = activeTab === "fonogramas" ? fonogramas : obras;
-    for (const item of src) {
-      const g = activeTab === "fonogramas"
-        ? getFonogramaGenero(item as Fonograma)
-        : ((item as Obra).genero ?? "").toString().trim();
-      if (!g) continue;
-      const key = g.toLowerCase();
-      if (!seen.has(key)) { seen.add(key); unique.push(g.charAt(0).toUpperCase() + g.slice(1)); }
-    }
-    return unique.sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [obras, fonogramas, activeTab]);
+  const {
+    obras: obraPageItems, total: obraTotal, isLoading: isLoadingObraPage, error: obraPageError, refetch: refetchObraPage,
+  } = useObrasPaginated({
+    page: obraPage, pageSize: obraPageSize, search: debouncedSearch || undefined,
+    status: statusFilter !== "all-status" ? statusFilter : undefined,
+    tipoObra: tipoObraFilter !== "all-tipos" ? tipoObraFilter : undefined,
+    genero: genreFilter !== "all-genre" ? genreFilter : undefined,
+    projetoId: projetoFilter !== "all-projetos" ? projetoFilter : undefined,
+    ecad: ecadFilter !== "all-ecad" ? (ecadFilter as "com-ecad" | "sem-ecad") : undefined,
+    enabled: activeTab === "obras",
+  });
+  const obrasPg = useMemo(() => ({
+    pageItems: obraSort ? sortTableRows(obraPageItems, obraSort, getObraSortValue) : obraPageItems,
+    total: obraTotal,
+    page: obraPage,
+    pageSize: obraPageSize,
+    setPage: setObraPage,
+    setPageSize: setObraPageSize,
+  }), [obraPageItems, obraSort, obraTotal, obraPage, obraPageSize]);
+
+  const {
+    fonogramas: fonogramaPageItems, total: fonogramaTotal, isLoading: isLoadingFonogramaPage, error: fonogramaPageError, refetch: refetchFonogramaPage,
+  } = useFonogramasPaginated({
+    page: fonogramaPage, pageSize: fonogramaPageSize, search: debouncedSearch || undefined,
+    status: statusFilter !== "all-status" ? statusFilter : undefined,
+    genero: genreFilter !== "all-genre" ? genreFilter : undefined,
+    obraVinculada: obraVinculadaFilter !== "all-obras" ? (obraVinculadaFilter as "com-obra" | "sem-obra") : undefined,
+    ecad: fonogramaEcadFilter !== "all-ecad" ? (fonogramaEcadFilter as "com-ecad" | "sem-ecad") : undefined,
+    enabled: activeTab === "fonogramas",
+  });
+  const fonogramasPg = useMemo(() => ({
+    pageItems: fonogramaSort ? sortTableRows(fonogramaPageItems, fonogramaSort, getFonogramaSortValue) : fonogramaPageItems,
+    total: fonogramaTotal,
+    page: fonogramaPage,
+    pageSize: fonogramaPageSize,
+    setPage: setFonogramaPage,
+    setPageSize: setFonogramaPageSize,
+  }), [fonogramaPageItems, fonogramaSort, fonogramaTotal, fonogramaPage, fonogramaPageSize]);
+
+  const isLoading = loadingObras || loadingFonogramas ||
+    (activeTab === "fonogramas" ? isLoadingFonogramaPage : isLoadingObraPage);
+
+  const { generos: obrasGeneros } = useObrasGeneros();
+  const { generos: fonogramasGeneros } = useFonogramasGeneros();
+  const generosUnicos = activeTab === "fonogramas" ? fonogramasGeneros : obrasGeneros;
 
   const projetosDisponiveis = useMemo(() => {
     const map = new Map<string, string>();
@@ -301,20 +310,15 @@ export default function RegistroMusicas() {
     return Array.from(map.entries()).map(([id, titulo]) => ({ id, titulo }));
   }, [obras, allProjetos]);
 
-  // Metrics
-  const pendentes = activeTab === "fonogramas" 
-    ? fonogramas.filter((f) => f.status === "pendente").length
-    : obras.filter((o) => o.status === "pendente").length;
-  
-  const emAnalise = activeTab === "fonogramas"
-    ? fonogramas.filter((f) => f.status === "analise").length
-    : obras.filter((o) => o.status === "analise").length;
-  
-  const registrados = activeTab === "fonogramas"
-    ? fonogramas.filter((f) => f.status === "registrado").length
-    : obras.filter((o) => o.status === "registrado").length;
-  
-  const total = activeTab === "fonogramas" ? fonogramas.length : obras.length;
+  // Metrics — agregação exata do tenant inteiro (GROUP BY status), nunca
+  // calculada só sobre a página/lista atualmente carregada (Task H).
+  const { stats: obrasStats } = useObrasStats();
+  const { stats: fonogramasStats } = useFonogramasStats();
+  const activeStats = activeTab === "fonogramas" ? fonogramasStats : obrasStats;
+  const pendentes = activeStats.byGroup["pendente"] ?? 0;
+  const emAnalise = activeStats.byGroup["analise"] ?? 0;
+  const registrados = activeStats.byGroup["registrado"] ?? 0;
+  const total = activeStats.total;
   const taxaAprovacao = total > 0 ? Math.round((registrados / total) * 100) : 0;
 
   const handleDelete = () => {
@@ -327,16 +331,6 @@ export default function RegistroMusicas() {
       setDeleteModal({ open: false, item: undefined, type: undefined });
     }
   };
-
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </MainLayout>
-    );
-  }
 
   const headerActions = (
     <>
@@ -358,6 +352,14 @@ export default function RegistroMusicas() {
   );
 
   return (
+    <>
+    {isLoading ? (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </MainLayout>
+    ) : (
     <MainLayout title="Registro de Músicas" description="Registro e controle de obras musicais e fonogramas" actions={headerActions}>
       <div className="space-y-6">
 
@@ -509,12 +511,12 @@ export default function RegistroMusicas() {
             <CardContent>
               <ListSectionHeader
                 title="Fonogramas Registrados"
-                count={filteredFonogramas.length}
+                count={fonogramaTotal}
                 description="Catálogo completo de gravações registradas"
-                action={fonogramas.length > 0 ? (
+                action={fonogramaTotal > 0 ? (
                   <div className="flex flex-wrap items-center justify-end gap-3">
                     <Checkbox
-                      checked={selectedFonogramaIds.length === filteredFonogramas.length && filteredFonogramas.length > 0}
+                      checked={selectedFonogramaIds.length === fonogramasPg.pageItems.length && fonogramasPg.pageItems.length > 0}
                       onCheckedChange={() => toggleSelectAllFonogramas()}
                       aria-label="Selecionar todos"
                       data-testid="checkbox-select-all-fonogramas"
@@ -532,7 +534,7 @@ export default function RegistroMusicas() {
                 ) : undefined}
               />
 
-              {filteredFonogramas.length > 0 ? (
+              {fonogramasPg.pageItems.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -641,6 +643,8 @@ export default function RegistroMusicas() {
                     itemLabel="fonogramas"
                   />
                 </div>
+              ) : fonogramaPageError && fonogramaTotal === 0 ? (
+                <UnavailableState onRetry={() => refetchFonogramaPage()} />
               ) : (
                 <EmptyState
                   icon={Disc}
@@ -660,12 +664,12 @@ export default function RegistroMusicas() {
             <CardContent>
               <ListSectionHeader
                 title="Obras Registradas"
-                count={filteredObras.length}
+                count={obraTotal}
                 description="Catálogo completo de obras musicais registradas"
-                action={obras.length > 0 ? (
+                action={obraTotal > 0 ? (
                   <div className="flex flex-wrap items-center justify-end gap-3">
                     <Checkbox
-                      checked={selectedObraIds.length === filteredObras.length && filteredObras.length > 0}
+                      checked={selectedObraIds.length === obrasPg.pageItems.length && obrasPg.pageItems.length > 0}
                       onCheckedChange={() => toggleSelectAllObras()}
                       aria-label="Selecionar todos"
                       data-testid="checkbox-select-all-obras"
@@ -683,7 +687,7 @@ export default function RegistroMusicas() {
                 ) : undefined}
               />
 
-              {filteredObras.length > 0 ? (
+              {obrasPg.pageItems.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -781,6 +785,8 @@ export default function RegistroMusicas() {
                     itemLabel="obras"
                   />
                 </div>
+              ) : obraPageError && obraTotal === 0 ? (
+                <UnavailableState onRetry={() => refetchObraPage()} />
               ) : (
                 <EmptyState
                   icon={Music}
@@ -800,10 +806,13 @@ export default function RegistroMusicas() {
       <ObraTipoSelectorModal
         open={obraTipoSelectorOpen}
         onOpenChange={(v) => { setObraTipoSelectorOpen(v); if (!v) setPendingProjetoId(null); }}
-        onSelect={(tipo) => {
+        onSelect={async (tipo) => {
           let obraSeed: Record<string, unknown> | undefined;
           if (pendingProjetoId) {
-            const projeto = allProjetos.find(p => p.id === pendingProjetoId);
+            // Busca DIRETO por ID (GET /projects/:id) — não depende do projeto
+            // estar entre os primeiros 50 carregados por useProjetos() sem
+            // filtro (Task J).
+            const projeto = await storage.findById<ProjetoWithRelations>("projetos", pendingProjetoId);
             if (projeto) {
               const musicas = parseMusicasFromProjeto(projeto);
               obraSeed = projetoToObraSeed(projeto, musicas[0] ?? null);
@@ -815,29 +824,40 @@ export default function RegistroMusicas() {
           setPendingProjetoId(null);
         }}
       />
-      <ObraFormModal 
-        open={obraModal.open} 
-        onOpenChange={(open) => setObraModal({ ...obraModal, open })} 
+    </MainLayout>
+    )}
+
+      {/* Fora do gate de isLoading de propósito — mesmo bug de /artistas
+          (Task C): ObraFormModal/FonogramaFormModal chamam useObras()/
+          useFonogramas() de novo só para as mutations, as mesmas queries do
+          isLoading acima. Montá-los só depois do isLoading virar false criava
+          observers novos nessas queries; em erro (backend fora do ar),
+          refetchOnMount reabria isLoading, o gate desmontava os modais de
+          novo — loop infinito de loading. Mantê-los sempre montados quebra
+          o ciclo. */}
+      <ObraFormModal
+        open={obraModal.open}
+        onOpenChange={(open) => setObraModal({ ...obraModal, open })}
         mode={obraModal.mode}
         obra={obraModal.obra}
         tipoObra={obraModal.tipoObra}
         onSaved={(info) => setContratoModal({ open: true, prefill: info })}
       />
-      <ObraViewModal 
-        open={obraViewModal.open} 
-        onOpenChange={(open) => setObraViewModal({ ...obraViewModal, open })} 
+      <ObraViewModal
+        open={obraViewModal.open}
+        onOpenChange={(open) => setObraViewModal({ ...obraViewModal, open })}
         obra={obraViewModal.obra}
       />
-      <FonogramaFormModal 
-        open={fonogramaModal.open} 
-        onOpenChange={(open) => setFonogramaModal({ ...fonogramaModal, open })} 
+      <FonogramaFormModal
+        open={fonogramaModal.open}
+        onOpenChange={(open) => setFonogramaModal({ ...fonogramaModal, open })}
         mode={fonogramaModal.mode}
         fonograma={fonogramaModal.fonograma as import("@/modules/catalog/components/FonogramaFormModal").FonogramaFormInput | null | undefined}
         onSaved={(info) => setContratoModal({ open: true, prefill: info })}
       />
-      <FonogramaViewModal 
-        open={fonogramaViewModal.open} 
-        onOpenChange={(open) => setFonogramaViewModal({ ...fonogramaViewModal, open })} 
+      <FonogramaViewModal
+        open={fonogramaViewModal.open}
+        onOpenChange={(open) => setFonogramaViewModal({ ...fonogramaViewModal, open })}
         fonograma={fonogramaViewModal.fonograma as unknown as import("@/modules/catalog/components/FonogramaViewModal").FonogramaViewData | null | undefined}
       />
       <DeleteConfirmModal
@@ -853,7 +873,6 @@ export default function RegistroMusicas() {
         mode="create"
         prefill={contratoModal.prefill}
       />
-
-    </MainLayout>
+    </>
   );
 }

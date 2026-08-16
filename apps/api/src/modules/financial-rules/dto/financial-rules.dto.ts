@@ -17,7 +17,10 @@ export class CreateFinancialRuleDto {
   @ApiPropertyOptional() @IsOptional() condicoes?: Record<string, unknown>;
 }
 
-export class UpdateFinancialRuleDto extends PartialType(CreateFinancialRuleDto) {}
+export class UpdateFinancialRuleDto extends PartialType(CreateFinancialRuleDto) {
+  @ApiPropertyOptional({ description: 'updated_at lido pelo cliente antes de editar — detecta edição concorrente (409 se divergir)' })
+  @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class QueryFinancialRuleDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;

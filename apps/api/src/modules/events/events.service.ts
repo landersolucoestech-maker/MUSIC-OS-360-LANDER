@@ -4,6 +4,8 @@ import { DATA_SOURCE } from '../../database/database.module';
 import { EventEntity } from '../../database/entities';
 import type { CreateEventDto, UpdateEventDto, QueryEventDto } from './dto/events.dto';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { groupCount, GroupStatsResult } from '../../common/stats/group-count.util';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class EventsService {
@@ -16,25 +18,62 @@ export class EventsService {
     if (ds) this.repo = ds.getRepository(EventEntity);
   }
 
-  async list(tenantId: string, query: QueryEventDto) {
+  private baseQb(tenantId: string, query: QueryEventDto) {
+    const q = query as Record<string, unknown>;
     const qb = this.repo!
       .createQueryBuilder('e')
       .where('e.tenant_id = :tenantId', { tenantId })
       .andWhere('e.deleted_at IS NULL');
 
-    if ((query as any).status)     qb.andWhere('e.status = :status',       { status:     (query as any).status });
-    if ((query as any).tipo)       qb.andWhere('e.tipo = :tipo',           { tipo:       (query as any).tipo });
-    if ((query as any).artista_id) qb.andWhere('e.artista_id = :artistaId', { artistaId: (query as any).artista_id });
-    if ((query as any).dateFrom)   qb.andWhere('e.data >= :dateFrom',      { dateFrom:   (query as any).dateFrom });
-    if ((query as any).dateTo)     qb.andWhere('e.data <= :dateTo',        { dateTo:     (query as any).dateTo });
-    if ((query as any).search)     qb.andWhere('e.titulo ILIKE :search',   { search: `%${(query as any).search}%` });
+    if (q['status'])     qb.andWhere('e.status = :status',       { status:     q['status'] });
+    if (q['tipo'])       qb.andWhere('e.tipo = :tipo',           { tipo:       q['tipo'] });
+    if (q['artista_id']) qb.andWhere('e.artista_id = :artistaId', { artistaId: q['artista_id'] });
+    if (q['dateFrom'])   qb.andWhere('e.data >= :dateFrom',      { dateFrom:   q['dateFrom'] });
+    if (q['dateTo'])     qb.andWhere('e.data <= :dateTo',        { dateTo:     q['dateTo'] });
+    if (q['search'])     qb.andWhere('e.titulo ILIKE :search',   { search: `%${q['search']}%` });
 
-    qb.orderBy('e.data', (query as any).ascending ? 'ASC' : 'DESC')
-      .skip((query as any).offset ?? 0)
-      .take((query as any).limit ?? 50);
+    return qb;
+  }
+
+  async list(tenantId: string, query: QueryEventDto) {
+    const q = query as Record<string, unknown>;
+    const qb = this.baseQb(tenantId, query);
+
+    qb.orderBy('e.data', q['ascending'] ? 'ASC' : 'DESC')
+      .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
+      .take(typeof q['limit']  === 'number' ? q['limit']  : 50);
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
+    return {
+      data,
+      meta: {
+        total,
+        offset: typeof q['offset'] === 'number' ? q['offset'] : 0,
+        limit:  typeof q['limit']  === 'number' ? q['limit']  : 50,
+      },
+    };
+  }
+
+  /**
+   * KPIs do tenant inteiro (nunca calculados só sobre o período do calendário
+   * visível): contagem exata por status + "próximos 7 dias" (janela móvel,
+   * não é um GROUP BY — query separada e simples).
+   */
+  async stats(tenantId: string): Promise<GroupStatsResult & { proximos7Dias: number }> {
+    const byStatus = await groupCount(
+      this.repo!.createQueryBuilder('e').where('e.tenant_id = :tenantId', { tenantId }).andWhere('e.deleted_at IS NULL'),
+      'e',
+      'status',
+    );
+    const now = new Date();
+    const em7Dias = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const proximos7Dias = await this.repo!
+      .createQueryBuilder('e')
+      .where('e.tenant_id = :tenantId', { tenantId })
+      .andWhere('e.deleted_at IS NULL')
+      .andWhere('e.data >= :now AND e.data <= :em7Dias', { now, em7Dias })
+      .getCount();
+    return { ...byStatus, proximos7Dias };
   }
 
   async findById(tenantId: string, id: string): Promise<EventEntity> {
@@ -109,7 +148,13 @@ export class EventsService {
     await this.findById(tenantId, id);
     const mapped = this.dtoToEntity(dto);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...mapped, updated_at: new Date(), updated_by: userId } as any);
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      { ...mapped, updated_at: new Date(), updated_by: userId } as any,
+      (dto as UpdateEventDto & { expectedUpdatedAt?: string }).expectedUpdatedAt,
+      'Este evento foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

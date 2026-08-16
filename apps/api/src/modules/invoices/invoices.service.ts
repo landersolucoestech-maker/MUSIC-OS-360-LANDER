@@ -5,6 +5,7 @@ import { InvoiceEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateInvoiceDto, UpdateInvoiceDto, QueryInvoiceDto } from './dto/invoices.dto';
 
 const CANCELLED_STATUSES = new Set(['cancelada', 'cancelado', 'cancelled']);
@@ -156,7 +157,14 @@ export class InvoicesService {
       ...this.normalizePayload(dto),
       updated_at: new Date(),
     };
-    await this.repository.update({ id, tenant_id: tenantId } as never, updates as never);
+    delete (updates as Record<string, unknown>)['expectedUpdatedAt'];
+    await casUpdate(
+      this.repository,
+      { id, tenant_id: tenantId } as never,
+      updates as never,
+      dto.expectedUpdatedAt,
+      'Esta nota fiscal foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
+    );
     const updated = await this.findById(tenantId, id);
 
     const newStatus = dto.status;

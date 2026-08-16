@@ -3,6 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ContentDetectionEntity } from '../../database/entities';
 import type { CreateContentDetectionDto } from './dto/create-content-detection.dto';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class ContentDetectionsService {
@@ -47,8 +48,15 @@ export class ContentDetectionsService {
 
   async update(tenantId: string, id: string, dto: any): Promise<ContentDetectionEntity> {
     await this.findById(tenantId, id);
+    const { expectedUpdatedAt, ...rest } = dto ?? {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date() } as any);
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      { ...rest, updated_at: new Date() } as any,
+      expectedUpdatedAt,
+      'Esta detecção foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

@@ -46,10 +46,24 @@ export class CreateShareDto {
   @ApiPropertyOptional() @IsOptional() @IsArray() historico?: unknown[];
 }
 
-export class UpdateShareDto extends PartialType(CreateShareDto) {}
+export class UpdateShareDto extends PartialType(CreateShareDto) {
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class QueryShareDto extends PaginationDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() workId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() trackId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() role?: string;
+  @ApiPropertyOptional({ deprecated: true, description: 'Alias legado, não lido pelo service. Use "obra_id".' })
+  @IsOptional() @IsString() workId?: string;
+  @ApiPropertyOptional({ deprecated: true, description: 'Alias legado, não lido pelo service. Use "fonograma_id".' })
+  @IsOptional() @IsString() trackId?: string;
+  @ApiPropertyOptional({ deprecated: true, description: 'Alias legado, não lido pelo service. Use "papel".' })
+  @IsOptional() @IsString() role?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsUUID() obra_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() fonograma_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() papel?: string;
+  @ApiPropertyOptional() @IsOptional() @IsIn(['a_receber', 'a_enviar']) direcao?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() share_type?: string;
 }

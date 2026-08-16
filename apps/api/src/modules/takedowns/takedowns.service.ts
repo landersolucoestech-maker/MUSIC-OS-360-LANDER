@@ -2,7 +2,9 @@ import { Injectable, Inject, NotFoundException, ServiceUnavailableException } fr
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { TakedownEntity } from '../../database/entities';
+import { groupCount, type GroupStatsResult } from '../../common/stats/group-count.util';
 import type { CreateTakedownDto, UpdateTakedownDto, QueryTakedownDto } from './dto/takedowns.dto';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class TakedownsService {
@@ -41,6 +43,21 @@ export class TakedownsService {
     return { data, meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
   }
 
+  /**
+   * Contagem por status, sobre o tenant inteiro (não a página atual) —
+   * Task H: KPIs exatos sem baixar a tabela inteira. O bucket-mapping
+   * (pendente/em_andamento/concluído) continua no frontend (Takedowns.tsx),
+   * que agora itera sobre este mapa pequeno {status: count} em vez da lista
+   * completa de takedowns.
+   */
+  async stats(tenantId: string): Promise<GroupStatsResult> {
+    const qb = this.repository
+      .createQueryBuilder('t')
+      .where('t.tenant_id = :tenantId', { tenantId })
+      .andWhere('t.deleted_at IS NULL');
+    return groupCount(qb, 't', 'status');
+  }
+
   async findById(tenantId: string, id: string): Promise<TakedownEntity> {
     const result = await this.repository
       .createQueryBuilder('t')
@@ -62,13 +79,20 @@ export class TakedownsService {
 
   async update(tenantId: string, _userId: string, id: string, dto: UpdateTakedownDto): Promise<TakedownEntity> {
     await this.findById(tenantId, id);
+    const { expectedUpdatedAt, ...rest } = dto as UpdateTakedownDto & { expectedUpdatedAt?: string };
     const updates: Record<string, unknown> = {
-      ...dto,
+      ...rest,
       updated_at: new Date(),
     };
     if (dto.url_infracao !== undefined) updates['url'] = dto.url_infracao ?? null;
 
-    await this.repository.update({ id, tenant_id: tenantId } as never, updates as never);
+    await casUpdate(
+      this.repository,
+      { id, tenant_id: tenantId } as never,
+      updates as never,
+      expectedUpdatedAt,
+      'Este takedown foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

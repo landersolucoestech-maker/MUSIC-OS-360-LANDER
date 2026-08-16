@@ -5,6 +5,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.tokens';
 import { AudiovisualBriefingEntity, AudiovisualProjectEntity } from '../../../database/entities';
 import type { UpsertBriefingDto } from '../dto/audiovisual.dto';
+import { casUpdate } from '../../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class AudiovisualBriefingsService {
@@ -30,9 +31,14 @@ export class AudiovisualBriefingsService {
     await this.assertProject(tenantId, projectId);
     const existing = await this.r.findOne({ where: { tenant_id: tenantId, audiovisual_project_id: projectId } as never });
     if (existing) {
-      await this.r.update({ id: existing.id, tenant_id: tenantId } as never, {
-        ...dto, updated_by: userId, updated_at: new Date(),
-      } as never);
+      const { expectedUpdatedAt, ...rest } = dto as UpsertBriefingDto & { expectedUpdatedAt?: string };
+      await casUpdate(
+        this.r,
+        { id: existing.id, tenant_id: tenantId } as never,
+        { ...rest, updated_by: userId, updated_at: new Date() } as never,
+        expectedUpdatedAt,
+        'Este briefing foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+      );
       return this.r.findOne({ where: { id: existing.id, tenant_id: tenantId } as never });
     }
     const entity = this.r.create({

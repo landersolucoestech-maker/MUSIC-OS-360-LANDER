@@ -3,6 +3,8 @@ import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ContractEntity, ArtistEntity, ClientEntity } from '../../database/entities';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
+import { groupCount, type GroupStatsResult } from '../../common/stats/group-count.util';
 import type { CreateContractDto } from './dto/create-contract.dto';
 import type { UpdateContractDto } from './dto/update-contract.dto';
 import type { QueryContractDto }  from './dto/query-contract.dto';
@@ -74,6 +76,8 @@ export class ContractsService {
     if (resolvedQuery.tipo)       qb.andWhere('c.tipo = :tipo',            { tipo:      resolvedQuery.tipo });
     if (resolvedQuery.artista_id) qb.andWhere('c.artista_id = :artistaId', { artistaId: resolvedQuery.artista_id });
     if (q['search'])              qb.andWhere('c.titulo ILIKE :search',    { search: `%${q['search']}%` });
+    if (q['signing_platform'] === 'none') qb.andWhere('c.signing_platform IS NULL');
+    else if (q['signing_platform'])       qb.andWhere('c.signing_platform = :sp', { sp: q['signing_platform'] });
 
     qb.orderBy('c.created_at', q['ascending'] ? 'ASC' : 'DESC')
       .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
@@ -88,6 +92,21 @@ export class ContractsService {
         limit:  typeof q['limit']  === 'number' ? q['limit']  : 50,
       },
     };
+  }
+
+  /**
+   * Contagem + soma de `valor` por status, sobre o tenant inteiro (não a
+   * página atual) — Task H: KPIs exatos sem baixar a tabela inteira. O
+   * bucket-mapping (vigente/assinado/aguardando/análise/encerrado) continua
+   * no frontend (Contratos.tsx), que agora itera sobre este mapa pequeno
+   * {status: count} em vez da lista completa de contratos.
+   */
+  async stats(tenantId: string): Promise<GroupStatsResult> {
+    const qb = this.repo!
+      .createQueryBuilder('c')
+      .where('c.tenant_id = :tenantId', { tenantId })
+      .andWhere('c.deleted_at IS NULL');
+    return groupCount(qb, 'c', 'status', 'valor');
   }
 
   async findById(
@@ -204,6 +223,8 @@ export class ContractsService {
     const current = await this.findById(tenantId, id, actorRole);
     const dtoMap  = dto as Record<string, unknown>;
     const statusChanging = dtoMap['status'] != null && dtoMap['status'] !== current.status;
+    const expectedUpdatedAt = dtoMap['expectedUpdatedAt'] as string | undefined;
+    const conflictMessage = 'Este contrato foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.';
 
     const { status: _s, ...restFields } = dtoMap;
     void _s;
@@ -235,10 +256,18 @@ export class ContractsService {
       };
       await this.ds!.transaction(async (em) => {
         await this.workflowService.transitionInTx(req, em);
-        await em.update(ContractEntity, { id, tenant_id: tenantId }, {
-          ...nonStatusUpdates,
-          status: dtoMap['status'] as ContractStatus,
-        });
+        // CAS aqui, dentro da mesma transação da mudança de status: se o
+        // contrato foi editado por outra pessoa desde a leitura de `current`
+        // acima, a transação inteira (incluindo o histórico de transição já
+        // gravado por transitionInTx) faz rollback — nunca aplica uma
+        // transição de status validada contra um fromStatus desatualizado.
+        await casUpdate(
+          em.getRepository(ContractEntity),
+          { id, tenant_id: tenantId },
+          { ...nonStatusUpdates, status: dtoMap['status'] as ContractStatus },
+          expectedUpdatedAt,
+          conflictMessage,
+        );
       });
 
       const nowIso = new Date().toISOString();
@@ -331,9 +360,12 @@ export class ContractsService {
         },
       });
     } else {
-      await this.repo!.update(
+      await casUpdate(
+        this.repo!,
         { id, tenant_id: tenantId } as FindOptionsWhere<ContractEntity>,
         nonStatusUpdates as QueryDeepPartialEntity<ContractEntity>,
+        expectedUpdatedAt,
+        conflictMessage,
       );
     }
 

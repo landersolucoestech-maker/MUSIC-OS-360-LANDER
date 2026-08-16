@@ -17,6 +17,11 @@ export class LicensingController {
     return this.svc.list(t.id, q);
   }
 
+  @Get('stats') @RequireRole('viewer') @RequirePermission('license:read') @ApiOperation({ summary: 'Contagem + soma de valor por status, sobre o tenant inteiro' })
+  stats(@CurrentTenant() t: { id: string }) {
+    return this.svc.stats(t.id);
+  }
+
   @Get(':id') @RequireRole('viewer') @RequirePermission('license:read') @ApiOperation({ summary: 'Obter licença' })
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.findById(t.id, id);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
@@ -9,7 +9,7 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { TablePagination } from "@/shared/ui/table-pagination";
-import { usePagination } from "@/shared/hooks/usePagination";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Checkbox } from "@/shared/ui/checkbox";
 import {
   Share2, ArrowDownLeft, CheckCircle, ArrowUpRight, Send, Download,
@@ -17,14 +17,17 @@ import {
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { toast } from "sonner";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { UnavailableState } from "@/shared/components/UnavailableState";
 import { ShareViewModal } from "@/modules/releases/components/ShareViewModal";
 import { SharePendenteFormModal } from "@/modules/releases/components/SharePendenteFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { useShares } from "@/modules/releases/hooks/useShares";
+import { useSharesPaginated, useSharesStats } from "@/modules/releases/hooks/useSharesPaginated";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import { useObras } from "@/modules/catalog/hooks/useObras";
+import { storage } from "@/shared/lib/storage";
 import { resolveShareType, shareTypeLabel, shareStatusBadge } from "@/modules/releases/lib/share-format";
 import { SHARE_FOR_RELEASE_PARAM } from "@/modules/releases/services/share-from-release";
 import type { Share } from "@/modules/releases/types";
@@ -41,10 +44,8 @@ const TIPO_LABELS: Record<string, string> = {
 };
 
 export default function GestaoShares() {
-  const { shares, isLoading: loadingShares, deleteShare, updateShare } = useShares();
+  const { deleteShare, updateShare } = useShares();
   const { lancamentos, isLoading: loadingLancamentos } = useLancamentos();
-  const { artistas } = useArtistas();
-  const { obras, isLoading: loadingObras } = useObras();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [direcaoFilter, setDirecaoFilter] = useState("todos");
@@ -64,45 +65,75 @@ export default function GestaoShares() {
     setSearchParams((prev) => { prev.delete(SHARE_FOR_RELEASE_PARAM); return prev; }, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const isLoading = loadingShares || loadingObras || loadingLancamentos;
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, direcaoFilter, statusFilter, tipoFilter, shareTypeFilter]);
 
-  // ── KPI counts ──────────────────────────────────────────────────────────────
-  const aReceber = shares.filter(
-    (s: any) => s.direcao === "a_receber" && (s.status === "pendente" || s.status === "parcial"),
-  ).length;
-  const recebidos = shares.filter(
-    (s: any) => s.direcao === "a_receber" && s.status === "recebido",
-  ).length;
-  const aEnviar = shares.filter(
-    (s: any) => s.direcao === "a_enviar" && (s.status === "pendente" || s.status === "parcial"),
-  ).length;
-  const enviados = shares.filter(
-    (s: any) => s.direcao === "a_enviar" && s.status === "enviado",
-  ).length;
-
-  // ── Filter ──────────────────────────────────────────────────────────────────
-  const filteredShares = shares.filter((s: any) => {
-    const obra = obras.find((o: any) => o.id === s.obra_id);
-    const lancamento = lancamentos.find((l: any) => l.id === s.lancamento_id);
-    const artista = artistas.find((a: any) => a.id === s.artista_id);
-    const nomeDetentor = artista?.nome_artistico || s.detentor || "";
-    const tituloObra = obra?.titulo || lancamento?.titulo || s.nome_musica || "";
-
-    const matchesSearch =
-      searchTerm === "" ||
-      tituloObra.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      nomeDetentor.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesDirecao = direcaoFilter === "todos" || s.direcao === direcaoFilter;
-    const matchesStatus = statusFilter === "todos" || s.status === statusFilter;
-    const matchesTipo = tipoFilter === "todos" || s.tipo === tipoFilter;
-    const matchesShareType =
-      shareTypeFilter === "todos" || resolveShareType(s as Share & Record<string, unknown>) === shareTypeFilter;
-
-    return matchesSearch && matchesDirecao && matchesStatus && matchesTipo && matchesShareType;
+  const {
+    shares: pageShares, total, isLoading: isLoadingPage, error: pageError, refetch: refetchPage,
+  } = useSharesPaginated({
+    page, pageSize, search: debouncedSearch || undefined,
+    direcao: direcaoFilter !== "todos" ? direcaoFilter : undefined,
+    status: statusFilter !== "todos" ? statusFilter : undefined,
+    tipo: tipoFilter !== "todos" ? tipoFilter : undefined,
+    shareType: shareTypeFilter !== "todos" ? shareTypeFilter : undefined,
   });
 
-  const sharesPg = usePagination(filteredShares, 10);
+  const isLoading = loadingLancamentos || isLoadingPage;
+
+  // ── KPI counts — agregação exata do tenant inteiro (GET /shares/stats),
+  // nunca calculada só sobre a página carregada (Task H). ──────────────────────
+  const { kpis: shareKpis } = useSharesStats();
+  const { aReceber, recebidos, aEnviar, enviados } = shareKpis;
+
+  const filteredShares = pageShares;
+  const sharesPg = { pageItems: filteredShares, total, page, pageSize, setPage, setPageSize };
+
+  // Task J: título de obra/nome de artista por linha, resolvidos por ID
+  // direto (GET /works/:id, /artists/:id) só para os registros da página
+  // atual — antes escaneava useObras()/useArtistas() sem filtro, truncado
+  // nos primeiros 50 do tenant.
+  type ObraLabel = { titulo?: string | null; compositor?: string | null };
+  type ArtistaLabel = { nome_artistico?: string | null };
+  const [resolvedObras, setResolvedObras] = useState<Record<string, ObraLabel>>({});
+  const [resolvedArtistas, setResolvedArtistas] = useState<Record<string, ArtistaLabel>>({});
+  const shareObraIds = useMemo(
+    () => Array.from(new Set(pageShares.map((s: any) => s.obra_id).filter(Boolean))) as string[],
+    [pageShares],
+  );
+  const shareArtistaIds = useMemo(
+    () => Array.from(new Set(pageShares.map((s: any) => s.artista_id).filter(Boolean))) as string[],
+    [pageShares],
+  );
+  useEffect(() => {
+    if (shareObraIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(shareObraIds.map((id) => storage.findById<ObraLabel & { id: string }>("obras", id)))
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, ObraLabel> = {};
+        results.forEach((o, i) => { if (o) map[shareObraIds[i]] = o; });
+        setResolvedObras((prev) => ({ ...prev, ...map }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [shareObraIds]);
+  useEffect(() => {
+    if (shareArtistaIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(shareArtistaIds.map((id) => storage.findById<ArtistaLabel & { id: string }>("artistas", id)))
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, ArtistaLabel> = {};
+        results.forEach((a, i) => { if (a) map[shareArtistaIds[i]] = a; });
+        setResolvedArtistas((prev) => ({ ...prev, ...map }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [shareArtistaIds]);
 
   const handleClearFilters = () => {
     setSearchTerm("");
@@ -137,25 +168,24 @@ export default function GestaoShares() {
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
-    for (const id of ids) await deleteShare.mutateAsync(id);
     setSelectedIds(new Set());
-    toast.success(`${ids.length} share(s) excluído(s).`);
+    const result = await runBulkAction(ids, (id) => deleteShare.mutateAsync(id));
+    reportBulkResult(result, "excluído", "share");
   };
 
-  const handleRegistrarLiquidacao = (share: any, novoStatus: "recebido" | "enviado") => {
-    updateShare.mutate({ id: share.id, status: novoStatus, valor_liquidado: share.valor_total });
-    toast.success(novoStatus === "recebido" ? "Recebimento registrado!" : "Envio registrado!");
+  const handleRegistrarLiquidacao = async (share: any, novoStatus: "recebido" | "enviado") => {
+    try {
+      await updateShare.mutateAsync({
+        id: share.id,
+        status: novoStatus,
+        valor_liquidado: share.valor_total,
+        expectedUpdatedAt: getExpectedUpdatedAt(share),
+      });
+      toast.success(novoStatus === "recebido" ? "Recebimento registrado!" : "Envio registrado!");
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "share")) return;
+    }
   };
-
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </MainLayout>
-    );
-  }
 
   const headerActions = (
     <>
@@ -183,6 +213,14 @@ export default function GestaoShares() {
     shareTypeFilter !== "todos";
 
   return (
+    <>
+    {isLoading ? (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </MainLayout>
+    ) : (
     <MainLayout title="Gestão de Shares" actions={headerActions}>
       <div className="space-y-6">
 
@@ -317,10 +355,10 @@ export default function GestaoShares() {
           <CardContent className="p-0">
             <ListSectionHeader
               title="Shares Cadastrados"
-              count={filteredShares.length}
+              count={total}
               description="Acompanhe participações e percentuais vinculados aos lançamentos"
               className="px-6 pt-6"
-              action={filteredShares.length > 0 ? (
+              action={total > 0 ? (
                 <div className="flex flex-wrap items-center justify-end gap-3">
                   <Checkbox
                     checked={selectedIds.size === filteredShares.length && filteredShares.length > 0}
@@ -361,9 +399,9 @@ export default function GestaoShares() {
                 </TableHeader>
                 <TableBody>
                   {sharesPg.pageItems.map((share: any) => {
-                    const obra = obras.find((o: any) => o.id === share.obra_id);
+                    const obra = share.obra_id ? resolvedObras[share.obra_id] : undefined;
                     const lancamento = lancamentos.find((l: any) => l.id === share.lancamento_id);
-                    const artista = artistas.find((a: any) => a.id === share.artista_id);
+                    const artista = share.artista_id ? resolvedArtistas[share.artista_id] : undefined;
                     const nomeDetentor = artista?.nome_artistico || share.detentor || "—";
                     const sType = resolveShareType(share as Share & Record<string, unknown>);
                     const isPendente = share.status === "pendente" || share.status === "parcial";
@@ -469,6 +507,8 @@ export default function GestaoShares() {
                 itemLabel="shares"
               />
               </>
+            ) : pageError && total === 0 ? (
+              <UnavailableState onRetry={() => refetchPage()} />
             ) : (
               <EmptyState
                 icon={Share2}
@@ -480,7 +520,13 @@ export default function GestaoShares() {
           </CardContent>
         </Card>
       </div>
+    </MainLayout>
+    )}
 
+      {/* Fora do gate de isLoading de propósito — mesmo bug de /artistas
+          (Task C): SharePendenteFormModal chama useShares() de novo só para
+          as mutations, a mesma query do isLoading acima. Ver Artistas.tsx
+          para a explicação completa do loop. */}
       <ShareViewModal
         open={viewModal.open}
         onOpenChange={(open) => setViewModal({ ...viewModal, open })}
@@ -501,6 +547,6 @@ export default function GestaoShares() {
         share={formModal.share}
         initialLancamentoId={formModal.initialLancamentoId}
       />
-    </MainLayout>
+    </>
   );
 }

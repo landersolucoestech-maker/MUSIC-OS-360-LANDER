@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { FeatureGate } from "@/shared/components/FeatureGate";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
@@ -37,6 +38,7 @@ import {
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { FinanceCategoryRuleModal } from "../components/FinanceCategoryRuleModal";
 import {
   FINANCE_CATEGORY_OPTIONS,
@@ -166,15 +168,18 @@ export default function TransacaoRules() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, draft }: { id: string; draft: FinanceCategoryRuleDraft }) =>
-      financeCategorizationRulesService.update(id, draft),
+    mutationFn: ({ id, draft, expectedUpdatedAt }: { id: string; draft: FinanceCategoryRuleDraft; expectedUpdatedAt?: string }) =>
+      financeCategorizationRulesService.update(id, draft, expectedUpdatedAt),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY_RULES });
       toast.success("Regra personalizada atualizada");
       setModalOpen(false);
       setEditingRule(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      if (handleConcurrencyConflict(error, "regra de categorização")) return;
+      toast.error(error.message);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -188,11 +193,11 @@ export default function TransacaoRules() {
   });
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: (ids: string[]) => Promise.all(ids.map((id) => financeCategorizationRulesService.remove(id))),
-    onSuccess: (_result, ids) => {
+    mutationFn: (ids: string[]) => runBulkAction(ids, (id) => financeCategorizationRulesService.remove(id)),
+    onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY_RULES });
-      toast.success(`${ids.length} regra(s) personalizada(s) removida(s)`);
-      setSelectedRuleIds((current) => current.filter((id) => !ids.includes(id)));
+      reportBulkResult(result, "removida", "regra personalizada");
+      setSelectedRuleIds((current) => current.filter((id) => !result.succeeded.includes(id)));
       setBulkDeletingRuleIds([]);
     },
     onError: (error: Error) => toast.error(error.message),
@@ -233,7 +238,7 @@ export default function TransacaoRules() {
     if (!validation.valid) return;
 
     if (editingRule) {
-      updateMutation.mutate({ id: editingRule.id, draft: normalizedDraft });
+      updateMutation.mutate({ id: editingRule.id, draft: normalizedDraft, expectedUpdatedAt: getExpectedUpdatedAt(editingRule) });
       return;
     }
     createMutation.mutate(normalizedDraft);

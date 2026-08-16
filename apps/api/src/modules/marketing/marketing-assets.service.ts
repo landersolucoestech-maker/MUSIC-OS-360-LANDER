@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -20,6 +21,7 @@ import type {
   QueryMarketingAssetDto,
   UpdateMarketingAssetDto,
 } from './dto/marketing-assets.dto';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class MarketingAssetsService {
@@ -164,7 +166,13 @@ export class MarketingAssetsService {
     const fileChanged = Boolean(dto.fileUrl && dto.fileUrl !== current.file_url);
     if (current.status === 'approved' && !fileChanged) {
       const patch = this.buildMetadataPatch(dto, userId, current.metadata ?? {});
-      await this.assets.update({ id, tenant_id: tenantId } as never, patch as never);
+      await casUpdate(
+        this.assets,
+        { id, tenant_id: tenantId } as never,
+        patch as never,
+        dto.expectedUpdatedAt,
+        'Este asset de marketing foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+      );
       return this.findById(tenantId, id);
     }
 
@@ -180,7 +188,13 @@ export class MarketingAssetsService {
       size_bytes:    dto.sizeBytes ?? current.size_bytes,
       status:        current.status === 'rejected' ? 'draft' : current.status,
     };
-    await this.assets.update({ id, tenant_id: tenantId } as never, patch as never);
+    await casUpdate(
+      this.assets,
+      { id, tenant_id: tenantId } as never,
+      patch as never,
+      dto.expectedUpdatedAt,
+      'Este asset de marketing foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
 
     if (fileChanged && current.current_version_id) {
       await this.versionRepo!.update(
@@ -233,8 +247,13 @@ export class MarketingAssetsService {
 
     const nextAssetStatus = dto.status === 'approved' ? 'approved' : 'rejected';
     const decidedAt = new Date();
-    await this.approvalRepo!.update(
-      { id: approvalId, tenant_id: tenantId } as never,
+    // Guarda status='pending' na PRÓPRIA condição do UPDATE (não só no
+    // pre-check acima) — fecha a janela entre a leitura e este UPDATE em que
+    // duas decisões concorrentes poderiam sobrescrever uma à outra
+    // silenciosamente. Esta entidade não tem updated_at gerenciado, então o
+    // próprio status é o guard de concorrência otimista aqui.
+    const decisionResult = await this.approvalRepo!.update(
+      { id: approvalId, tenant_id: tenantId, status: 'pending' } as never,
       {
         status:     dto.status,
         decided_by: userId,
@@ -243,6 +262,9 @@ export class MarketingAssetsService {
         metadata:   dto.metadata ?? {},
       } as never,
     );
+    if (decisionResult.affected === 0) {
+      throw new ConflictException('Esta aprovação já foi decidida por outro usuário. Recarregue e tente novamente.');
+    }
     await this.versionRepo!.update(
       { id: approval.version_id, tenant_id: tenantId } as never,
       { status: nextAssetStatus } as never,

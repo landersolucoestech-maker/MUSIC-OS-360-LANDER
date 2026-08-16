@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
@@ -102,7 +102,7 @@ export default function NotaFiscal() {
     setIsModalOpen(true);
   }, []);
 
-  useEditQueryParam("edit", notasFiscais, handleEdit);
+  useEditQueryParam("edit", notasFiscais, handleEdit, "notas_fiscais");
 
   const handleDelete = (nota: any) => {
     setSelectedNota(nota);
@@ -124,11 +124,12 @@ export default function NotaFiscal() {
     setIsModalOpen(true);
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    selectedIds.forEach(id => deleteNotaFiscal.mutate(id));
-    toast.success(`${selectedIds.length} nota(s) fiscal(is) excluída(s) com sucesso`);
+    const ids = selectedIds;
     setSelectedIds([]);
+    const result = await runBulkAction(ids, (id) => deleteNotaFiscal.mutateAsync(id));
+    reportBulkResult(result, "excluída", "nota fiscal");
   };
 
   const toggleSelectAll = () => {

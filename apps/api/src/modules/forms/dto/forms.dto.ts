@@ -18,6 +18,8 @@ export class UpdateFormDto {
   @ApiPropertyOptional() @IsOptional() @IsArray()                   fields?:      unknown[];
   @ApiPropertyOptional() @IsOptional() @IsObject()                  settings?:    Record<string, unknown>;
   @ApiPropertyOptional() @IsOptional() @IsEnum(FormStatus)          status?:      FormStatus;
+  @ApiPropertyOptional({ description: 'updated_at lido pelo cliente antes de editar — detecta edição concorrente (409 se divergir)' })
+  @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryFormDto {

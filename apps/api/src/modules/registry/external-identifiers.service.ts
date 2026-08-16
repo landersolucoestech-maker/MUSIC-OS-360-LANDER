@@ -11,6 +11,7 @@ import { ExternalIdentifierEntity } from '../../database/entities';
 import { IdentifierType, RegistrableEntityType } from '@music-os-360/types';
 import type { CreateExternalIdentifierDto, UpdateExternalIdentifierDto } from './dto/external-identifier.dto';
 import { isValidIsrc, isValidIswc, normalizeIsrc, normalizeIswc } from './validators/registry-validators';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 const ENTITY_TYPE_ALIASES: Record<string, RegistrableEntityType> = {
   work: RegistrableEntityType.WORK,
@@ -83,14 +84,15 @@ export class ExternalIdentifierService {
   async update(tenantId: string, id: string, dto: UpdateExternalIdentifierDto): Promise<ExternalIdentifierEntity> {
     const current = await this.findById(tenantId, id);
     const nextType = dto.identifier_type ?? current.identifier_type;
+    const updates: Record<string, unknown> = {};
     if (dto.identifier_value != null || dto.identifier_type != null) {
-      current.identifier_value = this.validateAndNormalizeValue(nextType, dto.identifier_value ?? current.identifier_value);
+      updates.identifier_value = this.validateAndNormalizeValue(nextType, dto.identifier_value ?? current.identifier_value);
     }
-    if (dto.identifier_type != null) current.identifier_type = dto.identifier_type;
-    if (dto.provider != null) current.provider = dto.provider;
-    if (dto.is_primary != null) current.is_primary = dto.is_primary;
-    if (dto.metadata != null) current.metadata = dto.metadata;
-    return this.saveUnique(current);
+    if (dto.identifier_type != null) updates.identifier_type = dto.identifier_type;
+    if (dto.provider != null) updates.provider = dto.provider;
+    if (dto.is_primary != null) updates.is_primary = dto.is_primary;
+    if (dto.metadata != null) updates.metadata = dto.metadata;
+    return this.updateUnique(tenantId, id, updates, dto.expectedUpdatedAt);
   }
 
   async remove(tenantId: string, id: string) {
@@ -129,5 +131,29 @@ export class ExternalIdentifierService {
       }
       throw err;
     }
+  }
+
+  /** Update via CAS, mapping the DB unique-violation into a clean 409 (same as saveUnique). */
+  private async updateUnique(
+    tenantId: string,
+    id: string,
+    updates: Record<string, unknown>,
+    expectedUpdatedAt: string | undefined,
+  ): Promise<ExternalIdentifierEntity> {
+    try {
+      await casUpdate(
+        this.repository,
+        { id, tenant_id: tenantId } as never,
+        updates as never,
+        expectedUpdatedAt,
+        'Este identificador foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+      );
+    } catch (err) {
+      if (err instanceof QueryFailedError && (err.driverError as { code?: string })?.code === '23505') {
+        throw new ConflictException('Identificador duplicado para esta entidade/tenant.');
+      }
+      throw err;
+    }
+    return this.findById(tenantId, id);
   }
 }

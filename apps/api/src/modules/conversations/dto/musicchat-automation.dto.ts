@@ -61,6 +61,8 @@ export class UpdateMusicChatAutomationSettingsDto {
   @ApiPropertyOptional() @IsOptional() @IsObject() notification_channels?: Record<string, unknown>;
   @ApiPropertyOptional() @IsOptional() @IsString() supervisor_user_id?: string | null;
   @ApiPropertyOptional() @IsOptional() @IsString() manager_user_id?: string | null;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class MusicChatInboundMessageDto {

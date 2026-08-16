@@ -43,6 +43,22 @@ export class ArtistsController {
     return this.service.list(tenant.id, query);
   }
 
+  @Get('stats/vinculo')
+  @RequireRole('viewer')
+  @RequirePermission('artist:read')
+  @ApiOperation({ summary: 'Contagem de artistas por vínculo (exclusivo/parceiro/independente), tenant inteiro' })
+  vinculoStats(@CurrentTenant() tenant: { id: string }) {
+    return this.service.vinculoStats(tenant.id);
+  }
+
+  @Get('stats/generos')
+  @RequireRole('viewer')
+  @RequirePermission('artist:read')
+  @ApiOperation({ summary: 'Gêneros musicais distintos do tenant' })
+  distinctGeneros(@CurrentTenant() tenant: { id: string }) {
+    return this.service.distinctGeneros(tenant.id);
+  }
+
   @Get(':id/platform-profiles')
   @RequireRole('viewer')
   @RequirePermission('artist:read')

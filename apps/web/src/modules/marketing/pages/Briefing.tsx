@@ -8,6 +8,7 @@
 
 import { useMemo, useState, type ComponentType } from "react";
 import { Link } from "react-router-dom";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
 import {
   CalendarClock,
   ClipboardList,
@@ -172,9 +173,10 @@ export default function Briefing() {
     setSelectedBriefingIds((current) => allSelected ? current.filter((id) => !ids.includes(id)) : Array.from(new Set([...current, ...ids])));
   };
 
-  const bulkDeleteBriefings = (ids: string[]) => {
-    ids.forEach((id) => removeBriefing.mutate(id));
+  const bulkDeleteBriefings = async (ids: string[]) => {
     setSelectedBriefingIds((current) => current.filter((id) => !ids.includes(id)));
+    const result = await runBulkAction(ids, (id) => removeBriefing.mutateAsync(id));
+    reportBulkResult(result, "excluído", "briefing");
   };
 
   const columns: Column<MarketingBriefing>[] = [

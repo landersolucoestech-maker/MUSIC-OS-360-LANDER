@@ -10,6 +10,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE }           from '../../database/database.module';
 import { FormEntity, FormSubmissionEntity, LeadEntity } from '../../database/entities';
 import { EventsService, DOMAIN_EVENTS }                 from '../../core/events/events.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateFormDto, UpdateFormDto, QueryFormDto, SubmitFormDto } from './dto/forms.dto';
 
 @Injectable()
@@ -80,7 +81,13 @@ export class FormsService {
     if (dto.settings    != null) updates['settings']    = dto.settings;
     if (dto.status      != null) updates['status']      = dto.status;
 
-    await this.formRepo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    await casUpdate(
+      this.formRepo!,
+      { id, tenant_id: tenantId } as any,
+      updates as any,
+      dto.expectedUpdatedAt,
+      'Este formulário foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

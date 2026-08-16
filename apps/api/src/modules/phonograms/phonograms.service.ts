@@ -1,8 +1,10 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { PhonogramEntity } from '../../database/entities';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { groupCount, GroupStatsResult } from '../../common/stats/group-count.util';
 import type { CreatePhonogramDto } from './dto/create-phonogram.dto';
 import type { UpdatePhonogramDto } from './dto/update-phonogram.dto';
 import type { QueryPhonogramDto }  from './dto/query-phonogram.dto';
@@ -37,10 +39,10 @@ export class PhonogramsService {
     }
   }
 
-  async list(tenantId: string, query: QueryPhonogramDto) {
+  /** QueryBuilder base (tenant + not-deleted + filtros) partilhado por list() e stats(). */
+  private baseQb(tenantId: string, query: QueryPhonogramDto): { qb: SelectQueryBuilder<PhonogramEntity>; legacyAliasesUsed: string[] } {
     const q = query as Record<string, unknown>;
     const { normalized: resolvedQuery, legacyAliasesUsed } = resolvePhonogramQueryAliases(q);
-    this.logLegacyAliasUsage(legacyAliasesUsed, 'list', tenantId);
 
     const qb = this.repo!
       .createQueryBuilder('p')
@@ -51,10 +53,22 @@ export class PhonogramsService {
     if (q['tipo'])      qb.andWhere('p.tipo = :tipo',           { tipo:      q['tipo'] });
     if (resolvedQuery.artista_id) qb.andWhere('p.artista_id = :artistaId', { artistaId: resolvedQuery.artista_id });
     if (resolvedQuery.obra_id)    qb.andWhere('p.obra_id = :obraId',      { obraId:    resolvedQuery.obra_id });
+    if (q['obra_vinculada'] === 'sem-obra') qb.andWhere('p.obra_id IS NULL');
+    else if (q['obra_vinculada'] === 'com-obra') qb.andWhere('p.obra_id IS NOT NULL');
     if (q['genero_musical'] || q['genre']) {
       qb.andWhere('p.genero_musical = :genre', { genre: q['genero_musical'] ?? q['genre'] });
     }
+    if (q['ecad'] === 'com-ecad')      qb.andWhere("p.cod_ecad IS NOT NULL AND p.cod_ecad <> ''");
+    else if (q['ecad'] === 'sem-ecad') qb.andWhere("(p.cod_ecad IS NULL OR p.cod_ecad = '')");
     if (q['search'])    qb.andWhere('p.titulo ILIKE :search',   { search: `%${q['search']}%` });
+
+    return { qb, legacyAliasesUsed };
+  }
+
+  async list(tenantId: string, query: QueryPhonogramDto) {
+    const q = query as Record<string, unknown>;
+    const { qb, legacyAliasesUsed } = this.baseQb(tenantId, query);
+    this.logLegacyAliasUsage(legacyAliasesUsed, 'list', tenantId);
 
     qb.orderBy('p.created_at', q['ascending'] ? 'ASC' : 'DESC')
       .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
@@ -69,6 +83,25 @@ export class PhonogramsService {
         limit:  typeof q['limit']  === 'number' ? q['limit']  : 50,
       },
     };
+  }
+
+  /** Contagem exata por status, tenant inteiro — nunca só a página carregada. */
+  async stats(tenantId: string, query: QueryPhonogramDto): Promise<GroupStatsResult> {
+    const { qb } = this.baseQb(tenantId, query);
+    return groupCount(qb, 'p', 'status');
+  }
+
+  /** Gêneros distintos do tenant — usado no filtro (dropdown não pode ficar preso aos 50 primeiros registros). */
+  async distinctGeneros(tenantId: string): Promise<string[]> {
+    const rows = await this.repo!
+      .createQueryBuilder('p')
+      .select('DISTINCT p.genero_musical', 'genero')
+      .where('p.tenant_id = :tenantId', { tenantId })
+      .andWhere('p.deleted_at IS NULL')
+      .andWhere('p.genero_musical IS NOT NULL')
+      .orderBy('p.genero_musical', 'ASC')
+      .getRawMany<{ genero: string }>();
+    return rows.map((r) => r.genero);
   }
 
   async findById(tenantId: string, id: string): Promise<PhonogramEntity> {
@@ -156,8 +189,15 @@ export class PhonogramsService {
     this.logLegacyAliasUsage(legacyAliasesUsed, 'update', tenantId, id);
 
     const normalized = this.buildEntityPayload(input, resolved);
+    delete normalized['expectedUpdatedAt'];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...normalized, updated_at: new Date(), updated_by: userId } as any);
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      { ...normalized, updated_at: new Date(), updated_by: userId } as any,
+      (input as { expectedUpdatedAt?: string }).expectedUpdatedAt,
+      'Este fonograma foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

@@ -15,6 +15,9 @@ export class EventsController {
   @Get()    @RequireRole('viewer') @RequirePermission('event:read') @ApiOperation({ summary: 'Listar eventos' })
   list(@CurrentTenant() t: { id: string }, @Query() q: QueryEventDto) { return this.svc.list(t.id, q); }
 
+  @Get('stats') @RequireRole('viewer') @RequirePermission('event:read') @ApiOperation({ summary: 'KPIs exatos do tenant inteiro (status + próximos 7 dias)' })
+  stats(@CurrentTenant() t: { id: string }) { return this.svc.stats(t.id); }
+
   @Get(':id') @RequireRole('viewer') @RequirePermission('event:read') @ApiOperation({ summary: 'Obter evento' })
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.findById(t.id, id); }
 

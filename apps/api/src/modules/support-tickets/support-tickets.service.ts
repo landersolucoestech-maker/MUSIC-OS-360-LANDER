@@ -7,6 +7,7 @@ import { SupportTicketStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import type { CreateSupportTicketDto, UpdateSupportTicketDto, QuerySupportTicketDto } from './dto/support-tickets.dto';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class SupportTicketsService {
@@ -108,8 +109,9 @@ export class SupportTicketsService {
     const statusChanging = dtoMap['status'] != null && dtoMap['status'] !== current.status;
     const toStatus = dtoMap['status'] as string | undefined;
 
-    const { status: _s, ...restFields } = dtoMap;
+    const { status: _s, expectedUpdatedAt, ...restFields } = dtoMap as Record<string, unknown> & { expectedUpdatedAt?: string };
     void _s;
+    const conflictMessage = 'Este ticket foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.';
 
     const nonStatusUpdates: Record<string, unknown> = {
       updated_at: new Date(),
@@ -129,10 +131,17 @@ export class SupportTicketsService {
       };
       await this.ds!.transaction(async (em) => {
         await this.workflowService.transitionInTx(req, em);
-        await em.update(SupportTicketEntity, { id, tenant_id: tenantId }, {
-          ...nonStatusUpdates,
-          status: toStatus as SupportTicketStatus,
-        });
+        // CAS na mesma transação da mudança de status — se o ticket foi
+        // editado por outra pessoa desde a leitura de `current`, a transação
+        // inteira (incluindo o histórico já gravado por transitionInTx) faz
+        // rollback, nunca aplica uma transição validada contra status stale.
+        await casUpdate(
+          em.getRepository(SupportTicketEntity),
+          { id, tenant_id: tenantId },
+          { ...nonStatusUpdates, status: toStatus as SupportTicketStatus },
+          expectedUpdatedAt,
+          conflictMessage,
+        );
       });
 
       // Emit WORKFLOW_TRANSITIONED for every ticket status change
@@ -171,9 +180,12 @@ export class SupportTicketsService {
         });
       }
     } else {
-      await this.repo!.update(
+      await casUpdate(
+        this.repo!,
         { id, tenant_id: tenantId } as FindOptionsWhere<SupportTicketEntity>,
         nonStatusUpdates as QueryDeepPartialEntity<SupportTicketEntity>,
+        expectedUpdatedAt,
+        conflictMessage,
       );
     }
 

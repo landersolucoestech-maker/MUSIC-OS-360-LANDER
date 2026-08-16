@@ -1,12 +1,13 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, ParseUUIDPipe,
+  Param, Body, Query, ParseUUIDPipe, UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader } from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { Audit }                from '../../core/interceptors/audit.interceptor';
+import { IdempotencyInterceptor } from '../../core/interceptors/idempotency.interceptor';
 import { HrService }             from './hr.service';
 import { CreateEmployeeDto }     from './dto/create-employee.dto';
 import { UpdateEmployeeDto }     from './dto/update-employee.dto';
@@ -27,14 +28,25 @@ export class HrController {
   listEmployees(
     @CurrentTenant() tenant: { id: string },
     @Query('status') status?: string,
+    @Query('setor') setor?: string,
+    @Query('search') search?: string,
     @Query('offset') offset?: string,
     @Query('limit') limit?: string,
   ) {
     return this.svc.listEmployees(tenant.id, {
       status,
+      setor,
+      search,
       offset: offset ? +offset : undefined,
       limit:  limit  ? +limit  : undefined,
     });
+  }
+
+  @Get('employees/stats')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Contagem exata de funcionários por status (tenant inteiro)' })
+  employeeStats(@CurrentTenant() tenant: { id: string }) {
+    return this.svc.employeeStats(tenant.id);
   }
 
   @Get('employees/:id')
@@ -92,12 +104,14 @@ export class HrController {
     @CurrentTenant() tenant: { id: string },
     @Query('employee_id') employee_id?: string,
     @Query('competencia') competencia?: string,
+    @Query('status') status?: string,
     @Query('offset') offset?: string,
     @Query('limit') limit?: string,
   ) {
     return this.svc.listPayroll(tenant.id, {
       employee_id,
       competencia,
+      status,
       offset: offset ? +offset : undefined,
       limit:  limit  ? +limit  : undefined,
     });
@@ -105,8 +119,10 @@ export class HrController {
 
   @Post('payroll')
   @RequireRole('manager')
+  @UseInterceptors(IdempotencyInterceptor)
   @Audit('payroll.created')
   @ApiOperation({ summary: 'Lançar entrada na folha de pagamento' })
+  @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne lançamento duplicado (pagamento em dobro) em duplo-clique/retry', required: false })
   createPayroll(
     @CurrentTenant() tenant: { id: string },
     @Body() dto: CreatePayrollEntryDto,
@@ -123,12 +139,14 @@ export class HrController {
     @CurrentTenant() tenant: { id: string },
     @Query('employee_id') employee_id?: string,
     @Query('status') status?: string,
+    @Query('search') search?: string,
     @Query('offset') offset?: string,
     @Query('limit') limit?: string,
   ) {
     return this.svc.listLeaveRequests(tenant.id, {
       employee_id,
       status,
+      search,
       offset: offset ? +offset : undefined,
       limit:  limit  ? +limit  : undefined,
     });

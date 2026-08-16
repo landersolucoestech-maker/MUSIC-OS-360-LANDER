@@ -7,6 +7,7 @@ import {
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.tokens';
 import { CampaignEntity } from '../../database/entities';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 export type BuilderStatus =
   | 'DRAFT' | 'READY' | 'PENDING_REVIEW' | 'SCHEDULED' | 'ACTIVE'
@@ -30,6 +31,8 @@ export type CampaignBuilderPayload = {
   endDate?: string;
   audience?: Record<string, unknown>;
   utm?: Record<string, unknown>;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  expectedUpdatedAt?: string;
 };
 
 export type CampaignValidation = { valid: boolean; errors: string[]; warnings: string[] };
@@ -154,17 +157,23 @@ export class MarketingCampaignBuilderService {
     validation: CampaignValidation,
     blueprint?: CampaignBlueprint,
   ): Promise<StoredCampaign> {
-    await this.repo.update({ id, tenant_id: tenantId } as never, {
-      nome: payload.name?.trim() || 'Campanha sem título',
-      status: status as never,
-      objetivo: payload.objective ?? null,
-      orcamento: this.budget(payload),
-      data_inicio: payload.startDate ? new Date(payload.startDate) : null,
-      data_fim: payload.endDate ? new Date(payload.endDate) : null,
-      metadata: { marketingBuilder: { payload: this.cleanPayload(payload), validation, blueprint } },
-      updated_by: userId,
-      updated_at: new Date(),
-    } as never);
+    await casUpdate(
+      this.repo,
+      { id, tenant_id: tenantId } as never,
+      {
+        nome: payload.name?.trim() || 'Campanha sem título',
+        status: status as never,
+        objetivo: payload.objective ?? null,
+        orcamento: this.budget(payload),
+        data_inicio: payload.startDate ? new Date(payload.startDate) : null,
+        data_fim: payload.endDate ? new Date(payload.endDate) : null,
+        metadata: { marketingBuilder: { payload: this.cleanPayload(payload), validation, blueprint } },
+        updated_by: userId,
+        updated_at: new Date(),
+      } as never,
+      payload.expectedUpdatedAt,
+      'Esta campanha foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
+    );
     return this.find(tenantId, id);
   }
 
@@ -197,6 +206,7 @@ export class MarketingCampaignBuilderService {
       blueprint: _blueprint,
       createdAt: _created,
       updatedAt: _updated,
+      expectedUpdatedAt: _expectedUpdatedAt,
       ...clean
     } = payload as StoredCampaign;
     return clean;

@@ -3,11 +3,13 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { EmployeeEntity, PayrollEntryEntity, LeaveRequestEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateEmployeeDto }     from './dto/create-employee.dto';
 import type { UpdateEmployeeDto }     from './dto/update-employee.dto';
 import type { CreatePayrollEntryDto } from './dto/create-payroll-entry.dto';
 import type { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 import { EmployeeStatus } from '@music-os-360/types';
+import { groupCount, GroupStatsResult } from '../../common/stats/group-count.util';
 
 @Injectable()
 export class HrService {
@@ -40,12 +42,18 @@ export class HrService {
 
   // ── Employees ──────────────────────────────────────────────────────────────
 
-  async listEmployees(tenantId: string, query: { status?: string; offset?: number; limit?: number } = {}) {
+  async listEmployees(
+    tenantId: string,
+    query: { status?: string; setor?: string; search?: string; offset?: number; limit?: number } = {},
+  ) {
     const qb = this.empRepo!
       .createQueryBuilder('e')
       .where('e.tenant_id = :tenantId AND e.deleted_at IS NULL', { tenantId });
 
     if (query.status) qb.andWhere('e.status = :status', { status: query.status });
+    // Frontend usa "setor"; a coluna física é `departamento` (mesmo campo, nome legado).
+    if (query.setor)  qb.andWhere('e.departamento = :setor', { setor: query.setor });
+    if (query.search) qb.andWhere('(e.nome ILIKE :search OR e.cargo ILIKE :search)', { search: `%${query.search}%` });
 
     qb.orderBy('e.created_at', 'DESC')
       .skip(query.offset ?? 0)
@@ -53,6 +61,15 @@ export class HrService {
 
     const [rows, total] = await qb.getManyAndCount();
     return { data: rows.map(e => this.mapEmployee(e)), meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
+  }
+
+  /** Contagem exata de funcionários por status, tenant inteiro (KPIs da página de RH). */
+  async employeeStats(tenantId: string): Promise<GroupStatsResult> {
+    return groupCount(
+      this.empRepo!.createQueryBuilder('e').where('e.tenant_id = :tenantId AND e.deleted_at IS NULL', { tenantId }),
+      'e',
+      'status',
+    );
   }
 
   private async _findRaw(tenantId: string, id: string): Promise<EmployeeEntity> {
@@ -107,7 +124,15 @@ export class HrService {
     if ((dto as any).telefone !== undefined) updates.telefone_encrypted = this.enc.encryptNullable((dto as any).telefone);
     if ((dto as any).cpf      !== undefined) updates.cpf_encrypted      = this.enc.encryptNullable((dto as any).cpf);
 
-    await this.empRepo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    const expectedUpdatedAt = (dto as any).expectedUpdatedAt as string | undefined;
+    delete updates['expectedUpdatedAt'];
+    await casUpdate(
+      this.empRepo!,
+      { id, tenant_id: tenantId } as any,
+      updates as any,
+      expectedUpdatedAt,
+      'Este funcionário foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.mapEmployee(await this._findRaw(tenantId, id));
   }
 
@@ -119,13 +144,17 @@ export class HrService {
 
   // ── Payroll ────────────────────────────────────────────────────────────────
 
-  async listPayroll(tenantId: string, query: { employee_id?: string; competencia?: string; offset?: number; limit?: number } = {}) {
+  async listPayroll(
+    tenantId: string,
+    query: { employee_id?: string; competencia?: string; status?: string; offset?: number; limit?: number } = {},
+  ) {
     const qb = this.payrollRepo!
       .createQueryBuilder('p')
       .where('p.tenant_id = :tenantId AND p.deleted_at IS NULL', { tenantId });
 
     if (query.employee_id) qb.andWhere('p.employee_id = :employeeId', { employeeId: query.employee_id });
     if (query.competencia) qb.andWhere('p.competencia = :competencia', { competencia: query.competencia });
+    if (query.status)      qb.andWhere('p.status = :status', { status: query.status });
 
     qb.orderBy('p.created_at', 'DESC')
       .skip(query.offset ?? 0)
@@ -153,13 +182,17 @@ export class HrService {
 
   // ── Leave Requests ─────────────────────────────────────────────────────────
 
-  async listLeaveRequests(tenantId: string, query: { employee_id?: string; status?: string; offset?: number; limit?: number } = {}) {
+  async listLeaveRequests(
+    tenantId: string,
+    query: { employee_id?: string; status?: string; search?: string; offset?: number; limit?: number } = {},
+  ) {
     const qb = this.leaveRepo!
       .createQueryBuilder('l')
       .where('l.tenant_id = :tenantId AND l.deleted_at IS NULL', { tenantId });
 
     if (query.employee_id) qb.andWhere('l.employee_id = :employeeId', { employeeId: query.employee_id });
     if (query.status)      qb.andWhere('l.status = :status', { status: query.status });
+    if (query.search)      qb.andWhere('l.tipo ILIKE :search', { search: `%${query.search}%` });
 
     qb.orderBy('l.created_at', 'DESC')
       .skip(query.offset ?? 0)

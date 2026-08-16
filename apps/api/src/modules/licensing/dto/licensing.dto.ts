@@ -38,12 +38,19 @@ export class CreateLicenseDto {
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
 }
 
-export class UpdateLicenseDto extends PartialType(CreateLicenseDto) {}
+export class UpdateLicenseDto extends PartialType(CreateLicenseDto) {
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class QueryLicenseDto extends PaginationDto {
+  /** Aceita um único status ("ativa") ou vários separados por vírgula
+   * ("negociacao,proposta") — a aba "Propostas" do Licenciamento.tsx
+   * abrange dois status (Task H). */
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() obra_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() cliente_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() midia_destino?: string;
 }

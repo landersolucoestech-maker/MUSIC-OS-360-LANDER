@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { ConflictException } from '@nestjs/common';
 import { LeadsService } from './leads.service';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { DatabaseContextService } from '../../database/database-context.service';
@@ -97,5 +98,58 @@ describe('LeadsService.create — colunas físicas reais (nunca score/pipeline_s
     const saved = (repo.save as jest.Mock).mock.calls[0][0] as Record<string, unknown>;
     expect(saved['pipeline_stage']).toBeUndefined();
     expect((saved['metadata'] as Record<string, unknown>)['stage']).toBe('qualified');
+  });
+});
+
+/**
+ * Task K — mesma proteção de concorrência otimista aplicada a
+ * ContractsService.update(): quando a mudança inclui troca de status,
+ * o CAS roda DENTRO da mesma transação de transitionInTx (via
+ * em.getRepository), então uma edição concorrente reverte a transação
+ * inteira em vez de deixar um histórico de transição órfão.
+ */
+describe('LeadsService.update — concorrência otimista (Task K)', () => {
+  const NOW = new Date('2026-08-14T12:00:00.000Z');
+  const LEAD = {
+    id: 'lead-1', tenant_id: 'tenant-1', nome: 'Fulano de Tal', status: 'novo',
+    metadata: {}, deleted_at: null, updated_at: NOW,
+  };
+
+  function makeServiceWithTransaction() {
+    const encryption = makeEncryption();
+    const repo = makeRepo([LEAD]);
+    const ds = {
+      getRepository: jest.fn(() => repo),
+      transaction: jest.fn(async (cb: (em: unknown) => unknown) => cb({ getRepository: jest.fn(() => repo) })),
+    } as any;
+    const dbContext = { runInTenantContext: (_ctx: unknown, work: () => unknown) => work() } as unknown as DatabaseContextService;
+    const workflowService = {
+      getAllowedTransitions: jest.fn(() => []),
+      transitionInTx: jest.fn(async () => undefined),
+    } as unknown as WorkflowService;
+    const events = { emitTyped: jest.fn(), emit: jest.fn() } as unknown as EventsService;
+    const svc = new LeadsService(ds, null, dbContext, workflowService, events, encryption, undefined);
+    return { svc, repo };
+  }
+
+  it('update sem troca de status, sem expectedUpdatedAt: aplica update incondicional', async () => {
+    const { svc, repo } = makeServiceWithTransaction();
+
+    await svc.update('tenant-1', 'user-1', 'lead-1', { nome: 'Novo Nome' } as any);
+
+    const [criteria] = (repo.update as jest.Mock).mock.calls[0];
+    expect(criteria).toEqual({ id: 'lead-1', tenant_id: 'tenant-1' });
+  });
+
+  it('update com troca de status e expectedUpdatedAt desatualizado (0 linhas): ConflictException, transação não commita', async () => {
+    const { svc, repo } = makeServiceWithTransaction();
+    (repo.update as jest.Mock).mockResolvedValueOnce({ affected: 0 });
+
+    await expect(
+      svc.update('tenant-1', 'user-1', 'lead-1', {
+        status: 'contatado',
+        expectedUpdatedAt: new Date('2026-08-14T11:00:00.000Z').toISOString(),
+      } as any),
+    ).rejects.toThrow(ConflictException);
   });
 });

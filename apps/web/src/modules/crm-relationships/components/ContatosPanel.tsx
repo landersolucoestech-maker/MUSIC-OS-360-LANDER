@@ -1,4 +1,6 @@
 import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
+import { runBulkAction, reportBulkResult } from "@/shared/hooks/useBulkAction";
+import { getExpectedUpdatedAt } from "@/shared/hooks/useConcurrencyConflict";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { ContatosTable } from "./ContatosTable";
@@ -156,7 +158,7 @@ export const ContatosPanel = forwardRef<ContatosPanelHandle, Record<string, neve
       const data = contatoPayloadToContactData(payload);
 
       if (editContact) {
-        await updateContact(editContact.id, data);
+        await updateContact(editContact.id, data, getExpectedUpdatedAt(editContact));
       } else {
         await createContact(data);
       }
@@ -207,7 +209,10 @@ export const ContatosPanel = forwardRef<ContatosPanelHandle, Record<string, neve
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onBulkDelete={(rows) => rows.forEach((c) => void deleteContact(c.id))}
+            onBulkDelete={async (rows) => {
+              const result = await runBulkAction(rows.map((c) => c.id), deleteContact);
+              reportBulkResult(result, "excluído", "contato");
+            }}
           />
         )}
 

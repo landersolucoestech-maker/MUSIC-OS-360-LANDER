@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { EncryptionService } from '../../core/security/encryption.service';
 
@@ -194,6 +194,51 @@ describe('ClientsService — encryption', () => {
       expect(result).toEqual({ deleted: true });
       const updateCall = (repo.update as jest.Mock).mock.calls[0][1] as Record<string, unknown>;
       expect(updateCall['deleted_at']).toBeInstanceOf(Date);
+    });
+  });
+
+  describe('update — concorrência otimista (Task K)', () => {
+    const NOW = new Date('2026-08-14T12:00:00.000Z');
+    const existing = {
+      id: 'uuid-6', tenant_id: 'tenant-1', name: 'Gustavo',
+      email_encrypted: null, telefone_encrypted: null, cpf_cnpj_encrypted: null,
+      updated_at: NOW,
+    };
+
+    it('sem expectedUpdatedAt: aplica update incondicional (compatibilidade retroativa)', async () => {
+      const { svc, repo } = makeService([existing]);
+      (repo._qb['getOne'] as jest.Mock).mockImplementation(async () => existing);
+
+      await svc.update('tenant-1', 'user-1', 'uuid-6', { name: 'Gustavo Novo' } as any);
+
+      const [criteria] = (repo.update as jest.Mock).mock.calls[0];
+      expect(criteria).toEqual({ id: 'uuid-6', tenant_id: 'tenant-1' });
+    });
+
+    it('com expectedUpdatedAt correto: inclui updated_at no critério', async () => {
+      const { svc, repo } = makeService([existing]);
+      (repo._qb['getOne'] as jest.Mock).mockImplementation(async () => existing);
+
+      await svc.update('tenant-1', 'user-1', 'uuid-6', {
+        name: 'Gustavo Novo',
+        expectedUpdatedAt: NOW.toISOString(),
+      } as any);
+
+      const [criteria] = (repo.update as jest.Mock).mock.calls[0];
+      expect(criteria).toEqual({ id: 'uuid-6', tenant_id: 'tenant-1', updated_at: NOW });
+    });
+
+    it('com expectedUpdatedAt desatualizado (0 linhas afetadas): lança ConflictException, não sobrescreve', async () => {
+      const { svc, repo } = makeService([existing]);
+      (repo._qb['getOne'] as jest.Mock).mockImplementation(async () => existing);
+      (repo.update as jest.Mock).mockResolvedValueOnce({ affected: 0 });
+
+      await expect(
+        svc.update('tenant-1', 'user-1', 'uuid-6', {
+          name: 'Edição concorrente',
+          expectedUpdatedAt: new Date('2026-08-14T11:00:00.000Z').toISOString(),
+        } as any),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

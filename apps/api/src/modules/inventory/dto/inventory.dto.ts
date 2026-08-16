@@ -20,10 +20,14 @@ export class CreateInventoryItemDto {
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
 }
 
-export class UpdateInventoryItemDto extends PartialType(CreateInventoryItemDto) {}
+export class UpdateInventoryItemDto extends PartialType(CreateInventoryItemDto) {
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
+}
 
 export class QueryInventoryDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() categoria?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() localizacao?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
 }

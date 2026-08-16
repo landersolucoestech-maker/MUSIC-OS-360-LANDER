@@ -2,6 +2,8 @@ import { Injectable, Inject, NotFoundException, ServiceUnavailableException } fr
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { LicenseEntity } from '../../database/entities';
+import { groupCount, type GroupStatsResult } from '../../common/stats/group-count.util';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateLicenseDto, UpdateLicenseDto, QueryLicenseDto } from './dto/licensing.dto';
 
 @Injectable()
@@ -57,10 +59,17 @@ export class LicensingService {
       .where('l.tenant_id = :tenantId', { tenantId })
       .andWhere('l.deleted_at IS NULL');
 
-    if (query.status) qb.andWhere('l.status = :status', { status: query.status });
+    if (query.status) {
+      // Aba "Propostas" do Licenciamento.tsx abrange negociacao+proposta —
+      // aceita status separados por vírgula e usa IN quando há mais de um.
+      const statuses = query.status.split(',').map((s) => s.trim()).filter(Boolean);
+      if (statuses.length > 1) qb.andWhere('l.status IN (:...statuses)', { statuses });
+      else if (statuses.length === 1) qb.andWhere('l.status = :status', { status: statuses[0] });
+    }
     if (query.tipo) qb.andWhere('l.tipo = :tipo', { tipo: query.tipo });
     if (query.obra_id) qb.andWhere('l.obra_id = :obraId', { obraId: query.obra_id });
     if (query.cliente_id) qb.andWhere('l.cliente_id = :clienteId', { clienteId: query.cliente_id });
+    if (query.midia_destino) qb.andWhere('l.midia_destino ILIKE :midia', { midia: `%${query.midia_destino}%` });
     if (query.search) {
       qb.andWhere(
         '(l.titulo ILIKE :search OR l.projeto ILIKE :search OR l.artista ILIKE :search OR l.cliente ILIKE :search)',
@@ -77,6 +86,21 @@ export class LicensingService {
       data: rows.map((row) => this.mapLicense(row)),
       meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 },
     };
+  }
+
+  /**
+   * Contagem + soma de `valor` por status, sobre o tenant inteiro (não a
+   * página atual) — Task H: KPIs exatos sem baixar a tabela inteira. As 3
+   * abas (catálogo/propostas/ativas) e o cartão "Valor Total" (soma apenas
+   * de status=ativa) do Licenciamento.tsx passam a ler este mapa em vez da
+   * lista completa de licenças.
+   */
+  async stats(tenantId: string): Promise<GroupStatsResult> {
+    const qb = this.repository
+      .createQueryBuilder('l')
+      .where('l.tenant_id = :tenantId', { tenantId })
+      .andWhere('l.deleted_at IS NULL');
+    return groupCount(qb, 'l', 'status', 'valor');
   }
 
   async findById(tenantId: string, id: string): Promise<Record<string, unknown>> {
@@ -113,13 +137,17 @@ export class LicensingService {
     });
     if (!current) throw new NotFoundException('Licença não encontrada');
 
-    await this.repository.update(
+    const { expectedUpdatedAt, ...normalized } = this.normalizePayload(dto) as Record<string, unknown> & { expectedUpdatedAt?: string };
+    await casUpdate(
+      this.repository,
       { id, tenant_id: tenantId } as never,
       {
-        ...this.normalizePayload(dto),
+        ...normalized,
         updated_at: new Date(),
         updated_by: userId,
       } as never,
+      expectedUpdatedAt,
+      'Esta licença foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
     );
     return this.findById(tenantId, id);
   }

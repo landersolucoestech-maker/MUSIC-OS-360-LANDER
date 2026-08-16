@@ -20,6 +20,8 @@ export class UpdateSupportTicketDto extends PartialType(CreateSupportTicketDto) 
   @ApiPropertyOptional({ enum: SupportTicketStatus }) @IsOptional() @IsIn(STATUSES) status?: string;
   @ApiPropertyOptional({ type: String, format: 'date-time' })
   @IsOptional() @Type(() => Date) @IsDate() resolvedAt?: Date;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QuerySupportTicketDto extends PaginationDto {

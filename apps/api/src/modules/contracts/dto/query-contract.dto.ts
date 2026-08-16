@@ -34,4 +34,9 @@ export class QueryContractDto extends PaginationDto {
   @IsOptional()
   @IsUUID()
   artistId?: string;
+
+  @ApiPropertyOptional({ example: 'autentique' })
+  @IsOptional()
+  @IsString()
+  signing_platform?: string;
 }

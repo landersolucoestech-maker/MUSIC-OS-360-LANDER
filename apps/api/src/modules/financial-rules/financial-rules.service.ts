@@ -3,6 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { FinancialRuleEntity } from '../../database/entities';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateFinancialRuleDto, UpdateFinancialRuleDto, QueryFinancialRuleDto } from './dto/financial-rules.dto';
 
 export type FinancialRuleTrigger =
@@ -61,7 +62,16 @@ export class FinancialRulesService {
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateFinancialRuleDto): Promise<FinancialRuleEntity> {
     await this.findById(tenantId, id);
-    await this.repository.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date(), updated_by: userId } as any);
+    const updates: Record<string, unknown> = { ...dto, updated_at: new Date(), updated_by: userId };
+    const expectedUpdatedAt = updates['expectedUpdatedAt'] as string | undefined;
+    delete updates['expectedUpdatedAt'];
+    await casUpdate(
+      this.repository,
+      { id, tenant_id: tenantId } as any,
+      updates as any,
+      expectedUpdatedAt,
+      'Esta regra financeira foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

@@ -40,6 +40,9 @@ export class UpdateReleaseDto extends PartialType(CreateReleaseDto) {
   @IsOptional()
   @IsEnum(ReleaseStatus)
   status?: ReleaseStatus;
+
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryReleaseDto extends PaginationDto {

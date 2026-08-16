@@ -18,6 +18,7 @@ import type {
   QueryMarketingProjectDto,
   UpdateMarketingProjectDto,
 } from './dto/marketing-projects.dto';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class MarketingProjectsService {
@@ -137,11 +138,17 @@ export class MarketingProjectsService {
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateMarketingProjectDto): Promise<MarketingProjectEntity> {
     await this.findById(tenantId, id);
-    await this.r.update({ id, tenant_id: tenantId } as never, {
-      ...this.toPatch(dto),
-      updated_by: userId,
-      updated_at: new Date(),
-    } as never);
+    await casUpdate(
+      this.r,
+      { id, tenant_id: tenantId } as never,
+      {
+        ...this.toPatch(dto),
+        updated_by: userId,
+        updated_at: new Date(),
+      } as never,
+      dto.expectedUpdatedAt,
+      'Este projeto de marketing foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     return this.findById(tenantId, id);
   }
 

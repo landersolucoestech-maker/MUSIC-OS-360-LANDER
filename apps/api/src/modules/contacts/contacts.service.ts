@@ -104,6 +104,7 @@ export class ContactsService {
     pick('zipCode', 'zip_code', 'zipCode', 'cep');
     pick('responsible', 'responsible', 'assignedTo');
     pick('notes', 'notes', 'observacoes');
+    pick('expectedUpdatedAt', 'expectedUpdatedAt');
     if (payload['company_name'] !== undefined || payload['companyName'] !== undefined) {
       dto['type'] = 'company';
     }

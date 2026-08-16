@@ -31,10 +31,13 @@ export class CreateProjectDto {
 
 export class UpdateProjectDto extends PartialType(CreateProjectDto) {
   @ApiPropertyOptional({ enum: ProjectStatus }) @IsOptional() @IsIn(STATUSES) status?: string;
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @ApiPropertyOptional() @IsOptional() @IsString() expectedUpdatedAt?: string;
 }
 
 export class QueryProjectDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() genero?: string;
 }

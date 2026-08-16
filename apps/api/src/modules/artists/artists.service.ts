@@ -10,6 +10,7 @@ import {
 } from '../reports/form-contracts/report-form-contracts';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { PlanLimitService } from '../../core/billing/plan-limit.service';
+import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type { CreateArtistDto } from './dto/create-artist.dto';
 import type { UpdateArtistDto } from './dto/update-artist.dto';
 import type { QueryArtistDto }  from './dto/query-artist.dto';
@@ -51,6 +52,7 @@ export type ArtistResponse =
 @Injectable()
 export class ArtistsService {
   private readonly repo: Repository<ArtistEntity> | null = null;
+  private readonly ds: DataSource | null = null;
   private readonly logger = new Logger(ArtistsService.name);
 
   constructor(
@@ -59,7 +61,10 @@ export class ArtistsService {
     private readonly events: EventsService,
     private readonly planLimit: PlanLimitService,
   ) {
-    if (ds) this.repo = ds.getRepository(ArtistEntity);
+    if (ds) {
+      this.repo = ds.getRepository(ArtistEntity);
+      this.ds = ds;
+    }
   }
 
   /**
@@ -107,6 +112,30 @@ export class ArtistsService {
         search: `%${query.search}%`,
       });
     }
+    // Mesma classificação de vinculoStats() (ver ali para a explicação
+    // completa) — aqui como filtro WHERE em vez de agregação, pra que a
+    // tabela paginada e os KPIs concordem sobre "quem é exclusivo/parceiro/
+    // independente" (Task H: Artistas.tsx filtrava isso no cliente).
+    const ATIVOS = `('ativo','assinado','vigente','vencendo')`;
+    if (query.vinculo === 'exclusivo') {
+      qb.andWhere(`EXISTS (
+        SELECT 1 FROM contracts c WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id
+        AND c.deleted_at IS NULL AND LOWER(c.status) IN ${ATIVOS} AND c.exclusivo = true
+      )`);
+    } else if (query.vinculo === 'parceiro') {
+      qb.andWhere(`EXISTS (
+        SELECT 1 FROM contracts c WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id
+        AND c.deleted_at IS NULL AND LOWER(c.status) IN ${ATIVOS}
+      )`).andWhere(`NOT EXISTS (
+        SELECT 1 FROM contracts c WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id
+        AND c.deleted_at IS NULL AND LOWER(c.status) IN ${ATIVOS} AND c.exclusivo = true
+      )`);
+    } else if (query.vinculo === 'independente') {
+      qb.andWhere(`NOT EXISTS (
+        SELECT 1 FROM contracts c WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id
+        AND c.deleted_at IS NULL AND LOWER(c.status) IN ${ATIVOS}
+      )`);
+    }
 
     const orderField = query.orderBy ?? 'created_at';
     qb.orderBy(`a.${orderField}`, query.ascending ? 'ASC' : 'DESC')
@@ -114,10 +143,86 @@ export class ArtistsService {
       .take(query.limit ?? 50);
 
     const [data, total] = await qb.getManyAndCount();
+    const vinculoById = await this.vinculoByArtistIds(tenantId, data.map((e) => e.id));
     return {
-      data: data.map((e) => this.toResponse(e)),
+      data: data.map((e) => ({ ...this.toResponse(e), vinculo: vinculoById[e.id] ?? 'independente' })),
       meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 },
     };
+  }
+
+  /** Vínculo por artista, restrito aos IDs informados (ex.: só a página
+   * atual — nunca o tenant inteiro) — mesma classificação de vinculoStats(). */
+  private async vinculoByArtistIds(tenantId: string, artistIds: string[]): Promise<Record<string, 'exclusivo' | 'parceiro' | 'independente'>> {
+    if (artistIds.length === 0) return {};
+    const rows = await this.ds!.query<Array<{ artista_id: string; exclusivo: boolean }>>(
+      `
+      SELECT DISTINCT ON (c.artista_id) c.artista_id, bool_or(c.exclusivo) OVER (PARTITION BY c.artista_id) AS exclusivo
+      FROM contracts c
+      WHERE c.tenant_id = $1 AND c.deleted_at IS NULL AND c.artista_id = ANY($2::uuid[])
+        AND LOWER(c.status) IN ('ativo','assinado','vigente','vencendo')
+      `,
+      [tenantId, artistIds],
+    );
+    const result: Record<string, 'exclusivo' | 'parceiro' | 'independente'> = {};
+    for (const r of rows) {
+      result[r.artista_id] = r.exclusivo ? 'exclusivo' : 'parceiro';
+    }
+    return result;
+  }
+
+  /**
+   * KPIs exatos sobre o TENANT INTEIRO (não a página atual) — Task H.
+   *
+   * `vinculo` reproduz exatamente a classificação que o frontend fazia no
+   * cliente (Artistas.tsx `classifyVinculo`): um artista é "exclusivo" se
+   * tiver algum contrato ativo/assinado/vigente/vencendo com exclusivo=true;
+   * "parceiro" se tiver algum desses contratos sem ser exclusivo; senão
+   * "independente". Antes: baixava artistas E contratos inteiros e cruzava
+   * no cliente. Agora: uma única query agregada.
+   */
+  async vinculoStats(tenantId: string): Promise<{ exclusivo: number; parceiro: number; independente: number; total: number }> {
+    const rows = await this.ds!.query<Array<{ vinculo: string; cnt: string }>>(
+      `
+      SELECT vinculo, COUNT(*)::int AS cnt FROM (
+        SELECT
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM contracts c
+              WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id AND c.deleted_at IS NULL
+                AND LOWER(c.status) IN ('ativo','assinado','vigente','vencendo') AND c.exclusivo = true
+            ) THEN 'exclusivo'
+            WHEN EXISTS (
+              SELECT 1 FROM contracts c
+              WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id AND c.deleted_at IS NULL
+                AND LOWER(c.status) IN ('ativo','assinado','vigente','vencendo')
+            ) THEN 'parceiro'
+            ELSE 'independente'
+          END AS vinculo
+        FROM artists a
+        WHERE a.tenant_id = $1 AND a.deleted_at IS NULL
+      ) x
+      GROUP BY vinculo
+      `,
+      [tenantId],
+    );
+    const byVinculo: Record<string, number> = { exclusivo: 0, parceiro: 0, independente: 0 };
+    let total = 0;
+    for (const r of rows) {
+      const cnt = parseInt(r.cnt, 10) || 0;
+      byVinculo[r.vinculo] = cnt;
+      total += cnt;
+    }
+    return { exclusivo: byVinculo.exclusivo, parceiro: byVinculo.parceiro, independente: byVinculo.independente, total };
+  }
+
+  /** Gêneros musicais distintos do tenant (para o dropdown de filtro) — sem
+   * baixar artistas inteiros só para extrair valores únicos de uma coluna. */
+  async distinctGeneros(tenantId: string): Promise<string[]> {
+    const rows = await this.ds!.query<Array<{ genero_musical: string }>>(
+      `SELECT DISTINCT genero_musical FROM artists WHERE tenant_id = $1 AND deleted_at IS NULL AND genero_musical IS NOT NULL ORDER BY genero_musical`,
+      [tenantId],
+    );
+    return rows.map((r) => r.genero_musical).filter(Boolean);
   }
 
   async findById(tenantId: string, id: string): Promise<ArtistEntity> {
@@ -242,7 +347,13 @@ export class ArtistsService {
       };
     }
 
-    await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    await casUpdate(
+      this.repo!,
+      { id, tenant_id: tenantId } as any,
+      updates as any,
+      dto.expectedUpdatedAt,
+      'Este artista foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.',
+    );
     const result = await this.findById(tenantId, id);
 
     // ── Domain events ──────────────────────────────────────────────────────────

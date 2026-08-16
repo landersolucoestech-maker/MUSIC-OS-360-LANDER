@@ -33,4 +33,8 @@ export class UpdateExternalIdentifierDto {
 
   @IsOptional() @IsObject()
   metadata?: Record<string, unknown>;
+
+  /** Concorrência otimista (Task K) — ver optimistic-update.util.ts. Opcional. */
+  @IsOptional() @IsString()
+  expectedUpdatedAt?: string;
 }

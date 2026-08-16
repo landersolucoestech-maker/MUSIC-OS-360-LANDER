@@ -20,6 +20,13 @@ export class TakedownsController {
     return this.svc.list(tenant.id, query);
   }
 
+  @Get('stats')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Contagem por status, sobre o tenant inteiro' })
+  stats(@CurrentTenant() tenant: { id: string }) {
+    return this.svc.stats(tenant.id);
+  }
+
   @Get(':id')
   @RequireRole('viewer')
   @ApiOperation({ summary: 'Obter takedown' })

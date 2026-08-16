@@ -79,6 +79,9 @@ function makeDataSource(getOneValue: unknown = artistOfA) {
 
   return {
     getRepository: jest.fn(() => repo),
+    // Task H: list() enriquece cada artista com o vínculo via query bruta
+    // restrita aos IDs da página — sem contratos mockados, resolve "independente".
+    query: jest.fn().mockResolvedValue([]),
     _repo: repo,
   };
 }
