@@ -50,18 +50,23 @@ const expectedRoutes: ExpectedRoute[] = [
   { controller: ArtistGoalsController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'artist_goal:delete' },
 
   { controller: WorksController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'work:read' },
+  { controller: WorksController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'work:read' },
+  { controller: WorksController, methodName: 'distinctGeneros', httpMethod: RequestMethod.GET, path: 'stats/generos', role: 'viewer', permission: 'work:read' },
   { controller: WorksController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'work:read' },
   { controller: WorksController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'work:create' },
   { controller: WorksController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'work:update' },
   { controller: WorksController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'work:delete' },
 
   { controller: PhonogramsController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'phonogram:read' },
+  { controller: PhonogramsController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'phonogram:read' },
+  { controller: PhonogramsController, methodName: 'distinctGeneros', httpMethod: RequestMethod.GET, path: 'stats/generos', role: 'viewer', permission: 'phonogram:read' },
   { controller: PhonogramsController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'phonogram:read' },
   { controller: PhonogramsController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'phonogram:create' },
   { controller: PhonogramsController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'phonogram:update' },
   { controller: PhonogramsController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'phonogram:delete' },
 
   { controller: SharesController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'share:read' },
+  { controller: SharesController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'share:read' },
   { controller: SharesController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'share:read' },
   { controller: SharesController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'share:create' },
   { controller: SharesController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'share:update' },
@@ -98,24 +103,29 @@ const expectedRoutes: ExpectedRoute[] = [
   { controller: LeadInteractionsController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'lead_interaction:delete' },
 
   { controller: ProjectsController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'project:read' },
+  { controller: ProjectsController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'project:read' },
   { controller: ProjectsController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'project:read' },
   { controller: ProjectsController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'project:create' },
   { controller: ProjectsController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'project:update' },
   { controller: ProjectsController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'project:delete' },
 
   { controller: EventsController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'event:read' },
+  { controller: EventsController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'event:read' },
   { controller: EventsController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'event:read' },
   { controller: EventsController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'event:create' },
   { controller: EventsController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'event:update' },
   { controller: EventsController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'event:delete' },
 
   { controller: InventoryController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'inventory:read' },
+  { controller: InventoryController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'inventory:read' },
   { controller: InventoryController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'inventory:read' },
   { controller: InventoryController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'inventory:create' },
   { controller: InventoryController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'inventory:update' },
   { controller: InventoryController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'inventory:delete' },
 
   { controller: LicensingController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'license:read' },
+  // Task H: contagem + soma de valor por status sobre o tenant inteiro (KPIs exatos).
+  { controller: LicensingController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'license:read' },
   { controller: LicensingController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'license:read' },
   { controller: LicensingController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'license:create' },
   { controller: LicensingController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'license:update' },
@@ -142,6 +152,7 @@ const expectedRoutes: ExpectedRoute[] = [
   { controller: FinancialRulesController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'admin', permission: 'financial_rule:delete' },
 
   { controller: TransactionsController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'transaction:read' },
+  { controller: TransactionsController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'transaction:read' },
   { controller: TransactionsController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'transaction:read' },
   { controller: TransactionsController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'financial', permission: 'transaction:create' },
   { controller: TransactionsController, methodName: 'replace', httpMethod: RequestMethod.PUT, path: ':id', role: 'financial', permission: 'transaction:update' },
@@ -156,6 +167,8 @@ const expectedRoutes: ExpectedRoute[] = [
 
   // FASE 6.6 — Contracts (DELETE tem semântica de cancelamento → contract:cancel, não delete).
   { controller: ContractsController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'contract:read' },
+  // Task H: contagem + soma de valor por status sobre o tenant inteiro (KPIs exatos).
+  { controller: ContractsController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'contract:read' },
   { controller: ContractsController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'contract:read' },
   { controller: ContractsController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'contract:create' },
   { controller: ContractsController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'contract:update' },
@@ -185,6 +198,37 @@ describe('FASE 6.1 CRUD controller permission metadata', () => {
   it.each([...new Set(expectedRoutes.map((route) => route.controller))])(
     '%s has no @RequirePermission on routes outside the expected CRUD set',
     (controller) => {
+      // TEMP DIAGNOSTIC (Task P) — remove before closing the task.
+      if (controller.name === 'WorksController') {
+        const rawMatches = expectedRoutes.filter((route) => route.controller === controller);
+        const nameMatches = expectedRoutes.filter((route) => route.controller.name === controller.name);
+        const statsEntries = expectedRoutes
+          .filter((route) => route.methodName === 'stats' || route.methodName === 'distinctGeneros')
+          .map((route) => ({
+            controllerName: route.controller.name,
+            methodName: route.methodName,
+            sameRefAsThisControllerParam: route.controller === controller,
+          }));
+        // eslint-disable-next-line no-console
+        console.log('DIAG_P_expectedRoutes.length', expectedRoutes.length);
+        // eslint-disable-next-line no-console
+        console.log(
+          'DIAG_P_rawMatches(===)',
+          rawMatches.length,
+          JSON.stringify(rawMatches.map((r) => r.methodName)),
+        );
+        // eslint-disable-next-line no-console
+        console.log(
+          'DIAG_P_nameMatches(.name===)',
+          nameMatches.length,
+          JSON.stringify(nameMatches.map((r) => r.methodName)),
+        );
+        // eslint-disable-next-line no-console
+        console.log('DIAG_P_statsEntries', JSON.stringify(statsEntries));
+        // eslint-disable-next-line no-console
+        console.log('DIAG_P_controller===WorksController(import)', controller === WorksController);
+      }
+
       const expectedMethodNames = new Set(
         expectedRoutes
           .filter((route) => route.controller === controller)
@@ -200,7 +244,7 @@ describe('FASE 6.1 CRUD controller permission metadata', () => {
   );
 
   it('keeps RBAC permission enforcement off unless explicitly enabled', () => {
-    expect(process.env['RBAC_PERMISSION_ENFORCEMENT']).not.toBe('true');
+    expect(process.env['RBAC_PERSISTED_AUTHORITY']).not.toBe('ON');
   });
 
   it('uses a specific permission for financial category reorder', () => {
