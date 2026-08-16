@@ -16,7 +16,7 @@ import {
   IntegrationError,
   PasswordChangeRequiredError,
 } from "./errors";
-import { API_BASE_URL, DEV_AUTH_BYPASS } from "./env";
+import { API_BASE_URL } from "./env";
 
 export interface ApiResponse<T> {
   data: T;
@@ -216,15 +216,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (res.status === 401) {
     setAccessToken(null);
-    // DEV ONLY (VITE_DISABLE_AUTH=true): sob o bypass de frontend, chamadas
-    // autenticadas sem token real vão 401 de forma esperada e repetida (o
-    // backend não foi alterado). Não armamos o circuit-breaker de 30s aqui —
-    // ele existe para parar tempestades de pollers quando uma sessão REAL
-    // caiu, não para o caso em que já sabemos, por design, que não há sessão
-    // nenhuma. Cada chamada continua retornando seu próprio erro 401 mapeado
-    // abaixo (mapError) — nada é escondido, só evitamos que a navegação
-    // inteira fique pausada por 30s a cada request autenticado.
-    if (!DEV_AUTH_BYPASS && _authFailUntil < Date.now()) {
+    if (_authFailUntil < Date.now()) {
       _authFailUntil = Date.now() + AUTH_BACKOFF_MS;
       _authBus.dispatchEvent(new Event('invalid'));
     }
