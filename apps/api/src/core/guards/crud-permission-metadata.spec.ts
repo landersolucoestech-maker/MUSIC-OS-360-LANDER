@@ -198,37 +198,6 @@ describe('FASE 6.1 CRUD controller permission metadata', () => {
   it.each([...new Set(expectedRoutes.map((route) => route.controller))])(
     '%s has no @RequirePermission on routes outside the expected CRUD set',
     (controller) => {
-      // TEMP DIAGNOSTIC (Task P) — remove before closing the task.
-      if (controller.name === 'WorksController') {
-        const rawMatches = expectedRoutes.filter((route) => route.controller === controller);
-        const nameMatches = expectedRoutes.filter((route) => route.controller.name === controller.name);
-        const statsEntries = expectedRoutes
-          .filter((route) => route.methodName === 'stats' || route.methodName === 'distinctGeneros')
-          .map((route) => ({
-            controllerName: route.controller.name,
-            methodName: route.methodName,
-            sameRefAsThisControllerParam: route.controller === controller,
-          }));
-        // eslint-disable-next-line no-console
-        console.log('DIAG_P_expectedRoutes.length', expectedRoutes.length);
-        // eslint-disable-next-line no-console
-        console.log(
-          'DIAG_P_rawMatches(===)',
-          rawMatches.length,
-          JSON.stringify(rawMatches.map((r) => r.methodName)),
-        );
-        // eslint-disable-next-line no-console
-        console.log(
-          'DIAG_P_nameMatches(.name===)',
-          nameMatches.length,
-          JSON.stringify(nameMatches.map((r) => r.methodName)),
-        );
-        // eslint-disable-next-line no-console
-        console.log('DIAG_P_statsEntries', JSON.stringify(statsEntries));
-        // eslint-disable-next-line no-console
-        console.log('DIAG_P_controller===WorksController(import)', controller === WorksController);
-      }
-
       const expectedMethodNames = new Set(
         expectedRoutes
           .filter((route) => route.controller === controller)
