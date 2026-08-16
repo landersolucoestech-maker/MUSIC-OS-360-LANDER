@@ -1384,6 +1384,8 @@ export class ShareEntity {
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
   @Column({ type: 'integer', nullable: true }) versao: number | null;
   @Column({ type: 'jsonb', nullable: true }) historico: unknown[] | null;
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true }) valor_total: string | null;
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true }) valor_liquidado: string | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
   @ManyToOne(() => WorkEntity, (w) => w.shares, { nullable: true, onDelete: 'SET NULL' })
@@ -2295,6 +2297,30 @@ export class FinancialRuleEntity {
   @Column({ type: 'text', nullable: true }) descricao: string | null;
   @Column({ type: 'boolean', default: true }) ativo: boolean;
   @Column({ type: 'jsonb', default: {} }) condicoes: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+}
+
+// ─── Finance Category Keyword Rules ────────────────────────────────────────────
+// Nota: "financial_category_rules" JÁ EXISTE (migration 20260526000003) como uma
+// tabela de taxonomia dinâmica seedada por tenant — schema e propósito totalmente
+// diferentes (transaction_type/counterparty_type/category/subcategory), sem
+// service/controller vivo. Para não colidir, esta tabela de regras de
+// categorização automática por palavra-chave usa nome próprio.
+@Entity('finance_category_keyword_rules')
+@Index(['tenant_id', 'active'])
+@Index(['tenant_id', 'transaction_type'])
+export class FinanceCategoryKeywordRuleEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'text', array: true, default: () => "'{}'" }) keywords: string[];
+  @Column({ type: 'varchar', length: 20 }) transaction_type: string;
+  @Column({ type: 'uuid' }) category_id: string;
+  @Column({ type: 'int', default: 100 }) priority: number;
+  @Column({ type: 'boolean', default: true }) active: boolean;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
@@ -3284,6 +3310,7 @@ export const ALL_ENTITIES = [
   InventoryItemEntity,
   LicenseEntity,
   FinancialRuleEntity,
+  FinanceCategoryKeywordRuleEntity,
   // Registry & Society Integration (migrations 20260601000002 / 000003)
   RightsHolderEntity,
   ExternalIdentifierEntity,

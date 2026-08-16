@@ -9,6 +9,15 @@ const percentualField = z
   .optional()
   .or(z.literal(""));
 
+const valorField = z
+  .string()
+  .refine(
+    (v) => !v || (!isNaN(parseFloat(v)) && parseFloat(v) >= 0),
+    { message: "Valor deve ser um número positivo" },
+  )
+  .optional()
+  .or(z.literal(""));
+
 /**
  * Share unificado com discriminador `share_type`:
  *  - internal_release → vínculo a um lançamento interno (release + participante + percentual);
@@ -34,6 +43,7 @@ export const shareSchema = z
     documentos: z.string().max(500).optional().or(z.literal("")),
     // Comum
     percentual: percentualField,
+    valor_total: valorField,
     status: z.enum(["pendente", "parcial", "enviado", "aceito", "recebido", "recusado", "erro", "cancelado"]).default("pendente"),
     acordo_notas: z.string().max(2000, "Notas devem ter no máximo 2000 caracteres").optional().or(z.literal("")),
     acordo_url: z.string().max(500, "URL deve ter no máximo 500 caracteres").optional().or(z.literal("")),

@@ -15,6 +15,7 @@ import { projetoSchema } from "@/modules/projects/lib/projeto-schema";
 import { MUSICAL_GENRES } from "@/constants/musicalGenres";
 import { LANGUAGES } from "@/constants/languages";
 import { Plus, Upload, X, Music, FileAudio, Loader2, Link } from "lucide-react";
+import { useUploadToR2, R2NotConfiguredError } from "@/shared/hooks/useUploadToR2";
 
 interface ProjetoFormModalProps {
   open: boolean;
@@ -178,7 +179,7 @@ function ArtistNameInput({ value, onChange, placeholder, disabled }: ArtistNameI
 
 export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluido }: ProjetoFormModalProps) {
   const { addProjeto, updateProjeto } = useProjetos();
-  const uploadFile = async (_file: File): Promise<{ url: string } | null> => null;
+  const { upload: uploadToR2 } = useUploadToR2();
 
   // Initialize state from projeto when the component mounts fresh (key-based remount ensures fresh mount per project).
   const [tipoLancamento, setTipoLancamento] = useState(() => normTipo(projeto?.tipo));
@@ -358,16 +359,21 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
     updateMusica(musicaId, '_uploading', true);
 
     try {
-      const result = await uploadFile(file);
-      if (result?.url) {
-        updateMusica(musicaId, 'audioUrl', result.url);
-        toast.success("Áudio enviado e link gerado com sucesso!");
-      } else {
-        toast.success("Arquivo de áudio carregado localmente.");
-      }
+      const publicUrl = await uploadToR2({
+        file,
+        category: "audio",
+        entity:   "project",
+        entityId: projeto?.id as string | undefined,
+      });
+      updateMusica(musicaId, 'audioUrl', publicUrl);
+      toast.success("Áudio enviado e link gerado com sucesso!");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro no upload do áudio";
-      toast.error(`Upload falhou: ${msg}. O arquivo foi registrado localmente.`);
+      const msg = err instanceof R2NotConfiguredError
+        ? err.message
+        : err instanceof Error ? err.message : "Erro no upload do áudio";
+      toast.error(`Upload falhou: ${msg}`);
+      // Nunca finge sucesso: sem URL real, remove o arquivo local exibido.
+      updateMusica(musicaId, 'arquivoAudio', null);
     } finally {
       updateMusica(musicaId, '_uploading', false);
     }

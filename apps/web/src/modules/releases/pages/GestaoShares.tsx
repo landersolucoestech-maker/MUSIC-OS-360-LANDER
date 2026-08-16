@@ -12,7 +12,7 @@ import { TablePagination } from "@/shared/ui/table-pagination";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Checkbox } from "@/shared/ui/checkbox";
 import {
-  Share2, ArrowDownLeft, CheckCircle, ArrowUpRight, Send, Download,
+  Share2, ArrowDownLeft, CheckCircle, ArrowUpRight, Send,
   Plus, Search, Loader2, MoreHorizontal, Eye, Pencil, Trash2,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
@@ -189,10 +189,6 @@ export default function GestaoShares() {
 
   const headerActions = (
     <>
-      <Button variant="outline" size="sm" className="gap-2" data-testid="button-export">
-        <Download className="h-4 w-4" />
-        Exportar
-      </Button>
       <Button
         size="sm"
         className="h-8 text-xs gap-1.5"

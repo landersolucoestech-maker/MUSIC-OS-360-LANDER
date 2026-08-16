@@ -32,6 +32,11 @@ const FIXED_MODULE_FILES = [
   "modules/inventory/pages/Inventario.tsx",
   "modules/contracts/pages/Contratos.tsx",
   "modules/accounting/pages/Contabilidade.tsx",
+  // Task T (continuidade): botão "Exportar" em GestaoShares.tsx não tinha
+  // onClick algum — clicar não fazia nada. Shares já é entidade reportável
+  // na Central de Relatórios (REPORT_MODULE_REGISTRY); removido em vez de
+  // duplicar export local, mesma política da Parte 86.
+  "modules/releases/pages/GestaoShares.tsx",
 ];
 
 const BUTTON_TEXT_PATTERNS = [
@@ -39,6 +44,7 @@ const BUTTON_TEXT_PATTERNS = [
   /Exportar\s+XLSX/i,
   /data-testid="button-import-/i,
   /data-testid="button-export-/i,
+  /data-testid="button-export"/i,
 ];
 
 describe("Guarda permanente: módulos corrigidos na Parte 86 não reintroduzem Importar/Exportar próprio", () => {

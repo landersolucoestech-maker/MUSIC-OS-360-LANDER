@@ -18,6 +18,7 @@ import { InventoryController } from '../../modules/inventory/inventory.controlle
 import { LicensingController } from '../../modules/licensing/licensing.controller';
 import { FinancialCategoriesController } from '../../modules/financial-categories/financial-categories.controller';
 import { FinancialRulesController } from '../../modules/financial-rules/financial-rules.controller';
+import { FinanceCategoryRulesController } from '../../modules/finance-category-rules/finance-category-rules.controller';
 import { TransactionsController } from '../../modules/transactions/transactions.controller';
 import { InvoicesController } from '../../modules/invoices/invoices.controller';
 import { ContractsController } from '../../modules/contracts/contracts.controller';
@@ -150,6 +151,12 @@ const expectedRoutes: ExpectedRoute[] = [
   { controller: FinancialRulesController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'manager', permission: 'financial_rule:create' },
   { controller: FinancialRulesController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'manager', permission: 'financial_rule:update' },
   { controller: FinancialRulesController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'admin', permission: 'financial_rule:delete' },
+
+  { controller: FinanceCategoryRulesController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'financial_category_rule:read' },
+  { controller: FinanceCategoryRulesController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'financial_category_rule:read' },
+  { controller: FinanceCategoryRulesController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'financial', permission: 'financial_category_rule:create' },
+  { controller: FinanceCategoryRulesController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'financial', permission: 'financial_category_rule:update' },
+  { controller: FinanceCategoryRulesController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'financial_category_rule:delete' },
 
   { controller: TransactionsController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'transaction:read' },
   { controller: TransactionsController, methodName: 'stats', httpMethod: RequestMethod.GET, path: 'stats', role: 'viewer', permission: 'transaction:read' },

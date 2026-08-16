@@ -79,6 +79,7 @@ import { InventoryModule }        from './modules/inventory/inventory.module';
 import { LicensingModule }        from './modules/licensing/licensing.module';
 import { FinancialRulesModule }   from './modules/financial-rules/financial-rules.module';
 import { FinancialCategoriesModule } from './modules/financial-categories/financial-categories.module';
+import { FinanceCategoryRulesModule } from './modules/finance-category-rules/finance-category-rules.module';
 import { AudiovisualModule }      from './modules/audiovisual/audiovisual.module';
 import { RegistryModule }         from './modules/registry/registry.module';
 import { ReportsModule }          from './modules/reports/reports.module';
@@ -209,6 +210,7 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     LicensingModule,
     FinancialRulesModule,
     FinancialCategoriesModule,
+    FinanceCategoryRulesModule,
 
     // ── Audiovisual / Video Production
     AudiovisualModule,
@@ -261,7 +263,7 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     },
     // FASE 6 — autorização por permissão (resource:action), após o RolesGuard.
     // Não substitui o RolesGuard; só atua em rotas com @RequirePermission e respeita a
-    // flag RBAC_PERMISSION_ENFORCEMENT (default OFF = modo observação).
+    // RBAC_PERSISTED_AUTHORITY controla o modo (default SHADOW = observação).
     {
       provide:  APP_GUARD,
       useClass: PermissionsGuard,

@@ -445,6 +445,7 @@ const SHARES_CONTRACT: ReportFormContract = {
     col('tipo'), col('artista_externo'), col('artista_projeto_id'), col('artista_id'),
     col('pagador'), col('pagador_contato'), col('origem_acordo'), col('data_prevista'),
     col('documentos'), col('acordo_notas'), col('acordo_url'), col('observacoes'),
+    col('valor_total'), col('valor_liquidado'),
     ro('versao'), ro('historico'),
   ],
   excludedFormFields: {

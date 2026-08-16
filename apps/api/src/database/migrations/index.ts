@@ -156,6 +156,8 @@ import { FixDefaultPrivilegesCreatorRole20260803000002 } from './20260803000002_
 import { CreateContractServiceTypes20260803000003 } from './20260803000003_CreateContractServiceTypes';
 import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicensePercentage';
 import { HardenRbacDecisionLogPartitions20260804000002 } from './20260804000002_HardenRbacDecisionLogPartitions';
+import { CreateFinancialCategoryRules20260816000001 } from './20260816000001_CreateFinancialCategoryRules';
+import { AddShareLiquidacaoValues20260816000002 } from './20260816000002_AddShareLiquidacaoValues';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -300,4 +302,6 @@ export const ALL_MIGRATIONS = [
   CreateContractServiceTypes20260803000003,
   AddLicensePercentage20260804000001,
   HardenRbacDecisionLogPartitions20260804000002,
+  CreateFinancialCategoryRules20260816000001,
+  AddShareLiquidacaoValues20260816000002,
 ] as const;

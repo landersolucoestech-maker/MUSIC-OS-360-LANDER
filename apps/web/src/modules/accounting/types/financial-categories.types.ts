@@ -36,7 +36,6 @@ export interface FinancialCategory {
   links_count?: number;
   links?: FinancialCategoryLink[];
   centers?: FinancialCategoryCenterLink[];
-  rules?: FinancialCategoryRule[];
   audit?: FinancialCategoryAuditLog[];
 }
 
@@ -55,19 +54,6 @@ export interface FinancialCategoryCenterLink {
   category_id: string;
 }
 
-export interface FinancialCategoryRule {
-  id: string;
-  category_id: string | null;
-  name: string;
-  description: string | null;
-  priority: number;
-  active: boolean;
-  conditions: Record<string, unknown>;
-  actions: Record<string, unknown>;
-  trigger_count: number;
-  last_triggered_at: string | null;
-}
-
 export interface FinanceCategoryRule {
   id: string;
   keywords: string[];
@@ -83,15 +69,14 @@ export interface FinanceCategoryRule {
 
 export type FinanceCategoryRuleDraft = Omit<FinanceCategoryRule, "id" | "origin" | "createdAt" | "updatedAt">;
 
-export interface FinanceCategoryRuleApi {
+/** Formato retornado por /finance-category-rules (backend real, ver apps/api/src/modules/finance-category-rules). */
+export interface FinanceCategoryRuleApiResponse {
   id: string;
-  category_id: string | null;
-  name: string;
-  description: string | null;
+  keywords: string[];
+  transaction_type: FinanceRuleTransactionType;
+  category_id: string;
   priority: number;
   active: boolean;
-  conditions: Record<string, unknown>;
-  actions: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -104,13 +89,6 @@ export interface FinancialCategoryAuditLog {
   before: Record<string, unknown>;
   after: Record<string, unknown>;
   timestamp: string;
-}
-
-export interface FinancialSuggestion {
-  source: "rule" | "usage" | "history" | "entity";
-  confidence: number;
-  category: FinancialCategory | null;
-  rule?: FinancialCategoryRule;
 }
 
 export interface FinancialCategoryFilters {

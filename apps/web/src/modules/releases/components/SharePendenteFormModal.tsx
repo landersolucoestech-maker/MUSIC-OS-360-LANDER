@@ -48,6 +48,7 @@ interface ShareFormState {
   documentos: string;
   // comum
   percentual: string;
+  valor_total: string;
   status: string;
   acordo_notas: string;
   acordo_url: string;
@@ -89,6 +90,7 @@ const EMPTY: ShareFormState = {
   data_prevista: "",
   documentos: "",
   percentual: "",
+  valor_total: "",
   status: "pendente",
   acordo_notas: "",
   acordo_url: "",
@@ -115,6 +117,7 @@ function shareToForm(share: Share & Record<string, unknown>): ShareFormState {
     data_prevista: s("data_prevista"),
     documentos: s("documentos"),
     percentual: share.percentual != null ? String(share.percentual) : "",
+    valor_total: share.valor_total != null ? String(share.valor_total) : "",
     status: s("status") || "pendente",
     acordo_notas: s("acordo_notas"),
     acordo_url: s("acordo_url"),
@@ -170,6 +173,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
       data_prevista: formData.data_prevista,
       documentos: formData.documentos,
       percentual: formData.percentual,
+      valor_total: formData.valor_total,
       status: formData.status,
       acordo_notas: formData.acordo_notas,
       acordo_url: formData.acordo_url,
@@ -196,12 +200,14 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
     }
 
     const percentualNum = formData.percentual ? parseFloat(formData.percentual) : null;
+    const valorTotalNum = formData.valor_total ? parseFloat(formData.valor_total) : null;
     setIsSubmitting(true);
     try {
       const selectedRelease = lancamentosDistribuidos.find((l) => l.id === formData.lancamento_id);
       const common = {
         share_type: formData.share_type,
         percentual: percentualNum,
+        valor_total: valorTotalNum,
         status: formData.status,
         acordo_notas: formData.acordo_notas.trim() || null,
         acordo_url: formData.acordo_url.trim() || null,
@@ -394,7 +400,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
             </>
           )}
 
-          {/* Percentual + Status (comum) */}
+          {/* Percentual + Valor + Status (comum) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="percentual">% Share</Label>
@@ -402,18 +408,23 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
                 value={formData.percentual} onChange={(e) => handleChange("percentual", e.target.value)} data-testid="input-percentual" />
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={formData.status} onValueChange={(v) => handleChange("status", v)}>
-                <SelectTrigger data-testid="select-status">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="valor_total">Valor combinado (R$)</Label>
+              <Input id="valor_total" type="number" min="0" step="0.01" placeholder="Ex: 1500.00"
+                value={formData.valor_total} onChange={(e) => handleChange("valor_total", e.target.value)} data-testid="input-valor-total" />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={formData.status} onValueChange={(v) => handleChange("status", v)}>
+              <SelectTrigger data-testid="select-status">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

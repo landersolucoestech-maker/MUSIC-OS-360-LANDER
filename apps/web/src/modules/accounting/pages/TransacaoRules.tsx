@@ -45,10 +45,8 @@ import {
   FINANCE_RULE_TRANSACTION_LABEL,
   SYSTEM_FINANCE_CATEGORY_RULES,
 } from "../data/finance-category-rules.config";
-import {
-  financeCategorizationRulesService,
-  financialCategoriesService,
-} from "../services/financial-categories.service";
+import { financeCategoryRulesService } from "../services/finance-category-rules.service";
+import { financialCategoriesService } from "../services/financial-categories.service";
 import type {
   FinanceCategoryRule,
   FinanceCategoryRuleDraft,
@@ -130,7 +128,7 @@ export default function TransacaoRules() {
 
   const rulesQuery = useQuery({
     queryKey: QUERY_KEY_RULES,
-    queryFn: () => financeCategorizationRulesService.list(categories),
+    queryFn: () => financeCategoryRulesService.list(categories),
   });
 
   const customRules = rulesQuery.data ?? [];
@@ -158,7 +156,7 @@ export default function TransacaoRules() {
   const allVisibleSelectableSelected = visibleSelectableRuleIds.length > 0 && visibleSelectableRuleIds.every((id) => selectedRuleIds.includes(id));
 
   const createMutation = useMutation({
-    mutationFn: financeCategorizationRulesService.create,
+    mutationFn: financeCategoryRulesService.create,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY_RULES });
       toast.success("Regra personalizada criada");
@@ -169,7 +167,7 @@ export default function TransacaoRules() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, draft, expectedUpdatedAt }: { id: string; draft: FinanceCategoryRuleDraft; expectedUpdatedAt?: string }) =>
-      financeCategorizationRulesService.update(id, draft, expectedUpdatedAt),
+      financeCategoryRulesService.update(id, draft, expectedUpdatedAt),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY_RULES });
       toast.success("Regra personalizada atualizada");
@@ -183,7 +181,7 @@ export default function TransacaoRules() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: financeCategorizationRulesService.remove,
+    mutationFn: financeCategoryRulesService.remove,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY_RULES });
       toast.success("Regra personalizada removida");
@@ -193,7 +191,7 @@ export default function TransacaoRules() {
   });
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: (ids: string[]) => runBulkAction(ids, (id) => financeCategorizationRulesService.remove(id)),
+    mutationFn: (ids: string[]) => runBulkAction(ids, (id) => financeCategoryRulesService.remove(id)),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY_RULES });
       reportBulkResult(result, "removida", "regra personalizada");

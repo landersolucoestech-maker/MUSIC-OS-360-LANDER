@@ -66,6 +66,15 @@ const FINANCIAL_PERMISSION_GRANTS: Record<string, string[]> = {
   'financial_rule:update': ['super_admin', 'owner', 'admin', 'manager'],
   'financial_rule:delete': ['super_admin', 'owner', 'admin'],
   'financial_rule:trigger': ['super_admin', 'owner', 'admin', 'manager', 'editor', 'financial', 'accounting'],
+
+  'financial_category_rule:read': [
+    'super_admin', 'owner', 'admin', 'manager', 'editor', 'financial', 'accounting',
+    'juridico', 'marketing_manager', 'marketing', 'comercial', 'produtor', 'radio',
+    'tv', 'artist', 'colaborador', 'rh_manager', 'viewer',
+  ],
+  'financial_category_rule:create': ['super_admin', 'owner', 'admin', 'manager', 'editor', 'financial', 'accounting'],
+  'financial_category_rule:update': ['super_admin', 'owner', 'admin', 'manager', 'editor', 'financial', 'accounting'],
+  'financial_category_rule:delete': ['super_admin', 'owner', 'admin', 'manager'],
 };
 
 // Listas de roles por limiar de hierarquia legada (canônicos; aliases herdam do canônico).

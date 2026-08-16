@@ -97,6 +97,7 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   campaign_assets: EntityCategory.NOT_REPORTABLE,
   financial_category_centers: EntityCategory.NOT_REPORTABLE,
   financial_category_rules: EntityCategory.NOT_REPORTABLE,
+  finance_category_keyword_rules: EntityCategory.NOT_REPORTABLE,
   financial_category_favorites: EntityCategory.NOT_REPORTABLE,
   marketing_strategy_objectives: EntityCategory.NOT_REPORTABLE,
   marketing_strategy_initiatives: EntityCategory.NOT_REPORTABLE,
