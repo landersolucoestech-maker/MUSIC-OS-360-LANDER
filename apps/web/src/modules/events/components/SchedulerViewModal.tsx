@@ -5,11 +5,8 @@ import { Card, CardContent } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Calendar, Clock, MapPin, User, Phone, Mail, Users, DollarSign, Tag, FileText, Pencil, Building2, CheckSquare } from "lucide-react";
 import { formatCurrency, formatDate, getMonetarySemanticClass } from "@/shared/lib/format-utils";
-import { useOperationalSettings } from "@/modules/settings/hooks/useOperationalSettings";
-import {
-  normalizeAgendaParticipants,
-  useAgendaParticipants,
-} from "@/modules/events/hooks/useAgendaParticipants";
+import { normalizeAgendaParticipants, useAgendaParticipants } from "@/modules/events/hooks/useAgendaParticipants";
+import { getBackendEventTypeLabel } from "@/modules/events/lib/event-type";
 
 interface SchedulerViewModalProps {
   open: boolean;
@@ -17,20 +14,6 @@ interface SchedulerViewModalProps {
   evento?: any;
   onEdit?: () => void;
 }
-
-const tipoEventoLabels: Record<string, string> = {
-  sessoes_estudio: "Sessão de Estúdio",
-  ensaios: "Ensaio",
-  sessoes_fotos: "Sessão de Fotos",
-  shows: "Show",
-  show: "Show",
-  entrevistas: "Entrevista",
-  podcasts: "Podcast",
-  programas_tv: "Programa de TV",
-  radio: "Rádio",
-  producao_conteudo: "Produção de Conteúdo",
-  reunioes: "Reunião",
-};
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -66,8 +49,6 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: SchedulerViewModalProps) {
-  const { getOptionsByKind } = useOperationalSettings();
-  const eventTypeLabels = Object.fromEntries(getOptionsByKind("event_type").map((option) => [option.value, option.label]));
   const { getArtistParticipantById } = useAgendaParticipants();
 
   if (!evento) return null;
@@ -107,14 +88,9 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
             <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="text-xs">
                   <Tag className="h-3 w-3 mr-1" />
-                  {eventTypeLabels[evento.tipo_evento] || tipoEventoLabels[evento.tipo_evento] || evento.tipo_evento}
+                  {getBackendEventTypeLabel(evento.tipo)}
                 </Badge>
                 {getStatusBadge(evento.status)}
-                {evento.tipo_local && (
-                  <Badge variant="secondary" className="text-xs capitalize">
-                    {evento.tipo_local.replace(/_/g, ' ')}
-                  </Badge>
-                )}
               </div>
             </div>
         </DialogHeader>
@@ -123,10 +99,10 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
           {/* DATA E HORÁRIO */}
           <Section title="Quando" icon={Calendar}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Field label="Data Início" value={formatDate(evento.data_inicio)} />
-              <Field label="Horário Início" value={evento.horario_inicio} />
+              <Field label="Data Início" value={formatDate(evento.data)} />
+              <Field label="Horário Início" value={evento.data ? new Date(evento.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null} />
               <Field label="Data Fim" value={evento.data_fim ? formatDate(evento.data_fim) : null} />
-              <Field label="Horário Fim" value={evento.horario_fim} />
+              <Field label="Horário Fim" value={evento.data_fim ? new Date(evento.data_fim).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null} />
             </div>
           </Section>
 
@@ -134,10 +110,7 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
           <Section title="Onde" icon={MapPin}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field label="Local" value={evento.local} />
-              <Field
-                label="Endereço"
-                value={[evento.endereco, evento.cidade, evento.uf].filter(Boolean).join(", ")}
-              />
+              <Field label="Endereço" value={evento.endereco} />
             </div>
           </Section>
 

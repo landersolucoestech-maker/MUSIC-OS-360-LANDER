@@ -117,6 +117,7 @@ import {
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { ContratoStatusBadge } from "@/modules/contracts/components/ContratoStatusBadge";
 import { useEventos } from "@/modules/events/hooks/useEventos";
+import { getBackendEventTypeLabel } from "@/modules/events/lib/event-type";
 import { useMarketingContents } from "@/modules/marketing/hooks/useMarketingContents";
 import { useMarketingCampaigns } from "@/modules/marketing/hooks/useMarketingCampaigns";
 
@@ -159,11 +160,10 @@ const CONTRATO_FILTERS: Array<{ key: string; label: string; tipos?: string[] }> 
 ];
 
 // ── Agenda: rótulos e filtros ──────────────────────────────────────────────
-const EVENTO_TIPO_LABELS: Record<string, string> = {
-  show: "Show", festival: "Festival", gravacao: "Gravação", videoclipe: "Videoclipe",
-  ensaio: "Ensaio", reuniao: "Reunião", workshop: "Workshop", lancamento: "Lançamento",
-  live: "Live", streaming: "Streaming", entrevista: "Entrevista", evento: "Evento", outro: "Outro",
-};
+// events.tipo só guarda o enum coarse do backend (show/festival/recording/
+// meeting/interview/tour/other) — ver modules/events/lib/event-type.ts para
+// os rótulos reais. "Ensaios" e "Gravações" viram um único filtro porque a
+// coluna real não distingue as duas (ambas coarseiam para "recording").
 const EVENTO_STATUS_LABELS: Record<string, string> = {
   planejado: "Planejado", agendado: "Agendado", confirmado: "Confirmado",
   realizado: "Realizado", concluido: "Concluído", cancelado: "Cancelado", adiado: "Adiado",
@@ -171,12 +171,11 @@ const EVENTO_STATUS_LABELS: Record<string, string> = {
 const AGENDA_FILTERS: Array<{ key: string; label: string; tipos?: string[] }> = [
   { key: "todos", label: "Todos" },
   { key: "shows", label: "Shows", tipos: ["show", "festival"] },
-  { key: "reunioes", label: "Reuniões", tipos: ["reuniao"] },
-  { key: "entrevistas", label: "Entrevistas", tipos: ["entrevista"] },
-  { key: "ensaios", label: "Ensaios", tipos: ["ensaio"] },
-  { key: "gravacoes", label: "Gravações", tipos: ["gravacao", "videoclipe"] },
-  { key: "eventos", label: "Eventos", tipos: ["lancamento", "live", "streaming", "workshop", "evento"] },
-  { key: "outros", label: "Outros", tipos: ["outro"] },
+  { key: "reunioes", label: "Reuniões", tipos: ["meeting"] },
+  { key: "entrevistas", label: "Entrevistas", tipos: ["interview"] },
+  { key: "gravacoes", label: "Gravações/Ensaios", tipos: ["recording"] },
+  { key: "turnes", label: "Turnês", tipos: ["tour"] },
+  { key: "outros", label: "Outros", tipos: ["other"] },
 ];
 
 // ── Conteúdos: rótulos e filtros ───────────────────────────────────────────
@@ -375,10 +374,10 @@ export function ArtistaVisao360Modal({
   const [contratoFilter, setContratoFilter] = useState("todos");
 
   // ── Agenda (eventos do artista) ────────────────────────────────────────
-  const agendaFiltrada = eventosReais.filter((e) => {
+  const agendaFiltrada = (eventosReais as any[]).filter((e) => {
     const cfg = AGENDA_FILTERS.find((f) => f.key === agendaFilter);
     if (!cfg || !cfg.tipos) return true;
-    return cfg.tipos.includes(String(e.tipo_evento ?? "").toLowerCase());
+    return cfg.tipos.includes(String(e.tipo ?? "").toLowerCase());
   });
 
   // ── Conteúdos (marketing contents do artista) ──────────────────────────
@@ -413,8 +412,9 @@ export function ArtistaVisao360Modal({
     if (d) movimentacaoItems.push({ id: `mv-txn-${t.id}`, tipo: "Financeiro", descricao: t.descricao ?? (t.tipo === "receita" ? "Pagamento recebido" : "Despesa registrada"), data: d, responsavel: "Financeiro" });
   });
   eventosReais.forEach((e) => {
-    const d = e.data_inicio ?? (e as { created_at?: string }).created_at;
-    if (d) movimentacaoItems.push({ id: `mv-evt-${e.id}`, tipo: "Agenda", descricao: `${EVENTO_TIPO_LABELS[String(e.tipo_evento ?? "").toLowerCase()] ?? "Evento"}: ${e.titulo}`, data: d, responsavel: "—" });
+    const ev = e as { data?: string; tipo?: string; created_at?: string };
+    const d = ev.data ?? ev.created_at;
+    if (d) movimentacaoItems.push({ id: `mv-evt-${e.id}`, tipo: "Agenda", descricao: `${getBackendEventTypeLabel(ev.tipo)}: ${e.titulo}`, data: d, responsavel: "—" });
   });
   lancamentosReais.forEach((l: any) => {
     const d = l.created_at ?? l.data_lancamento;
@@ -432,9 +432,9 @@ export function ArtistaVisao360Modal({
 
   // ── Visão Geral: KPIs executivos + widgets ─────────────────────────────
   const nowTs = Date.now();
-  const showsConfirmados = eventosReais.filter(
+  const showsConfirmados = (eventosReais as any[]).filter(
     (e) =>
-      ["show", "festival"].includes(String(e.tipo_evento ?? "").toLowerCase()) &&
+      ["show", "festival"].includes(String(e.tipo ?? "").toLowerCase()) &&
       ["confirmado", "realizado", "concluido"].includes(String(e.status ?? "").toLowerCase()),
   ).length;
   const lancamentosAtivos = lancamentosReais.length;
@@ -444,14 +444,14 @@ export function ArtistaVisao360Modal({
   const conteudosPendentes = conteudosReais.filter((c) =>
     ["ideia", "producao", "revisao", "agendado", "atrasado"].includes(String(c.status ?? "").toLowerCase()),
   ).length;
-  const proximoShow = eventosReais
+  const proximoShow = (eventosReais as any[])
     .filter(
       (e) =>
-        ["show", "festival"].includes(String(e.tipo_evento ?? "").toLowerCase()) &&
-        e.data_inicio &&
-        new Date(e.data_inicio).getTime() >= nowTs,
+        ["show", "festival"].includes(String(e.tipo ?? "").toLowerCase()) &&
+        e.data &&
+        new Date(e.data).getTime() >= nowTs,
     )
-    .sort((a, b) => new Date(a.data_inicio!).getTime() - new Date(b.data_inicio!).getTime())[0];
+    .sort((a, b) => new Date(a.data!).getTime() - new Date(b.data!).getTime())[0];
   const proximoLancamento = (lancamentosReais as any[])
     .filter((l) => l.data_lancamento && new Date(l.data_lancamento).getTime() >= nowTs)
     .sort((a, b) => new Date(a.data_lancamento).getTime() - new Date(b.data_lancamento).getTime())[0];
@@ -463,10 +463,10 @@ export function ArtistaVisao360Modal({
     .filter((l) => l.created_at || l.data_lancamento)
     .sort((a, b) => new Date(a.created_at ?? a.data_lancamento).getTime() - new Date(b.created_at ?? b.data_lancamento).getTime())[0];
   if (primeiroLanc) marcosEvolucao.push({ id: "m-lan", label: "Primeiro Lançamento", descricao: primeiroLanc.titulo ?? "Lançamento", data: primeiroLanc.created_at ?? primeiroLanc.data_lancamento });
-  const primeiroShow = eventosReais
-    .filter((e) => ["show", "festival"].includes(String(e.tipo_evento ?? "").toLowerCase()) && e.data_inicio)
-    .sort((a, b) => new Date(a.data_inicio!).getTime() - new Date(b.data_inicio!).getTime())[0];
-  if (primeiroShow) marcosEvolucao.push({ id: "m-show", label: "Primeira Turnê/Show", descricao: primeiroShow.titulo, data: primeiroShow.data_inicio! });
+  const primeiroShow = (eventosReais as any[])
+    .filter((e) => ["show", "festival"].includes(String(e.tipo ?? "").toLowerCase()) && e.data)
+    .sort((a, b) => new Date(a.data!).getTime() - new Date(b.data!).getTime())[0];
+  if (primeiroShow) marcosEvolucao.push({ id: "m-show", label: "Primeira Turnê/Show", descricao: primeiroShow.titulo, data: primeiroShow.data! });
   const primeiroContrato = (contratosReais as any[])
     .filter((c) => c.created_at)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
@@ -884,7 +884,7 @@ export function ArtistaVisao360Modal({
                     {proximoShow ? (
                       <>
                         <p className="text-sm font-semibold truncate">{proximoShow.titulo}</p>
-                        <p className="text-xs text-muted-foreground">{formatDateDMY(proximoShow.data_inicio)}</p>
+                        <p className="text-xs text-muted-foreground">{formatDateDMY(proximoShow.data)}</p>
                       </>
                     ) : (
                       <p className="text-sm text-muted-foreground">Nenhum agendado</p>
@@ -2803,11 +2803,11 @@ export function ArtistaVisao360Modal({
                             key={e.id}
                             className="grid grid-cols-[88px_60px_110px_minmax(0,1fr)_minmax(0,1fr)_110px] gap-3 px-1 py-2 items-center text-sm"
                           >
-                            <span className="text-muted-foreground">{formatDateDMY(e.data_inicio)}</span>
-                            <span className="text-muted-foreground">{e.horario_inicio ?? "—"}</span>
-                            <span className="truncate">
-                              {EVENTO_TIPO_LABELS[String(e.tipo_evento ?? "").toLowerCase()] ?? formatStatusPtBr(e.tipo_evento)}
+                            <span className="text-muted-foreground">{formatDateDMY(e.data)}</span>
+                            <span className="text-muted-foreground">
+                              {e.data ? new Date(e.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
                             </span>
+                            <span className="truncate">{getBackendEventTypeLabel(e.tipo)}</span>
                             <span className="truncate font-medium">{e.titulo}</span>
                             <span className="truncate text-muted-foreground">{e.local || e.cidade || "—"}</span>
                             <span>

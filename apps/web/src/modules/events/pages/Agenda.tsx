@@ -29,22 +29,15 @@ import {
   summarizeAgendaParticipants,
   useAgendaParticipants,
 } from "@/modules/events/hooks/useAgendaParticipants";
+import {
+  buildGranularToBackendTypeMap,
+  getBackendEventTypeLabel,
+  normalizeToBackendType,
+} from "@/modules/events/lib/event-type";
+import { splitDateTime, combineDateTime } from "@/modules/events/lib/date-time";
 const getXLSX = () => import("xlsx");
 
 type Evento = Record<string, any>;
-
-const tipoEventoLabels: Record<string, string> = {
-  sessoes_estudio: "Estúdio",
-  ensaios: "Ensaio",
-  sessoes_fotos: "Fotos",
-  shows: "Show",
-  entrevistas: "Entrevista",
-  podcasts: "Podcast",
-  programas_tv: "TV",
-  radio: "Rádio",
-  producao_conteudo: "Conteúdo",
-  reunioes: "Reunião",
-};
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -129,16 +122,22 @@ function ToolbarSelect({
 export default function Agenda() {
   const { eventos: rawEventos, isLoading: loadingUnbounded, deleteEvento, addEvento } = useEventos();
   const eventos = rawEventos as Evento[];
-  const { getOptionsByKind } = useOperationalSettings();
+  const { getOptionsByKind, getItemsByKind } = useOperationalSettings();
   const eventTypeOptions = getOptionsByKind("event_type");
-  const eventTypeLabels = useMemo(
-    () => Object.fromEntries(eventTypeOptions.map((option) => [option.value, option.label])),
-    [eventTypeOptions],
-  );
   const typeOptions = useMemo(
     () => [{ value: "all-type", label: "Todos Tipos" }, ...(eventTypeOptions.length > 0 ? eventTypeOptions : TIPO_OPTIONS.slice(1))],
     [eventTypeOptions],
   );
+  // events.tipo só guarda o enum coarse do backend (show/festival/recording/
+  // meeting/interview/tour/other) — a categoria granular escolhida no filtro
+  // (slug configurado em Configurações → Operacional) precisa ser traduzida
+  // antes de virar filtro de query, senão nunca bate com nenhum evento real.
+  const granularToBackendType = useMemo(
+    () => buildGranularToBackendTypeMap(getItemsByKind("event_type")),
+    [getItemsByKind],
+  );
+  const typeFilterBackendValue = (value: string) =>
+    value === "all-type" ? undefined : normalizeToBackendType(value, granularToBackendType);
   const { getArtistParticipantById } = useAgendaParticipants();
 
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; evento?: Evento }>({ open: false, mode: "create" });
@@ -167,7 +166,7 @@ export default function Agenda() {
   } = useEventosScoped({
     dateFrom: periodStart.toISOString(),
     dateTo: periodEnd.toISOString(),
-    tipo: typeFilter !== "all-type" ? typeFilter : undefined,
+    tipo: typeFilterBackendValue(typeFilter),
     status: statusFilter !== "all-status" ? statusFilter : undefined,
   });
   const scopedEventos = scopedEventosRaw as Evento[];
@@ -189,7 +188,8 @@ export default function Agenda() {
     // ativos na tela; não escopa ao período do calendário (export é "todos
     // os eventos que casam com o filtro", não "só o que está visível agora").
     const filters: Record<string, unknown> = {};
-    if (typeFilter !== "all-type") filters.tipo = typeFilter;
+    const backendType = typeFilterBackendValue(typeFilter);
+    if (backendType) filters.tipo = backendType;
     if (statusFilter !== "all-status") filters.status = statusFilter;
 
     const { items: allEventos, truncated } = await fetchAllPages<Evento>("eventos", { filters });
@@ -199,24 +199,25 @@ export default function Agenda() {
       return;
     }
 
-    const exportData = allEventos.map(e => ({
-      titulo: e.titulo,
-      tipo_evento: e.tipo_evento,
-      status: e.status,
-      participantes: summarizeAgendaParticipants(getEventoParticipants(e)),
-      data_inicio: e.data_inicio,
-      horario_inicio: e.horario_inicio || "",
-      data_fim: e.data_fim || "",
-      horario_fim: e.horario_fim || "",
-      local: e.local || "",
-      cidade: e.cidade || "",
-      estado: e.estado || "",
-      valor_cache: e.valor_cache || "",
-      valor_ingresso: e.valor_ingresso || "",
-      capacidade: e.capacidade || "",
-      descricao: e.descricao || "",
-      observacoes: e.observacoes || "",
-    }));
+    const exportData = allEventos.map(e => {
+      const inicio = splitDateTime(e.data);
+      const fim = splitDateTime(e.data_fim);
+      return {
+        titulo: e.titulo,
+        tipo: getBackendEventTypeLabel(e.tipo),
+        status: e.status,
+        participantes: summarizeAgendaParticipants(getEventoParticipants(e)),
+        data_inicio: inicio.date,
+        horario_inicio: inicio.time,
+        data_fim: fim.date,
+        horario_fim: fim.time,
+        local: e.local || "",
+        publico_esperado: e.publico_esperado ?? "",
+        valor_cache: e.valor_cache || "",
+        descricao: e.descricao || "",
+        observacoes: e.observacoes || "",
+      };
+    });
 
     const XLSX = await getXLSX();
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -252,22 +253,32 @@ export default function Agenda() {
         const titulo = row.titulo || row.Titulo || row.TITULO || row.Título;
         if (!titulo) continue;
 
-        await addEvento.mutateAsync({
-          titulo,
-          tipo_evento: row.tipo_evento || row.tipo || row.Tipo || "show",
-          status: row.status || row.Status || "pendente",
-          data_inicio: row.data_inicio || row.data || row.Data || new Date().toISOString().split('T')[0],
-          data_fim: row.data_fim || row["Data Fim"] || null,
-          horario_inicio: row.horario_inicio || row.horario || row.Horario || null,
-          horario_fim: row.horario_fim || row["Horário Fim"] || null,
-          local: row.local || row.Local || null,
-          cidade: row.cidade || row.Cidade || null,
-          estado: row.estado || row.Estado || null,
-          valor_cache: row.valor_cache || row["Valor Cachê"] ? Number(row.valor_cache || row["Valor Cachê"]) : null,
-          capacidade: row.capacidade || row.capacidade_publico || row["Capacidade"] ? Number(row.capacidade || row.capacidade_publico || row["Capacidade"]) : null,
-          descricao: row.descricao || row.Descrição || null,
-          observacoes: row.observacoes || row.Observações || null,
-        } as any);
+        const dataInicio = row.data_inicio || row.data || row.Data || new Date().toISOString().split("T")[0];
+        const horarioInicio = row.horario_inicio || row.horario || row.Horario || null;
+        const dataFim = row.data_fim || row["Data Fim"] || null;
+        const horarioFim = row.horario_fim || row["Horário Fim"] || null;
+        const tipoRaw = String(row.tipo_evento || row.tipo || row.Tipo || "").toLowerCase();
+        const valorCache = row.valor_cache || row["Valor Cachê"];
+        const publicoEsperado = row.publico_esperado || row["Público Esperado"] || row.capacidade || row["Capacidade"];
+
+        // Payload no formato do CreateEventDto real (title/type/startsAt/
+        // endsAt/venue — não titulo/tipo/data_inicio, que não existem no DTO;
+        // status é omitido pois CreateEventDto não o aceita, só UpdateEventDto).
+        const payload: Record<string, unknown> = {
+          title: titulo,
+          type: normalizeToBackendType(tipoRaw, granularToBackendType),
+        };
+        const startsAt = combineDateTime(dataInicio, horarioInicio);
+        if (startsAt) payload.startsAt = startsAt;
+        const endsAt = combineDateTime(dataFim, horarioFim);
+        if (endsAt) payload.endsAt = endsAt;
+        if (row.local || row.Local) payload.venue = row.local || row.Local;
+        if (valorCache) payload.valor_cache = Number(valorCache);
+        if (publicoEsperado) payload.publico_esperado = Number(publicoEsperado);
+        if (row.descricao || row.Descrição) payload.descricao = row.descricao || row.Descrição;
+        if (row.observacoes || row.Observações) payload.observacoes = row.observacoes || row.Observações;
+
+        await addEvento.mutateAsync(payload as any);
         importados++;
       }
 
@@ -293,8 +304,13 @@ export default function Agenda() {
   }, [scopedEventos, searchTerm, getEventoParticipants]);
 
   const schedulerEvents = useMemo(() => filteredEventos.map((evento) => {
-    const start = evento.data_inicio ? new Date(`${evento.data_inicio}T${evento.horario_inicio ?? "00:00"}:00`) : new Date();
-    const end = evento.data_fim ? new Date(`${evento.data_fim}T${evento.horario_fim ?? evento.horario_inicio ?? "00:00"}:00`) : undefined;
+    // events.data/data_fim são os únicos campos reais de data+hora (coluna
+    // NOT NULL, sempre presente) — data_inicio/horario_inicio/horario_fim
+    // nunca existiram no backend, então essa leitura sempre caía no fallback
+    // "agora" e todo evento aparecia na data errada no calendário.
+    const start = evento.data ? new Date(evento.data) : new Date();
+    const end = evento.data_fim ? new Date(evento.data_fim) : undefined;
+    const isMidnight = start.getHours() === 0 && start.getMinutes() === 0;
 
     return {
       id: evento.id,
@@ -305,18 +321,18 @@ export default function Agenda() {
       location: evento.local,
       status: evento.status ?? "pendente",
       cache: evento.valor_cache ?? undefined,
-      type: eventTypeLabels[evento.tipo_evento] ?? tipoEventoLabels[evento.tipo_evento] ?? evento.tipo_evento ?? "Evento",
-      allDay: !evento.horario_inicio,
+      type: getBackendEventTypeLabel(evento.tipo),
+      allDay: isMidnight,
       raw: evento,
     };
-  }), [filteredEventos, getEventoParticipants, eventTypeLabels]);
+  }), [filteredEventos, getEventoParticipants]);
 
   const isoFromDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const calendarEvents: CalendarEvent[] = useMemo(() => schedulerEvents.map((e) => ({
     id: e.id,
     title: e.title,
     dateISO: isoFromDate(e.startDate),
-    time: e.allDay ? null : (e.raw.horario_inicio ?? `${String(e.startDate.getHours()).padStart(2, "0")}:${String(e.startDate.getMinutes()).padStart(2, "0")}`),
+    time: e.allDay ? null : `${String(e.startDate.getHours()).padStart(2, "0")}:${String(e.startDate.getMinutes()).padStart(2, "0")}`,
     toneClass: STATUS_TONE[String(e.status)] ?? undefined,
     hint: e.artist ? `${e.title} · ${e.artist}` : e.title,
   })), [schedulerEvents]);

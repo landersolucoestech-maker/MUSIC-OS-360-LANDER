@@ -9,7 +9,7 @@ export function useEventos(enabled = true, artistaId?: string) {
     queryKey: artistaId ? [...QUERY_KEYS.EVENTOS, "by-artist", artistaId] : [...QUERY_KEYS.EVENTOS],
     table: "eventos",
     select: "*, artistas(*)",
-    orderBy: { column: "data_inicio", ascending: true },
+    orderBy: { column: "data", ascending: true },
     enabled,
     // Backend de events usa "artistId" (camelCase) — ver events.dto.ts/events.service.ts.
     filters: artistaId ? { artistId: artistaId } : undefined,

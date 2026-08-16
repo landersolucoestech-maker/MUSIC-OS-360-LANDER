@@ -15,6 +15,7 @@ import { differenceInDays } from "date-fns";
 import { useMetrics } from "../hooks/useMetrics";
 import { useOperationalDashboard } from "../hooks/useOperationalDashboard";
 import type { EventoWithRelations } from "@/modules/events/hooks/useEventos";
+import { getBackendEventTypeLabel } from "@/modules/events/lib/event-type";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { DashboardSkeleton } from "@/shared/components/PageSkeletons";
 import { UnavailableState } from "@/shared/components/UnavailableState";
@@ -39,21 +40,8 @@ const MAX_ITEMS = 30;
 
 // ─── Próximos Compromissos (Agenda) ─────────────────────────────────────────
 // Categorias oficiais do módulo Agenda (SchedulerFormModal). Normaliza tanto os
-// slugs do formulário (plural) quanto os do enum EventoTipo (singular) para o
-// rótulo PT-BR exibido no badge. Valores desconhecidos/vazios caem em "Outro".
-const COMPROMISSO_CATEGORIAS: Record<string, string> = {
-  show: "Show", shows: "Show", festival: "Show", rodeio: "Show",
-  reuniao: "Reunião", reunioes: "Reunião",
-  gravacao: "Sessão de Estúdio", sessao_estudio: "Sessão de Estúdio", sessoes_estudio: "Sessão de Estúdio",
-  ensaio: "Ensaio", ensaios: "Ensaio",
-  sessao_fotos: "Sessão de Fotos", sessoes_fotos: "Sessão de Fotos",
-  producao_conteudo: "Produção de Conteúdo",
-  entrevista: "Entrevista", entrevistas: "Entrevista",
-  podcast: "Podcast", podcasts: "Podcast",
-  programa_tv: "Programa de TV", programas_tv: "Programa de TV",
-  radio: "Rádio",
-  evento: "Evento",
-};
+// events.tipo só guarda o enum coarse do backend — ver
+// modules/events/lib/event-type.ts para os rótulos pt-BR reais.
 
 // Status que removem o evento da lista de próximos compromissos (passado/encerrado).
 const COMPROMISSO_STATUS_OCULTOS = new Set([
@@ -66,20 +54,23 @@ function normalizarSlug(value: unknown): string {
 }
 
 function categoriaCompromissoLabel(tipo: unknown): string {
-  const slug = normalizarSlug(tipo);
-  return COMPROMISSO_CATEGORIAS[slug] ?? "Outro";
+  return getBackendEventTypeLabel(typeof tipo === "string" ? tipo : undefined);
 }
 
 // Combina data (date-only ou ISO) + horário "HH:mm" num Date comparável.
 // Sem horário, assume fim do dia para manter o compromisso visível o dia todo.
 function compromissoDataHora(raw: unknown, horario: unknown): Date | null {
   if (typeof raw !== "string" || !raw) return null;
-  const datePart = raw.includes("T") ? raw.slice(0, 10) : raw;
-  const hora =
-    typeof horario === "string" && /^\d{1,2}:\d{2}/.test(horario)
-      ? horario.slice(0, 5)
-      : "23:59";
-  const dt = new Date(`${datePart}T${hora}:00`);
+  // `raw` já é o timestamp real do evento (coluna `data`, com hora inclusa) —
+  // um `horario` explícito (override) tem prioridade; sem ele, usa a hora que
+  // já vem no próprio timestamp em vez de inventar 23:59 (evento.horario_inicio
+  // nunca existiu no backend, então esse fallback sempre disparava antes).
+  if (typeof horario === "string" && /^\d{1,2}:\d{2}/.test(horario)) {
+    const datePart = raw.includes("T") ? raw.slice(0, 10) : raw;
+    const dt = new Date(`${datePart}T${horario.slice(0, 5)}:00`);
+    return Number.isFinite(dt.getTime()) ? dt : null;
+  }
+  const dt = new Date(raw);
   return Number.isFinite(dt.getTime()) ? dt : null;
 }
 
@@ -720,9 +711,9 @@ export default function Dashboard() {
                           {quando.toLocaleDateString("pt-BR")}
                         </span>
                         <span className="text-xs font-sans text-primary sm:mt-0.5">
-                          {evento.horario_inicio
-                            ? String(evento.horario_inicio).slice(0, 5)
-                            : "Dia inteiro"}
+                          {quando.getHours() === 0 && quando.getMinutes() === 0
+                            ? "Dia inteiro"
+                            : quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
                       <div className="hidden w-px self-stretch bg-primary/20 sm:block" />
@@ -732,7 +723,7 @@ export default function Dashboard() {
                           variant="outline"
                           className="mt-1.5 px-1.5 py-0 text-[10px] border-border text-muted-foreground"
                         >
-                          {categoriaCompromissoLabel(evento.tipo_evento)}
+                          {categoriaCompromissoLabel(evento.tipo)}
                         </Badge>
                       </div>
                     </li>

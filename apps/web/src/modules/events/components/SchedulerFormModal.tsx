@@ -30,6 +30,7 @@ import {
 } from "@/modules/events/hooks/useAgendaParticipants";
 import { useOperationalSettings } from "@/modules/settings/hooks/useOperationalSettings";
 import { QUERY_KEYS } from "@/shared/lib/query-config";
+import { buildGranularToBackendTypeMap, normalizeToBackendType } from "@/modules/events/lib/event-type";
 
 interface SchedulerFormModalProps {
   open: boolean;
@@ -95,6 +96,14 @@ const tipoEventoAliases: Record<string, string> = {
   evento_corporativo: "shows",
   reuniao: "reunioes",
   reunioes: "reunioes",
+  // Eventos já persistidos só guardam o enum coarse do backend (events.tipo,
+  // sem a categoria granular original) — ao editar, o select precisa
+  // resolver esses valores para uma categoria granular representativa em
+  // vez de ficar em branco.
+  recording: "sessoes_estudio",
+  meeting: "reunioes",
+  interview: "entrevistas",
+  tour: "shows",
 };
 
 const statusAliases: Record<string, string> = {
@@ -215,9 +224,13 @@ const validationFieldLabels: Record<string, string> = {
 
 export function SchedulerFormModal({ open, onOpenChange, evento, mode }: SchedulerFormModalProps) {
   const queryClient = useQueryClient();
-  const { getOptionsByKind } = useOperationalSettings();
+  const { getOptionsByKind, getItemsByKind } = useOperationalSettings();
   const operationalEventTypeOptions = getOptionsByKind("event_type");
   const eventTypeOptions = operationalEventTypeOptions.length > 0 ? operationalEventTypeOptions : tiposEvento;
+  // events.tipo só guarda o enum coarse do backend — cada categoria granular
+  // configurada em Configurações → Operacional carrega a correspondência em
+  // metadata.backend_type (ver lib/event-type.ts).
+  const granularToBackendType = buildGranularToBackendTypeMap(getItemsByKind("event_type"));
   const [participantSearch, setParticipantSearch] = useState("");
   const legacyArtistaId = evento?.artista || evento?.artista_id || evento?.artistId || null;
   const { participants, getParticipantByKey, getArtistParticipantById, pendingArtist } = useAgendaParticipants(participantSearch, legacyArtistaId);
@@ -308,7 +321,7 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
     titulo: String(formData.titulo || evento?.titulo || "").trim(),
     tipoEvento: normalizeSelectValue(formData.tipoEvento || evento?.tipoEvento || evento?.tipo_evento, tipoEventoAliases),
     status: normalizeSelectValue(formData.status || evento?.status, statusAliases) || "agendado",
-    dataInicio: normalizeDate(formData.dataInicio) ?? normalizeEventDate(evento?.dataInicio || evento?.data_inicio),
+    dataInicio: normalizeDate(formData.dataInicio) ?? normalizeEventDate(evento?.dataInicio || evento?.data_inicio || evento?.data),
     dataFim: normalizeDate(formData.dataFim) ?? normalizeEventDate(evento?.dataFim || evento?.data_fim),
     horarioInicio: normalizeTimeValue(formData.horarioInicio || evento?.horarioInicio || evento?.horario_inicio),
     horarioFim: normalizeTimeValue(formData.horarioFim || evento?.horarioFim || evento?.horario_fim),
@@ -359,34 +372,40 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
     return normalizedFormData;
   };
 
-  // Maps frontend tipoEvento (aliased pt-BR values) → backend CreateEventDto.type enum.
-  // Backend enum: show | festival | recording | meeting | interview | tour | other
+  // Maps frontend tipoEvento (granular, tenant-configurável) → backend
+  // CreateEventDto.type enum (coarse: show|festival|recording|meeting|
+  // interview|tour|other — a única coisa que events.tipo realmente guarda).
+  // Fonte primária: metadata.backend_type de cada categoria configurada em
+  // Configurações → Operacional (granularToBackendType, lib/event-type.ts).
+  // A tabela abaixo é só o fallback para slugs legados/digitados à mão que
+  // não batem com nenhuma categoria configurada.
+  const legacyTipoToBackendType: Record<string, string> = {
+    shows:           "show",
+    show:            "show",
+    show_teatro:     "show",
+    festival:        "festival",
+    rodeio:          "show",
+    lancamento:      "show",
+    evento_corporativo: "other",
+    gravacao:        "recording",
+    gravacoes:       "recording",
+    recording:       "recording",
+    reuniao:         "meeting",
+    reunioes:        "meeting",
+    meeting:         "meeting",
+    entrevista:      "interview",
+    entrevistas:     "interview",
+    interview:       "interview",
+    programas_tv:    "interview",
+    radio:           "interview",
+    podcasts:        "interview",
+    tour:            "tour",
+    turne:           "tour",
+  };
   const mapTipoToBackendType = (tipo: string): string => {
     const t = (tipo || "").toLowerCase();
-    const map: Record<string, string> = {
-      shows:           "show",
-      show:            "show",
-      show_teatro:     "show",
-      festival:        "festival",
-      rodeio:          "show",
-      lancamento:      "show",
-      evento_corporativo: "other",
-      gravacao:        "recording",
-      gravacoes:       "recording",
-      recording:       "recording",
-      reuniao:         "meeting",
-      reunioes:        "meeting",
-      meeting:         "meeting",
-      entrevista:      "interview",
-      entrevistas:     "interview",
-      interview:       "interview",
-      programas_tv:    "interview",
-      radio:           "interview",
-      podcasts:        "interview",
-      tour:            "tour",
-      turne:           "tour",
-    };
-    return map[t] ?? "other";
+    if (granularToBackendType[t]) return granularToBackendType[t];
+    return legacyTipoToBackendType[t] ?? "other";
   };
 
   // Combine `YYYY-MM-DD` + `HH:mm` → ISO datetime string for backend.
