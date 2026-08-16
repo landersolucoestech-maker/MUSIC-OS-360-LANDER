@@ -799,11 +799,15 @@ export class ContractEntity {
 export class ContractTemplateEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 500 }) titulo: string;
-  @Column({ type: 'varchar', length: 100 }) tipo: string;
+  @Column({ type: 'varchar', length: 500 }) nome: string;
+  @Column({ type: 'varchar', length: 100 }) tipo_servico: string;
   @Column({ type: 'text' }) conteudo: string;
   @Column({ type: 'jsonb', default: [] }) variaveis: unknown[];
   @Column({ type: 'boolean', default: true }) ativo: boolean;
+  @Column({ type: 'text', nullable: true }) descricao: string | null;
+  @Column({ type: 'text', nullable: true }) variables_manifest: string | null;
+  @Column({ type: 'text', nullable: true }) header_image: string | null;
+  @Column({ type: 'text', nullable: true }) footer_image: string | null;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;

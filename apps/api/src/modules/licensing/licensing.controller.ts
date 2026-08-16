@@ -5,6 +5,7 @@ import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
+import type { JwtAuth }  from '../../core/guards/auth.guard';
 import { LicensingService } from './licensing.service';
 import { CreateLicenseDto, UpdateLicenseDto, QueryLicenseDto } from './dto/licensing.dto';
 
@@ -28,13 +29,13 @@ export class LicensingController {
   }
 
   @Post() @RequireRole('editor') @RequirePermission('license:create') @Audit('license.created') @ApiOperation({ summary: 'Criar licença' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateLicenseDto) {
-    return this.svc.create(t.id, u?.sub ?? '', dto);
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Body() dto: CreateLicenseDto) {
+    return this.svc.create(t.id, u?.userId ?? '', dto);
   }
 
   @Patch(':id') @RequireRole('editor') @RequirePermission('license:update') @Audit('license.updated') @ApiOperation({ summary: 'Atualizar licença' })
-  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLicenseDto) {
-    return this.svc.update(t.id, u?.sub ?? '', id, dto);
+  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLicenseDto) {
+    return this.svc.update(t.id, u?.userId ?? '', id, dto);
   }
 
   @Delete(':id') @RequireRole('manager') @RequirePermission('license:delete') @Audit('license.deleted') @ApiOperation({ summary: 'Remover licença' })

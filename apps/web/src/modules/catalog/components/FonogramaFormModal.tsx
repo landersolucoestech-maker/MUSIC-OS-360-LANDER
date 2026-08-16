@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Search, ChevronDown, Trash2, Upload, FileAudio, Music, X, Eye } from "lucide-react";
+import { Plus, Search, ChevronDown, Trash2, Upload, FileAudio, Music, X, Eye, Link, Loader2 } from "lucide-react";
 import type { ObraWithRelations } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas, type FonogramaInsert, type FonogramaUpdate } from "@/modules/catalog/hooks/useFonogramas";
 import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
@@ -37,6 +37,7 @@ import {
   fonogramaToFormFields,
 } from "@/modules/catalog/mappers";
 import { fonogramaSchema } from "@/modules/catalog/lib/fonograma-schema";
+import { useUploadToR2, R2NotConfiguredError } from "@/shared/hooks/useUploadToR2";
 
 type FonogramaRow = Fonograma;
 
@@ -66,6 +67,7 @@ interface ParticipacaoInput {
 interface ArquivoAudioInput {
   name: string;
   size: number;
+  url?: string;
 }
 
 export type FonogramaFormInput = Partial<FonogramaRow> & {
@@ -131,9 +133,9 @@ const toArquivoAudio = (
   raw: ArquivoAudioInput | Json | null | undefined
 ): ArquivoAudioInput | null => {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const r = raw as { name?: unknown; size?: unknown };
+  const r = raw as { name?: unknown; size?: unknown; url?: unknown };
   if (typeof r.name === "string" && typeof r.size === "number") {
-    return { name: r.name, size: r.size };
+    return { name: r.name, size: r.size, url: typeof r.url === "string" ? r.url : undefined };
   }
   return null;
 };
@@ -331,7 +333,9 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
   const [arquivoAudio, setArquivoAudio] = useState<ArquivoAudioInput | null>(
     toArquivoAudio(fonograma?.arquivoAudio ?? fonograma?.arquivo_audio)
   );
+  const [audioUploading, setAudioUploading] = useState(false);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const { upload: uploadAudioToR2 } = useUploadToR2();
 
   // Termos
   const [aceitaTermos, setAceitaTermos] = useState(false);
@@ -488,22 +492,40 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
     });
   };
 
-  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     if (file.size > 100 * 1024 * 1024) {
       toast.error("O arquivo deve ter no máximo 100MB");
       return;
     }
-    
+
     if (!['audio/mpeg', 'audio/wav', 'audio/flac', 'audio/x-flac'].includes(file.type)) {
       toast.error("Formato inválido. Use MP3, WAV ou FLAC");
       return;
     }
 
     setArquivoAudio({ name: file.name, size: file.size });
-    toast.success("Arquivo de áudio carregado!");
+    setAudioUploading(true);
+    try {
+      const publicUrl = await uploadAudioToR2({
+        file,
+        category: "audio",
+        entity:   "phonogram",
+        entityId: fonograma?.id as string | undefined,
+      });
+      setArquivoAudio({ name: file.name, size: file.size, url: publicUrl });
+      toast.success("Áudio enviado e link gerado com sucesso!");
+    } catch (err) {
+      const msg = err instanceof R2NotConfiguredError
+        ? err.message
+        : err instanceof Error ? err.message : "Erro no upload do áudio";
+      toast.error(`Upload falhou: ${msg}`);
+      setArquivoAudio(null);
+    } finally {
+      setAudioUploading(false);
+    }
   };
 
   const duracaoMinNum = Number(duracaoMin);
@@ -1179,18 +1201,37 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                 {arquivoAudio ? (
                   <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
                     <div className="flex items-center gap-3">
-                      <FileAudio className="w-8 h-8 text-primary" />
+                      {audioUploading ? (
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                      ) : (
+                        <FileAudio className="w-8 h-8 text-primary" />
+                      )}
                       <div>
                         <p className="text-sm font-medium">{arquivoAudio.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatFileSize(arquivoAudio.size)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(arquivoAudio.size)}
+                          {audioUploading && " — enviando..."}
+                          {!audioUploading && arquivoAudio.url && " — link gerado ✓"}
+                        </p>
+                        {!audioUploading && arquivoAudio.url && (
+                          <a
+                            href={arquivoAudio.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Link className="w-3 h-3" /> Ver link de download
+                          </a>
+                        )}
                       </div>
                     </div>
                     {!isViewMode && (
                       <div className="flex gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={() => audioInputRef.current?.click()}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => audioInputRef.current?.click()} disabled={audioUploading}>
                           Trocar
                         </Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setArquivoAudio(null)}>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setArquivoAudio(null)} disabled={audioUploading}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>

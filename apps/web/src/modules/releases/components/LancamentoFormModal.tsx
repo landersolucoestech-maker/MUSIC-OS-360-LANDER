@@ -277,6 +277,8 @@ interface Faixa {
   explicit: string;
   // file
   arquivoAudio: File | null;
+  audioUrl?: string;
+  _uploading?: boolean;
 }
 
 interface ExtraFields {
@@ -682,6 +684,29 @@ export function LancamentoFormModal({
   const updF = <K extends keyof Faixa>(id: number, k: K, v: Faixa[K]) =>
     setFaixas((prev) => prev.map((f) => (f.id === id ? { ...f, [k]: v } : f)));
 
+  const handleFaixaAudioUpload = async (faixaId: number, file: File) => {
+    updF(faixaId, "arquivoAudio", file);
+    updF(faixaId, "_uploading", true);
+    try {
+      const publicUrl = await uploadToR2({
+        file,
+        category: "audio",
+        entity:   "release",
+        entityId: lancamento?.id,
+      });
+      updF(faixaId, "audioUrl", publicUrl);
+      toast.success("Áudio enviado e link gerado com sucesso!");
+    } catch (err) {
+      const msg = err instanceof R2NotConfiguredError
+        ? err.message
+        : err instanceof Error ? err.message : "Erro no upload do áudio";
+      toast.error(`Upload falhou: ${msg}`);
+      updF(faixaId, "arquivoAudio", null);
+    } finally {
+      updF(faixaId, "_uploading", false);
+    }
+  };
+
   // Compositores (string[])
   const addComp = (fid: number) =>
     setFaixas((prev) =>
@@ -856,7 +881,7 @@ export function LancamentoFormModal({
     try {
       const payload = formToLancamentoPayload(formData, mode === "edit" ? "edit" : "create");
       // Persist faixas and extraFields in metadata for edit round-trips
-      const savableFaixas = faixas.map(({ arquivoAudio: _, ...f }) => f);
+      const savableFaixas = faixas.map(({ arquivoAudio: _a, _uploading: _u, ...f }) => f);
       const enrichedMeta: Record<string, unknown> = {
         ...(typeof payload["metadata"] === "object" && payload["metadata"] !== null
           ? (payload["metadata"] as Record<string, unknown>)
@@ -878,8 +903,6 @@ export function LancamentoFormModal({
         if (payload["status"] === lancamento.status) {
           delete payload["status"];
         }
-        // platform_status nunca é editável manualmente — preserva o status existente.
-        payload["internal_status"] = lancamento.internal_status ?? lancamento.status ?? null;
         await updateLancamento.mutateAsync({
           id: lancamento.id,
           ...payload,
@@ -887,8 +910,6 @@ export function LancamentoFormModal({
         } as never);
         toast.success("Lançamento atualizado!");
       } else {
-        // Novo lançamento começa como controle interno (rascunho). Sem status de plataforma.
-        payload["internal_status"] = "rascunho";
         const created = (await addLancamento.mutateAsync(payload as never)) as (Lancamento & { id?: string }) | undefined;
         // Integração desacoplada: oferecer iniciar o fluxo de shares (via navegação),
         // somente se houver participantes/créditos suficientes. Sem acoplamento direto.
@@ -898,7 +919,6 @@ export function LancamentoFormModal({
           const updated = await updateLancamento.mutateAsync({
             id: releaseId,
             status: "distributed",
-            internal_status: "distributed",
             metadata: {
               ...enrichedMeta,
               distributedAt,
@@ -906,7 +926,7 @@ export function LancamentoFormModal({
             },
           } as never) as Lancamento;
           toast.success("Lançamento criado e distribuído!");
-          await onCreatedAndDistributed?.(updated ?? ({ ...created, status: "distributed", internal_status: "distributed" } as Lancamento));
+          await onCreatedAndDistributed?.(updated ?? ({ ...created, status: "distributed" } as Lancamento));
         } else {
           toast.success("Lançamento criado!");
         }
@@ -1915,9 +1935,24 @@ export function LancamentoFormModal({
                   WAV (recomendado) ou MP3 — máx. 25 MB
                 </p>
                 {faixa.arquivoAudio ? (
-                  <p className="text-sm text-foreground mt-2 font-medium">
-                    {faixa.arquivoAudio.name}
-                  </p>
+                  <div className="mt-2">
+                    <p className="text-sm text-foreground font-medium">
+                      {faixa.arquivoAudio.name}
+                      {faixa._uploading && " — enviando..."}
+                      {!faixa._uploading && faixa.audioUrl && " — link gerado ✓"}
+                    </p>
+                    {!faixa._uploading && faixa.audioUrl && (
+                      <a
+                        href={faixa.audioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Ver link de download
+                      </a>
+                    )}
+                  </div>
                 ) : (
                   !isViewMode && (
                     <Button
@@ -1937,7 +1972,7 @@ export function LancamentoFormModal({
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f) updF(faixa.id, "arquivoAudio", f);
+                    if (f) void handleFaixaAudioUpload(faixa.id, f);
                   }}
                   disabled={isViewMode}
                 />

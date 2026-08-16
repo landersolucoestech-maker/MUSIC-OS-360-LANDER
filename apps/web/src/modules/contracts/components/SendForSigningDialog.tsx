@@ -20,9 +20,7 @@ import { cn } from "@/shared/lib/utils";
 import { useSigningProviders } from "@/modules/integrations/hooks/useSigningProviders";
 import type { SigningProviderId } from "@/modules/integrations/adapters/signing.adapter";
 import { signingService } from "@/modules/integrations/services/signing.service";
-import { useSaveDocument } from "@/modules/contracts/hooks/useDocuments";
 import type { ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
-import type { VinculadoDocument } from "@/modules/contracts/types/document-types";
 
 interface SendForSigningDialogProps {
   open:           boolean;
@@ -50,7 +48,6 @@ export function SendForSigningDialog({
   onSuccess,
 }: SendForSigningDialogProps) {
   const { data: providers = [], isLoading: loadingProviders } = useSigningProviders();
-  const saveDocument = useSaveDocument();
   const [selected, setSelected] = useState<SigningProviderId | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -71,44 +68,12 @@ export function SendForSigningDialog({
         provider:      selected,
       });
 
-      const now = new Date().toISOString();
-      const newDoc: VinculadoDocument = {
-        id:               result.documentId,
-        org_id:           "current",
-        title:            contrato.titulo,
-        status:           "pending_signature",
-        content_html:     "",
-        contract_id:      contrato.id,
-        signing_provider: selected,
-        variables:        {},
-        signers:          signers.map((s, idx) => ({
-          id:          `${result.documentId}_sgn_${idx}`,
-          document_id: result.documentId,
-          role:        s.role,
-          name:        s.name,
-          email:       s.email,
-          status:      "pending" as const,
-        })),
-        logs: [
-          {
-            id:          `${result.documentId}_log_0`,
-            document_id: result.documentId,
-            event:       "created",
-            created_at:  now,
-          },
-          {
-            id:          `${result.documentId}_log_1`,
-            document_id: result.documentId,
-            event:       "sent_for_signature",
-            created_at:  now,
-          },
-        ],
-        created_at: now,
-        updated_at: now,
-      };
-
-      await saveDocument.mutateAsync(newDoc);
-
+      // Nota: o vínculo local do documento (useDocuments/useSaveDocument) não
+      // tem endpoint real ainda (ver contracts/hooks/useDocuments.ts) — o envio
+      // acima já é real e irreversível (e-mails reais disparados aos
+      // signatários), então o sucesso é reportado a partir dele, sem depender
+      // de uma persistência local que sempre falharia e mascararia o envio
+      // bem-sucedido como erro.
       toast.success(`Contrato enviado via ${selected === "autentique" ? "Autentique" : selected === "clicksign" ? "Clicksign" : "DocuSign"}!`, {
         description: `${signers.length} signatário(s) notificado(s) por email.`,
       });

@@ -11,8 +11,9 @@ export function useEventos(enabled = true, artistaId?: string) {
     select: "*, artistas(*)",
     orderBy: { column: "data", ascending: true },
     enabled,
-    // Backend de events usa "artistId" (camelCase) — ver events.dto.ts/events.service.ts.
-    filters: artistaId ? { artistId: artistaId } : undefined,
+    // EventsService.list() só lê "artista_id" (pt-BR); "artistId" (camelCase)
+    // existe no DTO só por compatibilidade e nunca é lido — ver events.dto.ts.
+    filters: artistaId ? { artista_id: artistaId } : undefined,
   }, {
     create: { success: "Evento criado com sucesso!", error: "Erro ao criar evento" },
     update: { success: "Evento atualizado com sucesso!", error: "Erro ao atualizar evento" },

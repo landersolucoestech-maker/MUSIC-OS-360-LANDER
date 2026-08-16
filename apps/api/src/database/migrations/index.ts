@@ -158,6 +158,7 @@ import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicenseP
 import { HardenRbacDecisionLogPartitions20260804000002 } from './20260804000002_HardenRbacDecisionLogPartitions';
 import { CreateFinancialCategoryRules20260816000001 } from './20260816000001_CreateFinancialCategoryRules';
 import { AddShareLiquidacaoValues20260816000002 } from './20260816000002_AddShareLiquidacaoValues';
+import { ContractTemplatesFormFieldAlignment20260816000003 } from './20260816000003_ContractTemplatesFormFieldAlignment';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -304,4 +305,5 @@ export const ALL_MIGRATIONS = [
   HardenRbacDecisionLogPartitions20260804000002,
   CreateFinancialCategoryRules20260816000001,
   AddShareLiquidacaoValues20260816000002,
+  ContractTemplatesFormFieldAlignment20260816000003,
 ] as const;

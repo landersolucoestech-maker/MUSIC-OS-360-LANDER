@@ -74,6 +74,7 @@ function toApiInput(data: Partial<Omit<Contact, "id" | "createdAt" | "updatedAt"
   if (data.zipCode !== undefined) payload.zipCode = data.zipCode;
   if (data.responsible !== undefined) payload.responsible = data.responsible;
   if (data.notes !== undefined) payload.notes = data.notes;
+  if (data.payloadOperacional !== undefined) payload.metadata = data.payloadOperacional;
   return payload;
 }
 

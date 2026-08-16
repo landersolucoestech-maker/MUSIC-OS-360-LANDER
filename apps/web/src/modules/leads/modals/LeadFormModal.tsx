@@ -24,6 +24,7 @@ import {
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { maskPhone }       from "@/shared/lib/masks";
 import { useOperationalSettings } from "@/modules/settings/hooks/useOperationalSettings";
+import { useUploadToR2, R2NotConfiguredError } from "@/shared/hooks/useUploadToR2";
 
 import {
   ESTADOS_BR,
@@ -315,6 +316,7 @@ export function LeadFormModal({
   const [submitting, setSubmitting] = useState(false);
   const { getOptionsByKind } = useOperationalSettings();
   const leadStatusOptions = getOptionsByKind("lead_status");
+  const { upload: uploadToR2 } = useUploadToR2();
 
   useEffect(() => {
     if (open) setValues(buildDefaults(initialValue));
@@ -378,21 +380,29 @@ export function LeadFormModal({
     }));
 
   // ── Flags condicionais ───────────────────────
-  const addUploads = (files: FileList | null) => {
+  const addUploads = async (files: FileList | null) => {
     if (!files?.length) return;
-    const nextUploads: LeadUpload[] = Array.from(files).map((file) => {
+    for (const file of Array.from(files)) {
       const extension = file.name.includes(".") ? file.name.split(".").pop() ?? "" : "";
-      return {
-        id: newId(),
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-        size: file.size,
-        extension,
-        url: URL.createObjectURL(file),
-        uploadedAt: new Date().toISOString(),
-      };
-    });
-    setValues((prev) => ({ ...prev, uploads: [...prev.uploads, ...nextUploads] }));
+      try {
+        const publicUrl = await uploadToR2({ file, category: "documents", entity: "lead" });
+        const upload: LeadUpload = {
+          id: newId(),
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          size: file.size,
+          extension,
+          url: publicUrl,
+          uploadedAt: new Date().toISOString(),
+        };
+        setValues((prev) => ({ ...prev, uploads: [...prev.uploads, upload] }));
+      } catch (err) {
+        const msg = err instanceof R2NotConfiguredError
+          ? err.message
+          : err instanceof Error ? err.message : "Erro no upload do arquivo";
+        toast.error(`${file.name}: ${msg}`);
+      }
+    }
   };
 
   const removeUpload = (id: string) =>
@@ -1033,7 +1043,7 @@ export function LeadFormModal({
                   multiple
                   className="hidden"
                   onChange={(event) => {
-                    addUploads(event.target.files);
+                    void addUploads(event.target.files);
                     event.target.value = "";
                   }}
                   data-testid="input-lead-uploads"
