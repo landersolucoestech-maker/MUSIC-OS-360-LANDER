@@ -117,6 +117,7 @@ describe('Reports E2E — PostgreSQL real e XLSX', () => {
       definitions,
       new ImportAuditService(),
       encryption,
+      undefined as any,
     );
 
     await ds.query(
