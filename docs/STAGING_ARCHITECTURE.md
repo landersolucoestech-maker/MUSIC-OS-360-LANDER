@@ -84,8 +84,8 @@ domínio reservado, guard fail-closed contra qualquer ref que não seja
 
 ## Matriz de variáveis (Bloco 2)
 
-Fonte: `apps/api/src/core/config/env.schema.ts`, `.env.example`,
-`.env.staging.example`, `apps/web/.env.example`, `staging.yml`.
+Fonte: `apps/api/src/core/config/env.schema.ts`, `.env.production`,
+`.env.staging`, `apps/web/.env.staging`, `staging.yml`.
 
 | Variável | Obrigatória em staging | Origem | Já disponível | Ação |
 |---|---|---|---|---|
@@ -94,7 +94,7 @@ Fonte: `apps/api/src/core/config/env.schema.ts`, `.env.example`,
 | `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Sim | Supabase STAGING | Não | Idem |
 | `DATABASE_SESSION_CONTEXT_ENABLED` | Sim (`true`) | Config estática | Sim | Já no `staging.yml` |
 | `RBAC_PERSISTED_AUTHORITY` | Sim (`SHADOW` inicialmente) | Config estática | — | Adicionar como variable no Environment |
-| `JWT_SECRET` / `ENCRYPTION_KEY` / `ENCRYPTION_IV_SECRET` | Sim | Gerado (não reaproveitar DEV) | Não | Gerar novos valores próprios de staging |
+| `ENCRYPTION_KEY` | Sim | Gerado (não reaproveitar DEV) | Não | Gerar novo valor próprio de staging |
 | `REDIS_URL` / `REDIS_QUEUE_URL` | Sim | Redis STAGING | Não | **BLOCKED_EXTERNAL** — sem provedor Redis acessível |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` (test) | Sim | Stripe TEST mode | Não | **BLOCKED_EXTERNAL** — Stripe MCP não autorizado |
 | `STRIPE_CONNECT_CLIENT_ID` | Opcional | Stripe TEST mode | Não | Idem |

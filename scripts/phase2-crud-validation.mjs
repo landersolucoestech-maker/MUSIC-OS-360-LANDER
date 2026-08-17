@@ -29,7 +29,7 @@ function loadEnvFile(path) {
   } catch {}
 }
 
-loadEnvFile("apps/api/.env");
+loadEnvFile("apps/api/.env.development");
 loadEnvFile(".env");
 
 function fail(message, detail = {}) {

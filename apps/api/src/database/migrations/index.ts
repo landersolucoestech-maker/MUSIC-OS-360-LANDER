@@ -161,6 +161,7 @@ import { AddShareLiquidacaoValues20260816000002 } from './20260816000002_AddShar
 import { ContractTemplatesFormFieldAlignment20260816000003 } from './20260816000003_ContractTemplatesFormFieldAlignment';
 import { ContractTemplatesTipoServicoOptional20260816000004 } from './20260816000004_ContractTemplatesTipoServicoOptional';
 import { GrantFinancialCategoriesDelete20260817000001 } from './20260817000001_GrantFinancialCategoriesDelete';
+import { WebhookEventsRlsSystemPath20260817000002 } from './20260817000002_WebhookEventsRlsSystemPath';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -310,4 +311,5 @@ export const ALL_MIGRATIONS = [
   ContractTemplatesFormFieldAlignment20260816000003,
   ContractTemplatesTipoServicoOptional20260816000004,
   GrantFinancialCategoriesDelete20260817000001,
+  WebhookEventsRlsSystemPath20260817000002,
 ] as const;

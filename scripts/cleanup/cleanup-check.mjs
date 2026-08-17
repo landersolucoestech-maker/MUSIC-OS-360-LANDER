@@ -10,6 +10,8 @@
  *   4. Nada de asset em apps/web/public sem referência comprovada.
  *   5. Nada de script de package.json apontando para arquivo inexistente.
  *   6. Nada de workspace dep (@music-os-360/*) declarada sem uso.
+ *   7. Nada de nome de arquivo .env alternativo rastreado — só .env.development/
+ *      .env.staging/.env.production (raiz, apps/api, apps/web).
  *
  * Detecção de imports mortos/deps npm sem uso é delegada a `pnpm typecheck` +
  * knip/depcheck/ts-prune (root devDeps) — rodar manualmente antes de releases.
@@ -34,7 +36,9 @@ const GUARD_FILE_ALLOWLIST = new Set([
 
 // Docs históricos que JÁ existiam quando o gate foi criado (2026-07-04).
 // Não adicionar itens novos aqui sem decisão explícita de arquitetura.
-const HISTORICAL_DOC_BASELINE = new Set(["CLEANUP_REPORT.md"]);
+// CLEANUP_REPORT.md mudou de root/ (rastreado, baseline abaixo) para reports/
+// (não rastreado, mesma convenção de todo o resto de reports/) — Parte 81.
+const HISTORICAL_DOC_BASELINE = new Set([]);
 
 const JUNK_PATTERN = /\.(log|tmp|bak|orig|rej)$|~$|(^|\/)\.DS_Store$|(^|\/)Thumbs\.db$|(^|\/)\.tmp-/i;
 const HISTORICAL_DOC_PATTERN = /(AUDITORIA|LEVANTAMENTO|_REPORT|_AUDIT|^P0_|\/P0_|^P1_|\/P1_|EXECUCAO_|RUNBOOK_STAGING)/i;
@@ -76,9 +80,9 @@ for (const banned of SUPABASE_REF_DENYLIST) {
   }
 }
 const envCandidates = [
-  ".env", ".env.example", ".env.staging.example",
-  "apps/api/.env", "apps/api/.env.example", "apps/api/.env.backup.fase1d",
-  "apps/api/.env.fase1d.local", "apps/api/.env.production.template", "apps/web/.env",
+  ".env.development", ".env.staging", ".env.production",
+  "apps/api/.env.development", "apps/api/.env.staging", "apps/api/.env.production",
+  "apps/web/.env.development", "apps/web/.env.staging", "apps/web/.env.production",
 ];
 for (const rel of envCandidates) {
   const file = path.join(repoRoot, rel);
@@ -86,6 +90,20 @@ for (const rel of envCandidates) {
   const content = fs.readFileSync(file, "utf8");
   for (const banned of SUPABASE_REF_DENYLIST) {
     if (content.includes(banned)) errors.push(`ref Supabase banido "${banned}" em ${rel}`);
+  }
+}
+
+// ── 3b. Nomenclatura de .env — só .env.development/.env.staging/.env.production ──
+// (Homologação sistêmica: apps/api e apps/web consolidados para o mesmo padrão
+// já usado na raiz. Qualquer nome alternativo rastreado é regressão.)
+const LEGACY_ENV_PATTERN = /(^|\/)\.env(\.example|\.dev\.example|\.production\.template|\.local|\.staging\.example|\.production\.example|\.backup.*|\.fase\d+.*)?$/;
+for (const file of trackedFiles) {
+  const normalized = file.replace(/\\/g, "/");
+  if (!LEGACY_ENV_PATTERN.test(normalized)) continue;
+  const base = normalized.split("/").pop();
+  const isCanonical = base === ".env.development" || base === ".env.staging" || base === ".env.production";
+  if (!isCanonical) {
+    errors.push(`nome de env alternativo rastreado (proibido): ${file}`);
   }
 }
 

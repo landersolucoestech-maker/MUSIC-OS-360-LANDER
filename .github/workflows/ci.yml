@@ -58,8 +58,6 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: "postgresql://localhost:5432/test_db"
       ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000001"
-      ENCRYPTION_IV_SECRET: "test_iv_secret"
-      JWT_SECRET: "test_jwt_secret"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -314,16 +312,16 @@ jobs:
         run: pnpm --filter @music-os-360/api test:e2e
 
   env-example:
-    name: Env Example Coherence
+    name: Env Template Coherence
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Required envs referenced in code present in .env.example
+      - name: Required envs referenced in code present in .env.production
         run: |
           missing=0
           for var in DATABASE_URL REDIS_URL REDIS_QUEUE_URL SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY ENCRYPTION_KEY CORS_ORIGINS R2_ACCOUNT_ID R2_ACCESS_KEY R2_SECRET_KEY R2_BUCKET_NAME R2_PUBLIC_URL DB_SSL APP_URL; do
-            if ! grep -qE "^#?\s*${var}=" apps/api/.env.example; then
-              echo "::error::${var} referenced in code but missing from apps/api/.env.example"
+            if ! grep -qE "^#?\s*${var}=" apps/api/.env.production; then
+              echo "::error::${var} referenced in code but missing from apps/api/.env.production"
               missing=$((missing + 1))
             fi
           done

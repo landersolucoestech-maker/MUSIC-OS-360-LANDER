@@ -26,7 +26,7 @@ Fotografia operacional no momento desta atualização; o restante do documento d
 **Stripe runtime = NO GO até completar, em ordem:**
 
 1. Rotacionar a chave `sk_live` vazada (Stripe Dashboard — ação do owner).
-2. Chaves de TESTE em `apps/api/.env`.
+2. Chaves de TESTE em `apps/api/.env.development`.
 3. `pnpm --filter @music-os-360/api db:migrate` com banco de pé (aplica registry `20260601000001..3` + billing `20260701000001..3` juntas).
 4. `sync-stripe` para popular `stripe_price_id` (hoje NULL → checkout 400).
 5. Webhook real com `stripe listen`/`trigger` — valida a ressalva do `express.json()` global + `rawBody:true` em `main.ts` (risco de rawBody vazio → 400 na verificação HMAC).

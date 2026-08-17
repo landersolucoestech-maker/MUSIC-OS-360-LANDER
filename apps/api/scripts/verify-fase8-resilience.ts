@@ -508,7 +508,7 @@ async function validateRecovery(token: string, tenantId: string, releaseId: stri
 }
 
 async function main() {
-  loadEnvFile('apps/api/.env');
+  loadEnvFile('apps/api/.env.development');
   loadEnvFile('.env');
   const pg = new PgClient({ connectionString: process.env.DATABASE_URL });
   await pg.connect();

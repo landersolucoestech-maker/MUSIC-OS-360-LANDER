@@ -45,6 +45,12 @@ export { R2_CLIENT, R2_BUCKET, R2_PUBLIC_URL } from './storage.tokens';
             accessKeyId:     accessKey,
             secretAccessKey: secretKey,
           },
+          // O SDK v3 (>=3.729) calcula checksum por padrão (WHEN_SUPPORTED).
+          // Em URLs pré-assinadas isso quebra: o corpo real só existe quando o
+          // cliente faz o PUT depois, então o checksum assinado é o de um corpo
+          // vazio — todo upload real falha com SignatureDoesNotMatch. R2 também
+          // não suporta os checksums compostos que o SDK tentaria usar.
+          requestChecksumCalculation: 'WHEN_REQUIRED',
         });
 
         logger.log(`Cloudflare R2 conectado (account: ${accountId})`);

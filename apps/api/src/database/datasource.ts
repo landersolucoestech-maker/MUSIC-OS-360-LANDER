@@ -22,9 +22,9 @@ import { assertDatabaseCommandEnv } from '../core/config/env.schema';
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const dotenv = require('dotenv');
-  // Try apps/api/.env first (2 levels up from src/database/), then root .env
-  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-  dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+  // Try apps/api/.env.development first (2 levels up from src/database/), then root .env.development
+  dotenv.config({ path: path.resolve(__dirname, '../../.env.development') });
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.development') });
 } catch { /* dotenv opcional */ }
 
 const DATABASE_URL = process.env['DATABASE_URL'];

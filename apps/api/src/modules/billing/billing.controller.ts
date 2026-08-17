@@ -221,9 +221,15 @@ export class BillingController {
     );
   }
 
+  // Sem @Audit(): não há actor de usuário neste caminho (Stripe é o autor), o
+  // registo real do evento já existe em payment_events/webhook_events, e
+  // body.id aqui é o id do evento Stripe (evt_...), não um id de
+  // billing_subscriptions — o before-snapshot genérico do AuditInterceptor
+  // (SELECT ... WHERE id = $1) quebrava com "invalid input syntax for type
+  // uuid", envenenando a transação aberta por BillingService.handleWebhook()
+  // e derrubando o webhook inteiro com 500 mesmo com assinatura válida.
   @Post('webhooks/stripe')
   @Public()
-  @Audit('billing.subscription_event')
   @ApiOperation({ summary: 'Webhook Stripe (HMAC validado, sem autenticação)' })
   webhook(
     @Headers('stripe-signature') signature: string,

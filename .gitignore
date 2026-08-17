@@ -26,14 +26,25 @@ node_modules/
 # Environment files and secret backups
 .env
 .env.*
-!.env.example
 !.env.*.example
-# RBAC-SHADOW-01/DBCTX-01 (Parte 45): this is a placeholder-only template
-# (<DB_USER>, <ENCRYPTION_KEY>, ...) documenting required production env vars —
-# same category as .env.example above. It was previously gitignored by the
-# `.env.*` rule and had NEVER been committed, so nobody provisioning production
-# could actually see it or the flags it documents.
-!apps/api/.env.production.template
+# Root .env.staging / .env.production (Parte 82): renamed from the old
+# .env.staging.example / .env.example — placeholders only, safe to version.
+# Real secrets are injected outside Git (CI/CD secrets, deployment platform),
+# never filled into these files. .env.development stays gitignored (real
+# local secrets) — no negation for it.
+!/.env.staging
+!/.env.production
+# apps/api and apps/web mirror the same root pattern: .env.staging/.env.production
+# are placeholder-only templates (<DB_USER>, <ENCRYPTION_KEY>, ...) documenting
+# required env vars per environment, safe to version. .env.development stays
+# gitignored everywhere (real local secrets) — no negation for it. Formerly
+# apps/api/.env.production.template + apps/api/.env.example + .env.dev.example
+# (consolidated into the two names below); apps/web/.env.example likewise
+# folded into apps/web/.env.production.
+!apps/api/.env.staging
+!apps/api/.env.production
+!apps/web/.env.staging
+!apps/web/.env.production
 .env.backup*
 .env.*.backup
 *.env.bak

@@ -16,7 +16,7 @@ import { assertDatabaseCommandEnv } from './src/core/config/env.schema';
 const url = process.env.DATABASE_URL;
 
 if (!url) {
-  console.error('❌  Defina DATABASE_URL no ficheiro apps/api/.env');
+  console.error('❌  Defina DATABASE_URL no ficheiro apps/api/.env.development');
   process.exit(1);
 }
 

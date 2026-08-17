@@ -453,7 +453,7 @@ async function validateSecurity(s3: S3Client, bucket: string, token: string, ten
 }
 
 async function main() {
-  loadEnvFile('apps/api/.env');
+  loadEnvFile('apps/api/.env.development');
   loadEnvFile('.env');
 
   const bucket = process.env.R2_BUCKET_NAME!;

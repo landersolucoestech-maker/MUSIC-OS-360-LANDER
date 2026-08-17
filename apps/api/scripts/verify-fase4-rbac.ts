@@ -12,7 +12,7 @@
  *
  * Pré-requisitos:
  *   - backend rodando em http://localhost:3001
- *   - ENCRYPTION_KEY em apps/api/.env (HS256 dev tokens)
+ *   - ENCRYPTION_KEY em apps/api/.env.development (HS256 dev tokens)
  *   - org_members criados via SQL (ver migrate/seed na conversa)
  */
 

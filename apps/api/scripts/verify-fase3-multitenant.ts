@@ -129,7 +129,7 @@ async function fase31(): Promise<void> {
   section('FASE 3.1 — PREPARAÇÃO');
 
   if (!ENCRYPTION_KEY) {
-    fail('ENCRYPTION_KEY não encontrada em apps/api/.env — abortando');
+    fail('ENCRYPTION_KEY não encontrada em apps/api/.env.development — abortando');
     process.exit(2);
   }
 

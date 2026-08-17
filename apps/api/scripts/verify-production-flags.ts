@@ -19,7 +19,7 @@ if (errors.length > 0) {
   for (const err of errors) console.error(`  • ${err}`);
   console.error(
     '\nEstas flags só são obrigatórias quando NODE_ENV=production. ' +
-      'Ver apps/api/.env.production.template.\n',
+      'Ver apps/api/.env.production.\n',
   );
   process.exit(1);
 }

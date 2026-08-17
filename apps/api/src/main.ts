@@ -1,7 +1,10 @@
 // ── .env carregado ANTES de qualquer módulo (garante process.env para QueueModule.register) ──
-// Carrega apps/api/.env explicitamente (path relativo ao CWD = apps/api/ via `npm run dev`).
-// Variáveis já presentes em process.env (secrets do provedor de hosting, Docker -e,
-// secrets de CI) não são sobrepostas — só preenche o que ainda não foi definido.
+// Carrega apps/api/.env.development explicitamente (path relativo ao CWD =
+// apps/api/ via `npm run dev`). Só é usado para desenvolvimento local — em
+// staging/produção as variáveis vêm do provedor de hosting/Docker -e/secrets
+// de CI (o arquivo não existe nesses ambientes, então isto vira um no-op).
+// Variáveis já presentes em process.env não são sobrepostas — só preenche o
+// que ainda não foi definido.
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -24,8 +27,8 @@ function loadLocalEnv(envPath: string): void {
   }
 }
 
-loadLocalEnv(path.resolve(__dirname, '../.env'));
-loadLocalEnv(path.resolve(process.cwd(), '.env'));
+loadLocalEnv(path.resolve(__dirname, '../.env.development'));
+loadLocalEnv(path.resolve(process.cwd(), '.env.development'));
 
 // ── Sentry DEVE ser o segundo import ───────────────────────────────────────────
 import './instrument';

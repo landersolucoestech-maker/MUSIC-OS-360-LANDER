@@ -28,8 +28,8 @@ import { randomUUID } from 'crypto';
 import { extractSupabaseRef, SUPABASE_PROD_REF } from '../src/core/config/env.schema';
 
 try {
-  require('dotenv').config({ path: path.resolve(process.cwd(), '.env'), override: true });    // apps/api/.env when run from package
-  require('dotenv').config({ path: path.resolve(__dirname, '../.env') });    // apps/api/.env (URL-encoded passwords)
+  require('dotenv').config({ path: path.resolve(process.cwd(), '.env.development'), override: true });    // apps/api/.env.development when run from package
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env.development') });    // apps/api/.env.development (URL-encoded passwords)
   require('dotenv').config({ path: path.resolve(__dirname, '../../.env') }); // apps/.env (fallback)
   require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') }); // root .env (fallback)
 } catch { /* opcional */ }

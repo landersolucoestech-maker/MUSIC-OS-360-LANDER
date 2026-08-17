@@ -186,7 +186,7 @@ async function clockCheck() {
 }
 
 async function main() {
-  loadEnv(existsSync('apps/api/.env') ? 'apps/api/.env' : '.env');
+  loadEnv(existsSync('apps/api/.env.development') ? 'apps/api/.env.development' : '.env.development');
   const config = {
     accountId: process.env.R2_ACCOUNT_ID,
     endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,

@@ -39,11 +39,8 @@ No painel Supabase:
 ### Passo 3: Configurar variáveis de ambiente
 
 ```bash
-# Copie o template
-cp .env.example .env
-
-# Edite com suas credenciais reais
-nano .env  # ou use seu editor preferido
+# Edite com suas credenciais reais (arquivo já existe na raiz, fora do Git)
+nano .env.development  # ou use seu editor preferido
 ```
 
 Variáveis obrigatórias:
@@ -52,7 +49,6 @@ DATABASE_URL=postgres://postgres:SENHA@db.REF.supabase.co:5432/postgres
 SUPABASE_URL=https://REF.supabase.co
 SUPABASE_ANON_KEY=eyJ...
 ENCRYPTION_KEY=<64-hex-chars>  # gere com: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-ENCRYPTION_IV_SECRET=<string-aleatoria>
 CORS_ORIGINS=http://localhost:5173
 ```
 
@@ -119,7 +115,7 @@ supabase db execute --file apps/api/supabase-jwt-hook.sql
 ### Passo 8: Configurar seed
 
 ```bash
-# No .env, defina:
+# No .env.development, defina:
 SEED_ADMIN_SUB=<uuid-do-usuario-supabase>
 SEED_ADMIN_EMAIL=admin@musicos360.dev
 ```
@@ -251,11 +247,11 @@ Executa em sequência: `verify:supabase` → `verify:rls` → `verify:tenant-iso
 
 ## Frontend — Configuração
 
-### apps/web/.env
+### apps/web/.env.development
 
 ```bash
-cp .env.example apps/web/.env
-# Edite com suas variáveis VITE_*
+cp apps/web/.env.production apps/web/.env.development
+# Edite com suas variáveis VITE_* reais de DEV
 ```
 
 Variáveis obrigatórias para o frontend:
@@ -328,11 +324,11 @@ FASE 20 — Smoke Test
 
 | Componente | IMPLEMENTADO | PROVISIONADO | CONECTADO | TESTADO | VALIDADO |
 |-----------|:---:|:---:|:---:|:---:|:---:|
-| Auth (Supabase JWT) | ✓ | Depende de .env | Depende de .env | ✓ | Após smoke test |
+| Auth (Supabase JWT) | ✓ | Depende de .env.development | Depende de .env.development | ✓ | Após smoke test |
 | Database (PostgreSQL) | ✓ | Após db:migrate | Após verify | ✓ | Após verify:supabase |
 | RLS / Tenant Isolation | ✓ | Após db:migrate | ✓ | Após verify:rls | Após verify:tenant-isolation |
 | BullMQ / Redis | ✓ | OPCIONAL | OPCIONAL | ✓ | Após health check |
-| Billing / Stripe | ✓ | Após .env config | Após .env config | Parcial | Após webhook test |
+| Billing / Stripe | ✓ | Após .env.development config | Após .env.development config | Parcial | Após webhook test |
 | CRM Canonical | ✓ | Após db:migrate | ✓ | ✓ | Após smoke test |
 | Pipelines | ✓ | Após db:migrate | ✓ | ✓ | Após smoke test |
 | Campaigns | ✓ | Após db:migrate | ✓ | ✓ | Após smoke test |

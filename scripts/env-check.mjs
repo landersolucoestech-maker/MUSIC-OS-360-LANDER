@@ -67,6 +67,7 @@ function jwtClaims(token) {
 const GUARD_FILE_ALLOWLIST = new Set([
   "apps/api/src/core/config/env.schema.ts",
   "apps/api/src/core/config/env.schema.spec.ts",
+  "apps/api/src/core/config/verify-supabase-dev-ref.util.spec.ts",
   "apps/api/src/database/financial-migrations.static.spec.ts",
   "apps/web/src/shared/lib/env.ts",
   "apps/web/scripts/assert-supabase-env.mjs",
@@ -124,15 +125,15 @@ for (const banned of SUPABASE_REF_DENYLIST) {
 
 // ── 1b. Denylist em todos os .env* (não rastreados) ───────────────────────────
 const envFiles = [
-  ".env",
-  ".env.example",
-  ".env.staging.example",
-  "apps/api/.env",
-  "apps/api/.env.example",
-  "apps/api/.env.backup.fase1d",
-  "apps/api/.env.fase1d.local",
-  "apps/api/.env.production.template",
-  "apps/web/.env",
+  ".env.development",
+  ".env.staging",
+  ".env.production",
+  "apps/api/.env.development",
+  "apps/api/.env.staging",
+  "apps/api/.env.production",
+  "apps/web/.env.development",
+  "apps/web/.env.staging",
+  "apps/web/.env.production",
 ].map((p) => path.join(repoRoot, p));
 
 for (const file of envFiles) {
@@ -146,14 +147,14 @@ for (const file of envFiles) {
 }
 
 // ── 2–5. Coerência dos envs efetivos ─────────────────────────────────────────
-const rootEnv = parseEnvFile(path.join(repoRoot, ".env")) ?? {};
-const apiFileEnv = parseEnvFile(path.join(repoRoot, "apps/api/.env"));
-const webEnv = parseEnvFile(path.join(repoRoot, "apps/web/.env"));
+const rootEnv = parseEnvFile(path.join(repoRoot, ".env.development")) ?? {};
+const apiFileEnv = parseEnvFile(path.join(repoRoot, "apps/api/.env.development"));
+const webEnv = parseEnvFile(path.join(repoRoot, "apps/web/.env.development"));
 
-if (!apiFileEnv) warnings.push("apps/api/.env ausente — API dependerá do .env da raiz/process.env");
-if (!webEnv) errors.push("apps/web/.env ausente — frontend sem VITE_SUPABASE_URL definido");
+if (!apiFileEnv) warnings.push("apps/api/.env.development ausente — API dependerá do .env.development da raiz/process.env");
+if (!webEnv) errors.push("apps/web/.env.development ausente — frontend sem VITE_SUPABASE_URL definido");
 
-// Precedência real: main.ts carrega apps/api/.env primeiro e NÃO sobrescreve com o da raiz.
+// Precedência real: main.ts carrega apps/api/.env.development primeiro e NÃO sobrescreve com o da raiz.
 const apiEnv = { ...rootEnv, ...(apiFileEnv ?? {}) };
 const web = webEnv ?? {};
 
@@ -167,7 +168,7 @@ for (const key of requiredApi) {
   if (!apiEnv[key]) errors.push(`env obrigatório ausente/vazio no backend: ${key}`);
 }
 for (const key of requiredWeb) {
-  if (!web[key]) errors.push(`env obrigatório ausente/vazio no frontend (apps/web/.env): ${key}`);
+  if (!web[key]) errors.push(`env obrigatório ausente/vazio no frontend (apps/web/.env.development): ${key}`);
 }
 
 // Refs por origem
