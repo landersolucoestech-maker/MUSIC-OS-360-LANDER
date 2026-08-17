@@ -149,7 +149,15 @@ describe('ContractTemplatesService — concorrência otimista (Task W)', () => {
     } as unknown as UpdateContractTemplateDto);
 
     const [criteria] = (repo.update as jest.Mock).mock.calls[0];
-    expect(criteria).toEqual({ id: 'template-1', tenant_id: 'tenant-1', updated_at: NOW });
+    expect(criteria.id).toBe('template-1');
+    expect(criteria.tenant_id).toBe('tenant-1');
+    // Task X — updated_at deixou de ser igualdade exata (timestamp sem tz
+    // perde precisão no round-trip Date/JSON); agora é Raw() truncado a
+    // milissegundos — ver optimistic-update.util.ts.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const op = criteria.updated_at as any;
+    expect(op._type).toBe('raw');
+    expect(op._objectLiteralParameters).toEqual({ expected: NOW });
   });
 
   it('com expectedUpdatedAt desatualizado (0 linhas afetadas): lança ConflictException, não sobrescreve', async () => {

@@ -78,10 +78,14 @@ describe('SocietySubmissionService — concorrência otimista em transition()', 
       expectedUpdatedAt: NOW.toISOString(),
     } as any);
 
-    expect(mockDs._repo.update).toHaveBeenCalledWith(
-      { id: SUB_ID, tenant_id: TENANT, updated_at: NOW },
-      expect.objectContaining({ status: SocietySubmissionStatus.VALIDATING }),
-    );
+    const [criteria, payload] = mockDs._repo.update.mock.calls[0];
+    expect(criteria.id).toBe(SUB_ID);
+    expect(criteria.tenant_id).toBe(TENANT);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const op = criteria.updated_at as any;
+    expect(op._type).toBe('raw');
+    expect(op._objectLiteralParameters).toEqual({ expected: NOW });
+    expect(payload).toEqual(expect.objectContaining({ status: SocietySubmissionStatus.VALIDATING }));
   });
 
   it('com expectedUpdatedAt desatualizado (0 linhas afetadas): lança ConflictException (409)', async () => {

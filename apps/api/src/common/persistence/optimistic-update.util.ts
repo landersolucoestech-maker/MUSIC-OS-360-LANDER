@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { Raw } from 'typeorm';
 import type { FindOptionsWhere, ObjectLiteral, Repository } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
@@ -34,7 +35,16 @@ export async function casUpdate<T extends ObjectLiteral>(
     if (Number.isNaN(expected.getTime())) {
       throw new BadRequestException('expectedUpdatedAt inválido');
     }
-    (finalCriteria as Record<string, unknown>)['updated_at'] = expected;
+    // `updated_at` costuma ser um `timestamp` do Postgres sem precisão
+    // declarada (microssegundos); o valor que chega aqui já perdeu essa
+    // precisão ao passar por Date/JSON (milissegundos, no máximo — Date só
+    // guarda isso). Uma igualdade exata nunca bateria com o valor real do
+    // banco — compara truncado a milissegundos dos dois lados, senão todo
+    // CAS válido seria rejeitado como conflito por ruído de subprecisão.
+    (finalCriteria as Record<string, unknown>)['updated_at'] = Raw(
+      (alias) => `date_trunc('milliseconds', ${alias}) = date_trunc('milliseconds', :expected::timestamptz)`,
+      { expected },
+    );
   }
 
   const result = await repo.update(finalCriteria, payload);

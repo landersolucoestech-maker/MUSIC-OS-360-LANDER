@@ -67,7 +67,12 @@ describe('FormsService.update — concorrência otimista (Task K)', () => {
     } as any);
 
     const [criteria] = (formRepo.update as jest.Mock).mock.calls[0];
-    expect(criteria).toEqual({ id: 'form-1', tenant_id: 'tenant-1', updated_at: NOW });
+    expect(criteria.id).toBe('form-1');
+    expect(criteria.tenant_id).toBe('tenant-1');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const op = criteria.updated_at as any;
+    expect(op._type).toBe('raw');
+    expect(op._objectLiteralParameters).toEqual({ expected: NOW });
   });
 
   it('com expectedUpdatedAt desatualizado (0 linhas afetadas): lança ConflictException, não sobrescreve', async () => {

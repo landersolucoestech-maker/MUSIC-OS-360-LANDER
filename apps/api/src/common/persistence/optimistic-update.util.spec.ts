@@ -27,11 +27,27 @@ describe('casUpdate', () => {
     expect(repo.update).toHaveBeenCalledWith({ id: '1' }, { nome: 'x' });
   });
 
-  it('com expectedUpdatedAt: inclui updated_at no critério do UPDATE', async () => {
+  it('com expectedUpdatedAt: inclui updated_at no critério do UPDATE como comparação truncada a milissegundos', async () => {
+    // Task X — updated_at costuma ser `timestamp` do Postgres sem precisão
+    // declarada (microssegundos); o valor que chega do cliente já perdeu
+    // essa precisão (Date só guarda milissegundos). Uma igualdade exata
+    // (`updated_at: t`) nunca bateria com o valor real do banco — precisa
+    // ser um Raw() com date_trunc dos dois lados.
     const repo = buildRepo(1);
     const t = new Date('2026-08-14T10:00:00.000Z');
     await casUpdate<TestRow>(repo, { id: '1' }, { nome: 'x' }, t.toISOString());
-    expect(repo.update).toHaveBeenCalledWith({ id: '1', updated_at: t }, { nome: 'x' });
+
+    expect(repo.update).toHaveBeenCalledTimes(1);
+    const [criteria, payload] = repo.update.mock.calls[0];
+    expect(payload).toEqual({ nome: 'x' });
+    expect(criteria.id).toBe('1');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const op = criteria.updated_at as any;
+    expect(op._type).toBe('raw');
+    expect(op._getSql('t.updated_at')).toBe(
+      "date_trunc('milliseconds', t.updated_at) = date_trunc('milliseconds', :expected::timestamptz)",
+    );
+    expect(op._objectLiteralParameters).toEqual({ expected: t });
   });
 
   it('cenário A/B: B tenta salvar contra a versão pré-escrita de A (0 linhas afetadas) -> 409, não sobrescreve', async () => {
