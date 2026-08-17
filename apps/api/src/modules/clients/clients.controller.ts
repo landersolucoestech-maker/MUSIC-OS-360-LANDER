@@ -5,6 +5,7 @@ import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
+import type { JwtAuth }  from '../../core/guards/auth.guard';
 import { ClientsService } from './clients.service';
 import {
   CreateClientDto, UpdateClientDto, QueryClientDto,
@@ -22,13 +23,13 @@ export class ClientsController {
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.findById(t.id, id); }
 
   @Post() @RequireRole('editor') @RequirePermission('client:create') @Audit('client.created') @ApiOperation({ summary: 'Criar cliente' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateClientDto) { return this.svc.create(t.id, u?.sub ?? '', dto); }
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Body() dto: CreateClientDto) { return this.svc.create(t.id, u?.userId ?? '', dto); }
 
   @Patch(':id') @RequireRole('editor') @RequirePermission('client:update') @Audit('client.updated') @ApiOperation({ summary: 'Actualizar cliente' })
-  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateClientDto) { return this.svc.update(t.id, u?.sub ?? '', id, dto); }
+  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateClientDto) { return this.svc.update(t.id, u?.userId ?? '', id, dto); }
 
   @Delete(':id') @RequireRole('manager') @RequirePermission('client:delete') @Audit('client.deleted') @ApiOperation({ summary: 'Remover cliente' })
-  remove(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(t.id, id, u?.sub); }
+  remove(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(t.id, id, u?.userId); }
 
   // ── Timeline ──────────────────────────────────────────────────────────────
   @Get(':id/timeline') @RequireRole('viewer') @RequirePermission('client:read') @ApiOperation({ summary: 'Timeline do cliente (eventos reais, persistidos)' })
@@ -38,8 +39,8 @@ export class ClientsController {
 
   @Post(':id/timeline') @RequireRole('editor') @RequirePermission('client:update') @Audit('client.timeline_entry_added')
   @ApiOperation({ summary: 'Adicionar entrada manual à timeline (nota, ligação, reunião)' })
-  addTimelineEntry(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateClientTimelineEntryDto) {
-    return this.svc.addTimelineEntry(t.id, u?.sub ?? '', id, dto);
+  addTimelineEntry(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateClientTimelineEntryDto) {
+    return this.svc.addTimelineEntry(t.id, u?.userId ?? '', id, dto);
   }
 
   // ── Contratos vinculados ─────────────────────────────────────────────────
@@ -56,24 +57,24 @@ export class ClientsController {
 
   @Post(':id/attachments/presign') @RequireRole('editor') @RequirePermission('client:update')
   @ApiOperation({ summary: 'Gera URL pré-assinada de upload direto ao R2 (503 se R2 não configurado)' })
-  presignAttachment(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: PresignClientAttachmentDto) {
-    return this.svc.presignAttachmentUpload(t.id, u?.sub ?? '', id, dto);
+  presignAttachment(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Param('id', ParseUUIDPipe) id: string, @Body() dto: PresignClientAttachmentDto) {
+    return this.svc.presignAttachmentUpload(t.id, u?.userId ?? '', id, dto);
   }
 
   @Post(':id/attachments') @RequireRole('editor') @RequirePermission('client:update') @Audit('client.attachment_added')
   @ApiOperation({ summary: 'Confirma upload concluído no R2 e persiste a metadata' })
-  confirmAttachment(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ConfirmClientAttachmentDto) {
-    return this.svc.confirmAttachmentUpload(t.id, u?.sub ?? '', id, dto);
+  confirmAttachment(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ConfirmClientAttachmentDto) {
+    return this.svc.confirmAttachmentUpload(t.id, u?.userId ?? '', id, dto);
   }
 
   @Delete(':id/attachments/:attachmentId') @RequireRole('editor') @RequirePermission('client:update') @Audit('client.attachment_removed')
   @ApiOperation({ summary: 'Remove anexo (metadata + objeto no R2)' })
   removeAttachment(
     @CurrentTenant() t: { id: string },
-    @CurrentUser() u: any,
+    @CurrentUser() u: JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
     @Param('attachmentId', ParseUUIDPipe) attachmentId: string,
   ) {
-    return this.svc.removeAttachment(t.id, u?.sub ?? '', id, attachmentId);
+    return this.svc.removeAttachment(t.id, u?.userId ?? '', id, attachmentId);
   }
 }

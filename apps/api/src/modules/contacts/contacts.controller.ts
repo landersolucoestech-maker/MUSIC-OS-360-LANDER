@@ -4,6 +4,7 @@ import { RequireRole } from '../../core/decorators/roles.decorator';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { Audit } from '../../core/interceptors/audit.interceptor';
+import type { JwtAuth } from '../../core/guards/auth.guard';
 import { ContactsService } from './contacts.service';
 
 /**
@@ -32,22 +33,22 @@ export class ContactsController {
   @Post()
   @RequireRole('editor')
   @RequirePermission('contact:create')
-  create(@CurrentTenant() tenant: { id: string }, @CurrentUser() u: any, @Body() payload: Record<string, unknown>) {
-    return this.contactsService.create(tenant.id, payload, u?.sub);
+  create(@CurrentTenant() tenant: { id: string }, @CurrentUser() u: JwtAuth, @Body() payload: Record<string, unknown>) {
+    return this.contactsService.create(tenant.id, payload, u?.userId);
   }
 
   @Patch(':id')
   @RequireRole('editor')
   @RequirePermission('contact:update')
-  update(@CurrentTenant() tenant: { id: string }, @CurrentUser() u: any, @Param('id') id: string, @Body() payload: Record<string, unknown>) {
-    return this.contactsService.update(tenant.id, id, payload, u?.sub);
+  update(@CurrentTenant() tenant: { id: string }, @CurrentUser() u: JwtAuth, @Param('id') id: string, @Body() payload: Record<string, unknown>) {
+    return this.contactsService.update(tenant.id, id, payload, u?.userId);
   }
 
   @Delete(':id')
   @RequireRole('manager')
   @RequirePermission('contact:delete')
   @Audit('contact.deleted')
-  remove(@CurrentTenant() tenant: { id: string }, @CurrentUser() u: any, @Param('id') id: string) {
-    return this.contactsService.remove(tenant.id, id, u?.sub);
+  remove(@CurrentTenant() tenant: { id: string }, @CurrentUser() u: JwtAuth, @Param('id') id: string) {
+    return this.contactsService.remove(tenant.id, id, u?.userId);
   }
 }

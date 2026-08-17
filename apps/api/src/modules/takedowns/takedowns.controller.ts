@@ -4,6 +4,7 @@ import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { RequireRole } from '../../core/decorators/roles.decorator';
 import { Audit } from '../../core/interceptors/audit.interceptor';
+import type { JwtAuth } from '../../core/guards/auth.guard';
 import { TakedownsService } from './takedowns.service';
 import { CreateTakedownDto, UpdateTakedownDto, QueryTakedownDto } from './dto/takedowns.dto';
 
@@ -40,10 +41,10 @@ export class TakedownsController {
   @ApiOperation({ summary: 'Criar takedown' })
   create(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub?: string },
+    @CurrentUser() user: JwtAuth,
     @Body() dto: CreateTakedownDto,
   ) {
-    return this.svc.create(tenant.id, user?.sub ?? '', dto);
+    return this.svc.create(tenant.id, user?.userId ?? '', dto);
   }
 
   @Patch(':id')
@@ -52,11 +53,11 @@ export class TakedownsController {
   @ApiOperation({ summary: 'Atualizar takedown' })
   update(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub?: string },
+    @CurrentUser() user: JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTakedownDto,
   ) {
-    return this.svc.update(tenant.id, user?.sub ?? '', id, dto);
+    return this.svc.update(tenant.id, user?.userId ?? '', id, dto);
   }
 
   @Delete(':id')
@@ -65,9 +66,9 @@ export class TakedownsController {
   @ApiOperation({ summary: 'Excluir takedown' })
   remove(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub?: string },
+    @CurrentUser() user: JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.svc.remove(tenant.id, user?.sub ?? '', id);
+    return this.svc.remove(tenant.id, user?.userId ?? '', id);
   }
 }

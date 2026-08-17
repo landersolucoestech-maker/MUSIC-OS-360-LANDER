@@ -5,6 +5,7 @@ import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
+import type { JwtAuth }  from '../../core/guards/auth.guard';
 import { InventoryService } from './inventory.service';
 import { CreateInventoryItemDto, UpdateInventoryItemDto, QueryInventoryDto } from './dto/inventory.dto';
 
@@ -29,13 +30,13 @@ export class InventoryController {
   }
 
   @Post() @RequireRole('editor') @RequirePermission('inventory:create') @Audit('inventory.created') @ApiOperation({ summary: 'Criar item de inventário' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateInventoryItemDto) {
-    return this.svc.create(t.id, u?.sub ?? '', dto);
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Body() dto: CreateInventoryItemDto) {
+    return this.svc.create(t.id, u?.userId ?? '', dto);
   }
 
   @Patch(':id') @RequireRole('editor') @RequirePermission('inventory:update') @Audit('inventory.updated') @ApiOperation({ summary: 'Atualizar item de inventário' })
-  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateInventoryItemDto) {
-    return this.svc.update(t.id, u?.sub ?? '', id, dto);
+  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: JwtAuth, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateInventoryItemDto) {
+    return this.svc.update(t.id, u?.userId ?? '', id, dto);
   }
 
   @Delete(':id') @RequireRole('manager') @RequirePermission('inventory:delete') @Audit('inventory.deleted') @ApiOperation({ summary: 'Remover item de inventário' })
