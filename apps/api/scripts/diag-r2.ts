@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import 'reflect-metadata';
 import * as path from 'path';
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.development') });
 import { S3Client, ListBucketsCommand, HeadBucketCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 const client = new S3Client({

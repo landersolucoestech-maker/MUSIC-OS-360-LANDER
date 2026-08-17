@@ -20,11 +20,11 @@ import { DatabaseContextService } from '../src/database/database-context.service
 import { assertDatabaseCommandEnv } from '../src/core/config/env.schema';
 
 try {
-  require('dotenv').config({ path: path.resolve(process.cwd(), '.env'), override: true });
+  require('dotenv').config({ path: path.resolve(process.cwd(), '.env.development'), override: true });
 } catch { /* optional */ }
 
-const apiEnvText = fs.existsSync(path.resolve(process.cwd(), '.env'))
-  ? fs.readFileSync(path.resolve(process.cwd(), '.env'), 'utf8')
+const apiEnvText = fs.existsSync(path.resolve(process.cwd(), '.env.development'))
+  ? fs.readFileSync(path.resolve(process.cwd(), '.env.development'), 'utf8')
   : '';
 const OWNER_URL = apiEnvText.match(/^DATABASE_URL=(.+)$/m)?.[1]?.trim() || process.env['DATABASE_URL'];
 const APP_URL = apiEnvText.match(/^APP_DATABASE_URL=(.+)$/m)?.[1]?.trim() || process.env['APP_DATABASE_URL'];

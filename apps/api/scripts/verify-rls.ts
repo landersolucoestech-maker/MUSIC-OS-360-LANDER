@@ -23,10 +23,10 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 try {
-  require('dotenv').config({ path: path.resolve(process.cwd(), '.env'), override: true });
-  require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
-  require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  require('dotenv').config({ path: path.resolve(process.cwd(), '.env.development'), override: true });
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env.development') });
+  require('dotenv').config({ path: path.resolve(__dirname, '../../.env.development') });
+  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env.development') });
 } catch { /* opcional */ }
 
 const FIX_MODE = process.argv.includes('--fix');
@@ -34,8 +34,8 @@ let databaseHost = '';
 try {
   databaseHost = new URL(process.env['DATABASE_URL'] ?? '').hostname;
 } catch { /* sem URL válida */ }
-const apiEnvText = fs.existsSync(path.resolve(process.cwd(), '.env'))
-  ? fs.readFileSync(path.resolve(process.cwd(), '.env'), 'utf8')
+const apiEnvText = fs.existsSync(path.resolve(process.cwd(), '.env.development'))
+  ? fs.readFileSync(path.resolve(process.cwd(), '.env.development'), 'utf8')
   : '';
 const apiEnvDatabaseUrl = apiEnvText.match(/^DATABASE_URL=(.+)$/m)?.[1]?.trim();
 const apiEnvDbSsl = apiEnvText.match(/^DB_SSL=(.+)$/m)?.[1]?.trim();

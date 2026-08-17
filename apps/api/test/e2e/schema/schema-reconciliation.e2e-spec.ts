@@ -19,7 +19,7 @@ import {
 const TENANT = '10000000-0000-0000-0000-000000000002';
 
 function databaseUrl(): string {
-  const envPath = path.resolve(process.cwd(), '.env');
+  const envPath = path.resolve(process.cwd(), '.env.development');
   const envText = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
   return (envText.match(/^DATABASE_URL=(.+)$/m)?.[1] ?? process.env['DATABASE_URL'] ?? '')
     .trim()

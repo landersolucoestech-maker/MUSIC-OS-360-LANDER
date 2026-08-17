@@ -18,8 +18,8 @@
 import * as path from 'path';
 
 try {
-  require('dotenv').config({ path: path.resolve(process.cwd(), '.env'), override: true });
-  require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+  require('dotenv').config({ path: path.resolve(process.cwd(), '.env.development'), override: true });
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env.development') });
 } catch { /* opcional */ }
 
 import { extractSupabaseRef, SUPABASE_PROD_REF, SUPABASE_REF_DENYLIST } from '../src/core/config/env.schema';

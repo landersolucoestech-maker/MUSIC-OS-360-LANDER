@@ -26,7 +26,7 @@ import type { ConfigService } from '@nestjs/config';
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env.development') });
 } catch {
   // dotenv é opcional no PostgreSQL efêmero da CI.
 }
@@ -67,7 +67,7 @@ describe('Reports E2E — PostgreSQL real e XLSX', () => {
   let commit: ImportCommitService;
 
   beforeAll(async () => {
-    const envPath = path.resolve(process.cwd(), '.env');
+    const envPath = path.resolve(process.cwd(), '.env.development');
     const envText = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
     const url = (
       envText.match(/^DATABASE_URL=(.+)$/m)?.[1] ??

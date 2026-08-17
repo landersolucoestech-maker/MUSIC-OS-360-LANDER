@@ -18,7 +18,7 @@ function loadEnvFile(filePath: string): void {
   }
 }
 
-loadEnvFile(path.resolve(process.cwd(), '.env'));
+loadEnvFile(path.resolve(process.cwd(), '.env.development'));
 
 interface SummaryRow {
   requests_observed: string;

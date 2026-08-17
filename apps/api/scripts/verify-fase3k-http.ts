@@ -26,7 +26,7 @@ const TENANT_A = '10000000-0000-0000-0000-000000000002';
 const TENANT_B = 'fb6f3d4f-6161-4b55-8e4f-b4443c509b7c';
 
 function env(key: string): string {
-  const envPath = path.resolve(process.cwd(), '.env');
+  const envPath = path.resolve(process.cwd(), '.env.development');
   const text = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
   return (text.match(new RegExp(`^${key}=(.+)$`, 'm'))?.[1] ?? process.env[key] ?? '')
     .trim()

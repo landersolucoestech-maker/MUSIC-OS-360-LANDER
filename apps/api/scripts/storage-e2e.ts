@@ -27,7 +27,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 // ── Load repo-root .env (no dotenv dependency) ────────────────────────────────
 function loadEnv(): Record<string, string> {
   const out: Record<string, string> = { ...process.env } as Record<string, string>;
-  for (const candidate of [join(process.cwd(), '.env'), join(process.cwd(), '../../.env')]) {
+  for (const candidate of [join(process.cwd(), '.env.development'), join(process.cwd(), '../../.env.development')]) {
     try {
       for (const line of readFileSync(candidate, 'utf8').split(/\r?\n/)) {
         const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);

@@ -24,7 +24,7 @@ import * as path from 'path';
 import * as jwt from 'jsonwebtoken';
 
 try {
-  require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env.development') });
 } catch { /* opcional */ }
 
 const API_URL = (process.env['API_URL'] ?? 'http://localhost:3001').replace(/\/$/, '');

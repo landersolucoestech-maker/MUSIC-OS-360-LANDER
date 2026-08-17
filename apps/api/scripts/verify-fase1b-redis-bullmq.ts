@@ -6,7 +6,7 @@ import * as path from 'path';
 
 type Check = { name: string; ok: boolean; detail?: unknown };
 
-const envPath = path.resolve(__dirname, '../.env');
+const envPath = path.resolve(__dirname, '../.env.development');
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
     const match = line.match(/^\s*([^#=]+?)\s*=\s*(.*?)\s*$/);

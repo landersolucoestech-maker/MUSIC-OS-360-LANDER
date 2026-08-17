@@ -30,7 +30,7 @@ function loadEnvFile(path) {
 }
 
 loadEnvFile("apps/api/.env.development");
-loadEnvFile(".env");
+loadEnvFile(".env.development");
 
 function fail(message, detail = {}) {
   failures.push({ message, detail });

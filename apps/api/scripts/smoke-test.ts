@@ -16,8 +16,8 @@ import 'reflect-metadata';
 import * as path from 'path';
 
 try {
-  require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  require('dotenv').config({ path: path.resolve(__dirname, '../../.env.development') });
+  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env.development') });
 } catch { /* optional */ }
 
 const API_URL = (process.env['API_URL'] ?? 'http://localhost:3001').replace(/\/$/, '');

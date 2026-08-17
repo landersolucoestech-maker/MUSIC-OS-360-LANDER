@@ -17,7 +17,7 @@ import * as path from 'path';
 import * as jwt from 'jsonwebtoken';
 import { Client } from 'pg';
 
-try { require('dotenv').config({ path: path.resolve(__dirname, '../.env') }); } catch {}
+try { require('dotenv').config({ path: path.resolve(__dirname, '../.env.development') }); } catch {}
 
 const API_URL = (process.env['API_URL'] ?? 'http://localhost:3001').replace(/\/$/, '');
 const KEY     = process.env['ENCRYPTION_KEY']!;

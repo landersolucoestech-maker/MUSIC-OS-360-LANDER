@@ -24,8 +24,8 @@ import * as path from 'path';
 // ── Carregar .env ────────────────────────────────────────────────────────────
 try {
   // The API package environment is authoritative. Root .env is fallback only.
-  require('dotenv').config({ path: path.resolve(__dirname, '../.env'), override: true });
-  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env.development'), override: true });
+  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env.development') });
 } catch { /* dotenv opcional */ }
 
 const FIX_MODE = process.argv.includes('--fix');
@@ -47,7 +47,6 @@ const REQUIRED_VARS = [
   { key: 'SUPABASE_URL',               description: 'Supabase project URL (https://xxx.supabase.co)' },
   { key: 'SUPABASE_ANON_KEY',          description: 'Supabase anon/public key (JWT audience)' },
   { key: 'ENCRYPTION_KEY',             description: 'AES-256 key (64 hex chars)' },
-  { key: 'ENCRYPTION_IV_SECRET',       description: 'IV derivation secret' },
   { key: 'CORS_ORIGINS',               description: 'Allowed CORS origins (comma-separated)' },
 ];
 
