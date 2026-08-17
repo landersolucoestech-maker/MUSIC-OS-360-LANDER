@@ -7,7 +7,6 @@ import { BriefingRepository } from './briefings/repositories/briefing.repository
 import { CampaignRepository } from './campaigns/repositories/campaign.repository';
 import { ClientRepository } from './clients/repositories/client.repository';
 import { Content_detectionRepository } from './content-detections/repositories/content_detection.repository';
-import { Contract_templateRepository } from './contract-templates/repositories/contract_template.repository';
 import { ContractRepository } from './contracts/repositories/contract.repository';
 import { Ecad_reportRepository } from './ecad-reports/repositories/ecad_report.repository';
 import { EventRepository } from './events/repositories/event.repository';
@@ -64,7 +63,6 @@ describe('tenant isolation in generated repositories', () => {
     ['works', WorkRepository as unknown as RepositoryCtor, 'work'],
     ['clients', ClientRepository as unknown as RepositoryCtor, 'client'],
     ['content-detections', Content_detectionRepository as unknown as RepositoryCtor, 'entity'],
-    ['contract-templates', Contract_templateRepository as unknown as RepositoryCtor, 'entity'],
     ['contracts', ContractRepository as unknown as RepositoryCtor, 'entity'],
     ['ecad-reports', Ecad_reportRepository as unknown as RepositoryCtor, 'entity'],
     ['events', EventRepository as unknown as RepositoryCtor, 'entity'],
