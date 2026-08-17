@@ -74,7 +74,7 @@ const ALLOWED_CALL_SITES: Record<string, string> = {
   "modules/catalog/pages/RegistroMusicas.tsx":
     "useObras/useFonogramas só para mutations. useProjetos() alimenta só o dropdown de projetos/gêneros (valores distintos) — risco documentado no próprio arquivo por falta de endpoint dedicado (equivalente a /works/stats/generos); busca, paginação e deep-links não dependem disso.",
   "modules/artist/components/ArtistaFormModal.tsx":
-    "useArtistas()/useClientes() só para mutations (addArtista/updateArtista/addCliente); o picker de contrato usa AsyncEntityCombobox.",
+    "useArtistas()/useClientes() só para mutations (addArtista/updateArtista/addCliente) — não há mais picker de contrato neste formulário (Task AA removeu a seção Classificação e Vínculos).",
   "modules/rh/pages/RH.tsx":
     "useFuncionarios() só para mutations + isLoading; nomes resolvidos via FuncionarioNomeCell (useEntityById) e o picker de documentos usa AsyncEntityCombobox.",
   "modules/rh/components/FuncionarioFormModal.tsx":
