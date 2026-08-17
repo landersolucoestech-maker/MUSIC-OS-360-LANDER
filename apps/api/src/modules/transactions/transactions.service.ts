@@ -26,10 +26,10 @@ const CANCELLED_STATUSES = new Set(['cancelado', 'cancelled']);
  * Único valor tratado como "elegível para auto-categorização" — qualquer
  * outra categoria explícita é sempre preservada (nunca sobrescrita).
  */
-const UNCATEGORIZED_PLACEHOLDER = 'outros';
+export const UNCATEGORIZED_PLACEHOLDER = 'outros';
 
 /** finance_category_keyword_rules só cobre RECEITA/DESPESA — demais tipos (investimento, imposto, transferencia) nunca são elegíveis. */
-function toRuleTransactionType(tipoTransacao: unknown): 'RECEITA' | 'DESPESA' | null {
+export function toRuleTransactionType(tipoTransacao: unknown): 'RECEITA' | 'DESPESA' | null {
   if (tipoTransacao === 'receita') return 'RECEITA';
   if (tipoTransacao === 'despesa') return 'DESPESA';
   return null;
@@ -404,7 +404,7 @@ export class TransactionsService {
 
     try {
       const suggestion = await this.financeCategoryRules.suggestCategoryForTransaction(tenantId, ruleType, descricao);
-      return suggestion?.categorySlug ?? currentCategoria;
+      return suggestion?.categoryName ?? currentCategoria;
     } catch {
       return currentCategoria;
     }

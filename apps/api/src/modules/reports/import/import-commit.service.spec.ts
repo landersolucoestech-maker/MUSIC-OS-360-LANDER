@@ -41,7 +41,7 @@ function makeSvc(opts: { validation?: ImportValidationResult; def?: ReportEntity
   const definitions = { getDefinition: () => (opts.def ?? DEF) } as any;
   const audit = { record: jest.fn() } as any;
   const encryption = { encryptNullable: jest.fn((v: string | null) => (v == null ? null : `enc:${v}`)) } as any;
-  const svc = new ImportCommitService(ds, engine, definitions, audit, encryption);
+  const svc = new ImportCommitService(ds, engine, definitions, audit, encryption, undefined as any);
   return { svc, qr, engine, audit };
 }
 
@@ -147,5 +147,97 @@ describe('ImportCommitService — grupo repetível na mesma aba', () => {
   it('falha explicitamente se o insert pai não retornar id', async () => {
     const { svc } = makeSvc({ def: PROJECTS_DEF, validation: projectsValidation([{ nome_musica: 'Faixa' }]), queryImpl: () => [] });
     await expect(svc.commit('projects', { filename: 'projects.xlsx', content: Buffer.from('xlsx') }, 'tenant-1', 'user-1')).rejects.toThrow(/sem id retornado/);
+  });
+});
+
+describe('ImportCommitService — transações: colunas físicas e categoria (Task X)', () => {
+  const TRANSACTIONS_DEF: ReportEntityDefinition = {
+    entityName: 'TransactionEntity', tableName: 'transactions', category: EntityCategory.REPORTABLE,
+    identityColumn: 'descricao', displayColumn: 'descricao', dateColumn: 'created_at',
+    exportableColumns: ['tipo_transacao', 'categoria', 'descricao', 'valor', 'data_transacao', 'status'],
+    importableColumns: ['tipo_transacao', 'categoria', 'descricao', 'valor', 'data_transacao', 'status'],
+    filterableColumns: ['status', 'tipo_transacao', 'categoria'], sortableColumns: [], searchableColumns: [],
+    sensitiveColumns: [], requiredImportColumns: ['descricao'], supportsExport: true, supportsImport: true,
+  };
+
+  function txValidation(row: Record<string, unknown>): ImportValidationResult {
+    return {
+      entity: 'transactions', supportsImport: true, mapping: {}, unknownColumns: [], ignoredColumns: [],
+      totalRows: 1, validRows: 1, invalidRows: 0,
+      rows: [{ index: 0, data: row, valid: true, errors: [], warnings: [] }],
+      errors: [], warnings: [],
+    };
+  }
+
+  function makeTxSvc(opts: {
+    row: Record<string, unknown>;
+    suggestion?: { categoryId: string; categoryName: string; ruleId: string } | null;
+    suggestThrows?: boolean;
+  }) {
+    const qr = makeQR(() => []);
+    const ds = { createQueryRunner: () => qr } as any;
+    const engine = { validateFile: jest.fn().mockReturnValue(txValidation(opts.row)) } as any;
+    const definitions = { getDefinition: () => TRANSACTIONS_DEF } as any;
+    const audit = { record: jest.fn() } as any;
+    const encryption = { encryptNullable: jest.fn() } as any;
+    const financeCategoryRules = {
+      suggestCategoryForTransaction: opts.suggestThrows
+        ? jest.fn().mockRejectedValue(new Error('matcher indisponível'))
+        : jest.fn().mockResolvedValue(opts.suggestion ?? null),
+    } as any;
+    const svc = new ImportCommitService(ds, engine, definitions, audit, encryption, financeCategoryRules);
+    return { svc, qr, financeCategoryRules };
+  }
+
+  function insertCall(qr: ReturnType<typeof makeQR>) {
+    const call = qr.query.mock.calls.find((c: any[]) => String(c[0]).startsWith('INSERT'));
+    return { sql: String(call?.[0]), params: call?.[1] as unknown[] };
+  }
+
+  it('grava tipo_transacao/data_transacao nas colunas físicas reais (tipo/data), não nas colunas de formulário', async () => {
+    const { svc, qr } = makeTxSvc({ row: { tipo_transacao: 'despesa', categoria: 'aluguel', descricao: 'Aluguel sala', data_transacao: '2026-01-05' } });
+    await svc.commit('transactions', { filename: 'tx.xlsx', content: Buffer.from('x') }, 'tenant-1', 'user-1');
+    const { sql, params } = insertCall(qr);
+    expect(sql).toContain('"tipo"');
+    expect(sql).not.toContain('"tipo_transacao"');
+    expect(sql).toContain('"data"');
+    expect(sql).not.toContain('"data_transacao"');
+    expect(params).toContain('despesa');
+  });
+
+  it('categoria explícita (não "outros") é preservada e o matcher não é consultado', async () => {
+    const { svc, qr, financeCategoryRules } = makeTxSvc({ row: { tipo_transacao: 'despesa', categoria: 'aluguel', descricao: 'Aluguel sala' } });
+    await svc.commit('transactions', { filename: 'tx.xlsx', content: Buffer.from('x') }, 'tenant-1', 'user-1');
+    expect(financeCategoryRules.suggestCategoryForTransaction).not.toHaveBeenCalled();
+    const { params } = insertCall(qr);
+    expect(params).toContain('aluguel');
+  });
+
+  it('categoria vazia na planilha aciona o matcher e aplica a sugestão (mesmo serviço da criação manual)', async () => {
+    const { svc, qr, financeCategoryRules } = makeTxSvc({
+      row: { tipo_transacao: 'despesa', categoria: '', descricao: 'Compra de cabos' },
+      suggestion: { categoryId: 'cat-1', categoryName: 'equipamentos', ruleId: 'rule-1' },
+    });
+    await svc.commit('transactions', { filename: 'tx.xlsx', content: Buffer.from('x') }, 'tenant-1', 'user-1');
+    expect(financeCategoryRules.suggestCategoryForTransaction).toHaveBeenCalledWith('tenant-1', 'DESPESA', 'Compra de cabos');
+    const { params } = insertCall(qr);
+    expect(params).toContain('equipamentos');
+  });
+
+  it('categoria vazia sem match cai em "outros" e o INSERT ainda satisfaz a coluna NOT NULL', async () => {
+    const { svc, qr } = makeTxSvc({ row: { tipo_transacao: 'despesa', categoria: '', descricao: 'Item desconhecido' }, suggestion: null });
+    const result = await svc.commit('transactions', { filename: 'tx.xlsx', content: Buffer.from('x') }, 'tenant-1', 'user-1');
+    expect(result.importedRows).toBe(1);
+    const { sql, params } = insertCall(qr);
+    expect(sql).toContain('"categoria"');
+    expect(params).toContain('outros');
+  });
+
+  it('matcher indisponível (exceção) não derruba a importação — cai em "outros"', async () => {
+    const { svc, qr } = makeTxSvc({ row: { tipo_transacao: 'despesa', categoria: '', descricao: 'Item X' }, suggestThrows: true });
+    const result = await svc.commit('transactions', { filename: 'tx.xlsx', content: Buffer.from('x') }, 'tenant-1', 'user-1');
+    expect(result.importedRows).toBe(1);
+    const { params } = insertCall(qr);
+    expect(params).toContain('outros');
   });
 });

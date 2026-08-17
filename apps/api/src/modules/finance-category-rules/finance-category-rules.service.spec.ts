@@ -86,7 +86,12 @@ describe('FinanceCategoryRulesService', () => {
     } as any);
 
     const [criteria] = (repo.update as jest.Mock).mock.calls[0];
-    expect(criteria).toEqual({ id: 'rule-1', tenant_id: 'tenant-1', updated_at: NOW });
+    expect(criteria.id).toBe('rule-1');
+    expect(criteria.tenant_id).toBe('tenant-1');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const op = criteria.updated_at as any;
+    expect(op._type).toBe('raw');
+    expect(op._objectLiteralParameters).toEqual({ expected: NOW });
   });
 
   it('update com expectedUpdatedAt desatualizado (0 linhas afetadas): lança ConflictException', async () => {
@@ -144,29 +149,29 @@ describe('FinanceCategoryRulesService.suggestCategoryForTransaction (Task W)', (
   };
 
   it('retorna a categoria (slug) da regra correspondente', async () => {
-    const { svc, repo } = makeSuggestService([activeRule], [{ category_slug: 'streaming' }]);
+    const { svc, repo } = makeSuggestService([activeRule], [{ category_name: 'streaming' }]);
 
     const result = await svc.suggestCategoryForTransaction('tenant-1', 'DESPESA', 'Pagamento Spotify mensal');
 
-    expect(result).toEqual({ categoryId: 'cat-1', categorySlug: 'streaming', ruleId: 'rule-1' });
+    expect(result).toEqual({ categoryId: 'cat-1', categoryName: 'streaming', ruleId: 'rule-1' });
     expect(repo.createQueryBuilder).toHaveBeenCalled();
   });
 
   it('retorna null quando nenhuma regra corresponde à descrição', async () => {
-    const { svc } = makeSuggestService([activeRule], [{ category_slug: 'streaming' }]);
+    const { svc } = makeSuggestService([activeRule], [{ category_name: 'streaming' }]);
     const result = await svc.suggestCategoryForTransaction('tenant-1', 'DESPESA', 'Aluguel do escritório');
     expect(result).toBeNull();
   });
 
   it('retorna null para descrição vazia (não executa a query)', async () => {
-    const { svc, repo } = makeSuggestService([activeRule], [{ category_slug: 'streaming' }]);
+    const { svc, repo } = makeSuggestService([activeRule], [{ category_name: 'streaming' }]);
     const result = await svc.suggestCategoryForTransaction('tenant-1', 'DESPESA', '');
     expect(result).toBeNull();
     expect(repo.createQueryBuilder).not.toHaveBeenCalled();
   });
 
   it('retorna null quando a categoria vinculada não tem slug (categoria removida)', async () => {
-    const { svc } = makeSuggestService([activeRule], [{ category_slug: null }]);
+    const { svc } = makeSuggestService([activeRule], [{ category_name: null }]);
     const result = await svc.suggestCategoryForTransaction('tenant-1', 'DESPESA', 'Pagamento Spotify');
     expect(result).toBeNull();
   });

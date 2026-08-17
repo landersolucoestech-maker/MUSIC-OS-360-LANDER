@@ -496,17 +496,20 @@ const AUDIOVISUAL_PROJECTS_CONTRACT: ReportFormContract = {
 };
 
 // ─── Transações Financeiras ─────────────────────────────────────────────────────
-// Colunas de formulário (regra 2026-07-12) usadas como canônicas em vez das
-// colunas legadas duplicadas (tipo/categoria/descricao/valor/data também
-// existem, escritas em paralelo — dual-write). Validação real é Zod
-// (transacao.validator.ts), não um DTO class-validator — não checado contra
-// FORM_DTO_BY_TABLE.
+// Colunas de formulário (regra 2026-07-12) — `tipo_transacao`/`data_transacao`
+// são a chave lógica do arquivo, mas a tabela NÃO as duplica de `tipo`/`data`
+// (essas são NOT NULL, sem default, e são as únicas lidas por
+// TransactionsService — tipo_transacao/data_transacao ficavam sempre NULL).
+// `physical` aponta a chave lógica para a coluna real, igual ao import/export
+// manual — sem isso, todo INSERT do importador violava NOT NULL. Validação
+// real é Zod (transacao.validator.ts), não um DTO class-validator — não
+// checado contra FORM_DTO_BY_TABLE.
 const TRANSACTIONS_CONTRACT: ReportFormContract = {
   tableName: 'transactions',
   identityColumn: 'descricao',
   fields: [
-    col('tipo_transacao'), col('tipo_cliente'), col('categoria'), col('subcategoria'),
-    col('descricao'), col('valor'), col('data_transacao'), col('status'),
+    col('tipo_transacao', 'tipo'), col('tipo_cliente'), col('categoria'), col('subcategoria'),
+    col('descricao'), col('valor'), col('data_transacao', 'data'), col('status'),
     col('artista_id'), col('projeto_id'), col('contrato_id'), col('evento_id'),
     col('fornecedor_cliente'), col('orgao_arrecadador'), col('centro_custo'), col('competencia'),
     col('conta_origem'), col('conta_destino'), col('item_investimento'), col('motivo_viagem'),

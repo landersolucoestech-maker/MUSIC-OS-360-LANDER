@@ -5,6 +5,7 @@
  * Sem import/export funcional ainda; apenas inventário classificado.
  */
 import { Module } from '@nestjs/common';
+import { FinanceCategoryRulesModule } from '../finance-category-rules/finance-category-rules.module';
 import { EntityMetadataService } from './entity-metadata.service';
 import { ReportEntityDefinitionService } from './definitions/report-entity-definition.service';
 import { ExportEngineService } from './export/export-engine.service';
@@ -21,6 +22,7 @@ import { ReportTableGuardService } from './report-table-guard.service';
 import { ReportsController } from './reports.controller';
 
 @Module({
+  imports: [FinanceCategoryRulesModule],
   controllers: [ReportsController],
   providers: [
     EntityMetadataService,

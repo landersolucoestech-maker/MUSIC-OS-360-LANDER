@@ -12,7 +12,7 @@ import type {
 
 export interface FinanceCategorySuggestion {
   categoryId: string;
-  categorySlug: string;
+  categoryName: string;
   ruleId: string;
 }
 
@@ -89,6 +89,11 @@ export class FinanceCategoryRulesService {
    * ordenadas por prioridade (empate: created_at mais antigo primeiro — mesmo
    * critério de list()). Nunca cruza tenant (WHERE tenant_id sempre presente).
    * Retorna null se nenhuma regra corresponder — o chamador decide o fallback.
+   *
+   * `financial_categories` não tem `slug` nem `deleted_at` (schema real —
+   * ver information_schema; a versão com slug era de um schema antigo já
+   * substituído). Usa `name` (o único identificador legível da categoria) e
+   * `is_active` (o soft-delete real da tabela).
    */
   async suggestCategoryForTransaction(
     tenantId: string,
@@ -99,8 +104,8 @@ export class FinanceCategoryRulesService {
 
     const { entities, raw } = await this.repo
       .createQueryBuilder('r')
-      .innerJoin('financial_categories', 'fc', 'fc.id = r.category_id AND fc.deleted_at IS NULL')
-      .addSelect('fc.slug', 'category_slug')
+      .innerJoin('financial_categories', 'fc', 'fc.id = r.category_id AND fc.is_active = true')
+      .addSelect('fc.name', 'category_name')
       .where('r.tenant_id = :tenantId', { tenantId })
       .andWhere('r.deleted_at IS NULL')
       .andWhere('r.active = true')
@@ -114,9 +119,9 @@ export class FinanceCategoryRulesService {
     if (!matched) return null;
 
     const index = entities.indexOf(matched);
-    const categorySlug = raw[index]?.category_slug as string | undefined;
-    if (!categorySlug) return null;
+    const categoryName = raw[index]?.category_name as string | undefined;
+    if (!categoryName) return null;
 
-    return { categoryId: matched.category_id, categorySlug, ruleId: matched.id };
+    return { categoryId: matched.category_id, categoryName, ruleId: matched.id };
   }
 }

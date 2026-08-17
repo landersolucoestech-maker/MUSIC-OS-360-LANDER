@@ -22,6 +22,8 @@ import { REPEATING_GROUP_IMPORT_WRITERS } from '../computed-fields/registry';
 import { ImportAuditService } from './import-audit.service';
 import { ImportEngineService } from './import-engine.service';
 import type { RowValidation } from './import.types';
+import { FinanceCategoryRulesService } from '../../finance-category-rules/finance-category-rules.service';
+import { UNCATEGORIZED_PLACEHOLDER, toRuleTransactionType } from '../../transactions/transactions.service';
 
 export interface ImportCommitResult {
   entity: string;
@@ -116,6 +118,7 @@ export class ImportCommitService {
     private readonly definitions: ReportEntityDefinitionService,
     private readonly audit: ImportAuditService,
     private readonly encryption: EncryptionService,
+    @Optional() private readonly financeCategoryRules: FinanceCategoryRulesService,
   ) {}
 
   async commit(
@@ -262,6 +265,11 @@ export class ImportCommitService {
       cols.push(physicalColumn);
       values.push(object);
     }
+
+    if (def.tableName === 'transactions') {
+      await this.resolveTransactionCategoria(group.generalRow.data, cols, values, tenantId);
+    }
+
     cols.push('tenant_id');
     values.push(tenantId);
 
@@ -281,5 +289,38 @@ export class ImportCommitService {
     if (!writer) throw new Error(`[reports-import] grupo repetível sem writer registrado: ${def.tableName}.${repeatingGroup.key}`);
 
     await writer(qr, tenantId, insertedId, items);
+  }
+
+  /**
+   * `transactions.categoria` é NOT NULL sem default. A criação manual
+   * (TransactionsService) já tem fallback para "outros" + auto-categorização
+   * por regra (Task W); o importador XLSX não tinha nenhum dos dois — uma
+   * célula vazia quebrava o INSERT. Reaproveita o mesmo
+   * FinanceCategoryRulesService.suggestCategoryForTransaction usado na
+   * criação manual; nunca duplica o matcher.
+   */
+  private async resolveTransactionCategoria(
+    rowData: Record<string, unknown>,
+    cols: string[],
+    values: unknown[],
+    tenantId: string,
+  ): Promise<void> {
+    const raw = rowData['categoria'];
+    let categoria = (typeof raw === 'string' && raw.trim()) || UNCATEGORIZED_PLACEHOLDER;
+
+    if (categoria.toLowerCase() === UNCATEGORIZED_PLACEHOLDER && this.financeCategoryRules) {
+      const ruleType = toRuleTransactionType(rowData['tipo_transacao']);
+      const descricao = rowData['descricao'];
+      if (ruleType && typeof descricao === 'string' && descricao.trim()) {
+        try {
+          const suggestion = await this.financeCategoryRules.suggestCategoryForTransaction(tenantId, ruleType, descricao);
+          if (suggestion) categoria = suggestion.categoryName;
+        } catch { /* mantém o placeholder */ }
+      }
+    }
+
+    const index = cols.indexOf('categoria');
+    if (index >= 0) values[index] = categoria;
+    else { cols.push('categoria'); values.push(categoria); }
   }
 }

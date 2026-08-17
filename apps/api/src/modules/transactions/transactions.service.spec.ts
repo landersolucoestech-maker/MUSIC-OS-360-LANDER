@@ -81,10 +81,14 @@ describe('TransactionsService — concorrência otimista em update/patch', () =>
       expectedUpdatedAt: NOW.toISOString(),
     } as any);
 
-    expect(mockDs._repo.update).toHaveBeenCalledWith(
-      { id: TX_ID, tenant_id: TENANT, updated_at: NOW },
-      expect.objectContaining({ descricao: 'Editado' }),
-    );
+    const [criteria, payload] = mockDs._repo.update.mock.calls[0];
+    expect(criteria.id).toBe(TX_ID);
+    expect(criteria.tenant_id).toBe(TENANT);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const op = criteria.updated_at as any;
+    expect(op._type).toBe('raw');
+    expect(op._objectLiteralParameters).toEqual({ expected: NOW });
+    expect(payload).toEqual(expect.objectContaining({ descricao: 'Editado' }));
   });
 
   it('com expectedUpdatedAt desatualizado (0 linhas afetadas): lança ConflictException (409), não sobrescreve', async () => {
@@ -137,7 +141,7 @@ describe('TransactionsService.create — auto-categorização por regras (Task W
     return { getRepository: jest.fn(() => repo), _repo: repo, _saved: savedEntities };
   }
 
-  function buildServiceWithMatcher(suggestion: { categoryId: string; categorySlug: string; ruleId: string } | null | Error) {
+  function buildServiceWithMatcher(suggestion: { categoryId: string; categoryName: string; ruleId: string } | null | Error) {
     const mockDs = buildCreateDs();
     const suggestFn = jest.fn(async () => {
       if (suggestion instanceof Error) throw suggestion;
@@ -161,7 +165,7 @@ describe('TransactionsService.create — auto-categorização por regras (Task W
   });
 
   it("categoria 'outros' + regra correspondente: aplica a categoria sugerida", async () => {
-    const { service } = await buildServiceWithMatcher({ categoryId: 'cat-1', categorySlug: 'streaming', ruleId: 'rule-1' });
+    const { service } = await buildServiceWithMatcher({ categoryId: 'cat-1', categoryName: 'streaming', ruleId: 'rule-1' });
 
     const saved = await service.create(TENANT, 'u1', {
       tipoTransacao: 'despesa', descricao: 'Pagamento Spotify mensal', categoria: 'outros', valor: '50',
@@ -171,7 +175,7 @@ describe('TransactionsService.create — auto-categorização por regras (Task W
   });
 
   it("categoria ausente (default 'outros') + regra correspondente: aplica a categoria sugerida", async () => {
-    const { service } = await buildServiceWithMatcher({ categoryId: 'cat-2', categorySlug: 'servicos', ruleId: 'rule-2' });
+    const { service } = await buildServiceWithMatcher({ categoryId: 'cat-2', categoryName: 'servicos', ruleId: 'rule-2' });
 
     const saved = await service.create(TENANT, 'u1', {
       tipoTransacao: 'receita', descricao: 'Recebimento de show', valor: '500',
@@ -192,7 +196,7 @@ describe('TransactionsService.create — auto-categorização por regras (Task W
   });
 
   it('nunca cruza tenant: passa exatamente o tenantId do chamador ao matcher', async () => {
-    const { service, suggestFn } = await buildServiceWithMatcher({ categoryId: 'c', categorySlug: 's', ruleId: 'r' });
+    const { service, suggestFn } = await buildServiceWithMatcher({ categoryId: 'c', categoryName: 's', ruleId: 'r' });
     const otherTenant = 'tenant-other';
 
     await service.create(otherTenant, 'u1', {
@@ -203,7 +207,7 @@ describe('TransactionsService.create — auto-categorização por regras (Task W
   });
 
   it('tipo transferencia: nunca aciona o matcher (finance-category-rules só cobre RECEITA/DESPESA)', async () => {
-    const { service, suggestFn } = await buildServiceWithMatcher({ categoryId: 'c', categorySlug: 's', ruleId: 'r' });
+    const { service, suggestFn } = await buildServiceWithMatcher({ categoryId: 'c', categoryName: 's', ruleId: 'r' });
 
     const saved = await service.create(TENANT, 'u1', {
       tipoTransacao: 'transferencia', descricao: 'Transferência entre contas', categoria: 'outros', valor: '10',
@@ -226,8 +230,8 @@ describe('TransactionsService.create — auto-categorização por regras (Task W
   it('importação em lote (múltiplas transações OFX em sequência): cada uma é categorizada de forma independente e determinística', async () => {
     const mockDs = buildCreateDs();
     const suggestFn = jest.fn(async (_tenant: string, _type: string, descricao: string) => {
-      if (descricao.toLowerCase().includes('spotify')) return { categoryId: 'cat-1', categorySlug: 'streaming', ruleId: 'r1' };
-      if (descricao.toLowerCase().includes('uber')) return { categoryId: 'cat-2', categorySlug: 'transporte', ruleId: 'r2' };
+      if (descricao.toLowerCase().includes('spotify')) return { categoryId: 'cat-1', categoryName: 'streaming', ruleId: 'r1' };
+      if (descricao.toLowerCase().includes('uber')) return { categoryId: 'cat-2', categoryName: 'transporte', ruleId: 'r2' };
       return null;
     });
     const financeCategoryRules = { suggestCategoryForTransaction: suggestFn } as any;
