@@ -84,16 +84,25 @@ describe('AudiovisualApprovalsService — concorrência otimista em decide()', (
   });
 
   it('com expectedUpdatedAt correto: inclui updated_at no critério além do status guard', async () => {
+    // Task Y — decide() passou a reaproveitar o casUpdate compartilhado
+    // (Task X); updated_at deixou de ser igualdade exata de Date (timestamp
+    // sem tz perde precisão no round-trip Date/JSON) e virou Raw() truncado
+    // a milissegundos — ver optimistic-update.util.ts.
     service = await buildService({ affected: 1 });
     await service.decide(TENANT, 'manager1', APPROVAL_ID, {
       status: 'approved',
       expectedUpdatedAt: NOW.toISOString(),
     } as any);
 
-    expect(mockDs._approvalsRepo.update).toHaveBeenCalledWith(
-      { id: APPROVAL_ID, tenant_id: TENANT, status: 'pending', updated_at: NOW },
-      expect.objectContaining({ status: 'approved' }),
-    );
+    const [criteria, payload] = mockDs._approvalsRepo.update.mock.calls[0];
+    expect(criteria.id).toBe(APPROVAL_ID);
+    expect(criteria.tenant_id).toBe(TENANT);
+    expect(criteria.status).toBe('pending');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const op = criteria.updated_at as any;
+    expect(op._type).toBe('raw');
+    expect(op._objectLiteralParameters).toEqual({ expected: NOW });
+    expect(payload).toEqual(expect.objectContaining({ status: 'approved' }));
   });
 
   it('expectedUpdatedAt com formato inválido: 400, não 500 nem silêncio', async () => {

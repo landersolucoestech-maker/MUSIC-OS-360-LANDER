@@ -8,6 +8,7 @@ import {
   AudiovisualProjectEntity,
   AudiovisualDeliverableEntity,
 } from '../../../database/entities';
+import { buildExpectedUpdatedAtCriterion } from '../../../common/persistence/optimistic-update.util';
 import type { RequestApprovalDto, ApprovalDecisionDto, QueryApprovalDto } from '../dto/audiovisual.dto';
 
 @Injectable()
@@ -96,12 +97,18 @@ export class AudiovisualApprovalsService {
     // pre-check acima) — fecha a janela entre o findById e este UPDATE em
     // que duas decisões concorrentes (dois managers) poderiam sobrescrever
     // uma à outra silenciosamente. 0 linhas afetadas = outra decisão já
-    // venceu a corrida (ou o registro mudou desde expectedUpdatedAt).
+    // venceu a corrida (ou o registro mudou desde expectedUpdatedAt) — SEMPRE
+    // vira 409, mesmo sem expectedUpdatedAt (o guard de status por si só já
+    // detecta a corrida). Isso difere do casUpdate() compartilhado, que só
+    // checa affected===0 quando expectedUpdatedAt é fornecido (retrocompat
+    // com chamadores sem guard adicional) — por isso não dá para delegar a
+    // chamada inteira a ele. Reaproveita só a parte que importa (Task Y): o
+    // critério de updated_at truncado a milissegundos, extraído do mesmo
+    // casUpdate — nunca duplica a lógica de comparação/o bug de precisão
+    // que ela já teve (Task X).
     const criteria: Record<string, unknown> = { id, tenant_id: tenantId, status: 'pending' };
     if (dto.expectedUpdatedAt) {
-      const expected = new Date(dto.expectedUpdatedAt);
-      if (Number.isNaN(expected.getTime())) throw new BadRequestException('expectedUpdatedAt inválido');
-      criteria.updated_at = expected;
+      criteria.updated_at = buildExpectedUpdatedAtCriterion(dto.expectedUpdatedAt);
     }
     const result = await this.r.update(criteria as never, patch as never);
     if (result.affected === 0) {

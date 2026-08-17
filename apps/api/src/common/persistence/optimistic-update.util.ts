@@ -21,6 +21,36 @@ import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialE
  * (@UpdateDateColumn ou equivalente) — o CAS depende dela já refletir cada
  * escrita anterior.
  */
+/**
+ * Task Y — extraído de dentro de `casUpdate` para reuso por implementações
+ * que precisam do MESMO critério seguro de comparação de `updated_at`, mas
+ * têm uma semântica de conflito diferente da de `casUpdate` (ex.:
+ * AudiovisualApprovalsService.decide() precisa que 0 linhas afetadas vire
+ * 409 SEMPRE — mesmo sem expectedUpdatedAt, por causa do guard adicional de
+ * status='pending' na própria condição do UPDATE — enquanto `casUpdate` só
+ * checa isso quando expectedUpdatedAt foi fornecido, por retrocompatibilidade
+ * com os ~44 chamadores existentes). Reaproveitar isto evita duplicar a
+ * lógica de truncamento (o bug de precisão em si), sem forçar todo chamador
+ * de `casUpdate` a herdar uma semântica de conflito que não pediu.
+ *
+ * `updated_at` costuma ser um `timestamp` do Postgres sem precisão
+ * declarada (microssegundos); o valor que chega aqui já perdeu essa
+ * precisão ao passar por Date/JSON (milissegundos, no máximo — Date só
+ * guarda isso). Uma igualdade exata nunca bateria com o valor real do
+ * banco — compara truncado a milissegundos dos dois lados, senão todo CAS
+ * válido seria rejeitado como conflito por ruído de subprecisão.
+ */
+export function buildExpectedUpdatedAtCriterion(expectedUpdatedAt: string): unknown {
+  const expected = new Date(expectedUpdatedAt);
+  if (Number.isNaN(expected.getTime())) {
+    throw new BadRequestException('expectedUpdatedAt inválido');
+  }
+  return Raw(
+    (alias) => `date_trunc('milliseconds', ${alias}) = date_trunc('milliseconds', :expected::timestamptz)`,
+    { expected },
+  );
+}
+
 export async function casUpdate<T extends ObjectLiteral>(
   repo: Repository<T>,
   criteria: FindOptionsWhere<T>,
@@ -31,20 +61,7 @@ export async function casUpdate<T extends ObjectLiteral>(
   const finalCriteria: FindOptionsWhere<T> = { ...criteria };
 
   if (expectedUpdatedAt) {
-    const expected = new Date(expectedUpdatedAt);
-    if (Number.isNaN(expected.getTime())) {
-      throw new BadRequestException('expectedUpdatedAt inválido');
-    }
-    // `updated_at` costuma ser um `timestamp` do Postgres sem precisão
-    // declarada (microssegundos); o valor que chega aqui já perdeu essa
-    // precisão ao passar por Date/JSON (milissegundos, no máximo — Date só
-    // guarda isso). Uma igualdade exata nunca bateria com o valor real do
-    // banco — compara truncado a milissegundos dos dois lados, senão todo
-    // CAS válido seria rejeitado como conflito por ruído de subprecisão.
-    (finalCriteria as Record<string, unknown>)['updated_at'] = Raw(
-      (alias) => `date_trunc('milliseconds', ${alias}) = date_trunc('milliseconds', :expected::timestamptz)`,
-      { expected },
-    );
+    (finalCriteria as Record<string, unknown>)['updated_at'] = buildExpectedUpdatedAtCriterion(expectedUpdatedAt);
   }
 
   const result = await repo.update(finalCriteria, payload);
