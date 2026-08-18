@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { IntegrationError } from "@/shared/lib/errors";
+import { ConflictError, IntegrationError } from "@/shared/lib/errors";
 import { getExpectedUpdatedAt, isConcurrencyConflict, handleConcurrencyConflict } from "./useConcurrencyConflict";
 
 vi.mock("sonner", () => ({
@@ -27,9 +27,10 @@ describe("getExpectedUpdatedAt", () => {
 });
 
 describe("isConcurrencyConflict", () => {
-  it("true apenas para IntegrationError com statusCode 409", () => {
-    expect(isConcurrencyConflict(new IntegrationError("api", "conflict", { statusCode: 409 }))).toBe(true);
+  it("true apenas para ConflictError — é o que api-client.ts realmente lança em HTTP 409", () => {
+    expect(isConcurrencyConflict(new ConflictError("conflict"))).toBe(true);
     expect(isConcurrencyConflict(new IntegrationError("api", "not found", { statusCode: 404 }))).toBe(false);
+    expect(isConcurrencyConflict(new IntegrationError("api", "conflict", { statusCode: 409 }))).toBe(false);
     expect(isConcurrencyConflict(new Error("outro erro"))).toBe(false);
     expect(isConcurrencyConflict(null)).toBe(false);
   });
@@ -39,7 +40,7 @@ describe("handleConcurrencyConflict", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("409: mostra toast específico, retorna true (chamador NÃO fecha o formulário)", () => {
-    const err = new IntegrationError("api", "conflict", { statusCode: 409 });
+    const err = new ConflictError("conflict");
     const handled = handleConcurrencyConflict(err, "contrato");
     expect(handled).toBe(true);
     expect(toast.error).toHaveBeenCalledTimes(1);

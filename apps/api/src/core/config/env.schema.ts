@@ -346,10 +346,6 @@ export const envSchema = z.object({
   // Master switch for runtime session-context (SET LOCAL app.current_tenant_id).
   // OFF by default → zero behavioural change. Must be explicitly 'true' to enable.
   DATABASE_SESSION_CONTEXT_ENABLED: z.enum(['true', 'false']).default('false'),
-  // Reserved gate documenting that the API should connect with a NOBYPASSRLS role.
-  // OFF by default; enabling is an explicit operator decision per environment.
-  DATABASE_RLS_ENFORCEMENT: z.enum(['true', 'false']).default('false'),
-
   REDIS_QUEUE_URL: z
     .string()
     .optional()
@@ -385,10 +381,6 @@ export const envSchema = z.object({
       { message: 'SUPABASE_URL is required in production' },
     ),
 
-  JWT_SECRET: z.string().default('dev_jwt_secret_placeholder'),
-  JWT_EXPIRES_IN: z.string().default('1h'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
-
   CORS_ORIGINS: z
     .string()
     .default('http://localhost:5000')
@@ -414,8 +406,6 @@ export const envSchema = z.object({
       },
       { message: 'ENCRYPTION_KEY cannot be all-zero in production or staging' },
     ),
-  ENCRYPTION_IV_SECRET: z.string().min(1).default('dev_iv_secret_placeholder'),
-
   // Supabase auth keys — service role only ever used in backend (never VITE_*)
   SUPABASE_ANON_KEY: z
     .string()
@@ -554,7 +544,6 @@ export const envSchema = z.object({
   YOUTUBE_API_KEY: z.string().optional(),
 
   SOUNDCLOUD_CLIENT_ID: z.string().optional(),
-  SOUNDCLOUD_CLIENT_SECRET: z.string().optional(),
 
   META_APP_ID: z.string().optional(),
   META_APP_SECRET: z.string().optional(),
@@ -563,6 +552,11 @@ export const envSchema = z.object({
   TIKTOK_CLIENT_KEY: z.string().optional(),
   TIKTOK_CLIENT_SECRET: z.string().optional(),
   TIKTOK_REDIRECT_URI: z.string().optional(),
+
+  // WhatsApp Cloud API (Meta) — phoneNumberId/accessToken/wabaId são por
+  // tenant (ver WhatsAppCloudProvider.configure, mesmo padrão do Apple Music).
+  // O verify token é único por app Meta (um webhook para todas as WABAs).
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
 
   DOCUSIGN_INTEGRATION_KEY: z.string().optional(),
   DOCUSIGN_CLIENT_SECRET: z.string().optional(),

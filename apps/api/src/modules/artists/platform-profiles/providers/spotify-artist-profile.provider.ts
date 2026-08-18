@@ -4,6 +4,7 @@ import type {
   ArtistPlatformProviderInput,
   SocialPlatformProfileSnapshot,
 } from '../social-platform-sync.types';
+import { parseSpotifyArtistId } from '../../../integrations/spotify/spotify-url.util';
 
 const SPOTIFY_ACCOUNTS = 'https://accounts.spotify.com';
 const SPOTIFY_API = 'https://api.spotify.com/v1';
@@ -23,7 +24,7 @@ export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
       );
     }
 
-    const artistId = input.externalId ?? this.extractArtistId(input.externalUrl ?? '');
+    const artistId = input.externalId ?? parseSpotifyArtistId(input.externalUrl ?? '');
     if (!artistId) throw new Error('Spotify artist id ausente ou inválido');
 
     const token = await this.getClientCredentialsToken();
@@ -70,13 +71,6 @@ export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
       last_synced_at: new Date(),
       last_error: null,
     };
-  }
-
-  private extractArtistId(value: string): string | null {
-    if (!value) return null;
-    const urlMatch = value.match(/artist\/([A-Za-z0-9]+)/);
-    if (urlMatch?.[1]) return urlMatch[1];
-    return /^[A-Za-z0-9]{10,}$/.test(value) ? value : null;
   }
 
   private async getClientCredentialsToken(): Promise<string> {

@@ -1,0 +1,124 @@
+import 'reflect-metadata';
+import { ConfigService } from '@nestjs/config';
+import { AppleMusicService } from './apple-music.service';
+import { EncryptionService } from '../../../core/security/encryption.service';
+
+const TEST_KEY = '0000000000000000000000000000000000000000000000000000000000000000';
+
+// Chave EC (P-256) sintética gerada localmente só para este teste — nunca uma
+// credencial Apple real. `buildDeveloperToken` exige exatamente esta curva (ES256).
+const TEST_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgL31gt/CymDrlnoX5
+Ir7QchC0+4J/AJJPUD5tFVY/aa+hRANCAAQ4RWLRxdQnRpeF55Gd7CZuvo+inhai
+aU1DLtKfNI1lucSwrqKtGOpCvcrxAoA+SVxhH99FWLf8fHGxWfd8QSCR
+-----END PRIVATE KEY-----`;
+
+function makeEncryption(): EncryptionService {
+  const config = { get: jest.fn().mockReturnValue(TEST_KEY) } as unknown as ConfigService;
+  return new EncryptionService(config);
+}
+
+const TENANT_A = 'tenant-a';
+
+/** In-memory stand-in for the `integrations` table (saveCredentials/loadCredentials). */
+function makeIntegrationsStore() {
+  const rows = new Map<string, any>();
+  const key = (t: string, p: string) => `${t}:${p}`;
+
+  const qb: any = {
+    _where: null as null | ((row: any) => boolean),
+    where(_sql: string, params: any) {
+      this._where = (row: any) => row.tenant_id === params.tenantId && row.provider === params.provider;
+      return this;
+    },
+    getOne: jest.fn(async function (this: any) {
+      for (const row of rows.values()) if (this._where?.(row)) return row;
+      return null;
+    }),
+  };
+
+  return {
+    createQueryBuilder: jest.fn(() => qb),
+    create: jest.fn((v: any) => ({ id: `${v.tenant_id}-${v.provider}`, ...v })),
+    save: jest.fn(async (v: any) => { rows.set(key(v.tenant_id, v.provider), v); return v; }),
+    update: jest.fn(async (crit: any, patch: any) => {
+      for (const row of rows.values()) if (row.id === crit.id) Object.assign(row, patch);
+    }),
+    _rows: rows,
+  };
+}
+
+function makeService(integRepo: ReturnType<typeof makeIntegrationsStore>) {
+  const ds: any = { getRepository: jest.fn(() => integRepo) };
+  return new AppleMusicService(ds, makeEncryption());
+}
+
+function decodeJwtSegment(segment: string): any {
+  return JSON.parse(Buffer.from(segment, 'base64url').toString('utf8'));
+}
+
+describe('AppleMusicService', () => {
+  let integRepo: ReturnType<typeof makeIntegrationsStore>;
+  let service: AppleMusicService;
+  let fetchMock: jest.Mock;
+
+  beforeEach(() => {
+    integRepo = makeIntegrationsStore();
+    service   = makeService(integRepo);
+    fetchMock = jest.fn();
+    (global as any).fetch = fetchMock;
+  });
+
+  it('sem credenciais configuradas: retorna erro explícito, nunca chama a API Apple', async () => {
+    const result = await service.getArtistFromCatalog(TENANT_A, 'some-id');
+    expect(result).toEqual({ error: 'Apple Music não configurado' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('configure(): persiste team_id/key_id/private_key cifrados — nunca em texto plano', async () => {
+    await service.configure(TENANT_A, 'TEAM123', 'KEY456', TEST_PRIVATE_KEY);
+
+    const raw = [...integRepo._rows.values()][0];
+    expect(raw.credentials_encrypted).not.toContain(TEST_PRIVATE_KEY);
+    expect(raw.credentials_encrypted).not.toContain('TEAM123');
+  });
+
+  it('getProviderStatus(): nunca expõe a private key — só {connected, last_sync_at}', async () => {
+    await service.configure(TENANT_A, 'TEAM123', 'KEY456', TEST_PRIVATE_KEY);
+    const status = await service.getProviderStatus(TENANT_A);
+    expect(status).toEqual({ connected: true, last_sync_at: null });
+    expect(JSON.stringify(status)).not.toContain('PRIVATE KEY');
+  });
+
+  it('com credenciais configuradas: assina um developer token ES256 válido e chama a Apple API com Bearer', async () => {
+    await service.configure(TENANT_A, 'TEAM123', 'KEY456', TEST_PRIVATE_KEY);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: [{ attributes: { name: 'Artist X', genreNames: ['Pop'], url: 'https://x' } }] }),
+    });
+
+    const result = await service.getArtistFromCatalog(TENANT_A, 'artist-id-123', 'br');
+
+    expect(result).toMatchObject({ name: 'Artist X' });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/catalog/br/artists/artist-id-123');
+
+    const auth = (init.headers as Record<string, string>)['Authorization'];
+    expect(auth).toMatch(/^Bearer /);
+    const token = auth.replace('Bearer ', '');
+    const [headerB64, payloadB64, sig] = token.split('.');
+    expect(decodeJwtSegment(headerB64)).toEqual({ alg: 'ES256', kid: 'KEY456' });
+    const payload = decodeJwtSegment(payloadB64);
+    expect(payload.iss).toBe('TEAM123');
+    expect(payload.exp - payload.iat).toBe(15_777_000);
+    expect(sig.length).toBeGreaterThan(0);
+  });
+
+  it('propaga status de erro HTTP da Apple API sem mascarar como sucesso', async () => {
+    await service.configure(TENANT_A, 'TEAM123', 'KEY456', TEST_PRIVATE_KEY);
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
+
+    const result = await service.getArtistFromCatalog(TENANT_A, 'artist-id-123');
+    expect(result).toEqual({ error: 'Apple Music API error: 401' });
+  });
+});

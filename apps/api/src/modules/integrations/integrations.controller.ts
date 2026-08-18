@@ -20,6 +20,7 @@ import { InstagramService }   from './instagram/instagram.service';
 import { TikTokService }      from './tiktok/tiktok.service';
 import { GoogleAdsService }   from './google-ads/google-ads.service';
 import { AbramusService }     from './abramus/abramus.service';
+import { WhatsAppCloudProvider } from './whatsapp/whatsapp-cloud.provider';
 import { IntegrationBaseService } from './integration-base.service';
 import {
   ConfigureAutentiqueDto,
@@ -61,6 +62,7 @@ export class IntegrationsController {
     private readonly tiktok:      TikTokService,
     private readonly googleAds:   GoogleAdsService,
     private readonly abramus:     AbramusService,
+    private readonly whatsapp:    WhatsAppCloudProvider,
     private readonly integrationBase: IntegrationBaseService,
     private readonly config:      ConfigService,
     private readonly cache:       CacheService,
@@ -678,6 +680,47 @@ export class IntegrationsController {
     return this.appleMusic.searchCatalog(
       req.tenant?.id ?? req.tenantId, q, types ?? 'artists,albums', storefront ?? 'br', limit ? +limit : 10,
     );
+  }
+
+  // ─── WhatsApp Cloud API (Meta) ──────────────────────────────────────────────
+
+  @Post('whatsapp/configure')
+  @RequireRole('admin')
+  @Audit('integration.connected')
+  @ApiOperation({ summary: 'Configurar WhatsApp Cloud API (admin+)' })
+  @HttpCode(HttpStatus.OK)
+  configureWhatsApp(
+    @Request() req: any,
+    @Body() body: { phoneNumberId: string; accessToken: string; wabaId: string },
+  ) {
+    return this.whatsapp.configure(req.tenant?.id ?? req.tenantId, body.phoneNumberId, body.accessToken, body.wabaId);
+  }
+
+  @Get('whatsapp/status')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Status integração WhatsApp' })
+  whatsappStatus(@Request() req: any) {
+    return this.whatsapp.getProviderStatus(req.tenant?.id ?? req.tenantId);
+  }
+
+  @Delete('whatsapp/disconnect')
+  @RequireRole('admin')
+  @Audit('integration.disconnected')
+  @ApiOperation({ summary: 'Desconectar WhatsApp (admin+)' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  whatsappDisconnect(@Request() req: any) {
+    return this.whatsapp.disconnectProvider(req.tenant?.id ?? req.tenantId);
+  }
+
+  @Post('whatsapp/send')
+  @RequireRole('editor')
+  @Audit('integration.whatsapp_message_sent')
+  @ApiOperation({ summary: 'Enviar mensagem de texto via WhatsApp Cloud API' })
+  sendWhatsAppMessage(
+    @Request() req: any,
+    @Body() body: { to: string; body: string },
+  ) {
+    return this.whatsapp.sendTextMessage(req.tenant?.id ?? req.tenantId, body.to, body.body);
   }
 
   // ─── Instagram ─────────────────────────────────────────────────────────────

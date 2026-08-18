@@ -9,6 +9,7 @@ import { EncryptionService } from '../../../core/security/encryption.service';
 import { CircuitBreakerRegistry } from '../../../core/resilience/circuit-breaker.registry';
 import { assertAllowedHost, assertSafePathSegment } from '../../../core/resilience/safe-url';
 import { QUEUE_NAMES } from '../../../queues/queue.constants';
+import { parseSpotifyArtistId } from './spotify-url.util';
 
 const PROVIDER = 'spotify';
 const SPOTIFY_ACCOUNTS = 'https://accounts.spotify.com';
@@ -115,12 +116,8 @@ export class SpotifyService {
     return !!(process.env['SPOTIFY_CLIENT_ID'] && process.env['SPOTIFY_CLIENT_SECRET']);
   }
 
-  isAdsConfigured(): boolean {
-    return !!(process.env['SPOTIFY_ADS_CLIENT_ID'] && process.env['SPOTIFY_ADS_CLIENT_SECRET']);
-  }
-
   getAuthUrl(tenantId: string, userId: string): string {
-    const clientId = process.env['SPOTIFY_ADS_CLIENT_ID'] ?? process.env['SPOTIFY_CLIENT_ID'] ?? '';
+    const clientId = process.env['SPOTIFY_CLIENT_ID'] ?? '';
     const redirectUri = process.env['SPOTIFY_REDIRECT_URI'] ?? '';
     if (!clientId || !redirectUri) {
       throw new ServiceUnavailableException('Spotify OAuth not configured');
@@ -157,8 +154,7 @@ export class SpotifyService {
   }
 
   extractArtistId(spotifyUrl: string): string | null {
-    const match = spotifyUrl.match(/artist\/([A-Za-z0-9]+)/);
-    return match ? match[1] : null;
+    return parseSpotifyArtistId(spotifyUrl);
   }
 
   async handleCallback(code: string, state: string): Promise<void> {
@@ -193,18 +189,7 @@ export class SpotifyService {
   async syncArtistMetrics(tenantId: string, spotifyUrlOrId: string): Promise<{ listeners: number | null; popularity: number; name: string; image: string | null } | null> {
     if (!this.isConfigured()) return null;
 
-    // Proper URL host check (not a substring match): `evil.com/spotify.com`
-    // must NOT be treated as a Spotify URL (CWE-20).
-    let isSpotifyUrl = false;
-    try {
-      const host = new URL(spotifyUrlOrId).hostname.toLowerCase();
-      isSpotifyUrl = host === 'spotify.com' || host.endsWith('.spotify.com');
-    } catch {
-      isSpotifyUrl = false;
-    }
-    const artistId = isSpotifyUrl
-      ? this.extractArtistId(spotifyUrlOrId)
-      : spotifyUrlOrId;
+    const artistId = parseSpotifyArtistId(spotifyUrlOrId);
 
     if (!artistId) {
       this.logger.warn(`Spotify: link inválido — ${spotifyUrlOrId}`);

@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { IntegrationError } from "@/shared/lib/errors";
+import { ConflictError } from "@/shared/lib/errors";
 
 /**
  * Task L — leitura do `updated_at` original de uma entidade carregada, para
@@ -21,9 +21,14 @@ export function getExpectedUpdatedAt(
   return typeof value === "string" ? value : undefined;
 }
 
-/** True quando o erro é um 409 do backend (versão desatualizada — outra sessão salvou primeiro). */
+/**
+ * True quando o erro é um 409 do backend (versão desatualizada — outra sessão
+ * salvou primeiro). `api-client.ts` mapeia todo HTTP 409 para `ConflictError`
+ * (nunca `IntegrationError` — esse é só o fallback para status não mapeados),
+ * então é essa classe que precisa ser checada aqui.
+ */
 export function isConcurrencyConflict(err: unknown): boolean {
-  return err instanceof IntegrationError && err.statusCode === 409;
+  return err instanceof ConflictError;
 }
 
 /**
