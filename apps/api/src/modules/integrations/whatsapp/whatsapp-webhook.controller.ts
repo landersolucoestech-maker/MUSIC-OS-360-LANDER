@@ -1,4 +1,7 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Headers, Logger, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  Body, Controller, ForbiddenException, Get, HttpCode, HttpStatus, Headers, Logger,
+  Post, Query, Req, Res, ServiceUnavailableException,
+} from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ApiExcludeController } from '@nestjs/swagger';
@@ -63,18 +66,7 @@ export class WhatsAppWebhookController {
     @Headers('x-hub-signature-256') signature: string | undefined,
     @Req() req: RawBodyRequest<Request>,
   ): Promise<{ received: true }> {
-    const rawBody = req.rawBody ? req.rawBody.toString('utf8') : null;
-    const appSecret = process.env['META_APP_SECRET'] ?? '';
-
-    if (rawBody && appSecret && signature) {
-      const valid = this.webhookSvc.validateHmacSignature({
-        rawBody, secret: appSecret, received: signature, algorithm: 'sha256', prefix: 'sha256=',
-      });
-      if (!valid) {
-        this.logger.warn('[whatsapp/webhook] Assinatura X-Hub-Signature-256 inválida — evento ignorado');
-        return { received: true };
-      }
-    }
+    this.verifySignature(req, signature);
 
     if (payload?.object !== 'whatsapp_business_account') {
       // Evento de um objeto que não é WhatsApp (ex.: outro produto Meta no
@@ -90,6 +82,40 @@ export class WhatsAppWebhookController {
     }
 
     return { received: true };
+  }
+
+  /**
+   * Barreira de segurança do POST — roda ANTES de qualquer parse/ingest/
+   * processamento. HMAC calculado sobre o raw body (req.rawBody, capturado
+   * globalmente via `rawBody: true` no bootstrap — ver create-app.ts; já
+   * usado pelo webhook Stripe em billing.controller.ts, nada foi alterado
+   * aqui), nunca sobre `JSON.stringify(payload)` (reserializar não reproduz
+   * byte-a-byte o corpo que a Meta assinou).
+   *
+   * META_APP_SECRET ausente é uma falha de configuração explícita (503), não
+   * um "pular a verificação silenciosamente". Assinatura ausente ou inválida
+   * é sempre 403 — nunca "processa mesmo assim".
+   */
+  private verifySignature(req: RawBodyRequest<Request>, signature: string | undefined): void {
+    const appSecret = process.env['META_APP_SECRET'] ?? '';
+    if (!appSecret) {
+      this.logger.error('[whatsapp/webhook] META_APP_SECRET não configurado — webhook rejeitado');
+      throw new ServiceUnavailableException('WhatsApp webhook não configurado: META_APP_SECRET ausente');
+    }
+
+    if (!signature) {
+      this.logger.warn('[whatsapp/webhook] Requisição sem X-Hub-Signature-256 — rejeitada');
+      throw new ForbiddenException('X-Hub-Signature-256 ausente');
+    }
+
+    const rawBody = req.rawBody ? req.rawBody.toString('utf8') : '';
+    const valid = this.webhookSvc.validateHmacSignature({
+      rawBody, secret: appSecret, received: signature, algorithm: 'sha256', prefix: 'sha256=',
+    });
+    if (!valid) {
+      this.logger.warn('[whatsapp/webhook] Assinatura X-Hub-Signature-256 inválida — rejeitada');
+      throw new ForbiddenException('Assinatura X-Hub-Signature-256 inválida');
+    }
   }
 
   private async processMessagesChange(value: WhatsAppChangeValue): Promise<void> {

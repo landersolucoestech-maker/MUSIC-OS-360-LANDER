@@ -1,10 +1,21 @@
 import 'reflect-metadata';
+import { createHmac } from 'crypto';
+import { ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { WhatsAppWebhookController } from './whatsapp-webhook.controller';
+import { WebhookService } from '../webhooks/webhook.service';
+
+const TEST_SECRET = 'test-meta-app-secret';
+const ORIGINAL_META_APP_SECRET = process.env['META_APP_SECRET'];
+
+function sign(rawBody: string, secret = TEST_SECRET): string {
+  return `sha256=${createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')}`;
+}
 
 function makeRes() {
   return { status: jest.fn().mockReturnThis(), send: jest.fn().mockReturnThis() } as any;
 }
 
+/** WebhookService real (não mockado) — o teste precisa exercitar o HMAC de verdade, não uma dublê que sempre retorna true. */
 function makeController(overrides: {
   findTenant?: jest.Mock;
   verify?: jest.Mock;
@@ -16,18 +27,21 @@ function makeController(overrides: {
     findTenantByPhoneNumberId: overrides.findTenant ?? jest.fn().mockResolvedValue('tenant-a'),
     verifyWebhookChallenge: overrides.verify ?? jest.fn(() => 'challenge-echo'),
   };
-  const webhookSvc: any = {
-    validateHmacSignature: jest.fn().mockReturnValue(true),
-    ingest: overrides.ingest ?? jest.fn().mockResolvedValue({ isDuplicate: false, eventId: 'evt-1', status: 'pending' }),
-    markProcessed: overrides.markProcessed ?? jest.fn().mockResolvedValue(undefined),
-  };
+  const webhookSvc = new WebhookService(null);
+  const ingestSpy = overrides.ingest ?? jest.fn().mockResolvedValue({ isDuplicate: false, eventId: 'evt-1', status: 'pending' });
+  const markProcessedSpy = overrides.markProcessed ?? jest.fn().mockResolvedValue(undefined);
+  (webhookSvc as any).ingest = ingestSpy;
+  (webhookSvc as any).markProcessed = markProcessedSpy;
   const musicChat: any = {
     handleInboundMessage: overrides.handleInboundMessage ?? jest.fn().mockResolvedValue({ action: 'received' }),
   };
-  return { controller: new WhatsAppWebhookController(whatsapp, webhookSvc, musicChat), whatsapp, webhookSvc, musicChat };
+  return {
+    controller: new WhatsAppWebhookController(whatsapp, webhookSvc, musicChat),
+    whatsapp, webhookSvc, musicChat, ingestSpy, markProcessedSpy,
+  };
 }
 
-const messagePayload = (overrides: Partial<any> = {}) => ({
+const messagePayloadObj = (overrides: Partial<any> = {}) => ({
   object: 'whatsapp_business_account',
   entry: [{
     id: 'waba-1',
@@ -43,10 +57,19 @@ const messagePayload = (overrides: Partial<any> = {}) => ({
   }],
 });
 
-describe('WhatsAppWebhookController', () => {
-  const rawReq = (): any => ({ rawBody: Buffer.from('{}') });
+/** Simula o request real: rawBody é o Buffer capturado pelo bootstrap (rawBody:true), payload é o JSON já parseado pelo Nest — os dois vêm do mesmo corpo. */
+function rawReq(bodyObj: unknown): any {
+  return { rawBody: Buffer.from(JSON.stringify(bodyObj), 'utf8') };
+}
 
-  // ── GET verification ─────────────────────────────────────────────────────────
+describe('WhatsAppWebhookController', () => {
+  beforeEach(() => { process.env['META_APP_SECRET'] = TEST_SECRET; });
+  afterAll(() => {
+    if (ORIGINAL_META_APP_SECRET === undefined) delete process.env['META_APP_SECRET'];
+    else process.env['META_APP_SECRET'] = ORIGINAL_META_APP_SECRET;
+  });
+
+  // ── GET verification (inalterado pelo hardening do POST) ─────────────────────
 
   it('webhook verification válida: responde 200 com o challenge em texto puro', () => {
     const { controller, whatsapp } = makeController({ verify: jest.fn(() => 'challenge-123') });
@@ -71,66 +94,112 @@ describe('WhatsAppWebhookController', () => {
     expect(res.send).not.toHaveBeenCalledWith('challenge-123');
   });
 
-  // ── POST inbound ─────────────────────────────────────────────────────────────
+  // ── POST: assinatura obrigatória (algoritmo HMAC real, não mockado) ──────────
 
-  it('evento inbound textual válido: chama handleInboundMessage com o dto normalizado', async () => {
-    const { controller, musicChat, webhookSvc } = makeController();
+  it('POST sem X-Hub-Signature-256: rejeitado com 403, nada é processado', async () => {
+    const { controller, ingestSpy, musicChat } = makeController();
+    const body = messagePayloadObj();
 
-    await controller.receive(messagePayload(), 'sha256=whatever', rawReq());
+    await expect(controller.receive(body, undefined, rawReq(body))).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(webhookSvc.ingest).toHaveBeenCalledWith(expect.objectContaining({
+    expect(ingestSpy).not.toHaveBeenCalled();
+    expect(musicChat.handleInboundMessage).not.toHaveBeenCalled();
+  });
+
+  it('POST com assinatura incorreta: rejeitado com 403, nada é processado', async () => {
+    const { controller, ingestSpy, musicChat } = makeController();
+    const body = messagePayloadObj();
+
+    await expect(
+      controller.receive(body, 'sha256=0000000000000000000000000000000000000000000000000000000000000000', rawReq(body)),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(ingestSpy).not.toHaveBeenCalled();
+    expect(musicChat.handleInboundMessage).not.toHaveBeenCalled();
+  });
+
+  it('POST com META_APP_SECRET ausente: rejeitado explicitamente (503), nunca processa silenciosamente', async () => {
+    delete process.env['META_APP_SECRET'];
+    const { controller, ingestSpy, musicChat } = makeController();
+    const body = messagePayloadObj();
+    const req = rawReq(body);
+    const validSig = sign(req.rawBody.toString('utf8')); // mesmo com assinatura correta, sem secret no servidor não há como validar
+
+    await expect(controller.receive(body, validSig, req)).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(ingestSpy).not.toHaveBeenCalled();
+    expect(musicChat.handleInboundMessage).not.toHaveBeenCalled();
+  });
+
+  it('POST com assinatura HMAC real e correta + mensagem: inbound processado', async () => {
+    const { controller, musicChat, ingestSpy, markProcessedSpy } = makeController();
+    const body = messagePayloadObj();
+    const req = rawReq(body);
+    const validSig = sign(req.rawBody.toString('utf8'));
+
+    const result = await controller.receive(body, validSig, req);
+
+    expect(result).toEqual({ received: true });
+    expect(ingestSpy).toHaveBeenCalledWith(expect.objectContaining({
       provider: 'whatsapp', eventType: 'message', externalId: 'wamid.ABC', tenantId: 'tenant-a',
     }));
     expect(musicChat.handleInboundMessage).toHaveBeenCalledWith('tenant-a', expect.objectContaining({
-      externalContactId: '5511999999999',
-      customerName: 'Maria',
-      channel: 'whatsapp',
-      body: 'Olá',
-      phone: '5511999999999',
+      externalContactId: '5511999999999', customerName: 'Maria', channel: 'whatsapp', body: 'Olá', phone: '5511999999999',
     }));
-    expect(webhookSvc.markProcessed).toHaveBeenCalledWith('evt-1', 'processed');
+    expect(markProcessedSpy).toHaveBeenCalledWith('evt-1', 'processed');
   });
 
-  it('evento duplicado: não reprocessa (handleInboundMessage não é chamado de novo)', async () => {
-    const { controller, musicChat, webhookSvc } = makeController({
+  it('POST válido duplicado: idempotência continua funcionando (handleInboundMessage não roda de novo)', async () => {
+    const { controller, musicChat, markProcessedSpy } = makeController({
       ingest: jest.fn().mockResolvedValue({ isDuplicate: true, eventId: 'evt-1', status: 'processed' }),
     });
+    const body = messagePayloadObj();
+    const req = rawReq(body);
+    const validSig = sign(req.rawBody.toString('utf8'));
 
-    await controller.receive(messagePayload(), 'sha256=whatever', rawReq());
+    await controller.receive(body, validSig, req);
 
     expect(musicChat.handleInboundMessage).not.toHaveBeenCalled();
-    expect(webhookSvc.markProcessed).not.toHaveBeenCalled();
+    expect(markProcessedSpy).not.toHaveBeenCalled();
   });
 
-  it('evento sem mensagem (field !== messages, ex.: statuses): ignora com segurança', async () => {
-    const { controller, musicChat, webhookSvc } = makeController();
-    const payload = {
+  it('evento sem mensagem (field !== messages, ex.: statuses): ignora com segurança após assinatura válida', async () => {
+    const { controller, musicChat, ingestSpy } = makeController();
+    const body = {
       object: 'whatsapp_business_account',
       entry: [{ id: 'waba-1', changes: [{ field: 'statuses', value: { statuses: [{ id: 'wamid.X', status: 'delivered' }] } }] }],
     };
+    const req = rawReq(body);
+    const validSig = sign(req.rawBody.toString('utf8'));
 
-    await controller.receive(payload, 'sha256=whatever', rawReq());
+    await controller.receive(body, validSig, req);
 
-    expect(webhookSvc.ingest).not.toHaveBeenCalled();
+    expect(ingestSpy).not.toHaveBeenCalled();
     expect(musicChat.handleInboundMessage).not.toHaveBeenCalled();
   });
 
-  it('payload desconhecido (object diferente de whatsapp_business_account): ignora com segurança', async () => {
-    const { controller, musicChat, webhookSvc } = makeController();
+  it('payload desconhecido (object diferente de whatsapp_business_account): ignora com segurança após assinatura válida', async () => {
+    const { controller, musicChat, ingestSpy } = makeController();
+    const body = { object: 'page' };
+    const req = rawReq(body);
+    const validSig = sign(req.rawBody.toString('utf8'));
 
-    const result = await controller.receive({ object: 'page' }, 'sha256=whatever', rawReq());
+    const result = await controller.receive(body, validSig, req);
 
     expect(result).toEqual({ received: true });
-    expect(webhookSvc.ingest).not.toHaveBeenCalled();
+    expect(ingestSpy).not.toHaveBeenCalled();
     expect(musicChat.handleInboundMessage).not.toHaveBeenCalled();
   });
 
-  it('provider não configurado (nenhum tenant com esse phone_number_id): ignora com segurança', async () => {
-    const { controller, musicChat, webhookSvc } = makeController({ findTenant: jest.fn().mockResolvedValue(null) });
+  it('provider não configurado (nenhum tenant com esse phone_number_id): ignora com segurança após assinatura válida', async () => {
+    const { controller, musicChat, ingestSpy } = makeController({ findTenant: jest.fn().mockResolvedValue(null) });
+    const body = messagePayloadObj();
+    const req = rawReq(body);
+    const validSig = sign(req.rawBody.toString('utf8'));
 
-    await controller.receive(messagePayload(), 'sha256=whatever', rawReq());
+    await controller.receive(body, validSig, req);
 
-    expect(webhookSvc.ingest).not.toHaveBeenCalled();
+    expect(ingestSpy).not.toHaveBeenCalled();
     expect(musicChat.handleInboundMessage).not.toHaveBeenCalled();
   });
 });
