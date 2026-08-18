@@ -5,6 +5,7 @@ import { createHash } from 'crypto';
 import { QUEUE_NAMES, ARTIST_PLATFORM_PROFILE_JOB_NAMES } from '../../../queues/queue.constants';
 import { ArtistsService } from '../artists.service';
 import { ArtistPlatformProfilesService } from './artist-platform-profiles.service';
+import { SpotifyArtistProfileProvider } from './providers/spotify-artist-profile.provider';
 import type { ArtistPlatformSyncJobPayload, SocialPlatform } from './social-platform-sync.types';
 import { isSocialPlatform } from './social-platform-sync.types';
 
@@ -15,6 +16,7 @@ export class ArtistExternalProfileSyncService {
   constructor(
     private readonly artists: ArtistsService,
     private readonly profiles: ArtistPlatformProfilesService,
+    private readonly spotifyProvider: SpotifyArtistProfileProvider,
     @Optional()
     @InjectQueue(QUEUE_NAMES.ARTIST_PLATFORM_SYNC)
     private readonly queue: Queue<ArtistPlatformSyncJobPayload> | null,
@@ -58,6 +60,48 @@ export class ArtistExternalProfileSyncService {
         enqueued: [],
         skipped: [{ platform, reason: 'missing_external_profile' }],
       };
+    }
+
+    // Spotify monthly listeners are a lightweight public-page lookup. Run it directly so
+    // this metric does not depend on Redis/BullMQ being available in DEV.
+    if (platform === 'spotify') {
+      await this.profiles.upsertPending({
+        tenantId: input.tenantId,
+        artistId: input.artistId,
+        platform,
+        externalId,
+        externalUrl,
+      });
+
+      try {
+        const snapshot = await this.spotifyProvider.resolve({
+          tenantId: input.tenantId,
+          artistId: input.artistId,
+          externalId,
+          externalUrl,
+        });
+        await this.profiles.upsertSuccess(snapshot);
+        this.logger.log(
+          `[platform-sync/direct] Spotify concluído monthly_listeners=${snapshot.monthly_listeners ?? '-'} latency_ms=${Date.now() - startedAt} ${logCtx}`,
+        );
+        return {
+          artist_id: input.artistId,
+          enqueued: [{ platform, job_id: `direct-${Date.now()}` }],
+          skipped: [],
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        await this.profiles.markFailed({
+          tenantId: input.tenantId,
+          artistId: input.artistId,
+          platform,
+          externalId,
+          externalUrl,
+          error: message,
+        });
+        this.logger.error(`[platform-sync/direct] Spotify falhou: ${message} ${logCtx}`);
+        throw err;
+      }
     }
 
     if (await this.profiles.hasRecentPending(input.tenantId, input.artistId, platform)) {
