@@ -190,10 +190,11 @@ export function ArtistaPlatformMetrics({
           ) : spotifySnapshot?.sync_status === "success" ? (
             <>
               <p className="text-sm font-bold text-foreground" data-testid={`metric-spotify-${artistaId}`}>
-                {formatCount(spotifySnapshot.followers)}
+                {formatCount(spotifySnapshot.monthly_listeners)}
               </p>
+              <p className="text-[10px] text-muted-foreground">Ouvintes mensais</p>
               <p className="text-[10px] text-muted-foreground">
-                Seguidores
+                {formatCount(spotifySnapshot.followers)} seguidores
                 {typeof spotifySnapshot.popularity === "number" ? ` · Pop ${spotifySnapshot.popularity}` : ""}
               </p>
             </>
