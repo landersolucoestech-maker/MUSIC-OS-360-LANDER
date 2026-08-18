@@ -19,6 +19,9 @@ if (typeof Element !== 'undefined') {
   if (!proto.scrollIntoView) {
     proto.scrollIntoView = function () {};
   }
+  if (!proto.scrollTo) {
+    proto.scrollTo = function () {};
+  }
   if (!proto.hasPointerCapture) {
     proto.hasPointerCapture = function () { return false; };
   }

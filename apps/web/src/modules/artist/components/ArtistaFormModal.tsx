@@ -371,7 +371,15 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     staleTime: 0,
     gcTime: 0,
   });
-  const currentArtista = freshArtistaQuery.data ?? artista ?? null;
+
+  // Task: campos do formulário vinham de `artista` (snapshot da listagem)
+  // enquanto só o expectedUpdatedAt vinha da versão fresca — permitia CAS
+  // passar (comparando com a versão real do banco) enquanto o PATCH ainda
+  // carregava campos antigos por cima de uma edição concorrente já salva.
+  // `hydratedArtista` fixa a MESMA versão para os dois: é o exato objeto do
+  // GET usado para hidratar o formulário, e é o que fornece expectedUpdatedAt
+  // no submit — nunca duas fontes independentes.
+  const [hydratedArtista, setHydratedArtista] = useState<Artista | null>(null);
 
   // ── Non-form state ──────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -395,19 +403,17 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
 
   const tipoPerfilVal = watch("tipoPerfil");
 
-  // ── Load artista data on open ───────────────────────────────────
-  useEffect(() => {
-    if (!open) return;
-
-    // MESMA hidratação canônica usada pela exportação (definição única).
-    const v = artistaToFormValues(artista ?? null);
+  // ── Hidrata o formulário a partir de UMA versão (fonte única) ────
+  // MESMA hidratação canônica usada pela exportação (definição única).
+  const hydrateForm = (source: Artista | null) => {
+    const v = artistaToFormValues(source);
     const { fotoUrl, documentosPessoaisUrl, presskitUrl, ...formValues } = v;
     reset(formValues);
 
-    setPreserved(artistaToPreservedInput(artista ?? null));
+    setPreserved(artistaToPreservedInput(source));
     setContatosEquipe(
-      Array.isArray((artista as (Artista & { contatos_equipe?: unknown }) | null | undefined)?.contatos_equipe)
-        ? ((artista as Artista & { contatos_equipe?: unknown }).contatos_equipe as unknown[])
+      Array.isArray((source as (Artista & { contatos_equipe?: unknown }) | null)?.contatos_equipe)
+        ? ((source as Artista & { contatos_equipe?: unknown }).contatos_equipe as unknown[])
         : [],
     );
 
@@ -426,7 +432,33 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     setTimeout(() => {
       scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
     }, 50);
-  }, [open, artista, reset]);
+  };
+
+  // ── Load artista data on open ───────────────────────────────────
+  // Modo criação: hidrata direto (nada para buscar).
+  // Modo edição: só hidrata quando a versão fresca (GET /artists/:id) chega,
+  // e só a PRIMEIRA vez por artista/abertura — `artista` (prop da listagem)
+  // serve só para identificar o ID/loading visual antes disso, nunca para
+  // preencher campos. Um refetch em segundo plano (ex.: refocus da aba) NÃO
+  // deve chamar reset() de novo e apagar o que o usuário já digitou — por
+  // isso o guard compara com `hydratedArtista?.id`, não reage a toda mudança
+  // de `freshArtistaQuery.data`.
+  useEffect(() => {
+    if (!open) {
+      setHydratedArtista(null);
+      return;
+    }
+    if (!isEditing) {
+      hydrateForm(null);
+      return;
+    }
+    if (!freshArtistaQuery.data) return;
+    if (hydratedArtista?.id === freshArtistaQuery.data.id) return;
+
+    hydrateForm(freshArtistaQuery.data);
+    setHydratedArtista(freshArtistaQuery.data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEditing, artista?.id, freshArtistaQuery.data]);
 
   // ── Handlers ────────────────────────────────────────────────────
 
@@ -466,7 +498,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
           await updateArtista.mutateAsync({
             id: artista.id, ...payload, ...passThrough,
             contrato_id: preserved.contratoId || null,
-            expectedUpdatedAt: getExpectedUpdatedAt(currentArtista),
+            expectedUpdatedAt: getExpectedUpdatedAt(hydratedArtista),
           });
         } catch (err) {
           if (handleConcurrencyConflict(err, "artista")) return;
@@ -559,12 +591,12 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
           </Button>
           <Button
             onClick={rhfSubmit(onSubmit, onInvalid)}
-            disabled={isSubmitting || (isEditing && freshArtistaQuery.isFetching)}
+            disabled={isSubmitting || (isEditing && !hydratedArtista)}
             className="gap-2"
             data-testid="button-salvar-modal"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {isEditing && freshArtistaQuery.isFetching ? "Carregando versão atual…" : isEditing ? "Salvar Alterações" : "Criar Artista"}
+            {isEditing && !hydratedArtista ? "Carregando versão atual…" : isEditing ? "Salvar Alterações" : "Criar Artista"}
           </Button>
         </div>
       </DialogContent>
