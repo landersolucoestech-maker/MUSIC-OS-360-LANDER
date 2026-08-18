@@ -502,8 +502,8 @@ export class ArtistEntity {
   @Column({ type: 'text', nullable: true }) soundcloud_url: string | null;
   @Column({ type: 'uuid', nullable: true }) contrato_id: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;

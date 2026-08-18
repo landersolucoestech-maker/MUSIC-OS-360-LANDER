@@ -162,6 +162,7 @@ import { ContractTemplatesFormFieldAlignment20260816000003 } from './20260816000
 import { ContractTemplatesTipoServicoOptional20260816000004 } from './20260816000004_ContractTemplatesTipoServicoOptional';
 import { GrantFinancialCategoriesDelete20260817000001 } from './20260817000001_GrantFinancialCategoriesDelete';
 import { WebhookEventsRlsSystemPath20260817000002 } from './20260817000002_WebhookEventsRlsSystemPath';
+import { ArtistsTimestampTzFix20260818000001 } from './20260818000001_ArtistsTimestampTzFix';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -312,4 +313,5 @@ export const ALL_MIGRATIONS = [
   ContractTemplatesTipoServicoOptional20260816000004,
   GrantFinancialCategoriesDelete20260817000001,
   WebhookEventsRlsSystemPath20260817000002,
+  ArtistsTimestampTzFix20260818000001,
 ] as const;
