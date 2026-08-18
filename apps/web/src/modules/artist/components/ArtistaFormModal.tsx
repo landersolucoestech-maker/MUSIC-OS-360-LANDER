@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useForm, Controller, type Control, type FieldErrors, type UseFormRegister, type UseFormWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -39,6 +40,7 @@ import {
 import { Loader2, Save, CheckCircle2, XCircle } from "lucide-react";
 import { FileUpload, type UploadedFile } from "@/shared/components/FileUpload";
 import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
+import { api } from "@/shared/lib/api-client";
 import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
 import { EquipeContatosCRM } from "@/modules/artist/components/EquipeContatosCRM";
 import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
@@ -355,6 +357,22 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const { addCliente } = useClientes();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Task: CAS 409 espúrio — o modal recebia `artista` como snapshot congelado
+  // da listagem (pode estar desatualizado: staleTime da lista, tempo com a
+  // aba em segundo plano, etc.). Buscar a versão atual por ID ao abrir para
+  // editar garante que o `expectedUpdatedAt` do CAS reflita o registro real
+  // no momento da edição, não o que a lista tinha cacheado. `staleTime: 0`
+  // força refetch a cada abertura do modal (nunca reaproveita uma busca
+  // anterior da mesma sessão).
+  const freshArtistaQuery = useQuery({
+    queryKey: ["artists", artista?.id, "edit-fresh"],
+    queryFn: () => api.get<Artista>(`/artists/${artista!.id}`),
+    enabled: open && isEditing && !!artista?.id,
+    staleTime: 0,
+    gcTime: 0,
+  });
+  const currentArtista = freshArtistaQuery.data ?? artista ?? null;
+
   // ── Non-form state ──────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<Record<FileFieldId, UploadedFile[]>>({
@@ -448,7 +466,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
           await updateArtista.mutateAsync({
             id: artista.id, ...payload, ...passThrough,
             contrato_id: preserved.contratoId || null,
-            expectedUpdatedAt: getExpectedUpdatedAt(artista),
+            expectedUpdatedAt: getExpectedUpdatedAt(currentArtista),
           });
         } catch (err) {
           if (handleConcurrencyConflict(err, "artista")) return;
@@ -541,12 +559,12 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
           </Button>
           <Button
             onClick={rhfSubmit(onSubmit, onInvalid)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || (isEditing && freshArtistaQuery.isFetching)}
             className="gap-2"
             data-testid="button-salvar-modal"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {isEditing ? "Salvar Alterações" : "Criar Artista"}
+            {isEditing && freshArtistaQuery.isFetching ? "Carregando versão atual…" : isEditing ? "Salvar Alterações" : "Criar Artista"}
           </Button>
         </div>
       </DialogContent>
