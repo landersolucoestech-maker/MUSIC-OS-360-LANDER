@@ -5,67 +5,77 @@ import type {
   SocialPlatformProfileSnapshot,
 } from '../social-platform-sync.types';
 
-const SPOTIFY_ACCOUNTS = 'https://accounts.spotify.com';
-const SPOTIFY_API = 'https://api.spotify.com/v1';
+const SPOTIFY_WEB = 'https://open.spotify.com';
+const SPOTIFY_ARTIST_ID = /^[A-Za-z0-9]{22}$/;
 
 @Injectable()
 export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
   readonly platform = 'spotify' as const;
 
   async isConfigured(_tenantId?: string): Promise<boolean> {
-    return !!(process.env['SPOTIFY_CLIENT_ID'] && process.env['SPOTIFY_CLIENT_SECRET']);
+    // Monthly listeners are collected from the public Spotify artist page.
+    // This flow intentionally does not require Spotify Web API credentials.
+    return true;
   }
 
   async resolve(input: ArtistPlatformProviderInput): Promise<SocialPlatformProfileSnapshot> {
-    if (!(await this.isConfigured(input.tenantId))) {
-      throw new ServiceUnavailableException(
-        'Spotify não configurado: defina SPOTIFY_CLIENT_ID e SPOTIFY_CLIENT_SECRET no ambiente da API',
-      );
-    }
-
     const artistId = input.externalId ?? this.extractArtistId(input.externalUrl ?? '');
     if (!artistId) throw new Error('Spotify artist id ausente ou inválido');
 
-    const token = await this.getClientCredentialsToken();
-    const res = await fetch(`${SPOTIFY_API}/artists/${encodeURIComponent(artistId)}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const profileUrl = `${SPOTIFY_WEB}/artist/${encodeURIComponent(artistId)}`;
+    const res = await fetch(profileUrl, {
+      headers: {
+        Accept: 'text/html,application/xhtml+xml',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      },
+      redirect: 'follow',
     });
+
     if (!res.ok) {
-      if (res.status === 401) throw new Error('Spotify API respondeu 401: token expirado ou inválido');
-      if (res.status === 404) throw new Error(`Spotify API respondeu 404: artista "${artistId}" não encontrado`);
-      if (res.status === 429) throw new Error('Spotify API respondeu 429: limite de requisições excedido');
-      throw new Error(`Spotify API respondeu ${res.status} ao buscar o artista "${artistId}"`);
+      if (res.status === 404) {
+        throw new Error(`Spotify respondeu 404: artista "${artistId}" não encontrado`);
+      }
+      if (res.status === 429) {
+        throw new ServiceUnavailableException('Spotify respondeu 429: limite temporário ao consultar a página pública');
+      }
+      throw new ServiceUnavailableException(
+        `Spotify respondeu ${res.status} ao consultar a página pública do artista`,
+      );
     }
 
-    const data = await res.json() as {
-      id?: string;
-      name?: string;
-      uri?: string;
-      external_urls?: { spotify?: string };
-      followers?: { total?: number };
-      popularity?: number;
-      images?: Array<{ url?: string }>;
-    };
+    const html = await res.text();
+    const monthlyListeners = this.extractMonthlyListeners(html);
+
+    if (monthlyListeners === null) {
+      throw new ServiceUnavailableException(
+        'Spotify não expôs ouvintes mensais na página pública neste momento',
+      );
+    }
 
     return {
       tenant_id: input.tenantId,
       artist_id: input.artistId,
       platform: 'spotify',
-      external_id: data.id ?? artistId,
-      external_url: input.externalUrl ?? data.external_urls?.spotify ?? null,
-      display_name: data.name ?? null,
+      external_id: artistId,
+      external_url: input.externalUrl ?? profileUrl,
+      display_name: null,
       username: null,
-      profile_url: data.external_urls?.spotify ?? input.externalUrl ?? null,
-      image_url: data.images?.[0]?.url ?? null,
-      followers: data.followers?.total ?? null,
+      profile_url: profileUrl,
+      image_url: null,
+      followers: null,
       subscribers: null,
-      monthly_listeners: null,
-      popularity: typeof data.popularity === 'number' ? data.popularity : null,
+      monthly_listeners: monthlyListeners,
+      popularity: null,
       total_views: null,
       total_videos: null,
       total_tracks: null,
       total_albums: null,
-      raw_payload: data as Record<string, unknown>,
+      raw_payload: {
+        source: 'spotify_public_artist_page',
+        monthly_listeners: monthlyListeners,
+      },
       sync_status: 'success',
       last_synced_at: new Date(),
       last_error: null,
@@ -73,36 +83,72 @@ export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
   }
 
   private extractArtistId(value: string): string | null {
-    if (!value) return null;
-    const urlMatch = value.match(/artist\/([A-Za-z0-9]+)/);
-    if (urlMatch?.[1]) return urlMatch[1];
-    return /^[A-Za-z0-9]{10,}$/.test(value) ? value : null;
+    const normalized = value.trim();
+    if (!normalized) return null;
+    if (SPOTIFY_ARTIST_ID.test(normalized)) return normalized;
+
+    const urlMatch = normalized.match(
+      /^https?:\/\/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?artist\/([A-Za-z0-9]{22})(?:[/?#].*)?$/i,
+    );
+    return urlMatch?.[1] ?? null;
   }
 
-  private async getClientCredentialsToken(): Promise<string> {
-    const clientId = process.env['SPOTIFY_CLIENT_ID'] ?? '';
-    const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
-    if (!clientId) throw new ServiceUnavailableException('Variável SPOTIFY_CLIENT_ID não encontrada');
-    if (!clientSecret) throw new ServiceUnavailableException('Variável SPOTIFY_CLIENT_SECRET não encontrada');
+  private extractMonthlyListeners(html: string): number | null {
+    const candidates = [html, this.decodeHtmlEntities(html)];
 
-    const res = await fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-      },
-      body: new URLSearchParams({ grant_type: 'client_credentials' }),
-    });
-    if (!res.ok) {
-      if (res.status === 400 || res.status === 401) {
-        throw new Error(
-          `Spotify OAuth respondeu ${res.status} ao emitir token: SPOTIFY_CLIENT_ID/SPOTIFY_CLIENT_SECRET inválidos`,
-        );
-      }
-      throw new Error(`Spotify OAuth respondeu ${res.status} ao emitir token client_credentials`);
+    const initialState = this.extractInitialState(html);
+    if (initialState) candidates.push(initialState, this.decodeHtmlEntities(initialState));
+
+    for (const candidate of candidates) {
+      const structured = candidate.match(/(?:"|\\")monthlyListeners(?:"|\\")\s*:\s*(\d+)/i);
+      if (structured?.[1]) return this.toPositiveInteger(structured[1]);
+
+      const snakeCase = candidate.match(/(?:"|\\")monthly_listeners(?:"|\\")\s*:\s*(\d+)/i);
+      if (snakeCase?.[1]) return this.toPositiveInteger(snakeCase[1]);
+
+      const englishText = candidate.match(/([\d][\d.,\s]*)\s+monthly\s+listeners/i);
+      if (englishText?.[1]) return this.toPositiveInteger(englishText[1]);
+
+      const portugueseText = candidate.match(/([\d][\d.,\s]*)\s+ouvintes\s+mensais/i);
+      if (portugueseText?.[1]) return this.toPositiveInteger(portugueseText[1]);
     }
-    const data = await res.json() as { access_token?: string };
-    if (!data.access_token) throw new Error('Spotify OAuth não retornou access_token no corpo da resposta');
-    return data.access_token;
+
+    return null;
+  }
+
+  private extractInitialState(html: string): string | null {
+    const match = html.match(
+      /<script[^>]+id=["']initialState["'][^>]*>([\s\S]*?)<\/script>/i,
+    );
+    const raw = match?.[1]?.trim();
+    if (!raw) return null;
+
+    const normalized = this.decodeHtmlEntities(raw).replace(/^['"]|['"]$/g, '');
+
+    try {
+      const decoded = Buffer.from(normalized, 'base64').toString('utf8');
+      if (decoded.includes('monthlyListeners') || decoded.trim().startsWith('{')) return decoded;
+    } catch {
+      // If Spotify changes initialState away from base64, fall back to the raw script body.
+    }
+
+    return normalized;
+  }
+
+  private decodeHtmlEntities(value: string): string {
+    return value
+      .replace(/&quot;/g, '"')
+      .replace(/&#34;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+  }
+
+  private toPositiveInteger(value: string): number | null {
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return null;
+    const parsed = Number(digits);
+    return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
   }
 }
