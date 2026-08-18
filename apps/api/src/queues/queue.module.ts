@@ -32,6 +32,8 @@ import { MarketingPublishingQueueService } from './services/marketing-publishing
 import { ArtistPlatformProfilesService } from '../modules/artists/platform-profiles/artist-platform-profiles.service';
 import { SpotifyArtistProfileProvider } from '../modules/artists/platform-profiles/providers/spotify-artist-profile.provider';
 import { YouTubeArtistProfileProvider } from '../modules/artists/platform-profiles/providers/youtube-artist-profile.provider';
+import { DeezerArtistProfileProvider } from '../modules/artists/platform-profiles/providers/deezer-artist-profile.provider';
+import { SoundCloudArtistProfileProvider } from '../modules/artists/platform-profiles/providers/soundcloud-artist-profile.provider';
 
 import { CoreModule }  from '../core/core.module';
 import { AIModule }    from '../modules/ai/ai.module';
@@ -251,6 +253,8 @@ export class QueueModule {
         ArtistPlatformProfilesService,
         SpotifyArtistProfileProvider,
         YouTubeArtistProfileProvider,
+        DeezerArtistProfileProvider,
+        SoundCloudArtistProfileProvider,
       ],
       exports: [
         BullModule,
