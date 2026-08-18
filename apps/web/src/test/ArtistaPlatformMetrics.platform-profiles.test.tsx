@@ -566,4 +566,45 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
       });
     });
   });
+
+  it("recupera sozinho de sync_status=pending sem refresh manual (poll até assentar)", async () => {
+    const pendingSnapshot = {
+      tenant_id: "tenant-1",
+      artist_id: "artist-1",
+      platform: "spotify",
+      external_id: SPOTIFY_ID,
+      external_url: null,
+      display_name: null,
+      username: null,
+      profile_url: null,
+      image_url: null,
+      followers: null,
+      subscribers: null,
+      monthly_listeners: null,
+      popularity: null,
+      total_views: null,
+      total_videos: null,
+      total_tracks: null,
+      total_albums: null,
+      raw_payload: {},
+      sync_status: "pending",
+      last_synced_at: null,
+      last_error: null,
+    };
+    const successSnapshot = { ...pendingSnapshot, sync_status: "success", monthly_listeners: 12345, last_synced_at: "2026-06-12T00:00:00Z" };
+
+    // Simula o worker BullMQ terminando o job entre o enqueue e o próximo poll:
+    // 1ª chamada (fetch inicial) → pending; 2ª chamada (refetchInterval) → success.
+    vi.mocked(api.get).mockResolvedValueOnce([pendingSnapshot]).mockResolvedValueOnce([successSnapshot]);
+
+    renderMetrics();
+
+    await waitFor(() => expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("..."));
+    // refetchInterval do hook é 2s — espera o poll assentar sem nenhuma ação manual do teste.
+    await waitFor(
+      () => expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("12.345"),
+      { timeout: 4000, interval: 100 },
+    );
+    expect(api.get).toHaveBeenCalledTimes(2);
+  });
 });

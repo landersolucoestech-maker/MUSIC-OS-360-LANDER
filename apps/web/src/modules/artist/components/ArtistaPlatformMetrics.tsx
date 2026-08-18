@@ -236,6 +236,11 @@ export function ArtistaPlatformMetrics({
           Atualizar
         </Button>
       </div>
+      {platformProfiles.isError ? (
+        <p className="mb-2 text-xs text-destructive" data-testid={`metrics-load-error-${artistaId}`}>
+          Falha ao carregar métricas de plataformas. Tente novamente em instantes.
+        </p>
+      ) : null}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
         {/* Instagram — sem endpoint público de followers de terceiros na integração
             atual (Meta Graph API exige OAuth do próprio artista); contador manual. */}

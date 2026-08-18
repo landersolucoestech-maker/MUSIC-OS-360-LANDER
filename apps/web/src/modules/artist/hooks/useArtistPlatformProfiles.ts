@@ -47,6 +47,8 @@ export const artistPlatformProfilesKey = (artistId: string | null | undefined) =
   "platform-profiles",
 ];
 
+const SYNC_POLL_INTERVAL_MS = 2_000;
+
 export function useArtistPlatformProfiles(artistId: string | null | undefined) {
   return useQuery({
     queryKey: artistPlatformProfilesKey(artistId),
@@ -57,6 +59,15 @@ export function useArtistPlatformProfiles(artistId: string | null | undefined) {
     enabled: Boolean(artistId),
     retry: false,
     staleTime: 30_000,
+    // O worker BullMQ processa o sync fora do request/response do enqueue —
+    // sem isto, um snapshot "pending" nunca mais é revalidado e o card fica
+    // preso em "Sincronizando" mesmo depois do job terminar no backend
+    // (reproduzido: DB vira sync_status=success em ~1s, UI ficava presa por
+    // minutos até F5 manual). Poll só enquanto algo estiver pending.
+    refetchInterval: (query) => {
+      const data = query.state.data as ArtistPlatformProfileSnapshot[] | undefined;
+      return data?.some((profile) => profile.sync_status === "pending") ? SYNC_POLL_INTERVAL_MS : false;
+    },
   });
 }
 
