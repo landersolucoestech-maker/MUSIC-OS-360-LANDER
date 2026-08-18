@@ -133,8 +133,8 @@ export class OrgMemberEntity {
   @Column({ type: 'uuid', nullable: true }) created_by: string | null;
   @Column({ type: 'uuid', nullable: true }) updated_by: string | null;
   @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
 }
 
 // ─── RBAC Enterprise (FASE 4) — Autorização, Organograma e Funções ─────────────
@@ -591,8 +591,8 @@ export class WorkEntity {
   @Column({ type: 'timestamp', nullable: true }) origem_externa_sincronizado_em: Date | null;
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -696,8 +696,8 @@ export class PhonogramEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) origem_externa_id: string | null;
   @Column({ type: 'timestamp', nullable: true }) origem_externa_sincronizado_em: Date | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -781,8 +781,8 @@ export class ContractEntity {
   @Column({ type: 'uuid', nullable: true }) template_id: string | null;
   @Column({ type: 'jsonb', nullable: true }) signers: unknown[] | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -808,8 +808,8 @@ export class ContractTemplateEntity {
   @Column({ type: 'text', nullable: true }) variables_manifest: string | null;
   @Column({ type: 'text', nullable: true }) header_image: string | null;
   @Column({ type: 'text', nullable: true }) footer_image: string | null;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
 }
@@ -902,8 +902,8 @@ export class TransactionEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) anexo_nome: string | null;
   @Column({ type: 'uuid', nullable: true }) evento_id: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -973,8 +973,8 @@ export class InvoiceEntity {
   @Column({ type: 'varchar', length: 100, nullable: true }) condicao_pagamento: string | null;
   @Column({ type: 'jsonb', nullable: true }) itens: unknown[] | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
 }
@@ -1018,8 +1018,8 @@ export class ClientEntity {
   @Column({ type: 'jsonb', nullable: true }) interacoes: unknown[] | null;
   @Column({ type: 'varchar', length: 50, default: ClientStatus.ATIVO }) status: ClientStatus;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -1096,8 +1096,8 @@ export class LeadEntity {
   // Campo do formulário de Lead (regra 2026-07-12: 1 coluna por campo)
   @Column({ type: 'jsonb', nullable: true }) uploads: unknown[] | null;
 
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -1142,8 +1142,8 @@ export class CampaignEntity {
   @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -1203,8 +1203,8 @@ export class EventEntity {
   @Column({ type: 'text', nullable: true }) descricao: string | null;
   @Column({ type: 'jsonb', nullable: true }) participantes: unknown[] | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -1228,8 +1228,8 @@ export class ProjectEntity {
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
   @Column({ type: 'varchar', length: 100, nullable: true }) genero: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -1316,8 +1316,8 @@ export class ReleaseEntity {
   @Column({ type: 'varchar', length: 50, nullable: true }) idioma: string | null;
   @Column({ type: 'jsonb', nullable: true }) assets: Record<string, unknown> | null;
   @Column({ type: 'jsonb', nullable: true }) cronograma: Record<string, unknown> | null;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -1351,8 +1351,8 @@ export class ShareEntity {
   @Column({ type: 'decimal', precision: 7, scale: 4, nullable: true }) percentual: string | null;
   @Column({ type: 'varchar', length: 50, default: ShareStatus.ATIVO }) status: ShareStatus;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
 
   // ── Registry fields (migration 20260601000001_RegistryFieldsPhase1) ──────────
@@ -1423,8 +1423,8 @@ export class TakedownEntity {
   @Column({ type: 'date', nullable: true }) data_identificacao: string | null;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
 }
@@ -1448,8 +1448,8 @@ export class SupportTicketEntity {
   @Column({ type: 'timestamp', nullable: true }) resolved_at: Date | null;
   @Column({ type: 'jsonb', default: [] }) tags: unknown[];
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
 }
 
@@ -1668,8 +1668,8 @@ export class ContentDetectionEntity {
   @Column({ type: 'varchar', length: 100, default: 'uso_nao_autorizado' }) tipo: string;
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' }) detectado_em: Date;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
 }
 
@@ -1688,8 +1688,8 @@ export class EcadReportEntity {
   @Column({ type: 'varchar', length: 50, default: EcadReportStatus.PENDENTE }) status: EcadReportStatus;
   @Column({ type: 'text', nullable: true }) arquivo_url: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
 }
@@ -1714,8 +1714,8 @@ export class EmployeeEntity {
   @Column({ type: 'timestamp', nullable: true }) data_demissao: Date | null;
   @Column({ type: 'jsonb', default: [] }) documentos: unknown[];
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
 
@@ -2382,8 +2382,8 @@ export class RightsHolderEntity {
   @Column({ type: 'varchar', length: 100, nullable: true }) society_member_code: string | null;
   @Column({ type: 'varchar', length: 50, default: 'OTHER' }) holder_type: string;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -2401,8 +2401,8 @@ export class ExternalIdentifierEntity {
   @Column({ type: 'varchar', length: 100 }) identifier_value: string;
   @Column({ type: 'boolean', default: false }) is_primary: boolean;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
 }
 
@@ -2419,8 +2419,8 @@ export class SocietyAccountEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) credentials_ref: string | null;
   @Column({ type: 'varchar', length: 30, default: 'PENDING' }) status: string;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
@@ -2446,8 +2446,8 @@ export class SocietySubmissionEntity {
   @Column({ type: 'timestamp', nullable: true }) rejected_at: Date | null;
   @Column({ type: 'text', nullable: true }) failure_reason: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
 }
 
 @Entity('society_submission_events')

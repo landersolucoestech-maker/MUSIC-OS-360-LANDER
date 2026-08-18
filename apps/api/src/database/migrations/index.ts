@@ -163,6 +163,7 @@ import { ContractTemplatesTipoServicoOptional20260816000004 } from './2026081600
 import { GrantFinancialCategoriesDelete20260817000001 } from './20260817000001_GrantFinancialCategoriesDelete';
 import { WebhookEventsRlsSystemPath20260817000002 } from './20260817000002_WebhookEventsRlsSystemPath';
 import { ArtistsTimestampTzFix20260818000001 } from './20260818000001_ArtistsTimestampTzFix';
+import { CasTimestampTzSystemicFix20260818000002 } from './20260818000002_CasTimestampTzSystemicFix';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -314,4 +315,5 @@ export const ALL_MIGRATIONS = [
   GrantFinancialCategoriesDelete20260817000001,
   WebhookEventsRlsSystemPath20260817000002,
   ArtistsTimestampTzFix20260818000001,
+  CasTimestampTzSystemicFix20260818000002,
 ] as const;
