@@ -71,7 +71,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     expect(screen.queryByTestId("button-sync-youtube-artist-1")).not.toBeInTheDocument();
   });
 
-  it("renderiza snapshot success quando existir", async () => {
+  it("renderiza ouvintes mensais do Spotify quando snapshot success existir", async () => {
     vi.mocked(api.get).mockResolvedValueOnce([
       {
         tenant_id: "tenant-1",
@@ -85,7 +85,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
         image_url: null,
         followers: 9999,
         subscribers: null,
-        monthly_listeners: null,
+        monthly_listeners: 123456,
         popularity: 77,
         total_views: null,
         total_videos: null,
@@ -101,7 +101,9 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     renderMetrics();
 
     await waitFor(() => {
-      expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("9.999");
+      expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("123.456");
+      expect(screen.getByText("Ouvintes mensais")).toBeInTheDocument();
+      expect(screen.getByText(/9\.999 seguidores/)).toBeInTheDocument();
     });
   });
 
