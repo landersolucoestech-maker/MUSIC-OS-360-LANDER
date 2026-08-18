@@ -71,7 +71,44 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     expect(screen.queryByTestId("button-sync-youtube-artist-1")).not.toBeInTheDocument();
   });
 
-  it("renderiza snapshot success quando existir", async () => {
+  it("renderiza snapshot success com monthly_listeners como Ouvintes", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      {
+        tenant_id: "tenant-1",
+        artist_id: "artist-1",
+        platform: "spotify",
+        external_id: SPOTIFY_ID,
+        external_url: null,
+        display_name: "Artist",
+        username: null,
+        profile_url: null,
+        image_url: null,
+        followers: 9999,
+        subscribers: null,
+        monthly_listeners: 54321,
+        popularity: 77,
+        total_views: null,
+        total_videos: null,
+        total_tracks: null,
+        total_albums: null,
+        raw_payload: {},
+        sync_status: "success",
+        last_synced_at: "2026-06-12T00:00:00Z",
+        last_error: null,
+      },
+    ]);
+
+    renderMetrics();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("54.321");
+    });
+    const spotifyCard = screen.getByTestId("metric-spotify-artist-1").closest("div.rounded-lg");
+    expect(spotifyCard).toHaveTextContent("Ouvintes");
+    expect(spotifyCard).not.toHaveTextContent("Seguidores");
+  });
+
+  it("nunca usa followers como Ouvintes quando monthly_listeners e nulo", async () => {
     vi.mocked(api.get).mockResolvedValueOnce([
       {
         tenant_id: "tenant-1",
@@ -101,7 +138,144 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     renderMetrics();
 
     await waitFor(() => {
-      expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("9.999");
+      expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("Indisponível");
+    });
+    expect(screen.getByTestId("metric-spotify-artist-1")).not.toHaveTextContent("9.999");
+    const spotifyCard = screen.getByTestId("metric-spotify-artist-1").closest("div.rounded-lg");
+    expect(spotifyCard).not.toHaveTextContent("Seguidores");
+  });
+
+  it("todas as 7 plataformas de artista sao renderizadas (sem hardcode de 2)", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([]);
+
+    renderMetrics();
+
+    for (const platform of ["instagram", "tiktok", "spotify", "youtube", "deezer", "apple-music", "soundcloud"]) {
+      expect(await screen.findByTestId(`metric-${platform}-artist-1`)).toBeInTheDocument();
+    }
+  });
+
+  it("REGRESSAO: a lista de plataformas nao pode depender dos profiles retornados pela API — as 7 continuam visiveis mesmo so com Spotify/YouTube sincronizados", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      {
+        tenant_id: "tenant-1",
+        artist_id: "artist-1",
+        platform: "spotify",
+        external_id: SPOTIFY_ID,
+        external_url: null,
+        display_name: null,
+        username: null,
+        profile_url: null,
+        image_url: null,
+        followers: 9999,
+        subscribers: null,
+        monthly_listeners: 4321,
+        popularity: 77,
+        total_views: null,
+        total_videos: null,
+        total_tracks: null,
+        total_albums: null,
+        raw_payload: {},
+        sync_status: "success",
+        last_synced_at: "2026-06-12T00:00:00Z",
+        last_error: null,
+      },
+      {
+        tenant_id: "tenant-1",
+        artist_id: "artist-1",
+        platform: "youtube",
+        external_id: YOUTUBE_ID,
+        external_url: null,
+        display_name: null,
+        username: null,
+        profile_url: null,
+        image_url: null,
+        followers: null,
+        subscribers: 5555,
+        monthly_listeners: null,
+        popularity: null,
+        total_views: "999",
+        total_videos: null,
+        total_tracks: null,
+        total_albums: null,
+        raw_payload: {},
+        sync_status: "success",
+        last_synced_at: "2026-06-12T00:00:00Z",
+        last_error: null,
+      },
+    ]);
+
+    // Nenhum dado manual para as outras plataformas — apenas platformProfiles com spotify+youtube.
+    renderMetrics({
+      instagramUrl: null,
+      instagramSeguidores: null,
+      tiktokUrl: null,
+      tiktokSeguidores: null,
+      deezerUrl: null,
+      deezerFas: null,
+      appleMusicUrl: null,
+      appleMusicAlbuns: null,
+      soundcloudUrl: null,
+      soundcloudSeguidores: null,
+    });
+
+    // As 7 continuam presentes no DOM.
+    for (const platform of ["instagram", "tiktok", "spotify", "youtube", "deezer", "apple-music", "soundcloud"]) {
+      expect(await screen.findByTestId(`metric-${platform}-artist-1`)).toBeInTheDocument();
+    }
+
+    // Spotify e YouTube usam dado real.
+    expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("4.321");
+    expect(screen.getByTestId("metric-youtube-artist-1")).toHaveTextContent("5.555");
+
+    // Instagram/TikTok/Apple Music: sem fonte real na integração atual — indisponivel explicito, nunca "0".
+    for (const platform of ["instagram", "tiktok", "apple-music"]) {
+      const el = screen.getByTestId(`metric-${platform}-artist-1`);
+      expect(el).toHaveTextContent("Indisponível");
+      expect(el).not.toHaveTextContent("0");
+    }
+
+    // Deezer/SoundCloud tambem sao providers reais (API publica do PERFIL do artista,
+    // sem OAuth de organizacao) — sem perfil cadastrado o estado e "Nao configurado",
+    // igual Spotify/YouTube, nunca "0" nem escondido.
+    for (const platform of ["deezer", "soundcloud"]) {
+      const el = screen.getByTestId(`metric-${platform}-artist-1`);
+      expect(el).toHaveTextContent("—");
+      expect(el).not.toHaveTextContent("0");
+    }
+  });
+
+  it("Deezer usa fas sincronizados (ArtistPlatformProfileEntity) quando disponivel, nao o contador manual", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      {
+        tenant_id: "tenant-1",
+        artist_id: "artist-1",
+        platform: "deezer",
+        external_id: "123",
+        external_url: null,
+        display_name: null,
+        username: null,
+        profile_url: null,
+        image_url: null,
+        followers: 77777,
+        subscribers: null,
+        monthly_listeners: null,
+        popularity: null,
+        total_views: null,
+        total_videos: null,
+        total_tracks: null,
+        total_albums: null,
+        raw_payload: {},
+        sync_status: "success",
+        last_synced_at: "2026-06-12T00:00:00Z",
+        last_error: null,
+      },
+    ]);
+
+    renderMetrics({ deezerUrl: "https://www.deezer.com/artist/123", deezerFas: 111 });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("metric-deezer-artist-1")).toHaveTextContent("77.777");
     });
   });
 
@@ -349,5 +523,47 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     fireEvent.click(await screen.findByTestId("button-sync-youtube-artist-1"));
 
     expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("Deezer sincroniza pelo PERFIL PUBLICO do artista (URL), sem exigir OAuth/credencial de organizacao", async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
+    vi.mocked(api.post).mockResolvedValue({
+      artist_id: "artist-1",
+      enqueued: [{ platform: "deezer", job_id: "job-4" }],
+      skipped: [],
+    });
+
+    renderMetrics({ deezerUrl: "https://www.deezer.com/br/artist/27" });
+
+    fireEvent.click(await screen.findByTestId("button-sync-deezer-artist-1"));
+
+    await waitFor(() => {
+      // Só o profileUrl do artista viaja no corpo — nenhum accessToken/connectionId
+      // de conexão OAuth da organização é enviado.
+      expect(api.post).toHaveBeenCalledWith("/artists/artist-1/platform-profiles/deezer/sync", {
+        profileUrl: "https://www.deezer.com/artist/27",
+        source: "profile_url",
+      });
+    });
+  });
+
+  it("SoundCloud sincroniza pelo PERFIL PUBLICO do artista (URL), sem exigir OAuth/credencial de organizacao", async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
+    vi.mocked(api.post).mockResolvedValue({
+      artist_id: "artist-1",
+      enqueued: [{ platform: "soundcloud", job_id: "job-5" }],
+      skipped: [],
+    });
+
+    renderMetrics({ soundcloudUrl: "https://soundcloud.com/artist-handle" });
+
+    fireEvent.click(await screen.findByTestId("button-sync-soundcloud-artist-1"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/artists/artist-1/platform-profiles/soundcloud/sync", {
+        profileUrl: "https://soundcloud.com/artist-handle",
+        source: "profile_url",
+      });
+    });
   });
 });

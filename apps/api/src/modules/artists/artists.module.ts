@@ -8,6 +8,8 @@ import { ArtistPlatformProfilesService } from './platform-profiles/artist-platfo
 import { ArtistExternalProfileSyncService } from './platform-profiles/artist-external-profile-sync.service';
 import { SpotifyArtistProfileProvider } from './platform-profiles/providers/spotify-artist-profile.provider';
 import { YouTubeArtistProfileProvider } from './platform-profiles/providers/youtube-artist-profile.provider';
+import { DeezerArtistProfileProvider } from './platform-profiles/providers/deezer-artist-profile.provider';
+import { SoundCloudArtistProfileProvider } from './platform-profiles/providers/soundcloud-artist-profile.provider';
 
 @Module({
   imports:     [ActivityLogsModule],
@@ -20,6 +22,8 @@ import { YouTubeArtistProfileProvider } from './platform-profiles/providers/yout
     ArtistExternalProfileSyncService,
     SpotifyArtistProfileProvider,
     YouTubeArtistProfileProvider,
+    DeezerArtistProfileProvider,
+    SoundCloudArtistProfileProvider,
   ],
   exports:     [ArtistsService, ArtistPlatformProfilesService, ArtistExternalProfileSyncService],
 })

@@ -4,6 +4,7 @@ import type { Queue } from 'bullmq';
 import { createHash } from 'crypto';
 import { QUEUE_NAMES, ARTIST_PLATFORM_PROFILE_JOB_NAMES } from '../../../queues/queue.constants';
 import { ArtistsService } from '../artists.service';
+import type { ArtistEntity } from '../../../database/entities';
 import { ArtistPlatformProfilesService } from './artist-platform-profiles.service';
 import type { ArtistPlatformSyncJobPayload, SocialPlatform } from './social-platform-sync.types';
 import { isSocialPlatform } from './social-platform-sync.types';
@@ -41,7 +42,7 @@ export class ArtistExternalProfileSyncService {
     const normalized = this.resolveExternalProfile({
       platform,
       profileUrl: input.profileUrl,
-      cachedProfileUrl: platform === 'spotify' ? artist.spotify_url : artist.youtube_url,
+      cachedProfileUrl: this.cachedProfileUrlFor(platform, artist),
     });
     const externalId = normalized.externalId;
     const externalUrl = normalized.externalUrl;
@@ -135,6 +136,13 @@ export class ArtistExternalProfileSyncService {
     };
   }
 
+  private cachedProfileUrlFor(platform: SocialPlatform, artist: ArtistEntity): string | null {
+    if (platform === 'spotify') return artist.spotify_url;
+    if (platform === 'deezer') return artist.deezer_url;
+    if (platform === 'soundcloud') return artist.soundcloud_url;
+    return artist.youtube_url;
+  }
+
   private resolveExternalProfile(input: {
     platform: SocialPlatform;
     profileUrl?: string | null;
@@ -148,6 +156,24 @@ export class ArtistExternalProfileSyncService {
         return {
           externalId,
           externalUrl: `https://open.spotify.com/artist/${externalId}`,
+        };
+      }
+
+      if (input.platform === 'deezer') {
+        const externalId = this.extractDeezerArtistId(rawUrl);
+        if (!externalId) throw new BadRequestException('Link do Deezer inválido: informe uma URL de artista do Deezer');
+        return {
+          externalId,
+          externalUrl: `https://www.deezer.com/artist/${externalId}`,
+        };
+      }
+
+      if (input.platform === 'soundcloud') {
+        const externalId = this.extractSoundCloudSlug(rawUrl);
+        if (!externalId) throw new BadRequestException('Link do SoundCloud inválido: informe a URL do perfil do artista no SoundCloud');
+        return {
+          externalId,
+          externalUrl: `https://soundcloud.com/${externalId}`,
         };
       }
 
@@ -170,6 +196,20 @@ export class ArtistExternalProfileSyncService {
         externalUrl: externalId ? `https://open.spotify.com/artist/${externalId}` : cachedProfileUrl,
       };
     }
+    if (input.platform === 'deezer') {
+      const externalId = this.extractDeezerArtistId(cachedProfileUrl);
+      return {
+        externalId,
+        externalUrl: externalId ? `https://www.deezer.com/artist/${externalId}` : cachedProfileUrl,
+      };
+    }
+    if (input.platform === 'soundcloud') {
+      const externalId = this.extractSoundCloudSlug(cachedProfileUrl);
+      return {
+        externalId,
+        externalUrl: externalId ? `https://soundcloud.com/${externalId}` : cachedProfileUrl,
+      };
+    }
     const externalId = this.extractYouTubeChannelId(cachedProfileUrl);
     return {
       externalId,
@@ -181,6 +221,22 @@ export class ArtistExternalProfileSyncService {
     const trimmed = value.trim();
     if (/^[A-Za-z0-9]{22}$/.test(trimmed)) return trimmed;
     const match = trimmed.match(/^https?:\/\/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?artist\/([A-Za-z0-9]{22})(?:[/?#].*)?$/i);
+    return match?.[1] ?? null;
+  }
+
+  private extractDeezerArtistId(value: string): string | null {
+    const trimmed = value.trim();
+    if (/^\d+$/.test(trimmed)) return trimmed;
+    const match = trimmed.match(/deezer\.com\/(?:[a-z]{2}\/)?artist\/(\d+)/i);
+    return match?.[1] ?? null;
+  }
+
+  /** Só aceita URLs de perfil (um único segmento), nunca faixa/playlist
+   * (`soundcloud.com/user/track-slug`) — evita sincronizar o recurso errado. */
+  private extractSoundCloudSlug(value: string): string | null {
+    const trimmed = value.trim();
+    if (/^[A-Za-z0-9_-]+$/.test(trimmed)) return trimmed;
+    const match = trimmed.match(/^https?:\/\/(?:www\.|m\.)?soundcloud\.com\/([A-Za-z0-9_-]+)\/?(?:[?#].*)?$/i);
     return match?.[1] ?? null;
   }
 

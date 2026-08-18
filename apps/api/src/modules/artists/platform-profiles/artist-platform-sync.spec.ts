@@ -2,6 +2,11 @@ import { BadRequestException } from '@nestjs/common';
 import { ArtistExternalProfileSyncService } from './artist-external-profile-sync.service';
 import { ArtistPlatformSyncProcessor } from '../../../queues/processors/artist-platform-sync.processor';
 import { ARTIST_PLATFORM_PROFILE_JOB_NAMES } from '../../../queues/queue.constants';
+import { IntegrationBaseService } from '../../integrations/integration-base.service';
+import { SpotifyArtistProfileProvider } from './providers/spotify-artist-profile.provider';
+import { YouTubeArtistProfileProvider } from './providers/youtube-artist-profile.provider';
+import { DeezerArtistProfileProvider } from './providers/deezer-artist-profile.provider';
+import { SoundCloudArtistProfileProvider } from './providers/soundcloud-artist-profile.provider';
 
 const payload = {
   tenant_id: 'tenant-1',
@@ -21,6 +26,26 @@ const makeDbContext = () => ({
 
 const SPOTIFY_ID = '4NHQUGzhtTLFvgF5SZesLK';
 const YOUTUBE_ID = 'UC_x5XG1OV2P6uZZ5FSM9Ttw';
+
+describe('Separação de domínio: métricas do artista NUNCA dependem de OAuth da organização', () => {
+  it('nenhum ArtistPlatformProvider estende IntegrationBaseService (base das conexões OAuth de tenant/Ads/Marketing)', () => {
+    for (const Provider of [
+      SpotifyArtistProfileProvider,
+      YouTubeArtistProfileProvider,
+      DeezerArtistProfileProvider,
+      SoundCloudArtistProfileProvider,
+    ]) {
+      expect(Provider.prototype instanceof IntegrationBaseService).toBe(false);
+    }
+  });
+
+  it('ArtistExternalProfileSyncService não injeta nenhum serviço de integração OAuth (Instagram/TikTok/Meta/SoundCloud Ads)', () => {
+    // Assinatura do construtor é a superfície real de dependências — se algum dia
+    // alguém tentar resolver métrica de artista via conexão OAuth da organização,
+    // este teste quebra porque um novo parâmetro apareceria aqui.
+    expect(ArtistExternalProfileSyncService.length).toBe(3);
+  });
+});
 
 describe('ArtistExternalProfileSyncService', () => {
   it('enfileira sync manual de Spotify com pending tenant-scoped', async () => {
@@ -89,6 +114,68 @@ describe('ArtistExternalProfileSyncService', () => {
       expect.any(Object),
     );
     expect(result.enqueued).toEqual([{ platform: 'youtube', job_id: 'job-2' }]);
+  });
+
+  it('enfileira sync manual de Deezer', async () => {
+    const artists = {
+      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null, deezer_url: null }),
+    };
+    const profiles = {
+      hasRecentPending: jest.fn().mockResolvedValue(false),
+      upsertPending: jest.fn().mockResolvedValue({}),
+    };
+    const queue = { add: jest.fn().mockResolvedValue({ id: 'job-3' }) };
+    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+
+    const result = await service.enqueueManualSync({
+      tenantId: 'tenant-1',
+      artistId: 'artist-1',
+      platform: 'deezer',
+      requestedBy: 'user-1',
+      profileUrl: 'https://www.deezer.com/br/artist/27',
+    });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      expect.objectContaining({
+        platform: 'deezer',
+        external_id: '27',
+        external_url: 'https://www.deezer.com/artist/27',
+      }),
+      expect.any(Object),
+    );
+    expect(result.enqueued).toEqual([{ platform: 'deezer', job_id: 'job-3' }]);
+  });
+
+  it('enfileira sync manual de SoundCloud pelo perfil publico do artista (nao exige credencial de organizacao para resolver a URL)', async () => {
+    const artists = {
+      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null, soundcloud_url: null }),
+    };
+    const profiles = {
+      hasRecentPending: jest.fn().mockResolvedValue(false),
+      upsertPending: jest.fn().mockResolvedValue({}),
+    };
+    const queue = { add: jest.fn().mockResolvedValue({ id: 'job-4' }) };
+    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+
+    const result = await service.enqueueManualSync({
+      tenantId: 'tenant-1',
+      artistId: 'artist-1',
+      platform: 'soundcloud',
+      requestedBy: 'user-1',
+      profileUrl: 'https://soundcloud.com/artist-handle',
+    });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      expect.objectContaining({
+        platform: 'soundcloud',
+        external_id: 'artist-handle',
+        external_url: 'https://soundcloud.com/artist-handle',
+      }),
+      expect.any(Object),
+    );
+    expect(result.enqueued).toEqual([{ platform: 'soundcloud', job_id: 'job-4' }]);
   });
 
   it('retorna skipped quando artista nao tem perfil externo da plataforma', async () => {
@@ -176,6 +263,8 @@ describe('ArtistPlatformSyncProcessor', () => {
       dbContext as never,
       spotify as never,
       { platform: 'youtube' } as never,
+      { platform: 'deezer' } as never,
+      { platform: 'soundcloud' } as never,
     );
 
     await processor.process({ name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC, data: payload } as never);
@@ -219,6 +308,8 @@ describe('ArtistPlatformSyncProcessor', () => {
       makeDbContext() as never,
       spotify as never,
       { platform: 'youtube' } as never,
+      { platform: 'deezer' } as never,
+      { platform: 'soundcloud' } as never,
     );
 
     await processor.process({ name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC, data: payload } as never);
@@ -232,6 +323,92 @@ describe('ArtistPlatformSyncProcessor', () => {
     }));
   });
 
+  it('roteia job de Deezer para o DeezerArtistProfileProvider e persiste fas', async () => {
+    const findOne = jest.fn().mockResolvedValue({
+      id: 'artist-1',
+      tenant_id: 'tenant-1',
+      deezer_url: 'https://www.deezer.com/artist/27',
+    });
+    const ds = { getRepository: jest.fn(() => ({ findOne })) };
+    const profiles = {
+      upsertPending: jest.fn().mockResolvedValue({}),
+      upsertSuccess: jest.fn().mockResolvedValue({}),
+      markFailed: jest.fn(),
+    };
+    const deezer = {
+      platform: 'deezer',
+      resolve: jest.fn().mockResolvedValue({
+        tenant_id: 'tenant-1',
+        artist_id: 'artist-1',
+        platform: 'deezer',
+        external_id: '27',
+        followers: 12345,
+        sync_status: 'success',
+      }),
+    };
+    const processor = new ArtistPlatformSyncProcessor(
+      ds as never,
+      profiles as never,
+      makeDbContext() as never,
+      { platform: 'spotify' } as never,
+      { platform: 'youtube' } as never,
+      deezer as never,
+      { platform: 'soundcloud' } as never,
+    );
+
+    await processor.process({
+      name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      data: { ...payload, platform: 'deezer' as const, external_id: '27', external_url: 'https://www.deezer.com/artist/27' },
+    } as never);
+
+    expect(deezer.resolve).toHaveBeenCalledWith(expect.objectContaining({ externalId: '27' }));
+    expect(profiles.upsertSuccess).toHaveBeenCalledWith(expect.objectContaining({ platform: 'deezer', followers: 12345 }));
+    expect(profiles.markFailed).not.toHaveBeenCalled();
+  });
+
+  it('roteia job de SoundCloud para o SoundCloudArtistProfileProvider e persiste seguidores do PERFIL DO ARTISTA', async () => {
+    const findOne = jest.fn().mockResolvedValue({
+      id: 'artist-1',
+      tenant_id: 'tenant-1',
+      soundcloud_url: 'https://soundcloud.com/artist-handle',
+    });
+    const ds = { getRepository: jest.fn(() => ({ findOne })) };
+    const profiles = {
+      upsertPending: jest.fn().mockResolvedValue({}),
+      upsertSuccess: jest.fn().mockResolvedValue({}),
+      markFailed: jest.fn(),
+    };
+    const soundcloud = {
+      platform: 'soundcloud',
+      resolve: jest.fn().mockResolvedValue({
+        tenant_id: 'tenant-1',
+        artist_id: 'artist-1',
+        platform: 'soundcloud',
+        external_id: 'artist-handle',
+        followers: 54321,
+        sync_status: 'success',
+      }),
+    };
+    const processor = new ArtistPlatformSyncProcessor(
+      ds as never,
+      profiles as never,
+      makeDbContext() as never,
+      { platform: 'spotify' } as never,
+      { platform: 'youtube' } as never,
+      { platform: 'deezer' } as never,
+      soundcloud as never,
+    );
+
+    await processor.process({
+      name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      data: { ...payload, platform: 'soundcloud' as const, external_id: 'artist-handle', external_url: 'https://soundcloud.com/artist-handle' },
+    } as never);
+
+    expect(soundcloud.resolve).toHaveBeenCalledWith(expect.objectContaining({ externalId: 'artist-handle' }));
+    expect(profiles.upsertSuccess).toHaveBeenCalledWith(expect.objectContaining({ platform: 'soundcloud', followers: 54321 }));
+    expect(profiles.markFailed).not.toHaveBeenCalled();
+  });
+
   it('aborta fail-closed quando o job não tem tenant_id', async () => {
     const profiles = { upsertPending: jest.fn(), upsertSuccess: jest.fn(), markFailed: jest.fn() };
     const dbContext = makeDbContext();
@@ -241,6 +418,8 @@ describe('ArtistPlatformSyncProcessor', () => {
       dbContext as never,
       { platform: 'spotify' } as never,
       { platform: 'youtube' } as never,
+      { platform: 'deezer' } as never,
+      { platform: 'soundcloud' } as never,
     );
 
     await processor.process({

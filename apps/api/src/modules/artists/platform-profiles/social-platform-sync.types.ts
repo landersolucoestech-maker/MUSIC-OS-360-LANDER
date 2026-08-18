@@ -1,6 +1,6 @@
 import type { ArtistPlatformProfileEntity } from '../../../database/entities';
 
-export const SOCIAL_PLATFORMS = ['spotify', 'youtube'] as const;
+export const SOCIAL_PLATFORMS = ['spotify', 'youtube', 'deezer', 'soundcloud'] as const;
 
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
 export type SocialPlatformSyncStatus = 'pending' | 'success' | 'failed' | 'skipped';

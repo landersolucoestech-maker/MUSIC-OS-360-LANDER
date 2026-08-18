@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/shared/lib/api-client";
 
-export type SocialPlatform = "spotify" | "youtube";
+export type SocialPlatform = "spotify" | "youtube" | "deezer" | "soundcloud";
 export type SocialPlatformSyncStatus = "pending" | "success" | "failed" | "skipped";
 
 export interface ArtistPlatformProfileSnapshot {

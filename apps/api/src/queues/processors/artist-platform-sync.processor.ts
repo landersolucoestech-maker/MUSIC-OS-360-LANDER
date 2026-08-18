@@ -14,6 +14,8 @@ import type {
 } from '../../modules/artists/platform-profiles/social-platform-sync.types';
 import { SpotifyArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/spotify-artist-profile.provider';
 import { YouTubeArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/youtube-artist-profile.provider';
+import { DeezerArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/deezer-artist-profile.provider';
+import { SoundCloudArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/soundcloud-artist-profile.provider';
 
 @Processor(QUEUE_NAMES.ARTIST_PLATFORM_SYNC)
 @Injectable()
@@ -27,11 +29,15 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
     private readonly dbContext: DatabaseContextService,
     spotify: SpotifyArtistProfileProvider,
     youtube: YouTubeArtistProfileProvider,
+    deezer: DeezerArtistProfileProvider,
+    soundcloud: SoundCloudArtistProfileProvider,
   ) {
     super();
     this.providers = {
       spotify,
       youtube,
+      deezer,
+      soundcloud,
     };
   }
 
