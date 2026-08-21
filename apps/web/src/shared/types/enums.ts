@@ -38,8 +38,12 @@ import type {
 /** Derivado de ArtistStatus — fonte de verdade: @music-os-360/types */
 export type ArtistaStatus = `${ArtistStatus}`;
 
+// Forma curta "solo", sem prefixo — vocabulário canônico real: default do
+// banco (artists.tipo), ArtistsService.create(), seed operacional,
+// LeadEventsHandler e o contrato de import/export testado usam todos a forma
+// curta, igual às outras 5 opções (banda/duo/trio/grupo/coletivo).
 export type ArtistaTipo =
-  | "artista_solo"
+  | "solo"
   | "banda"
   | "duo"
   | "trio"

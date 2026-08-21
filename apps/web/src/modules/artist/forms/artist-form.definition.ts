@@ -472,7 +472,7 @@ export type ArtistaPreservedInput = Omit<FormToArtistaInput, keyof ArtistaFormAl
 export function emptyPreservedInput(): ArtistaPreservedInput {
   return {
     slugArtistico: "", tagsMusicais: [], faseCarreira: "",
-    tipoArtista: "artista_solo", statusArtista: "contratado",
+    tipoArtista: "solo", statusArtista: "contratado",
     spotifyOuvintes: "", instagramSeguidores: "", youtubeInscritos: "",
     tiktokSeguidores: "", soundcloudSeguidores: "", deezerFas: "", appleMusicAlbuns: "",
     relacionamentos: [],
