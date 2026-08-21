@@ -10,6 +10,10 @@ import { SpotifyArtistProfileProvider } from './platform-profiles/providers/spot
 import { YouTubeArtistProfileProvider } from './platform-profiles/providers/youtube-artist-profile.provider';
 import { DeezerArtistProfileProvider } from './platform-profiles/providers/deezer-artist-profile.provider';
 import { SoundCloudArtistProfileProvider } from './platform-profiles/providers/soundcloud-artist-profile.provider';
+import { InstagramArtistProfileProvider } from './platform-profiles/providers/instagram-artist-profile.provider';
+import { TikTokArtistProfileProvider } from './platform-profiles/providers/tiktok-artist-profile.provider';
+import { AppleMusicArtistProfileProvider } from './platform-profiles/providers/apple-music-artist-profile.provider';
+import { SoundchartsService } from '../integrations/soundcharts/soundcharts.service';
 
 @Module({
   imports:     [ActivityLogsModule],
@@ -20,10 +24,14 @@ import { SoundCloudArtistProfileProvider } from './platform-profiles/providers/s
     ArtistWorkflowHandler,
     ArtistPlatformProfilesService,
     ArtistExternalProfileSyncService,
+    SoundchartsService,
     SpotifyArtistProfileProvider,
     YouTubeArtistProfileProvider,
     DeezerArtistProfileProvider,
     SoundCloudArtistProfileProvider,
+    InstagramArtistProfileProvider,
+    TikTokArtistProfileProvider,
+    AppleMusicArtistProfileProvider,
   ],
   exports:     [ArtistsService, ArtistPlatformProfilesService, ArtistExternalProfileSyncService],
 })

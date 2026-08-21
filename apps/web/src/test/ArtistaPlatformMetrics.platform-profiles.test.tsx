@@ -26,6 +26,35 @@ const SPOTIFY_ID = "4NHQUGzhtTLFvgF5SZesLK";
 const YOUTUBE_ID = "UC_x5XG1OV2P6uZZ5FSM9Ttw";
 const SPOTIFY_URL = `https://open.spotify.com/artist/${SPOTIFY_ID}`;
 const YOUTUBE_URL = `https://www.youtube.com/channel/${YOUTUBE_ID}`;
+const INSTAGRAM_URL = "https://www.instagram.com/djstay";
+const TIKTOK_URL = "https://www.tiktok.com/@djstay";
+const APPLE_MUSIC_URL = "https://music.apple.com/br/artist/dj-stay/123456";
+
+function baseSnapshot(overrides: Partial<Record<string, unknown>>) {
+  return {
+    tenant_id: "tenant-1",
+    artist_id: "artist-1",
+    external_id: null,
+    external_url: null,
+    display_name: null,
+    username: null,
+    profile_url: null,
+    image_url: null,
+    followers: null,
+    subscribers: null,
+    monthly_listeners: null,
+    popularity: null,
+    total_views: null,
+    total_videos: null,
+    total_tracks: null,
+    total_albums: null,
+    raw_payload: {},
+    sync_status: "success",
+    last_synced_at: "2026-06-12T00:00:00Z",
+    last_error: null,
+    ...overrides,
+  };
+}
 
 function renderMetrics(overrides: Partial<MetricsProps> = {}) {
   const queryClient = new QueryClient({
@@ -205,18 +234,13 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
       },
     ]);
 
-    // Nenhum dado manual para as outras plataformas — apenas platformProfiles com spotify+youtube.
+    // Nenhum perfil cadastrado para as outras plataformas — apenas platformProfiles com spotify+youtube.
     renderMetrics({
       instagramUrl: null,
-      instagramSeguidores: null,
       tiktokUrl: null,
-      tiktokSeguidores: null,
       deezerUrl: null,
-      deezerFas: null,
       appleMusicUrl: null,
-      appleMusicAlbuns: null,
       soundcloudUrl: null,
-      soundcloudSeguidores: null,
     });
 
     // As 7 continuam presentes no DOM.
@@ -228,17 +252,11 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("4.321");
     expect(screen.getByTestId("metric-youtube-artist-1")).toHaveTextContent("5.555");
 
-    // Instagram/TikTok/Apple Music: sem fonte real na integração atual — indisponivel explicito, nunca "0".
-    for (const platform of ["instagram", "tiktok", "apple-music"]) {
-      const el = screen.getByTestId(`metric-${platform}-artist-1`);
-      expect(el).toHaveTextContent("Indisponível");
-      expect(el).not.toHaveTextContent("0");
-    }
-
-    // Deezer/SoundCloud tambem sao providers reais (API publica do PERFIL do artista,
-    // sem OAuth de organizacao) — sem perfil cadastrado o estado e "Nao configurado",
-    // igual Spotify/YouTube, nunca "0" nem escondido.
-    for (const platform of ["deezer", "soundcloud"]) {
+    // Instagram/TikTok/Apple Music/Deezer/SoundCloud sao todos providers reais com sync via
+    // ArtistPlatformProfile — sem perfil (URL) cadastrado o estado e "Nao configurado" (—),
+    // igual Spotify/YouTube, nunca "0" nem "Indisponivel" (esse fica reservado para
+    // sync success sem métrica, nao para "sem URL configurada").
+    for (const platform of ["instagram", "tiktok", "apple-music", "deezer", "soundcloud"]) {
       const el = screen.getByTestId(`metric-${platform}-artist-1`);
       expect(el).toHaveTextContent("—");
       expect(el).not.toHaveTextContent("0");
@@ -272,7 +290,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
       },
     ]);
 
-    renderMetrics({ deezerUrl: "https://www.deezer.com/artist/123", deezerFas: 111 });
+    renderMetrics({ deezerUrl: "https://www.deezer.com/artist/123" });
 
     await waitFor(() => {
       expect(screen.getByTestId("metric-deezer-artist-1")).toHaveTextContent("77.777");
@@ -606,5 +624,114 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
       { timeout: 4000, interval: 100 },
     );
     expect(api.get).toHaveBeenCalledTimes(2);
+  });
+
+  it("Instagram success: followers=123456 renderiza 123.456 via formatCount", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      baseSnapshot({ platform: "instagram", followers: 123456 }),
+    ]);
+
+    renderMetrics({ instagramUrl: INSTAGRAM_URL });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("metric-instagram-artist-1")).toHaveTextContent("123.456");
+    });
+  });
+
+  it("TikTok success: followers=654321 renderiza corretamente", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      baseSnapshot({ platform: "tiktok", followers: 654321 }),
+    ]);
+
+    renderMetrics({ tiktokUrl: TIKTOK_URL });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("metric-tiktok-artist-1")).toHaveTextContent("654.321");
+    });
+  });
+
+  it("Instagram failed: mostra Erro, NUNCA cai de volta para contador manual", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      baseSnapshot({ platform: "instagram", sync_status: "failed", last_error: "Soundcharts: rate limit" }),
+    ]);
+
+    renderMetrics({ instagramUrl: INSTAGRAM_URL });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("metric-instagram-artist-1")).toHaveTextContent("Erro");
+    });
+    expect(screen.getByText("Soundcharts: rate limit")).toBeInTheDocument();
+    expect(screen.getByTestId("metric-instagram-artist-1")).not.toHaveTextContent("Indisponível");
+  });
+
+  it("TikTok failed: mostra Erro, NUNCA cai de volta para contador manual", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      baseSnapshot({ platform: "tiktok", sync_status: "failed", last_error: "Soundcharts: rate limit" }),
+    ]);
+
+    renderMetrics({ tiktokUrl: TIKTOK_URL });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("metric-tiktok-artist-1")).toHaveTextContent("Erro");
+    });
+    expect(screen.getByText("Soundcharts: rate limit")).toBeInTheDocument();
+  });
+
+  it("Instagram/TikTok success sem conta vinculada (followers=null): Indisponivel, nao Erro", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      baseSnapshot({ platform: "instagram", followers: null }),
+      baseSnapshot({ platform: "tiktok", followers: null }),
+    ]);
+
+    renderMetrics({ instagramUrl: INSTAGRAM_URL, tiktokUrl: TIKTOK_URL });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("metric-instagram-artist-1")).toHaveTextContent("Indisponível");
+      expect(screen.getByTestId("metric-tiktok-artist-1")).toHaveTextContent("Indisponível");
+    });
+  });
+
+  it("Apple Music: mostra Indisponivel, nunca 0, nunca usa playlist_count/apple_music_albuns como audiencia", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      baseSnapshot({ platform: "apple-music", raw_payload: { soundcharts_uuid: "u1", playlist_count: 734 } }),
+    ]);
+
+    renderMetrics({ appleMusicUrl: APPLE_MUSIC_URL });
+
+    await waitFor(() => {
+      const el = screen.getByTestId("metric-apple-music-artist-1");
+      expect(el).toHaveTextContent("Indisponível");
+      expect(el).not.toHaveTextContent("734");
+      expect(el).not.toHaveTextContent(/(^|\D)0(\D|$)/);
+    });
+  });
+
+  it("YouTube: subscribers e total_views sao ambos renderizados no mesmo card", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([
+      baseSnapshot({ platform: "youtube", subscribers: 15400, total_views: "123456789" }),
+    ]);
+
+    renderMetrics();
+
+    await waitFor(() => {
+      const el = screen.getByTestId("metric-youtube-artist-1");
+      expect(el).toHaveTextContent("15.400");
+    });
+    const youtubeCard = screen.getByTestId("metric-youtube-artist-1").closest("div.rounded-lg");
+    expect(youtubeCard).toHaveTextContent("123.456.789");
+  });
+
+  it("apos sync bem-sucedido, o card do Instagram usa o novo ArtistPlatformProfile retornado (refetch)", async () => {
+    vi.mocked(api.get)
+      .mockResolvedValueOnce([baseSnapshot({ platform: "instagram", sync_status: "pending", followers: null })])
+      .mockResolvedValueOnce([baseSnapshot({ platform: "instagram", sync_status: "success", followers: 4242 })]);
+
+    renderMetrics({ instagramUrl: INSTAGRAM_URL });
+
+    await waitFor(() => expect(screen.getByTestId("metric-instagram-artist-1")).toHaveTextContent("..."));
+    await waitFor(
+      () => expect(screen.getByTestId("metric-instagram-artist-1")).toHaveTextContent("4.242"),
+      { timeout: 4000, interval: 100 },
+    );
   });
 });

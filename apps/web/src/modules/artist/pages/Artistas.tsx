@@ -581,15 +581,10 @@ export default function Artistas() {
                     spotifyUrl={(artista as Artista).spotify_url ?? null}
                     youtubeUrl={(artista as Artista).youtube_url ?? null}
                     instagramUrl={(artista as Artista).instagram_url ?? null}
-                    instagramSeguidores={(artista as Artista).instagram_seguidores ?? null}
                     tiktokUrl={(artista as Artista).tiktok_url ?? null}
-                    tiktokSeguidores={(artista as Artista).tiktok_seguidores ?? null}
                     deezerUrl={(artista as Artista).deezer_url ?? null}
-                    deezerFas={(artista as Artista).deezer_fas ?? null}
                     appleMusicUrl={(artista as Artista).apple_music_url ?? null}
-                    appleMusicAlbuns={(artista as Artista).apple_music_albuns_url ?? null}
                     soundcloudUrl={(artista as Artista).soundcloud_url ?? null}
-                    soundcloudSeguidores={(artista as Artista).soundcloud_seguidores_url ?? null}
                   />
                 </div>
               );

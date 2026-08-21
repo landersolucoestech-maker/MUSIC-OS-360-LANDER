@@ -34,6 +34,10 @@ import { SpotifyArtistProfileProvider } from '../modules/artists/platform-profil
 import { YouTubeArtistProfileProvider } from '../modules/artists/platform-profiles/providers/youtube-artist-profile.provider';
 import { DeezerArtistProfileProvider } from '../modules/artists/platform-profiles/providers/deezer-artist-profile.provider';
 import { SoundCloudArtistProfileProvider } from '../modules/artists/platform-profiles/providers/soundcloud-artist-profile.provider';
+import { InstagramArtistProfileProvider } from '../modules/artists/platform-profiles/providers/instagram-artist-profile.provider';
+import { TikTokArtistProfileProvider } from '../modules/artists/platform-profiles/providers/tiktok-artist-profile.provider';
+import { AppleMusicArtistProfileProvider } from '../modules/artists/platform-profiles/providers/apple-music-artist-profile.provider';
+import { SoundchartsService } from '../modules/integrations/soundcharts/soundcharts.service';
 
 import { CoreModule }  from '../core/core.module';
 import { AIModule }    from '../modules/ai/ai.module';
@@ -251,10 +255,14 @@ export class QueueModule {
         ArtistPlatformSyncProcessor,
         WorkerErrorThrottlerService,
         ArtistPlatformProfilesService,
+        SoundchartsService,
         SpotifyArtistProfileProvider,
         YouTubeArtistProfileProvider,
         DeezerArtistProfileProvider,
         SoundCloudArtistProfileProvider,
+        InstagramArtistProfileProvider,
+        TikTokArtistProfileProvider,
+        AppleMusicArtistProfileProvider,
       ],
       exports: [
         BullModule,

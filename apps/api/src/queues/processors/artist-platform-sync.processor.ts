@@ -16,6 +16,10 @@ import { SpotifyArtistProfileProvider } from '../../modules/artists/platform-pro
 import { YouTubeArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/youtube-artist-profile.provider';
 import { DeezerArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/deezer-artist-profile.provider';
 import { SoundCloudArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/soundcloud-artist-profile.provider';
+import { InstagramArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/instagram-artist-profile.provider';
+import { TikTokArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/tiktok-artist-profile.provider';
+import { AppleMusicArtistProfileProvider } from '../../modules/artists/platform-profiles/providers/apple-music-artist-profile.provider';
+import { canonicalUrlsFromArtist } from '../../modules/artists/platform-profiles/soundcharts-canonical-candidates.util';
 
 @Processor(QUEUE_NAMES.ARTIST_PLATFORM_SYNC)
 @Injectable()
@@ -31,6 +35,9 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
     youtube: YouTubeArtistProfileProvider,
     deezer: DeezerArtistProfileProvider,
     soundcloud: SoundCloudArtistProfileProvider,
+    instagram: InstagramArtistProfileProvider,
+    tiktok: TikTokArtistProfileProvider,
+    appleMusic: AppleMusicArtistProfileProvider,
   ) {
     super();
     this.providers = {
@@ -38,6 +45,9 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
       youtube,
       deezer,
       soundcloud,
+      instagram,
+      tiktok,
+      'apple-music': appleMusic,
     };
   }
 
@@ -120,6 +130,7 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
         artistId: payload.artist_id,
         externalId: payload.external_id ?? null,
         externalUrl: payload.external_url ?? null,
+        canonicalUrls: canonicalUrlsFromArtist(artist),
       });
       await this.profiles.upsertSuccess(snapshot);
       this.logger.log(

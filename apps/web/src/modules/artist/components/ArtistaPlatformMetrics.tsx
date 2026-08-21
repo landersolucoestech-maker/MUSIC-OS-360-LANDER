@@ -17,15 +17,10 @@ interface ArtistaPlatformMetricsProps {
   spotifyUrl?: string | null;
   youtubeUrl?: string | null;
   instagramUrl?: string | null;
-  instagramSeguidores?: number | null;
   tiktokUrl?: string | null;
-  tiktokSeguidores?: number | null;
   deezerUrl?: string | null;
-  deezerFas?: number | null;
   appleMusicUrl?: string | null;
-  appleMusicAlbuns?: number | null;
   soundcloudUrl?: string | null;
-  soundcloudSeguidores?: number | null;
 }
 
 const numberFormatter = new Intl.NumberFormat("pt-BR");
@@ -69,6 +64,33 @@ function normalizeSoundCloudProfileUrl(input: string | null | undefined): string
   if (/^[A-Za-z0-9_-]+$/.test(value)) return `https://soundcloud.com/${value}`;
   const match = value.match(/^https?:\/\/(?:www\.|m\.)?soundcloud\.com\/([A-Za-z0-9_-]+)\/?(?:[?#].*)?$/i);
   return match?.[1] ? `https://soundcloud.com/${match[1]}` : null;
+}
+
+// Espelham exatamente extractInstagramUsername/extractTikTokUsername/extractAppleMusicId
+// em artist-external-profile-sync.service.ts (backend) — mesmo formato de URL canônica.
+function normalizeInstagramProfileUrl(input: string | null | undefined): string | null {
+  const value = (input ?? "").trim();
+  if (!value) return null;
+  if (/^[A-Za-z0-9._]{1,30}$/.test(value)) return `https://www.instagram.com/${value}`;
+  const match = value.match(/^https?:\/\/(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})\/?(?:[?#].*)?$/i);
+  return match?.[1] ? `https://www.instagram.com/${match[1]}` : null;
+}
+
+function normalizeTikTokProfileUrl(input: string | null | undefined): string | null {
+  const value = (input ?? "").trim();
+  if (!value) return null;
+  const bare = value.replace(/^@/, "");
+  if (/^[A-Za-z0-9._]{1,24}$/.test(bare)) return `https://www.tiktok.com/@${bare}`;
+  const match = value.match(/^https?:\/\/(?:www\.)?tiktok\.com\/@([A-Za-z0-9._]{1,24})\/?(?:[?#].*)?$/i);
+  return match?.[1] ? `https://www.tiktok.com/@${match[1]}` : null;
+}
+
+function normalizeAppleMusicProfileUrl(input: string | null | undefined): string | null {
+  const value = (input ?? "").trim();
+  if (!value) return null;
+  if (/^\d+$/.test(value)) return `https://music.apple.com/artist/${value}`;
+  const match = value.match(/^https?:\/\/(?:www\.|music\.)?apple\.com\/[a-z]{2}\/artist\/(?:[^/?#]+\/)?(\d+)(?:[/?#].*)?$/i);
+  return match?.[1] ? `https://music.apple.com/artist/${match[1]}` : null;
 }
 
 /**
@@ -123,12 +145,9 @@ export function ArtistaPlatformMetrics({
   spotifyUrl,
   youtubeUrl,
   instagramUrl,
-  instagramSeguidores,
   tiktokUrl,
-  tiktokSeguidores,
   deezerUrl,
-  appleMusicUrl: _appleMusicUrl,
-  appleMusicAlbuns: _appleMusicAlbuns,
+  appleMusicUrl,
   soundcloudUrl,
 }: ArtistaPlatformMetricsProps) {
   const qc = useQueryClient();
@@ -140,21 +159,39 @@ export function ArtistaPlatformMetrics({
   const youtubeSnapshot = snapshots.find((profile) => profile.platform === "youtube") ?? null;
   const deezerSnapshot = snapshots.find((profile) => profile.platform === "deezer") ?? null;
   const soundcloudSnapshot = snapshots.find((profile) => profile.platform === "soundcloud") ?? null;
+  const instagramSnapshot = snapshots.find((profile) => profile.platform === "instagram") ?? null;
+  const tiktokSnapshot = snapshots.find((profile) => profile.platform === "tiktok") ?? null;
+  const appleMusicSnapshot = snapshots.find((profile) => profile.platform === "apple-music") ?? null;
 
   const spotifyProfileInput = (spotifyUrl ?? "").trim();
   const youtubeProfileInput = (youtubeUrl ?? "").trim();
   const deezerProfileInput = (deezerUrl ?? "").trim();
   const soundcloudProfileInput = (soundcloudUrl ?? "").trim();
+  const instagramProfileInput = (instagramUrl ?? "").trim();
+  const tiktokProfileInput = (tiktokUrl ?? "").trim();
+  const appleMusicProfileInput = (appleMusicUrl ?? "").trim();
   const spotifyProfileUrl = normalizeSpotifyProfileUrl(spotifyProfileInput);
   const youtubeProfileUrl = normalizeYouTubeProfileUrl(youtubeProfileInput);
   const deezerProfileUrl = normalizeDeezerProfileUrl(deezerProfileInput);
   const soundcloudProfileUrl = normalizeSoundCloudProfileUrl(soundcloudProfileInput);
+  const instagramProfileUrl = normalizeInstagramProfileUrl(instagramProfileInput);
+  const tiktokProfileUrl = normalizeTikTokProfileUrl(tiktokProfileInput);
+  const appleMusicProfileUrl = normalizeAppleMusicProfileUrl(appleMusicProfileInput);
   const hasSpotifyProfileInput = spotifyProfileInput.length > 0;
   const hasYouTubeProfileInput = youtubeProfileInput.length > 0;
   const hasDeezerProfileInput = deezerProfileInput.length > 0;
   const hasSoundCloudProfileInput = soundcloudProfileInput.length > 0;
+  const hasInstagramProfileInput = instagramProfileInput.length > 0;
+  const hasTikTokProfileInput = tiktokProfileInput.length > 0;
+  const hasAppleMusicProfileInput = appleMusicProfileInput.length > 0;
   const hasAnyProfileInput =
-    hasSpotifyProfileInput || hasYouTubeProfileInput || hasDeezerProfileInput || hasSoundCloudProfileInput;
+    hasSpotifyProfileInput ||
+    hasYouTubeProfileInput ||
+    hasDeezerProfileInput ||
+    hasSoundCloudProfileInput ||
+    hasInstagramProfileInput ||
+    hasTikTokProfileInput ||
+    hasAppleMusicProfileInput;
 
   const enqueueProfileSync = (platform: SocialPlatform, profileUrl: string) => {
     syncPlatformProfile.mutate({ platform, profileUrl, source: "profile_url" });
@@ -168,6 +205,9 @@ export function ArtistaPlatformMetrics({
       ["youtube", youtubeProfileUrl, youtubeSnapshot],
       ["deezer", deezerProfileUrl, deezerSnapshot],
       ["soundcloud", soundcloudProfileUrl, soundcloudSnapshot],
+      ["instagram", instagramProfileUrl, instagramSnapshot],
+      ["tiktok", tiktokProfileUrl, tiktokSnapshot],
+      ["apple-music", appleMusicProfileUrl, appleMusicSnapshot],
     ];
     for (const [platform, profileUrl, snapshot] of attempts) {
       if (artistaId && profileUrl && snapshot?.sync_status !== "pending") {
@@ -185,12 +225,18 @@ export function ArtistaPlatformMetrics({
     youtube: youtubeProfileUrl,
     deezer: deezerProfileUrl,
     soundcloud: soundcloudProfileUrl,
+    instagram: instagramProfileUrl,
+    tiktok: tiktokProfileUrl,
+    "apple-music": appleMusicProfileUrl,
   };
   const invalidLinkMessage: Record<SocialPlatform, string> = {
     spotify: "Link do Spotify inválido.",
     youtube: "Link do YouTube inválido.",
     deezer: "Link do Deezer inválido.",
     soundcloud: "Link do SoundCloud inválido.",
+    instagram: "Link do Instagram inválido.",
+    tiktok: "Link do TikTok inválido.",
+    "apple-music": "Link do Apple Music inválido.",
   };
 
   const syncNow = (platform: SocialPlatform) => {
@@ -242,30 +288,71 @@ export function ArtistaPlatformMetrics({
         </p>
       ) : null}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-        {/* Instagram — sem endpoint público de followers de terceiros na integração
-            atual (Meta Graph API exige OAuth do próprio artista); contador manual. */}
+        {/* Instagram — Soundcharts /audience/instagram (UUID canônico via spotify→youtube→
+            deezer→soundcloud→handle). success+followers=null é "Indisponível" (Soundcharts
+            não tem conta social vinculada para este artista) — nunca o contador manual
+            legado (metadata.instagram_seguidores) como fallback. */}
         <div className="rounded-lg border border-border bg-card p-2">
           <div className="flex items-center gap-1 mb-1">
             <SiInstagram className="h-3 w-3 text-foreground" />
             <span className="text-[10px] text-foreground font-medium">Instagram</span>
           </div>
-          <p className="text-sm font-bold text-foreground" data-testid={`metric-instagram-${artistaId}`}>
-            {instagramUrl && instagramSeguidores != null ? formatCount(instagramSeguidores) : "Indisponível"}
-          </p>
-          <p className="text-[10px] text-muted-foreground">Seguidores</p>
+          {renderSyncState(
+            `metric-instagram-${artistaId}`,
+            hasInstagramProfileInput,
+            instagramSnapshot,
+            instagramSnapshot?.followers != null ? (
+              <>
+                <p className="text-sm font-bold text-foreground" data-testid={`metric-instagram-${artistaId}`}>
+                  {formatCount(instagramSnapshot.followers)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Seguidores</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-foreground" data-testid={`metric-instagram-${artistaId}`}>
+                  Indisponível
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  Seguidores · sem conta vinculada na Soundcharts
+                </p>
+              </>
+            ),
+          )}
+          {hasInstagramProfileInput ? syncButton("instagram", instagramSnapshot) : null}
         </div>
 
-        {/* TikTok — nenhum endpoint de followers de terceiros implementado
-            (TikTokService só tem Ads API e OAuth orgânico sem leitura de perfil). */}
+        {/* TikTok — mesmo contrato do Instagram: Soundcharts /audience/tiktok, mesma
+            distinção success+null ("Indisponível") vs failed ("Erro"), sem fallback
+            silencioso para metadata.tiktok_seguidores. */}
         <div className="rounded-lg border border-border bg-card p-2">
           <div className="flex items-center gap-1 mb-1">
             <SiTiktok className="h-3 w-3 text-foreground" />
             <span className="text-[10px] text-foreground font-medium">TikTok</span>
           </div>
-          <p className="text-sm font-bold text-foreground" data-testid={`metric-tiktok-${artistaId}`}>
-            {tiktokUrl && tiktokSeguidores != null ? formatCount(tiktokSeguidores) : "Indisponível"}
-          </p>
-          <p className="text-[10px] text-muted-foreground">Seguidores</p>
+          {renderSyncState(
+            `metric-tiktok-${artistaId}`,
+            hasTikTokProfileInput,
+            tiktokSnapshot,
+            tiktokSnapshot?.followers != null ? (
+              <>
+                <p className="text-sm font-bold text-foreground" data-testid={`metric-tiktok-${artistaId}`}>
+                  {formatCount(tiktokSnapshot.followers)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Seguidores</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-foreground" data-testid={`metric-tiktok-${artistaId}`}>
+                  Indisponível
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  Seguidores · sem conta vinculada na Soundcharts
+                </p>
+              </>
+            ),
+          )}
+          {hasTikTokProfileInput ? syncButton("tiktok", tiktokSnapshot) : null}
         </div>
 
         {/* Spotify — perfil público do artista: GET/POST /artists/:id/platform-profiles/spotify */}
@@ -343,17 +430,31 @@ export function ArtistaPlatformMetrics({
           {hasDeezerProfileInput ? syncButton("deezer", deezerSnapshot) : null}
         </div>
 
-        {/* Apple Music — Catalog API (MusicKit) não expõe ouvintes/seguidores,
-            só metadados de catálogo; nunca mascarar álbuns/faixas como Ouvintes. */}
+        {/* Apple Music — a Soundcharts NÃO tem métrica de audiência para Apple Music
+            (ver SoundchartsService.getAppleMusicPlaylistCount). O card conhece o
+            snapshot/status real (pending/failed/não configurado), mas o valor de
+            sucesso é SEMPRE "Indisponível" — nunca um número inventado, nunca 0, e
+            nunca o contador manual legado (metadata.apple_music_albuns) exibido como
+            se fosse audiência Soundcharts. */}
         <div className="rounded-lg border border-border bg-card p-2">
           <div className="flex items-center gap-1 mb-1">
             <SiApplemusic className="h-3 w-3 text-foreground" />
             <span className="text-[10px] text-foreground font-medium">Apple Music</span>
           </div>
-          <p className="text-sm font-bold text-foreground" data-testid={`metric-apple-music-${artistaId}`}>
-            Indisponível
-          </p>
-          <p className="text-[10px] text-muted-foreground">Ouvintes</p>
+          {renderSyncState(
+            `metric-apple-music-${artistaId}`,
+            hasAppleMusicProfileInput,
+            appleMusicSnapshot,
+            <>
+              <p className="text-sm font-semibold text-foreground" data-testid={`metric-apple-music-${artistaId}`}>
+                Indisponível
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                Ouvintes · Apple Music não fornece este dado
+              </p>
+            </>,
+          )}
+          {hasAppleMusicProfileInput ? syncButton("apple-music", appleMusicSnapshot) : null}
         </div>
 
         {/* SoundCloud — /resolve público (só client_id de app): GET/POST /artists/:id/platform-profiles/soundcloud */}

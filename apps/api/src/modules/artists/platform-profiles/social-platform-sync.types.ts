@@ -1,6 +1,6 @@
 import type { ArtistPlatformProfileEntity } from '../../../database/entities';
 
-export const SOCIAL_PLATFORMS = ['spotify', 'youtube', 'deezer', 'soundcloud'] as const;
+export const SOCIAL_PLATFORMS = ['spotify', 'youtube', 'deezer', 'soundcloud', 'instagram', 'tiktok', 'apple-music'] as const;
 
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
 export type SocialPlatformSyncStatus = 'pending' | 'success' | 'failed' | 'skipped';
@@ -45,6 +45,18 @@ export interface ArtistPlatformProviderInput {
   artistId: string;
   externalId?: string | null;
   externalUrl?: string | null;
+  /**
+   * URLs canônicas do artista (independente da plataforma sendo
+   * sincronizada) — usadas para resolver o UUID Soundcharts UMA VEZ via
+   * fallback spotify→youtube→deezer→soundcloud, reutilizado por todas as
+   * métricas do artista (Soundcharts 06).
+   */
+  canonicalUrls?: {
+    spotifyUrl?: string | null;
+    youtubeUrl?: string | null;
+    deezerUrl?: string | null;
+    soundcloudUrl?: string | null;
+  };
 }
 
 export interface ArtistPlatformProvider {

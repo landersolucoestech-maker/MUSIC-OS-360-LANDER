@@ -1,61 +1,58 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import type {
   ArtistPlatformProvider,
   ArtistPlatformProviderInput,
   SocialPlatformProfileSnapshot,
 } from '../social-platform-sync.types';
+import { SoundchartsService } from '../../../integrations/soundcharts/soundcharts.service';
 
-const DEEZER_API = 'https://api.deezer.com';
-
+/**
+ * Fonte única do card de fãs do Deezer: Soundcharts /audience/deezer — a API
+ * pública do Deezer (nb_fan) deixa de ser usada aqui para não manter duas
+ * fontes concorrentes no mesmo card (Soundcharts 05).
+ */
 @Injectable()
 export class DeezerArtistProfileProvider implements ArtistPlatformProvider {
   readonly platform = 'deezer' as const;
 
+  constructor(private readonly soundcharts: SoundchartsService) {}
+
   async isConfigured(_tenantId?: string): Promise<boolean> {
-    return true; // API pública, sem credencial — mesmo comportamento do DeezerService existente
+    return this.soundcharts.isConfigured();
   }
 
   async resolve(input: ArtistPlatformProviderInput): Promise<SocialPlatformProfileSnapshot> {
+    if (!(await this.isConfigured())) {
+      throw new ServiceUnavailableException(
+        'Deezer (Soundcharts) não configurado: defina SOUNDCHARTS_CLIENT_ID e SOUNDCHARTS_CLIENT_SECRET no ambiente da API',
+      );
+    }
+
     const artistId = input.externalId ?? this.extractArtistId(input.externalUrl ?? '');
     if (!artistId) throw new Error('Deezer artist id ausente ou inválido');
 
-    const res = await fetch(`${DEEZER_API}/artist/${encodeURIComponent(artistId)}`);
-    if (!res.ok) {
-      throw new Error(`Deezer API respondeu ${res.status} ao buscar o artista "${artistId}"`);
-    }
-
-    const data = await res.json() as {
-      id?: number | string;
-      name?: string;
-      link?: string;
-      picture_medium?: string;
-      nb_fan?: number;
-      nb_album?: number;
-      error?: { message?: string };
-    };
-    if (data.error) {
-      throw new Error(`Deezer API erro: ${data.error.message ?? 'artista não encontrado'}`);
-    }
+    const uuid = await this.soundcharts.resolveArtistByPlatform('deezer', artistId);
+    const fans = await this.soundcharts.getDeezerFans(uuid);
 
     return {
       tenant_id: input.tenantId,
       artist_id: input.artistId,
       platform: 'deezer',
-      external_id: data.id != null ? String(data.id) : artistId,
-      external_url: input.externalUrl ?? data.link ?? null,
-      display_name: data.name ?? null,
+      external_id: artistId,
+      external_url: input.externalUrl ?? `https://www.deezer.com/artist/${artistId}`,
+      display_name: null,
       username: null,
-      profile_url: data.link ?? input.externalUrl ?? null,
-      image_url: data.picture_medium ?? null,
-      followers: typeof data.nb_fan === 'number' ? data.nb_fan : null,
+      profile_url: input.externalUrl ?? `https://www.deezer.com/artist/${artistId}`,
+      image_url: null,
+      followers: fans.value,
       subscribers: null,
       monthly_listeners: null,
       popularity: null,
       total_views: null,
       total_videos: null,
       total_tracks: null,
-      total_albums: typeof data.nb_album === 'number' ? data.nb_album : null,
-      raw_payload: data as Record<string, unknown>,
+      total_albums: null,
+      raw_payload: { soundcharts_uuid: uuid, observed_at: fans.observedAt.toISOString() },
       sync_status: 'success',
       last_synced_at: new Date(),
       last_error: null,

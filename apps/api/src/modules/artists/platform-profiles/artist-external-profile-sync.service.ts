@@ -136,11 +136,26 @@ export class ArtistExternalProfileSyncService {
     };
   }
 
+  /**
+   * instagram_url/tiktok_url não são colunas reais de ArtistEntity — vivem em
+   * `artists.metadata` (jsonb), como todo campo do formulário fora do núcleo
+   * canônico (ver report-form-contracts.ts, storage: 'metadata'). apple_music_url
+   * já é coluna dedicada (igual spotify/youtube/deezer/soundcloud).
+   */
   private cachedProfileUrlFor(platform: SocialPlatform, artist: ArtistEntity): string | null {
     if (platform === 'spotify') return artist.spotify_url;
     if (platform === 'deezer') return artist.deezer_url;
     if (platform === 'soundcloud') return artist.soundcloud_url;
-    return artist.youtube_url;
+    if (platform === 'youtube') return artist.youtube_url;
+    if (platform === 'apple-music') return artist.apple_music_url;
+    if (platform === 'instagram') return this.metadataUrl(artist, 'instagram_url');
+    if (platform === 'tiktok') return this.metadataUrl(artist, 'tiktok_url');
+    return null;
+  }
+
+  private metadataUrl(artist: ArtistEntity, field: string): string | null {
+    const value = artist.metadata?.[field];
+    return typeof value === 'string' && value.trim() ? value : null;
   }
 
   private resolveExternalProfile(input: {
@@ -177,6 +192,33 @@ export class ArtistExternalProfileSyncService {
         };
       }
 
+      if (input.platform === 'instagram') {
+        const externalId = this.extractInstagramUsername(rawUrl);
+        if (!externalId) throw new BadRequestException('Link do Instagram inválido: informe a URL do perfil do artista no Instagram');
+        return {
+          externalId,
+          externalUrl: `https://www.instagram.com/${externalId}`,
+        };
+      }
+
+      if (input.platform === 'tiktok') {
+        const externalId = this.extractTikTokUsername(rawUrl);
+        if (!externalId) throw new BadRequestException('Link do TikTok inválido: informe a URL do perfil do artista no TikTok');
+        return {
+          externalId,
+          externalUrl: `https://www.tiktok.com/@${externalId}`,
+        };
+      }
+
+      if (input.platform === 'apple-music') {
+        const externalId = this.extractAppleMusicId(rawUrl);
+        if (!externalId) throw new BadRequestException('Link do Apple Music inválido: informe a URL do artista no Apple Music');
+        return {
+          externalId,
+          externalUrl: `https://music.apple.com/artist/${externalId}`,
+        };
+      }
+
       const externalId = this.extractYouTubeChannelId(rawUrl);
       if (!externalId) {
         throw new BadRequestException('Link do YouTube inválido: informe uma URL /channel/UC... ou um channelId UC...');
@@ -210,6 +252,27 @@ export class ArtistExternalProfileSyncService {
         externalUrl: externalId ? `https://soundcloud.com/${externalId}` : cachedProfileUrl,
       };
     }
+    if (input.platform === 'instagram') {
+      const externalId = this.extractInstagramUsername(cachedProfileUrl);
+      return {
+        externalId,
+        externalUrl: externalId ? `https://www.instagram.com/${externalId}` : cachedProfileUrl,
+      };
+    }
+    if (input.platform === 'tiktok') {
+      const externalId = this.extractTikTokUsername(cachedProfileUrl);
+      return {
+        externalId,
+        externalUrl: externalId ? `https://www.tiktok.com/@${externalId}` : cachedProfileUrl,
+      };
+    }
+    if (input.platform === 'apple-music') {
+      const externalId = this.extractAppleMusicId(cachedProfileUrl);
+      return {
+        externalId,
+        externalUrl: externalId ? `https://music.apple.com/artist/${externalId}` : cachedProfileUrl,
+      };
+    }
     const externalId = this.extractYouTubeChannelId(cachedProfileUrl);
     return {
       externalId,
@@ -237,6 +300,27 @@ export class ArtistExternalProfileSyncService {
     const trimmed = value.trim();
     if (/^[A-Za-z0-9_-]+$/.test(trimmed)) return trimmed;
     const match = trimmed.match(/^https?:\/\/(?:www\.|m\.)?soundcloud\.com\/([A-Za-z0-9_-]+)\/?(?:[?#].*)?$/i);
+    return match?.[1] ?? null;
+  }
+
+  private extractInstagramUsername(value: string): string | null {
+    const trimmed = value.trim();
+    if (/^[A-Za-z0-9._]{1,30}$/.test(trimmed)) return trimmed;
+    const match = trimmed.match(/^https?:\/\/(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})\/?(?:[?#].*)?$/i);
+    return match?.[1] ?? null;
+  }
+
+  private extractTikTokUsername(value: string): string | null {
+    const trimmed = value.trim().replace(/^@/, '');
+    if (/^[A-Za-z0-9._]{1,24}$/.test(trimmed)) return trimmed;
+    const match = value.trim().match(/^https?:\/\/(?:www\.)?tiktok\.com\/@([A-Za-z0-9._]{1,24})\/?(?:[?#].*)?$/i);
+    return match?.[1] ?? null;
+  }
+
+  private extractAppleMusicId(value: string): string | null {
+    const trimmed = value.trim();
+    if (/^\d+$/.test(trimmed)) return trimmed;
+    const match = trimmed.match(/^https?:\/\/(?:www\.|music\.)?apple\.com\/[a-z]{2}\/artist\/(?:[^/?#]+\/)?(\d+)(?:[/?#].*)?$/i);
     return match?.[1] ?? null;
   }
 

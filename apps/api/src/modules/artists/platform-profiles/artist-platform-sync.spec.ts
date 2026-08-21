@@ -7,6 +7,8 @@ import { SpotifyArtistProfileProvider } from './providers/spotify-artist-profile
 import { YouTubeArtistProfileProvider } from './providers/youtube-artist-profile.provider';
 import { DeezerArtistProfileProvider } from './providers/deezer-artist-profile.provider';
 import { SoundCloudArtistProfileProvider } from './providers/soundcloud-artist-profile.provider';
+import { InstagramArtistProfileProvider } from './providers/instagram-artist-profile.provider';
+import { TikTokArtistProfileProvider } from './providers/tiktok-artist-profile.provider';
 
 const payload = {
   tenant_id: 'tenant-1',
@@ -34,6 +36,8 @@ describe('Separação de domínio: métricas do artista NUNCA dependem de OAuth 
       YouTubeArtistProfileProvider,
       DeezerArtistProfileProvider,
       SoundCloudArtistProfileProvider,
+      InstagramArtistProfileProvider,
+      TikTokArtistProfileProvider,
     ]) {
       expect(Provider.prototype instanceof IntegrationBaseService).toBe(false);
     }
@@ -178,6 +182,99 @@ describe('ArtistExternalProfileSyncService', () => {
     expect(result.enqueued).toEqual([{ platform: 'soundcloud', job_id: 'job-4' }]);
   });
 
+  it('enfileira sync manual de Instagram (métrica de artista, sem OAuth de Marketing)', async () => {
+    const artists = {
+      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null, metadata: {} }),
+    };
+    const profiles = {
+      hasRecentPending: jest.fn().mockResolvedValue(false),
+      upsertPending: jest.fn().mockResolvedValue({}),
+    };
+    const queue = { add: jest.fn().mockResolvedValue({ id: 'job-5' }) };
+    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+
+    const result = await service.enqueueManualSync({
+      tenantId: 'tenant-1',
+      artistId: 'artist-1',
+      platform: 'instagram',
+      requestedBy: 'user-1',
+      profileUrl: 'https://www.instagram.com/artist_handle',
+    });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      expect.objectContaining({
+        platform: 'instagram',
+        external_id: 'artist_handle',
+        external_url: 'https://www.instagram.com/artist_handle',
+      }),
+      expect.any(Object),
+    );
+    expect(result.enqueued).toEqual([{ platform: 'instagram', job_id: 'job-5' }]);
+  });
+
+  it('enfileira sync manual de TikTok (métrica de artista, sem OAuth de Marketing)', async () => {
+    const artists = {
+      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null, metadata: {} }),
+    };
+    const profiles = {
+      hasRecentPending: jest.fn().mockResolvedValue(false),
+      upsertPending: jest.fn().mockResolvedValue({}),
+    };
+    const queue = { add: jest.fn().mockResolvedValue({ id: 'job-6' }) };
+    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+
+    const result = await service.enqueueManualSync({
+      tenantId: 'tenant-1',
+      artistId: 'artist-1',
+      platform: 'tiktok',
+      requestedBy: 'user-1',
+      profileUrl: 'https://www.tiktok.com/@artist_handle',
+    });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      expect.objectContaining({
+        platform: 'tiktok',
+        external_id: 'artist_handle',
+        external_url: 'https://www.tiktok.com/@artist_handle',
+      }),
+      expect.any(Object),
+    );
+    expect(result.enqueued).toEqual([{ platform: 'tiktok', job_id: 'job-6' }]);
+  });
+
+  it('resolve Instagram/TikTok a partir do metadata em cache quando nenhuma profileUrl é enviada', async () => {
+    const artists = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'artist-1',
+        spotify_url: null,
+        youtube_url: null,
+        metadata: { instagram_url: 'https://www.instagram.com/cached_handle' },
+      }),
+    };
+    const profiles = {
+      hasRecentPending: jest.fn().mockResolvedValue(false),
+      upsertPending: jest.fn().mockResolvedValue({}),
+    };
+    const queue = { add: jest.fn().mockResolvedValue({ id: 'job-7' }) };
+    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+
+    const result = await service.enqueueManualSync({
+      tenantId: 'tenant-1',
+      artistId: 'artist-1',
+      platform: 'instagram',
+      requestedBy: 'user-1',
+    });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      expect.objectContaining({ platform: 'instagram', external_id: 'cached_handle' }),
+      expect.any(Object),
+    );
+    expect(result.enqueued).toEqual([{ platform: 'instagram', job_id: 'job-7' }]);
+  });
+
   it('retorna skipped quando artista nao tem perfil externo da plataforma', async () => {
     const artists = {
       findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null }),
@@ -202,12 +299,12 @@ describe('ArtistExternalProfileSyncService', () => {
     });
   });
 
-  it('rejeita plataforma fora da Fase 1', async () => {
+  it('rejeita plataforma fora do conjunto suportado', async () => {
     const service = new ArtistExternalProfileSyncService({} as never, {} as never, null);
     await expect(service.enqueueManualSync({
       tenantId: 'tenant-1',
       artistId: 'artist-1',
-      platform: 'instagram',
+      platform: 'facebook',
       requestedBy: 'user-1',
     })).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -265,6 +362,9 @@ describe('ArtistPlatformSyncProcessor', () => {
       { platform: 'youtube' } as never,
       { platform: 'deezer' } as never,
       { platform: 'soundcloud' } as never,
+      { platform: 'instagram' } as never,
+      { platform: 'tiktok' } as never,
+      { platform: 'apple-music' } as never,
     );
 
     await processor.process({ name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC, data: payload } as never);
@@ -282,6 +382,7 @@ describe('ArtistPlatformSyncProcessor', () => {
       artistId: 'artist-1',
       externalId: SPOTIFY_ID,
       externalUrl: `https://open.spotify.com/artist/${SPOTIFY_ID}`,
+      canonicalUrls: expect.objectContaining({ spotifyUrl: 'https://open.spotify.com/artist/spotify-current' }),
     }));
     expect(profiles.upsertSuccess).toHaveBeenCalled();
     expect(profiles.markFailed).not.toHaveBeenCalled();
@@ -310,6 +411,9 @@ describe('ArtistPlatformSyncProcessor', () => {
       { platform: 'youtube' } as never,
       { platform: 'deezer' } as never,
       { platform: 'soundcloud' } as never,
+      { platform: 'instagram' } as never,
+      { platform: 'tiktok' } as never,
+      { platform: 'apple-music' } as never,
     );
 
     await processor.process({ name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC, data: payload } as never);
@@ -354,6 +458,9 @@ describe('ArtistPlatformSyncProcessor', () => {
       { platform: 'youtube' } as never,
       deezer as never,
       { platform: 'soundcloud' } as never,
+      { platform: 'instagram' } as never,
+      { platform: 'tiktok' } as never,
+      { platform: 'apple-music' } as never,
     );
 
     await processor.process({
@@ -397,6 +504,9 @@ describe('ArtistPlatformSyncProcessor', () => {
       { platform: 'youtube' } as never,
       { platform: 'deezer' } as never,
       soundcloud as never,
+      { platform: 'instagram' } as never,
+      { platform: 'tiktok' } as never,
+      { platform: 'apple-music' } as never,
     );
 
     await processor.process({
@@ -406,6 +516,106 @@ describe('ArtistPlatformSyncProcessor', () => {
 
     expect(soundcloud.resolve).toHaveBeenCalledWith(expect.objectContaining({ externalId: 'artist-handle' }));
     expect(profiles.upsertSuccess).toHaveBeenCalledWith(expect.objectContaining({ platform: 'soundcloud', followers: 54321 }));
+    expect(profiles.markFailed).not.toHaveBeenCalled();
+  });
+
+  it('roteia job de Instagram para o InstagramArtistProfileProvider, reaproveitando o UUID já resolvido via Spotify (canonicalUrls)', async () => {
+    const findOne = jest.fn().mockResolvedValue({
+      id: 'artist-1',
+      tenant_id: 'tenant-1',
+      spotify_url: 'https://open.spotify.com/artist/spotify-current',
+      metadata: { instagram_url: 'https://www.instagram.com/artist-handle' },
+    });
+    const ds = { getRepository: jest.fn(() => ({ findOne })) };
+    const profiles = {
+      upsertPending: jest.fn().mockResolvedValue({}),
+      upsertSuccess: jest.fn().mockResolvedValue({}),
+      markFailed: jest.fn(),
+    };
+    const instagram = {
+      platform: 'instagram',
+      resolve: jest.fn().mockResolvedValue({
+        tenant_id: 'tenant-1',
+        artist_id: 'artist-1',
+        platform: 'instagram',
+        external_id: 'artist-handle',
+        followers: 111222,
+        sync_status: 'success',
+      }),
+    };
+    const processor = new ArtistPlatformSyncProcessor(
+      ds as never,
+      profiles as never,
+      makeDbContext() as never,
+      { platform: 'spotify' } as never,
+      { platform: 'youtube' } as never,
+      { platform: 'deezer' } as never,
+      { platform: 'soundcloud' } as never,
+      instagram as never,
+      { platform: 'tiktok' } as never,
+      { platform: 'apple-music' } as never,
+    );
+
+    await processor.process({
+      name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      data: { ...payload, platform: 'instagram' as const, external_id: 'artist-handle', external_url: 'https://www.instagram.com/artist-handle' },
+    } as never);
+
+    expect(instagram.resolve).toHaveBeenCalledWith(expect.objectContaining({
+      externalId: 'artist-handle',
+      canonicalUrls: expect.objectContaining({ spotifyUrl: 'https://open.spotify.com/artist/spotify-current' }),
+    }));
+    expect(profiles.upsertSuccess).toHaveBeenCalledWith(expect.objectContaining({ platform: 'instagram', followers: 111222 }));
+    expect(profiles.markFailed).not.toHaveBeenCalled();
+  });
+
+  it('roteia job de TikTok para o TikTokArtistProfileProvider, reaproveitando o UUID já resolvido via Spotify (canonicalUrls)', async () => {
+    const findOne = jest.fn().mockResolvedValue({
+      id: 'artist-1',
+      tenant_id: 'tenant-1',
+      spotify_url: 'https://open.spotify.com/artist/spotify-current',
+      metadata: { tiktok_url: 'https://www.tiktok.com/@artist-handle' },
+    });
+    const ds = { getRepository: jest.fn(() => ({ findOne })) };
+    const profiles = {
+      upsertPending: jest.fn().mockResolvedValue({}),
+      upsertSuccess: jest.fn().mockResolvedValue({}),
+      markFailed: jest.fn(),
+    };
+    const tiktok = {
+      platform: 'tiktok',
+      resolve: jest.fn().mockResolvedValue({
+        tenant_id: 'tenant-1',
+        artist_id: 'artist-1',
+        platform: 'tiktok',
+        external_id: 'artist-handle',
+        followers: 333444,
+        sync_status: 'success',
+      }),
+    };
+    const processor = new ArtistPlatformSyncProcessor(
+      ds as never,
+      profiles as never,
+      makeDbContext() as never,
+      { platform: 'spotify' } as never,
+      { platform: 'youtube' } as never,
+      { platform: 'deezer' } as never,
+      { platform: 'soundcloud' } as never,
+      { platform: 'instagram' } as never,
+      tiktok as never,
+      { platform: 'apple-music' } as never,
+    );
+
+    await processor.process({
+      name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      data: { ...payload, platform: 'tiktok' as const, external_id: 'artist-handle', external_url: 'https://www.tiktok.com/@artist-handle' },
+    } as never);
+
+    expect(tiktok.resolve).toHaveBeenCalledWith(expect.objectContaining({
+      externalId: 'artist-handle',
+      canonicalUrls: expect.objectContaining({ spotifyUrl: 'https://open.spotify.com/artist/spotify-current' }),
+    }));
+    expect(profiles.upsertSuccess).toHaveBeenCalledWith(expect.objectContaining({ platform: 'tiktok', followers: 333444 }));
     expect(profiles.markFailed).not.toHaveBeenCalled();
   });
 
@@ -420,6 +630,9 @@ describe('ArtistPlatformSyncProcessor', () => {
       { platform: 'youtube' } as never,
       { platform: 'deezer' } as never,
       { platform: 'soundcloud' } as never,
+      { platform: 'instagram' } as never,
+      { platform: 'tiktok' } as never,
+      { platform: 'apple-music' } as never,
     );
 
     await processor.process({

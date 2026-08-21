@@ -17,6 +17,7 @@ import { TikTokService }       from './tiktok/tiktok.service';
 import { GoogleAdsService }    from './google-ads/google-ads.service';
 import { AbramusService }      from './abramus/abramus.service';
 import { WhatsAppCloudProvider } from './whatsapp/whatsapp-cloud.provider';
+import { SoundchartsService }  from './soundcharts/soundcharts.service';
 import { IntegrationsController } from './integrations.controller';
 import { AutentiqueController } from './autentique/autentique.controller';
 import { ExternalDataController } from './external-data.controller';
@@ -39,6 +40,7 @@ const ALL_SERVICES = [
   AbramusService,
   WhatsAppCloudProvider,
   WebhookService,
+  SoundchartsService,
 ];
 
 @Module({

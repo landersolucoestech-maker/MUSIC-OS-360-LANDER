@@ -5,98 +5,59 @@ import type {
   SocialPlatformProfileSnapshot,
 } from '../social-platform-sync.types';
 import { parseSpotifyArtistId } from '../../../integrations/spotify/spotify-url.util';
+import { SoundchartsService } from '../../../integrations/soundcharts/soundcharts.service';
 
-const SPOTIFY_ACCOUNTS = 'https://accounts.spotify.com';
-const SPOTIFY_API = 'https://api.spotify.com/v1';
-
+/**
+ * Fonte única do card "Ouvintes": Soundcharts /streaming/spotify/listening —
+ * a API pública do Spotify não expõe monthly listeners (só followers), então
+ * não há dependência dupla a resolver aqui. Nunca alimentar "Ouvintes" com
+ * followers (Soundcharts 05).
+ */
 @Injectable()
 export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
   readonly platform = 'spotify' as const;
 
+  constructor(private readonly soundcharts: SoundchartsService) {}
+
   async isConfigured(_tenantId?: string): Promise<boolean> {
-    return !!(process.env['SPOTIFY_CLIENT_ID'] && process.env['SPOTIFY_CLIENT_SECRET']);
+    return this.soundcharts.isConfigured();
   }
 
   async resolve(input: ArtistPlatformProviderInput): Promise<SocialPlatformProfileSnapshot> {
-    if (!(await this.isConfigured(input.tenantId))) {
+    if (!(await this.isConfigured())) {
       throw new ServiceUnavailableException(
-        'Spotify não configurado: defina SPOTIFY_CLIENT_ID e SPOTIFY_CLIENT_SECRET no ambiente da API',
+        'Spotify (Soundcharts) não configurado: defina SOUNDCHARTS_CLIENT_ID e SOUNDCHARTS_CLIENT_SECRET no ambiente da API',
       );
     }
 
     const artistId = input.externalId ?? parseSpotifyArtistId(input.externalUrl ?? '');
     if (!artistId) throw new Error('Spotify artist id ausente ou inválido');
 
-    const token = await this.getClientCredentialsToken();
-    const res = await fetch(`${SPOTIFY_API}/artists/${encodeURIComponent(artistId)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) {
-      if (res.status === 401) throw new Error('Spotify API respondeu 401: token expirado ou inválido');
-      if (res.status === 404) throw new Error(`Spotify API respondeu 404: artista "${artistId}" não encontrado`);
-      if (res.status === 429) throw new Error('Spotify API respondeu 429: limite de requisições excedido');
-      throw new Error(`Spotify API respondeu ${res.status} ao buscar o artista "${artistId}"`);
-    }
-
-    const data = await res.json() as {
-      id?: string;
-      name?: string;
-      uri?: string;
-      external_urls?: { spotify?: string };
-      followers?: { total?: number };
-      popularity?: number;
-      images?: Array<{ url?: string }>;
-    };
+    const uuid = await this.soundcharts.resolveArtistByPlatform('spotify', artistId);
+    const listeners = await this.soundcharts.getSpotifyMonthlyListeners(uuid);
 
     return {
       tenant_id: input.tenantId,
       artist_id: input.artistId,
       platform: 'spotify',
-      external_id: data.id ?? artistId,
-      external_url: input.externalUrl ?? data.external_urls?.spotify ?? null,
-      display_name: data.name ?? null,
+      external_id: artistId,
+      external_url: input.externalUrl ?? `https://open.spotify.com/artist/${artistId}`,
+      display_name: null,
       username: null,
-      profile_url: data.external_urls?.spotify ?? input.externalUrl ?? null,
-      image_url: data.images?.[0]?.url ?? null,
-      followers: data.followers?.total ?? null,
+      profile_url: input.externalUrl ?? `https://open.spotify.com/artist/${artistId}`,
+      image_url: null,
+      followers: null,
       subscribers: null,
-      monthly_listeners: null,
-      popularity: typeof data.popularity === 'number' ? data.popularity : null,
+      monthly_listeners: listeners.value,
+      popularity: null,
       total_views: null,
       total_videos: null,
       total_tracks: null,
       total_albums: null,
-      raw_payload: data as Record<string, unknown>,
+      raw_payload: { soundcharts_uuid: uuid, observed_at: listeners.observedAt.toISOString() },
       sync_status: 'success',
       last_synced_at: new Date(),
       last_error: null,
     };
-  }
-
-  private async getClientCredentialsToken(): Promise<string> {
-    const clientId = process.env['SPOTIFY_CLIENT_ID'] ?? '';
-    const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
-    if (!clientId) throw new ServiceUnavailableException('Variável SPOTIFY_CLIENT_ID não encontrada');
-    if (!clientSecret) throw new ServiceUnavailableException('Variável SPOTIFY_CLIENT_SECRET não encontrada');
-
-    const res = await fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-      },
-      body: new URLSearchParams({ grant_type: 'client_credentials' }),
-    });
-    if (!res.ok) {
-      if (res.status === 400 || res.status === 401) {
-        throw new Error(
-          `Spotify OAuth respondeu ${res.status} ao emitir token: SPOTIFY_CLIENT_ID/SPOTIFY_CLIENT_SECRET inválidos`,
-        );
-      }
-      throw new Error(`Spotify OAuth respondeu ${res.status} ao emitir token client_credentials`);
-    }
-    const data = await res.json() as { access_token?: string };
-    if (!data.access_token) throw new Error('Spotify OAuth não retornou access_token no corpo da resposta');
-    return data.access_token;
   }
 }
