@@ -1,27 +1,40 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
   ArtistPlatformProvider,
   ArtistPlatformProviderInput,
   SocialPlatformProfileSnapshot,
 } from '../social-platform-sync.types';
+import { SoundchartsService } from '../../../integrations/soundcharts/soundcharts.service';
 
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3';
 
+/**
+ * subscribers: EXCLUSIVAMENTE Soundcharts /audience/youtube (Soundcharts 05).
+ * total_views/total_videos: EXCLUSIVAMENTE YouTube Data API channels.statistics —
+ * a Soundcharts não tem equivalente. A YouTube Data API é usada tanto para
+ * RESOLUÇÃO de canal (handle/URL → UC…) quanto para essas duas estatísticas;
+ * nunca para subscriberCount, que nunca sobrescreve o valor da Soundcharts
+ * (Métricas 09 fase 2 — corrige regressão que zerou views/videos).
+ */
 @Injectable()
 export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
   readonly platform = 'youtube' as const;
+  private readonly logger = new Logger(YouTubeArtistProfileProvider.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly soundcharts: SoundchartsService,
+  ) {}
 
   async isConfigured(_tenantId?: string): Promise<boolean> {
-    return !!this.config.get<string>('YOUTUBE_API_KEY');
+    return !!this.config.get<string>('YOUTUBE_API_KEY') && this.soundcharts.isConfigured();
   }
 
   async resolve(input: ArtistPlatformProviderInput): Promise<SocialPlatformProfileSnapshot> {
-    if (!(await this.isConfigured(input.tenantId))) {
+    if (!(await this.isConfigured())) {
       throw new ServiceUnavailableException(
-        'YouTube não configurado: defina YOUTUBE_API_KEY no ambiente da API',
+        'YouTube não configurado: defina YOUTUBE_API_KEY, SOUNDCHARTS_CLIENT_ID e SOUNDCHARTS_CLIENT_SECRET no ambiente da API',
       );
     }
 
@@ -31,57 +44,67 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
     const channelId = await this.resolveChannelId(ref, apiKey);
     if (!channelId) throw new Error('Canal do YouTube não encontrado para o link informado');
 
-    const res = await fetch(
-      `${YOUTUBE_API}/channels?part=statistics,snippet&id=${encodeURIComponent(channelId)}&key=${apiKey}`,
-    );
-    if (!res.ok) throw new Error(await this.describeYouTubeError(res, `buscar o canal "${channelId}"`));
-
-    const data = await res.json() as {
-      items?: Array<{
-        id?: string;
-        snippet?: {
-          title?: string;
-          customUrl?: string;
-          thumbnails?: { default?: { url?: string }; high?: { url?: string } };
-        };
-        statistics?: {
-          subscriberCount?: string;
-          viewCount?: string;
-          videoCount?: string;
-          hiddenSubscriberCount?: boolean;
-        };
-      }>;
-    };
-    const item = data.items?.[0];
-    if (!item) throw new Error('Canal do YouTube não encontrado');
-
-    const statistics = item.statistics ?? {};
-    const snippet = item.snippet ?? {};
-    const hiddenSubscribers = Boolean(statistics.hiddenSubscriberCount);
+    const uuid = await this.soundcharts.resolveArtistByPlatform('youtube', channelId);
+    const subscribers = await this.soundcharts.getYouTubeSubscribers(uuid);
+    const statistics = await this.fetchChannelStatistics(channelId, apiKey);
 
     return {
       tenant_id: input.tenantId,
       artist_id: input.artistId,
       platform: 'youtube',
-      external_id: item.id ?? channelId,
-      external_url: input.externalUrl ?? `https://www.youtube.com/channel/${item.id ?? channelId}`,
-      display_name: snippet.title ?? null,
-      username: snippet.customUrl ?? null,
-      profile_url: `https://www.youtube.com/channel/${item.id ?? channelId}`,
-      image_url: snippet.thumbnails?.high?.url ?? snippet.thumbnails?.default?.url ?? null,
+      external_id: channelId,
+      external_url: input.externalUrl ?? `https://www.youtube.com/channel/${channelId}`,
+      display_name: null,
+      username: null,
+      profile_url: `https://www.youtube.com/channel/${channelId}`,
+      image_url: null,
       followers: null,
-      subscribers: hiddenSubscribers ? null : this.toNumber(statistics.subscriberCount),
+      subscribers: subscribers.value,
       monthly_listeners: null,
       popularity: null,
-      total_views: statistics.viewCount ?? null,
-      total_videos: this.toNumber(statistics.videoCount),
+      total_views: statistics?.viewCount ?? null,
+      total_videos: statistics?.videoCount ?? null,
       total_tracks: null,
       total_albums: null,
-      raw_payload: item as Record<string, unknown>,
+      raw_payload: { soundcharts_uuid: uuid, observed_at: subscribers.observedAt.toISOString() },
       sync_status: 'success',
       last_synced_at: new Date(),
       last_error: null,
     };
+  }
+
+  /**
+   * total_views/total_videos via YouTube Data API — best-effort: se a API
+   * falhar (quota, rede, etc.) retorna null para os dois campos SEM lançar,
+   * porque isso não pode derrubar subscribers já obtido via Soundcharts.
+   */
+  private async fetchChannelStatistics(
+    channelId: string,
+    apiKey: string,
+  ): Promise<{ viewCount: string | null; videoCount: number | null } | null> {
+    try {
+      const res = await fetch(
+        `${YOUTUBE_API}/channels?part=statistics&id=${encodeURIComponent(channelId)}&key=${apiKey}`,
+      );
+      if (!res.ok) {
+        this.logger.warn(await this.describeYouTubeError(res, `buscar estatísticas do canal "${channelId}"`));
+        return null;
+      }
+      const data = (await res.json()) as {
+        items?: Array<{ statistics?: { viewCount?: string; videoCount?: string } }>;
+      };
+      const statistics = data.items?.[0]?.statistics;
+      if (!statistics) return null;
+      return {
+        viewCount: statistics.viewCount ?? null,
+        videoCount: this.toNumber(statistics.videoCount),
+      };
+    } catch (err) {
+      this.logger.warn(
+        `Falha ao buscar estatísticas do canal "${channelId}": ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
   }
 
   /**

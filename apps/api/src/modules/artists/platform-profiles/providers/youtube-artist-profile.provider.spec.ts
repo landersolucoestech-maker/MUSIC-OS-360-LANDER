@@ -1,8 +1,102 @@
 import { ConfigService } from '@nestjs/config';
 import { YouTubeArtistProfileProvider } from './youtube-artist-profile.provider';
+import type { SoundchartsService } from '../../../integrations/soundcharts/soundcharts.service';
+
+function configWithKey(): ConfigService {
+  return { get: () => 'fake-youtube-key' } as unknown as ConfigService;
+}
+
+function channelStatisticsResponse(viewCount: string, videoCount: string) {
+  return {
+    ok: true,
+    json: async () => ({ items: [{ statistics: { viewCount, videoCount } }] }),
+  } as Response;
+}
+
+describe('YouTubeArtistProfileProvider.resolve', () => {
+  const channelId = 'UCabcdefghijklmnopqrstuv';
+  let fetchSpy: jest.SpyInstance;
+
+  afterEach(() => {
+    fetchSpy?.mockRestore();
+  });
+
+  it('A) subscribers vem da Soundcharts, total_views/total_videos vêm da YouTube Data API', async () => {
+    const soundcharts = {
+      resolveArtistByPlatform: jest.fn().mockResolvedValue('uuid-1'),
+      getYouTubeSubscribers: jest.fn().mockResolvedValue({ value: 15400, observedAt: new Date('2026-08-19T00:00:00Z'), source: 'soundcharts' }),
+      isConfigured: jest.fn().mockReturnValue(true),
+    } as unknown as SoundchartsService;
+    const provider = new YouTubeArtistProfileProvider(configWithKey(), soundcharts);
+
+    fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(channelStatisticsResponse('123456', '77'));
+
+    const snapshot = await provider.resolve({
+      tenantId: 't1',
+      artistId: 'a1',
+      externalId: channelId,
+      externalUrl: null,
+    });
+
+    expect(snapshot.subscribers).toBe(15400);
+    expect(snapshot.total_views).toBe('123456');
+    expect(snapshot.total_videos).toBe(77);
+    expect(soundcharts.getYouTubeSubscribers).toHaveBeenCalledWith('uuid-1');
+    // A chamada de estatísticas usa `statistics` (nunca `snippet`) e nunca pede subscriberCount.
+    const fetchedUrl = fetchSpy.mock.calls[0][0] as string;
+    expect(fetchedUrl).toContain('part=statistics');
+  });
+
+  it('B) subscriberCount devolvido pela YouTube API NUNCA substitui o valor da Soundcharts', async () => {
+    const soundcharts = {
+      resolveArtistByPlatform: jest.fn().mockResolvedValue('uuid-1'),
+      getYouTubeSubscribers: jest.fn().mockResolvedValue({ value: 15400, observedAt: new Date(), source: 'soundcharts' }),
+      isConfigured: jest.fn().mockReturnValue(true),
+    } as unknown as SoundchartsService;
+    const provider = new YouTubeArtistProfileProvider(configWithKey(), soundcharts);
+
+    fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ items: [{ statistics: { viewCount: '1', videoCount: '1', subscriberCount: '999999999' } }] }),
+    } as Response);
+
+    const snapshot = await provider.resolve({
+      tenantId: 't1',
+      artistId: 'a1',
+      externalId: channelId,
+      externalUrl: null,
+    });
+
+    expect(snapshot.subscribers).toBe(15400);
+    expect(snapshot.subscribers).not.toBe(999999999);
+  });
+
+  it('estatísticas indisponíveis (YouTube API falha): total_views/total_videos ficam null, subscribers é preservado', async () => {
+    const soundcharts = {
+      resolveArtistByPlatform: jest.fn().mockResolvedValue('uuid-1'),
+      getYouTubeSubscribers: jest.fn().mockResolvedValue({ value: 15400, observedAt: new Date(), source: 'soundcharts' }),
+      isConfigured: jest.fn().mockReturnValue(true),
+    } as unknown as SoundchartsService;
+    const provider = new YouTubeArtistProfileProvider(configWithKey(), soundcharts);
+
+    fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({ ok: false, status: 403, json: async () => ({}) } as Response);
+
+    const snapshot = await provider.resolve({
+      tenantId: 't1',
+      artistId: 'a1',
+      externalId: channelId,
+      externalUrl: null,
+    });
+
+    expect(snapshot.subscribers).toBe(15400);
+    expect(snapshot.total_views).toBeNull();
+    expect(snapshot.total_videos).toBeNull();
+    expect(snapshot.sync_status).toBe('success');
+  });
+});
 
 describe('YouTubeArtistProfileProvider.parseRef', () => {
-  const provider = new YouTubeArtistProfileProvider(new ConfigService());
+  const provider = new YouTubeArtistProfileProvider(new ConfigService(), {} as never);
 
   it('parses a /channel/UC… URL into a channel id', () => {
     expect(provider.parseRef('https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv'))
