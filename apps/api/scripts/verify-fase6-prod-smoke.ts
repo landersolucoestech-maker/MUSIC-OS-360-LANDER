@@ -130,7 +130,7 @@ async function main() {
   const tag = `PROD_SMOKE_${TS}`;
   const cli = await call('POST', '/clients', { name: `${tag}_CLIENT`, type: 'company' });
   ok('POST /clients', [200,201].includes(cli.status));
-  const art = await call('POST', '/artists', { nome_artistico: `${tag}_ARTIST`, tipo: 'solo' });
+  const art = await call('POST', '/artists', { nome_artistico: `${tag}_ARTIST` });
   ok('POST /artists', [200,201].includes(art.status));
   const artistId = art.body?.data?.id ?? art.body?.id;
   const rel = await call('POST', '/releases', { title: `${tag}_RELEASE`, type: 'single', artistId });

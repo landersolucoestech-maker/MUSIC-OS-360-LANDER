@@ -165,6 +165,7 @@ import { WebhookEventsRlsSystemPath20260817000002 } from './20260817000002_Webho
 import { ArtistsTimestampTzFix20260818000001 } from './20260818000001_ArtistsTimestampTzFix';
 import { CasTimestampTzSystemicFix20260818000002 } from './20260818000002_CasTimestampTzSystemicFix';
 import { RemoveArtistLegacyMetricColumns20260821000001 } from './20260821000001_RemoveArtistLegacyMetricColumns';
+import { DropArtistTipoColumn20260821000002 } from './20260821000002_DropArtistTipoColumn';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -318,4 +319,5 @@ export const ALL_MIGRATIONS = [
   ArtistsTimestampTzFix20260818000001,
   CasTimestampTzSystemicFix20260818000002,
   RemoveArtistLegacyMetricColumns20260821000001,
+  DropArtistTipoColumn20260821000002,
 ] as const;

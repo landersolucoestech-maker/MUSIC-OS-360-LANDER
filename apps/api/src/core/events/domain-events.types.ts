@@ -12,7 +12,6 @@ export interface ArtistCreatedPayload {
   artistId:      string;
   tenantId:      string;
   nomeArtistico: string;
-  tipo:          string;
   status:        string;
   createdBy:     string;
 }

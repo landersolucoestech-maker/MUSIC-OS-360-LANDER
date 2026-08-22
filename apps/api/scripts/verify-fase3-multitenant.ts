@@ -191,7 +191,7 @@ async function createSetFor(
   // Artista
   const art = await call('POST', '/artists', {
     token, tenantId: tenant.tenantId,
-    body: { nome_artistico: `${tag}_ARTIST`, tipo: 'solo' },
+    body: { nome_artistico: `${tag}_ARTIST` },
   });
   if (art.status === 201 || art.status === 200) {
     set.artistId = pickId(art.body) ?? undefined;

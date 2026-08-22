@@ -165,7 +165,6 @@ async function main() {
   const artistCreatePayload = {
     nome_artistico: base.artistName,
     nome_civil: `Nome Civil ${runId}`,
-    tipo: "solo",
     status: "ativo",
     genero_musical: "MPB",
     email: `artist.${runId}@example.com`,

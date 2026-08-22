@@ -1,6 +1,6 @@
-import type { ArtistaStatus, ArtistaTipo, ArtistaTipoPerfil, ArtistaEspecialidade } from "@/shared/types/enums";
+import type { ArtistaStatus, ArtistaTipoPerfil, ArtistaEspecialidade } from "@/shared/types/enums";
 
-export type { ArtistaStatus, ArtistaTipo, ArtistaTipoPerfil, ArtistaEspecialidade };
+export type { ArtistaStatus, ArtistaTipoPerfil, ArtistaEspecialidade };
 
 export interface ArtistaDistribuidoraEntry {
   id: string;
@@ -44,7 +44,6 @@ export interface Artista {
   nome_artistico: string;
   nome_civil?: string | null;
   nome?: string | null;
-  tipo?: ArtistaTipo | string | null;
   status?: ArtistaStatus | string | null;
   status_cadastro?: string | null;
   genero_musical?: string | null;

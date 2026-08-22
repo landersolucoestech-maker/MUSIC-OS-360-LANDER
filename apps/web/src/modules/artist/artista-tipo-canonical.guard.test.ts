@@ -1,27 +1,28 @@
 /**
  * artista-tipo-canonical.guard.test.ts
  *
- * Guarda permanente (Artists Schema 13): `artists.tipo` tem UMA única
- * representação canônica para "artista solo": "solo" — não "artista_solo".
+ * Guarda permanente (Artists Schema 15): o conceito de "tipo de formação do
+ * artista" (solo/banda/duo/trio/grupo/coletivo, e a forma antiga
+ * "artista_solo") foi REMOVIDO do domínio Artist — não normalizado, não
+ * substituído por outro campo. `ArtistaTipo` não existe mais como tipo
+ * exportado, `tipoArtista` não existe mais em nenhuma das formas de
+ * formulário/mapper, e `Artista.tipo` não existe mais como propriedade.
  *
- * Auditoria repo-wide (2026-08-21) provou que "solo" é o valor real usado
- * por: DB default (schema inicial e RebuildArtistsInCanonicalFormOrder),
- * ArtistEntity, ArtistsService.create() (fallback `dto.tipo ?? 'solo'`),
- * LeadEventsHandler (conversão lead→artista), seed operacional, e o
- * contrato de import/export testado (categoria: 'solo'). "artista_solo"
- * só existia no frontend (enums.ts + defaults de formulário) — nunca era
- * usado por nenhum consumidor real do backend. 100% dos artistas reais em
- * DEV já tinham tipo='solo' antes desta correção.
+ * Se este teste falhar, alguém reintroduziu o campo (com qualquer
+ * vocabulário) sem essa ser uma decisão de produto deliberada e revisada.
  *
- * Se este teste falhar, alguém reintroduziu "artista_solo" como segunda
- * representação do mesmo conceito — isso volta a quebrar filtros/relatórios
- * que comparam `tipo` por igualdade de string contra o valor canônico real.
+ * NÃO usa grep ingênuo por "tipo" — a palavra é legítima em outros campos
+ * (tipo_perfil, ArtistaRelacionamento.tipo, artist-form.definition.ts tem
+ * dezenas de outros "tipo" não relacionados). Verifica pontualmente pelos
+ * identificadores exatos do conceito removido.
  */
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { emptyPreservedInput } from "./forms/artist-form.definition";
-import { artistaToFormFields } from "./services/artista.mapper";
+import { emptyPreservedInput, artistaToPreservedInput } from "./forms/artist-form.definition";
+import { artistaToFormFields, formToArtistaPayload } from "./services/artista.mapper";
+
+const REMOVED_IDENTIFIERS = [/\bArtistaTipo\b/, /\btipoArtista\b/];
 
 const FILES_TO_SCAN = [
   path.resolve(__dirname, "../../shared/types/enums.ts"),
@@ -30,23 +31,31 @@ const FILES_TO_SCAN = [
   path.resolve(__dirname, "./types/artista.types.ts"),
 ];
 
-describe("artists.tipo — representação canônica única (solo, nunca artista_solo)", () => {
-  it.each(FILES_TO_SCAN)("%s não contém a forma 'artista_solo'", (file) => {
+describe("artists domain — o campo tipo (formação do artista) foi removido, não normalizado", () => {
+  it.each(FILES_TO_SCAN)("%s não declara ArtistaTipo nem tipoArtista", (file) => {
     const source = fs.readFileSync(file, "utf8");
-    expect(source).not.toMatch(/artista_solo/);
+    for (const pattern of REMOVED_IDENTIFIERS) {
+      expect(source).not.toMatch(pattern);
+    }
   });
 
-  it("emptyPreservedInput() usa 'solo' como default de tipoArtista", () => {
-    expect(emptyPreservedInput().tipoArtista).toBe("solo");
+  it("emptyPreservedInput() não tem propriedade tipoArtista", () => {
+    expect(emptyPreservedInput()).not.toHaveProperty("tipoArtista");
   });
 
-  it("artistaToFormFields() cai para 'solo' quando artista.tipo vem vazio (nunca 'artista_solo')", () => {
-    const fields = artistaToFormFields({ tipo: null } as never);
-    expect(fields.tipoArtista).toBe("solo");
+  it("artistaToFormFields() não devolve tipoArtista para nenhum artista", () => {
+    const fields = artistaToFormFields({ nome_artistico: "X" } as never);
+    expect(fields).not.toHaveProperty("tipoArtista");
   });
 
-  it("artistaToFormFields() preserva o valor real do banco quando presente", () => {
-    const fields = artistaToFormFields({ tipo: "banda" } as never);
-    expect(fields.tipoArtista).toBe("banda");
+  it("artistaToPreservedInput() não devolve tipoArtista", () => {
+    const preserved = artistaToPreservedInput({ nome_artistico: "X" } as never);
+    expect(preserved).not.toHaveProperty("tipoArtista");
+  });
+
+  it("formToArtistaPayload() nunca envia a chave tipo ao backend", () => {
+    const fields = artistaToFormFields({ nome_artistico: "X" } as never);
+    const payload = formToArtistaPayload({ ...fields, contratoId: "" });
+    expect(payload).not.toHaveProperty("tipo");
   });
 });

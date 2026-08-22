@@ -478,7 +478,6 @@ export class ArtistEntity {
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'varchar', length: 255 }) nome_artistico: string;
   @Column({ type: 'varchar', length: 255, nullable: true }) nome_civil: string | null;
-  @Column({ type: 'varchar', length: 50, default: 'solo' }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ArtistStatus.EM_NEGOCIACAO }) status: ArtistStatus;
   @Column({ type: 'varchar', length: 50, default: ArtistStatusCadastro.ATIVO }) status_cadastro: ArtistStatusCadastro;
   @Column({ type: 'varchar', length: 100, nullable: true }) genero_musical: string | null;

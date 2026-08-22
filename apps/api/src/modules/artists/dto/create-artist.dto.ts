@@ -11,7 +11,6 @@ export class CreateArtistDto {
   nome_artistico!: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) nome_civil?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
   @ApiPropertyOptional({ enum: ArtistStatus }) @IsOptional() @IsEnum(ArtistStatus) status?: ArtistStatus;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) genero_musical?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;

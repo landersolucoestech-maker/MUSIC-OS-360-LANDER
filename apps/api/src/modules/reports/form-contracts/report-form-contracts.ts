@@ -81,7 +81,7 @@ const ARTISTS_CONTRACT: ReportFormContract = {
   identityColumn: 'nome_artistico',
   fields: [
     // Identidade e perfil (colunas diretas)
-    col('nome_artistico'), col('nome_civil'), col('tipo'), col('status'),
+    col('nome_artistico'), col('nome_civil'), col('status'),
     col('genero_musical'), col('observacoes'), col('especialidades'),
     // Perfil estendido (metadata jsonb)
     meta('slug_artistico'), meta('tipo_perfil'), meta('fase_carreira'),
@@ -125,7 +125,7 @@ const ARTISTS_CONTRACT: ReportFormContract = {
     metadata: 'objeto jsonb interno bruto — os campos individuais já são colunas do contrato',
     notas_internas: 'anotação interna oculta por política (HIDDEN_INTERNAL_HINT)',
   },
-  filterableColumns: ['status', 'tipo', 'genero_musical'],
+  filterableColumns: ['status', 'genero_musical'],
   searchableColumns: ['nome_artistico', 'nome_civil', 'genero_musical', 'observacoes'],
 };
 

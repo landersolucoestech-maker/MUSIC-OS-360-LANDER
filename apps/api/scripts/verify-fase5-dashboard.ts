@@ -110,7 +110,7 @@ async function seedTenant(tenant: string, token: string, tag: string, opts: {
   const out: SeedSet = { artists: [], releases: [], contracts: [], events: [], tx: [], leads: [] };
 
   for (let i = 0; i < opts.artists; i++) {
-    const r = await call('POST', '/artists', { ...ctx, body: { nome_artistico: `${tag}_ARTIST_${i}_${TS}`, tipo: 'solo', status: 'em_negociacao', spotify_ouvintes: i === 0 ? 12345 : undefined } });
+    const r = await call('POST', '/artists', { ...ctx, body: { nome_artistico: `${tag}_ARTIST_${i}_${TS}`, status: 'em_negociacao', spotify_ouvintes: i === 0 ? 12345 : undefined } });
     { const id = pickId(r.body); if (id) out.artists.push(id); else console.log(`  !  artist POST falhou status=${r.status} body=${JSON.stringify(r.body).slice(0,150)}`); }
   }
   for (let i = 0; i < opts.releases; i++) {

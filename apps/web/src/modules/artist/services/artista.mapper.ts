@@ -229,7 +229,6 @@ export interface ArtistaFormFields {
   tagsMusicais: string[];
   faseCarreira: string;
   generoMusical: string;
-  tipoArtista: string;
   statusArtista: string;
   especialidades: string[];
   biografia: string;
@@ -386,7 +385,6 @@ export function artistaToFormFields(artista: Artista | null | undefined): Artist
     tagsMusicais: [],
     faseCarreira: "",
     generoMusical: "",
-    tipoArtista: "solo",
     statusArtista: "contratado",
     especialidades: [],
     biografia: "",
@@ -457,7 +455,6 @@ export function artistaToFormFields(artista: Artista | null | undefined): Artist
     tagsMusicais: Array.isArray(artista.tags_musicais) ? artista.tags_musicais : [],
     faseCarreira: str(artista.fase_carreira),
     generoMusical: str(artista.genero_musical),
-    tipoArtista: str(artista.tipo) || "solo",
     statusArtista: str(artista.status) || "contratado",
     especialidades: Array.isArray(artista.especialidades) ? artista.especialidades : [],
     biografia: str(artista.observacoes),
@@ -590,7 +587,6 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     tags_musicais: f.tagsMusicais.length > 0 ? f.tagsMusicais : null,
     fase_carreira: strOrNull(f.faseCarreira),
     nome_civil: strOrNull(f.nome),
-    tipo: (f.tipoArtista || null) as any,
     status: (f.statusArtista || null) as any,
     genero_musical: strOrNull(f.generoMusical),
     especialidades: f.especialidades.length > 0 ? f.especialidades : null,

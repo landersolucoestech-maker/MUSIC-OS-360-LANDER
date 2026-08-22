@@ -18,7 +18,7 @@ import { ArtistStatus } from '@music-os-360/types';
 
 // ── Fonte única do mapeamento DTO ↔ colunas da entity ─────────────────────────
 // Colunas NOT NULL: null no PATCH é ignorado (nunca sobrescreve com null).
-const REQUIRED_COLUMNS = ['nome_artistico', 'tipo', 'status'] as const;
+const REQUIRED_COLUMNS = ['nome_artistico', 'status'] as const;
 
 // Colunas anuláveis: `undefined` = não tocar; `null`/valor = persistir exatamente.
 const NULLABLE_COLUMNS = [
@@ -251,7 +251,6 @@ export class ArtistsService {
       tenant_id:           tenantId,
       nome_artistico:      dto.nome_artistico,
       nome_civil:          dto.nome_civil          ?? null,
-      tipo:                dto.tipo                ?? 'solo',
       status:              dto.status ?? ArtistStatus.EM_NEGOCIACAO,
       genero_musical:      dto.genero_musical      ?? null,
       observacoes:         dto.observacoes         ?? null,
@@ -288,7 +287,6 @@ export class ArtistsService {
         artistId:      saved.id,
         tenantId,
         nomeArtistico: saved.nome_artistico,
-        tipo:          saved.tipo,
         status:        saved.status,
         createdBy:     userId,
       },

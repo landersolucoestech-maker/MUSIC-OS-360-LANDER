@@ -170,7 +170,7 @@ async function seedFor44(): Promise<void> {
   const opts = { auth: tokens.owner, tenant: TENANT_A };
   const cli = await call('POST', '/clients', { ...opts, body: { name: `F4_CLIENT_${Date.now()}`, type: 'company' } });
   SEED_IDS['client'] = cli.body?.data?.id ?? cli.body?.id;
-  const art = await call('POST', '/artists', { ...opts, body: { nome_artistico: `F4_ARTIST_${Date.now()}`, tipo: 'solo' } });
+  const art = await call('POST', '/artists', { ...opts, body: { nome_artistico: `F4_ARTIST_${Date.now()}` } });
   SEED_IDS['artist'] = art.body?.data?.id ?? art.body?.id;
   const rel = await call('POST', '/releases', { ...opts, body: { title: `F4_REL_${Date.now()}`, type: 'single', artistId: SEED_IDS['artist'] } });
   SEED_IDS['release'] = rel.body?.data?.id ?? rel.body?.id;
@@ -311,10 +311,10 @@ async function f47(): Promise<void> {
 
   // Criar ação como editor (permitida) e como viewer (proibida); então confirmar que apenas a permitida aparece em audit.
   const tag = `F47_${Date.now()}`;
-  const allowed = await call('POST', '/artists', { auth: tokens.editor, tenant: TENANT_A, body: { nome_artistico: `${tag}_OK`, tipo: 'solo' } });
+  const allowed = await call('POST', '/artists', { auth: tokens.editor, tenant: TENANT_A, body: { nome_artistico: `${tag}_OK` } });
   check('editor cria artista (permitido)', allowed.status, [200, 201]);
 
-  const denied = await call('POST', '/artists', { auth: tokens.viewer, tenant: TENANT_A, body: { nome_artistico: `${tag}_FAIL`, tipo: 'solo' } });
+  const denied = await call('POST', '/artists', { auth: tokens.viewer, tenant: TENANT_A, body: { nome_artistico: `${tag}_FAIL` } });
   check('viewer cria artista (proibido)', denied.status, [403]);
 
   // Esperar a fila de audit (interceptor)

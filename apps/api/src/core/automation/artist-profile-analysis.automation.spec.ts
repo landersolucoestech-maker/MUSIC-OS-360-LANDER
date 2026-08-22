@@ -53,7 +53,6 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
       artistId: 'a1',
       tenantId: 't1',
       nomeArtistico: 'Banda Aurora',
-      tipo: 'banda',
       status: 'ativo',
       createdBy: 'u1',
       ...overrides,

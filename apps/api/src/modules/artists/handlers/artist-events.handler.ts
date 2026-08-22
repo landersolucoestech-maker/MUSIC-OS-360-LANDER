@@ -84,7 +84,6 @@ export class ArtistEventsHandler {
             metadata: {
               nomeArtistico,
               status: event.payload.status,
-              tipo: event.payload.tipo,
               correlationId: event.correlationId ?? null,
             },
           });

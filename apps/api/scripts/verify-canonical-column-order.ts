@@ -22,7 +22,7 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'soundcloud_url', 'apple_music_url', 'deezer_url', 'tipo_perfil',
     'contatos_vinculados', 'distribuidoras_gerais', 'notas_internas',
     'contrato_id',
-    'slug_artistico', 'tags_musicais', 'fase_carreira', 'tipo', 'status',
+    'slug_artistico', 'tags_musicais', 'fase_carreira', 'status',
     'status_cadastro',
     'relacionamentos', 'empresario_id', 'empresario_nome',
     'empresario_telefone', 'empresario_email', 'gravadora_id', 'gravadora_nome',

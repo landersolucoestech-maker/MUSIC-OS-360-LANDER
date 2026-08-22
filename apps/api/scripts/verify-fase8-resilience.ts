@@ -167,7 +167,6 @@ async function createCoreData(token: string, tenantId: string, tag: string) {
     body: {
       nome_artistico: `F8 Artist ${tag}`,
       nome_civil: `F8 Civil ${tag}`,
-      tipo: 'solo',
       status: 'ativo',
       genero_musical: 'Pop',
       email: `f8.artist.${tag}@example.com`,
@@ -452,7 +451,7 @@ async function validateSecurity(pg: PgClient, token: string, tenantId: string, c
   const xss = await http('POST', '/artists', {
     token,
     tenantId,
-    body: { nome_artistico: `<script>alert('${runId}')</script>`, tipo: 'solo', status: 'ativo', metadata: { runId, xss: true } },
+    body: { nome_artistico: `<script>alert('${runId}')</script>`, status: 'ativo', metadata: { runId, xss: true } },
   });
 
   let downloadAfterDeleteStatus: number | null = null;
