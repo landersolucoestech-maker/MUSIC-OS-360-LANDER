@@ -38,7 +38,7 @@
 - [ ] Nenhum dado existente quebrado
 
 ### Documentação
-- [ ] `GOVERNANCE.md` atualizado se entidade ou módulo novo foi criado
+- [ ] `docs/GOVERNANCE.md` atualizado se entidade ou módulo novo foi criado
 - [ ] Campos novos documentados no DTO correspondente
 
 ## Como testar
@@ -51,4 +51,4 @@
 
 ## Branches relacionadas / backlog
 
-<!-- Se esta PR implementa um item do BACKLOG.md, referencie o ID aqui (ex.: BACKLOG-007). -->
+<!-- Se esta PR implementa um item do docs/BACKLOG.md, referencie o ID aqui (ex.: BACKLOG-007). -->

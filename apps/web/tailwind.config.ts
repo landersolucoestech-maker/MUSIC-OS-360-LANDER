@@ -117,6 +117,15 @@ export default {
           "2": "hsl(var(--surface-2))",
           "3": "hsl(var(--surface-3))",
         },
+
+        // Escopado a `.landing-theme` (ver index.css) — não usado fora da
+        // landing institucional.
+        landing: {
+          dark: "hsl(var(--landing-dark))",
+          darker: "hsl(var(--landing-darker))",
+          foreground: "hsl(var(--landing-dark-foreground))",
+          accent: "hsl(var(--landing-accent-light))",
+        },
       },
 
       boxShadow: {

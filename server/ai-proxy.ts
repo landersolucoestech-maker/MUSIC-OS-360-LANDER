@@ -33,10 +33,19 @@ async function handleAIGenerate(
         return;
       }
 
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        res.statusCode = 503;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ error: "OPENAI_API_KEY is not configured" }));
+        return;
+      }
+
       const { default: OpenAI } = await import("openai");
+      const baseURL = process.env.OPENAI_BASE_URL;
       const openai = new OpenAI({
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey,
+        ...(baseURL ? { baseURL } : {}),
       });
 
       const completion = await openai.chat.completions.create({

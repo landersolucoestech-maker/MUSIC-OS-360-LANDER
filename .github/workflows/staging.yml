@@ -57,7 +57,6 @@ jobs:
       DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
       DATABASE_SESSION_CONTEXT_ENABLED: "true"
-      DATABASE_RLS_ENFORCEMENT: "true"
       NODE_ENV: staging
     steps:
       - uses: actions/checkout@v4

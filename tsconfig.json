@@ -5,7 +5,6 @@
     { "path": "./apps/api/tsconfig.json" }
   ],
   "compilerOptions": {
-    "baseUrl": ".",
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   }

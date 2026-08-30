@@ -7,23 +7,26 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml turbo.json ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/ai-skills/package.json ./packages/ai-skills/
+COPY packages/config/package.json ./packages/config/
 COPY packages/types/package.json ./packages/types/
 
 RUN pnpm install --frozen-lockfile
 
 COPY apps/web/ ./apps/web/
 COPY packages/ai-skills/ ./packages/ai-skills/
+COPY packages/config/ ./packages/config/
 COPY packages/types/ ./packages/types/
 
 ARG VITE_API_URL
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_AUTH_DISABLED=false
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 ENV VITE_MOCK_MODE=false
 ENV VITE_USE_MOCK=false
-ENV VITE_AUTH_DISABLED=false
+ENV VITE_AUTH_DISABLED=$VITE_AUTH_DISABLED
 
 RUN pnpm --filter @music-os-360/types build \
  && pnpm --filter @music-os-360/web build

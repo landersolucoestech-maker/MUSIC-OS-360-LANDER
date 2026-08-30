@@ -8,6 +8,7 @@ const LEGACY_TOKEN = ['c', 's', 'v'].join('');
 
 const IGNORED_DIRECTORIES = new Set([
   '.git',
+  '.local',
   '.next',
   '.turbo',
   'coverage',

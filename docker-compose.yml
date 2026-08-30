@@ -4,22 +4,29 @@ version: '3.9'
 # Serviços: PostgreSQL + Redis + API NestJS
 # Frontend (Vite) corre localmente via `npm run dev:web` — não containerizado.
 #
-# Uso:
-#   docker compose up -d          # subir todos os serviços em background
-#   docker compose logs -f api    # acompanhar logs da API
-#   docker compose down -v        # parar e remover volumes
+# Uso (--env-file explícito — Docker Compose não descobre mais um `.env`
+# implícito na raiz; o nome canônico agora é .env.development):
+#   docker compose --env-file .env.development up -d          # subir todos os serviços em background
+#   docker compose --env-file .env.development logs -f api    # acompanhar logs da API
+#   docker compose --env-file .env.development down -v        # parar e remover volumes
 #
-# Variáveis de ambiente: copiar .env.example → .env e preencher.
+# Variáveis de ambiente: editar .env.development diretamente (arquivo real,
+# fora do Git — não é mais um template .example a copiar).
 
 services:
-  # ─── PostgreSQL ──────────────────────────────────────────────────────────────
+  # ─── PostgreSQL (local, OPCIONAL) ─────────────────────────────────────────────
+  # Não é requisito para subir a aplicação: em development, apps/api conecta
+  # diretamente ao Postgres remoto do Supabase DEV via DATABASE_URL
+  # (.env.development). Este serviço só sobe com `--profile local-db`, para quem
+  # quiser um Postgres local isolado (ex.: testes offline sem Supabase).
   postgres:
+    profiles: ['local-db']
     image: postgres:16-alpine
     container_name: musicos360_db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-musicos360}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in local .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       POSTGRES_DB: ${POSTGRES_DB:-musicos360}
     ports:
       - '5432:5432'
@@ -56,23 +63,21 @@ services:
     container_name: musicos360_api
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: staging
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: 3001
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in local .env}
       DB_SSL: ${DB_SSL:-false}
       REDIS_QUEUE_URL: redis://redis:6379
       REDIS_URL: redis://redis:6379
       RBAC_PERSISTED_AUTHORITY: SHADOW
+      AUTH_DISABLED: ${AUTH_DISABLED:-false}
       # Preencher com valores reais (ou usar .env):
       SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
-      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?SUPABASE_JWT_SECRET must be set in local .env}
       VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set in local .env}
