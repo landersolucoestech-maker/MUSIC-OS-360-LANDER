@@ -152,6 +152,21 @@ import { TenantZeroFormalization20260801000002 } from './20260801000002_TenantZe
 import { GrantMusicosAppOnAllTables20260802000001 } from './20260802000001_GrantMusicosAppOnAllTables';
 import { GrantMusicosAppAuthenticatedMembership20260802000002 } from './20260802000002_GrantMusicosAppAuthenticatedMembership';
 import { CreateClientAttachments20260803000001 } from './20260803000001_CreateClientAttachments';
+import { FixSupportTicketsTenantIdUnique20260822000000 } from './20260822000000_FixSupportTicketsTenantIdUnique';
+import { CreateSupportTicketMessages20260822000001 } from './20260822000001_CreateSupportTicketMessages';
+import { CreateSupportRequests20260822000002 } from './20260822000002_CreateSupportRequests';
+import { CreateKnowledgeBase20260822000003 } from './20260822000003_CreateKnowledgeBase';
+import { AddContractDocumentos20260822000004 } from './20260822000004_AddContractDocumentos';
+import { DropGenericFormsModule20260822000005 } from './20260822000005_DropGenericFormsModule';
+import { AddConversationsRecencyIndex20260823000000 } from './20260823000000_AddConversationsRecencyIndex';
+import { CreateIntegrationGovernance20260823000001 } from './20260823000001_CreateIntegrationGovernance';
+import { AddIntegrationClassificationAndEntitlement20260824000000 } from './20260824000000_AddIntegrationClassificationAndEntitlement';
+import { AddBillingPlanIntegrationEntitlements20260824000001 } from './20260824000001_AddBillingPlanIntegrationEntitlements';
+import { RestoreBillingPlansWritePolicy20260824000002 } from './20260824000002_RestoreBillingPlansWritePolicy';
+import { CreateInternalChat20260828000001 } from './20260828000001_CreateInternalChat';
+import { RlsPoliciesInternalChat20260828000002 } from './20260828000002_RlsPoliciesInternalChat';
+import { ForceRlsInternalChat20260828000003 } from './20260828000003_ForceRlsInternalChat';
+import { FixInternalChatTableOwnership20260829000001 } from './20260829000001_FixInternalChatTableOwnership';
 import { FixDefaultPrivilegesCreatorRole20260803000002 } from './20260803000002_FixDefaultPrivilegesCreatorRole';
 import { CreateContractServiceTypes20260803000003 } from './20260803000003_CreateContractServiceTypes';
 import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicensePercentage';
@@ -320,4 +335,19 @@ export const ALL_MIGRATIONS = [
   CasTimestampTzSystemicFix20260818000002,
   RemoveArtistLegacyMetricColumns20260821000001,
   DropArtistTipoColumn20260821000002,
+  FixSupportTicketsTenantIdUnique20260822000000,
+  CreateSupportTicketMessages20260822000001,
+  CreateSupportRequests20260822000002,
+  CreateKnowledgeBase20260822000003,
+  AddContractDocumentos20260822000004,
+  DropGenericFormsModule20260822000005,
+  AddConversationsRecencyIndex20260823000000,
+  CreateIntegrationGovernance20260823000001,
+  AddIntegrationClassificationAndEntitlement20260824000000,
+  AddBillingPlanIntegrationEntitlements20260824000001,
+  RestoreBillingPlansWritePolicy20260824000002,
+  CreateInternalChat20260828000001,
+  RlsPoliciesInternalChat20260828000002,
+  ForceRlsInternalChat20260828000003,
+  FixInternalChatTableOwnership20260829000001,
 ] as const;

@@ -1,6 +1,6 @@
 /**
  * migrate.mjs — aplica o SQL gerado pelo drizzle-kit generate ao Neon.
- * Usa @neondatabase/serverless (http mode) via NEON_DATABASE_DIRECT_URL.
+ * Usa @neondatabase/serverless (http mode) via DIRECT_DATABASE_URL.
  *
  * Uso: node migrate.mjs
  */
@@ -12,12 +12,11 @@ import { neon } from '@neondatabase/serverless';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const url =
-  process.env.NEON_DATABASE_DIRECT_URL ??
-  process.env.NEON_DATABASE_URL ??
+  process.env.DIRECT_DATABASE_URL ??
   process.env.DATABASE_URL;
 
 if (!url) {
-  console.error('❌  Defina NEON_DATABASE_DIRECT_URL, NEON_DATABASE_URL ou DATABASE_URL');
+  console.error('❌  Defina DIRECT_DATABASE_URL ou DATABASE_URL');
   process.exit(1);
 }
 

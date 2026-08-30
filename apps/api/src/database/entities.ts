@@ -462,6 +462,8 @@ export class BillingPlanEntity {
   // legadas que já persistiram {}.
   @Column({ type: 'jsonb', default: [] }) features: unknown[];
   @Column({ type: 'jsonb', default: {} }) limits: Record<string, unknown>;
+  /** Slugs comerciais incluídos no plano (entitlements). Lista dinâmica. */
+  @Column({ type: 'jsonb', default: [] }) integrations: string[];
   @Column({ type: 'varchar', length: 255, nullable: true }) stripe_product_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) stripe_price_id: string | null;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
@@ -779,6 +781,7 @@ export class ContractEntity {
   // ── Campos do formulário/wizard (1 coluna por campo — nome exato) ────────────
   @Column({ type: 'uuid', nullable: true }) template_id: string | null;
   @Column({ type: 'jsonb', nullable: true }) signers: unknown[] | null;
+  @Column({ type: 'jsonb', default: [] }) documentos: unknown[];
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
@@ -1452,6 +1455,83 @@ export class SupportTicketEntity {
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
 }
 
+// GAP-04 (product-completion audit): thread of replies on a support ticket.
+// Matches the frontend's SupportMessage contract exactly
+// (apps/web/src/modules/support/types/index.ts).
+@Entity('support_ticket_messages')
+@Index(['tenant_id'])
+@Index(['tenant_id', 'ticket_id'])
+export class SupportTicketMessageEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) ticket_id: string;
+  @Column({ type: 'varchar', length: 255 }) sender_id: string;
+  @Column({ type: 'varchar', length: 255 }) sender_name: string;
+  @Column({ type: 'varchar', length: 20, default: 'support' }) sender_role: 'user' | 'support' | 'admin';
+  @Column({ type: 'text' }) message: string;
+  @Column({ type: 'boolean', default: false }) internal_note: boolean;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+}
+
+// GAP-05c (product-completion audit): feature-request/voting board.
+// Matches the frontend's SupportRequest contract exactly
+// (apps/web/src/modules/support/types/index.ts). Votes is a plain atomic
+// counter — the frontend's own "voted" state is client-side-only (resets on
+// reload, never persisted), so no per-user vote-uniqueness table is specified.
+@Entity('support_requests')
+@Index(['tenant_id'])
+export class SupportRequestEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 20 }) type: 'feature' | 'bug' | 'question' | 'billing' | 'integration';
+  @Column({ type: 'varchar', length: 500 }) title: string;
+  @Column({ type: 'text', default: '' }) description: string;
+  @Column({ type: 'varchar', length: 20, default: 'pending' }) status: 'pending' | 'in_review' | 'approved' | 'done' | 'rejected';
+  @Column({ type: 'varchar', length: 20, default: 'medium' }) priority: string;
+  @Column({ type: 'int', default: 0 }) votes: number;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
+}
+
+// ─── Knowledge Base (Central de Suporte) ───────────────────────────────────────
+// Global content (não tenant-scoped) — Music OS 360 escreve a documentação da
+// plataforma uma vez, todos os tenants leem. Ver 20260822000003_CreateKnowledgeBase.
+@Entity('knowledge_categories')
+export class KnowledgeCategoryEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'varchar', length: 80 }) slug: string;
+  @Column({ type: 'varchar', length: 120 }) name: string;
+  @Column({ type: 'text', nullable: true }) description: string | null;
+  @Column({ type: 'varchar', length: 60, nullable: true }) icon: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) color: string | null;
+  @Column({ type: 'int', default: 0 }) sort_order: number;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
+}
+
+@Entity('knowledge_articles')
+export class KnowledgeArticleEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) category_id: string;
+  @Column({ type: 'varchar', length: 300 }) title: string;
+  @Column({ type: 'text', default: '' }) summary: string;
+  @Column({ type: 'text', default: '' }) content: string;
+  @Column({ type: 'varchar', length: 20, default: 'article' }) type: 'article' | 'faq' | 'tutorial' | 'internal_doc';
+  @Column({ type: 'varchar', length: 20, default: 'draft' }) status: 'draft' | 'published' | 'archived';
+  @Column({ type: 'boolean', default: false }) featured: boolean;
+  @Column({ type: 'int', default: 0 }) views: number;
+  @Column({ type: 'int', default: 0 }) helpful_count: number;
+  @Column({ type: 'int', default: 1 }) read_time: number;
+  @Column({ type: 'int', default: 0 }) sort_order: number;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 @Entity('notifications')
 @Index(['tenant_id', 'user_id'])
@@ -1940,6 +2020,67 @@ export class ConversationNoteEntity {
   conversation: Relation<ConversationEntity>;
 }
 
+// Chat Interno (equipe <-> equipe) — arquiteturalmente isolado da Central de
+// Atendimento (ConversationEntity/ConversationMessageEntity acima, equipe <->
+// público externo): entidades, identidade de participante (org_members, sem
+// telefone/canal externo) e autorização próprias. Nunca reutilizar as tabelas
+// `conversations`/`conversation_messages` para este domínio.
+@Entity('internal_conversations')
+@Index(['tenant_id'])
+export class InternalConversationEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) org_id: string;
+  @Column({ type: 'enum', enum: ['direct', 'group'], enumName: 'internal_conversation_type', default: 'direct' })
+  type: string;
+  @Column({ type: 'varchar', length: 255, nullable: true }) name: string | null;
+  @Column({ type: 'varchar', length: 255 }) created_by: string;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+
+  @OneToMany(() => InternalConversationParticipantEntity, (p) => p.conversation)
+  participants: Relation<InternalConversationParticipantEntity[]>;
+
+  @OneToMany(() => InternalMessageEntity, (m) => m.conversation)
+  messages: Relation<InternalMessageEntity[]>;
+}
+
+@Entity('internal_conversation_participants')
+@Index(['conversation_id', 'auth_user_id'], { unique: true })
+@Index(['tenant_id', 'auth_user_id'])
+export class InternalConversationParticipantEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) conversation_id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 255 }) auth_user_id: string;
+  @CreateDateColumn({ type: 'timestamptz' }) joined_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) last_read_at: Date | null;
+
+  @ManyToOne(() => InternalConversationEntity, (c) => c.participants, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'conversation_id' })
+  conversation: Relation<InternalConversationEntity>;
+}
+
+@Entity('internal_messages')
+@Index(['conversation_id', 'created_at'])
+@Index(['tenant_id'])
+export class InternalMessageEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) conversation_id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 255 }) sender_auth_user_id: string;
+  @Column({ type: 'text', default: '' }) body: string;
+  @Column({ type: 'jsonb', default: [] }) attachments: unknown[];
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) edited_at: Date | null;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+
+  @ManyToOne(() => InternalConversationEntity, (c) => c.messages, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'conversation_id' })
+  conversation: Relation<InternalConversationEntity>;
+}
+
 @Entity('musicchat_automation_settings')
 @Index(['tenant_id'], { unique: true })
 export class MusicChatAutomationSettingsEntity {
@@ -1998,46 +2139,12 @@ export class MusicChatAutomationNotificationEntity {
 }
 
 // ─── Forms & Submissions ──────────────────────────────────────────────────────
-@Entity('forms')
-@Index(['tenant_id', 'status'])
-export class FormEntity {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 500 }) name: string;
-  @Column({ type: 'text', nullable: true }) description: string | null;
-  @Column({ type: 'jsonb', default: [] }) fields: unknown[];
-  @Column({ type: 'jsonb', default: {} }) settings: Record<string, unknown>;
-  @Column({ type: 'enum', enum: ['draft', 'active', 'archived'], enumName: 'form_status', default: 'draft' })
-  status: string;
-  @Column({ type: 'int', default: 0 }) submission_count: number;
-  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
-  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
-  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
-
-  @OneToMany(() => FormSubmissionEntity, (s) => s.form)
-  submissions: Relation<FormSubmissionEntity[]>;
-}
-
-@Entity('form_submissions')
-@Index(['form_id', 'created_at'])
-@Index(['tenant_id'])
-@Index(['lead_id'])
-export class FormSubmissionEntity {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  @Column({ type: 'uuid' }) form_id: string;
-  @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid', nullable: true }) lead_id: string | null;
-  @Column({ type: 'jsonb', default: {} }) data: Record<string, unknown>;
-  @Column({ type: 'text', nullable: true }) origin: string | null;
-  @Column({ type: 'text', nullable: true }) ip: string | null;
-  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
-
-  @ManyToOne(() => FormEntity, (f) => f.submissions, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'form_id' })
-  form: Relation<FormEntity>;
-}
+// FormEntity/FormSubmissionEntity (forms/form_submissions) removidas por
+// DropGenericFormsModule20260822000005 — decisão de produto (2026-08-22):
+// nenhum Form Builder genérico. Zero consumidor aprovado (captação de
+// artistas usa Artist Public Form; suporte usa Support Ticket). Tabelas
+// dropadas; conversations/conversation_messages/conversation_notes do
+// MusicChat, criadas na mesma migration original, foram preservadas.
 
 // ─── CRM Canonical (Phase 7) ──────────────────────────────────────────────────
 // crm_companies/crm_contacts/crm_tags/crm_contact_tags/crm_timeline_events were
@@ -3221,8 +3328,57 @@ export class WorkflowExecutionLogEntity {
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
 }
 
+// ─── Integration governance (migration 20260823000001) ───────────────────────
+// Config GLOBAL da plataforma (sem tenant_id): governa publicação e audiência
+// de cada integração. Capacidade técnica NÃO vive aqui — é derivada do registry
+// de adapters em código, porque implementação técnica é código, não governança.
+
+export interface IntegrationAudience {
+  mode: 'none' | 'all' | 'plans' | 'tenants';
+  plans: string[];
+  tenantIds: string[];
+}
+
+@Entity('integration_categories')
+export class IntegrationCategoryEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'varchar', length: 64 })  slug: string;
+  @Column({ type: 'varchar', length: 120 }) name: string;
+  @Column({ type: 'int', default: 0 })      display_order: number;
+  @Column({ type: 'boolean', default: true }) active: boolean;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+}
+
+@Entity('platform_integrations')
+export class PlatformIntegrationEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'varchar', length: 64 })  provider_key: string;
+  @Column({ type: 'varchar', length: 120 }) name: string;
+  @Column({ type: 'uuid', nullable: true }) category_id: string | null;
+  @Column({ type: 'varchar', length: 32 })  connection_kind: 'oauth' | 'tenant_credentials' | 'platform_credentials';
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" }) required_env: string[];
+  @Column({ type: 'varchar', length: 16, default: 'draft' }) publication_state: 'draft' | 'published' | 'retired';
+  @Column({ type: 'jsonb' }) view_audience: IntegrationAudience;
+  @Column({ type: 'jsonb' }) use_audience:  IntegrationAudience;
+  /** commercial | internal_platform | platform_billing */
+  @Column({ type: 'varchar', length: 32, default: 'commercial' }) classification: string;
+  /**
+   * Estado operacional do adapter (planned…ready…retired), governável pelo
+   * admin. NÃO é o entitlement (isso vive em billing_plans.features.integrations)
+   * nem a capability em código (existe adapter?).
+   */
+  @Column({ type: 'varchar', length: 32, default: 'planned' }) technical_state: string;
+  @Column({ type: 'boolean', default: false }) is_core: boolean;
+  @Column({ type: 'text', nullable: true }) notes: string | null;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+}
+
 // ─── All entities array (for DataSource registration) ─────────────────────────
 export const ALL_ENTITIES = [
+  IntegrationCategoryEntity,
+  PlatformIntegrationEntity,
   OrganizationEntity,
   TenantEntity,
   UserEntity,
@@ -3293,11 +3449,12 @@ export const ALL_ENTITIES = [
   ConversationEntity,
   ConversationMessageEntity,
   ConversationNoteEntity,
+  InternalConversationEntity,
+  InternalConversationParticipantEntity,
+  InternalMessageEntity,
   MusicChatAutomationSettingsEntity,
   MusicChatAutomationEventEntity,
   MusicChatAutomationNotificationEntity,
-  FormEntity,
-  FormSubmissionEntity,
   // Operational task queue used by workflow handlers
   CrmTaskEntity,
   // Phase 8: Music Pipelines
