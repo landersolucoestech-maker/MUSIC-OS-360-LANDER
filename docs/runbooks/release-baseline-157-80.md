@@ -55,11 +55,10 @@ Antes de qualquer validacao:
 3. Confirmar que variaveis de staging nao apontam para producao.
 4. Confirmar que `DATABASE_URL` e `APP_DATABASE_URL` do processo apontam para staging/mirror.
 5. Confirmar que `DATABASE_SESSION_CONTEXT_ENABLED=true`.
-6. Confirmar que `DATABASE_RLS_ENFORCEMENT=true`.
-7. Confirmar que Stripe esta em test-mode.
-8. Confirmar que Resend usa dominio/remetente de staging.
-9. Confirmar que Sentry usa projeto/environment de staging.
-10. Confirmar que R2 usa bucket staging.
+6. Confirmar que Stripe esta em test-mode.
+7. Confirmar que Resend usa dominio/remetente de staging.
+8. Confirmar que Sentry usa projeto/environment de staging.
+9. Confirmar que R2 usa bucket staging.
 
 Se qualquer item falhar:
 

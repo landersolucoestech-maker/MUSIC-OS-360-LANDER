@@ -1,0 +1,1361 @@
+{
+ "codeFieldOnly": [
+  {
+   "table": "campaign_assets",
+   "column": "file_size",
+   "entityClass": "CampaignAssetEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 2188
+  },
+  {
+   "table": "campaign_assets",
+   "column": "mime_type",
+   "entityClass": "CampaignAssetEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 2189
+  },
+  {
+   "table": "financial_categories",
+   "column": "path",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3052
+  },
+  {
+   "table": "financial_categories",
+   "column": "depth_level",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3053
+  },
+  {
+   "table": "financial_categories",
+   "column": "tree_order",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3054
+  },
+  {
+   "table": "financial_categories",
+   "column": "slug",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3056
+  },
+  {
+   "table": "financial_categories",
+   "column": "code",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3057
+  },
+  {
+   "table": "financial_categories",
+   "column": "description",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3058
+  },
+  {
+   "table": "financial_categories",
+   "column": "color",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3059
+  },
+  {
+   "table": "financial_categories",
+   "column": "icon",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3060
+  },
+  {
+   "table": "financial_categories",
+   "column": "transaction_types",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3061
+  },
+  {
+   "table": "financial_categories",
+   "column": "category_kind",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3062
+  },
+  {
+   "table": "financial_categories",
+   "column": "system_category",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3063
+  },
+  {
+   "table": "financial_categories",
+   "column": "protected",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3064
+  },
+  {
+   "table": "financial_categories",
+   "column": "active",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3065
+  },
+  {
+   "table": "financial_categories",
+   "column": "archived",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3066
+  },
+  {
+   "table": "financial_categories",
+   "column": "allow_manual_usage",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3067
+  },
+  {
+   "table": "financial_categories",
+   "column": "allow_ai_suggestions",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3068
+  },
+  {
+   "table": "financial_categories",
+   "column": "usage_count",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3069
+  },
+  {
+   "table": "financial_categories",
+   "column": "metadata",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3071
+  },
+  {
+   "table": "financial_categories",
+   "column": "deleted_at",
+   "entityClass": "FinancialCategoryEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 3076
+  },
+  {
+   "table": "notifications",
+   "column": "updated_at",
+   "entityClass": "NotificationEntity",
+   "file": "apps\\api\\src\\modules\\notifications\\entities\\notification.entity.ts",
+   "line": 11
+  },
+  {
+   "table": "rights_holders",
+   "column": "email_encrypted",
+   "entityClass": "RightsHolderEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 2347
+  },
+  {
+   "table": "rights_holders",
+   "column": "phone_encrypted",
+   "entityClass": "RightsHolderEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 2348
+  },
+  {
+   "table": "takedowns",
+   "column": "url",
+   "entityClass": "TakedownEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 1403
+  },
+  {
+   "table": "takedowns",
+   "column": "obra_id",
+   "entityClass": "TakedownEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 1405
+  },
+  {
+   "table": "takedowns",
+   "column": "artista_id",
+   "entityClass": "TakedownEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 1406
+  },
+  {
+   "table": "takedowns",
+   "column": "resposta",
+   "entityClass": "TakedownEntity",
+   "file": "apps\\api\\src\\database\\entities.ts",
+   "line": 1408
+  },
+  {
+   "table": "uploads",
+   "column": "updated_at",
+   "entityClass": "UploadEntity",
+   "file": "apps\\api\\src\\modules\\uploads\\entities\\upload.entity.ts",
+   "line": 11
+  }
+ ],
+ "databaseColumnOnly": [
+  {
+   "table": "artists",
+   "column": "documentos_pessoais_url"
+  },
+  {
+   "table": "artists",
+   "column": "presskit_url"
+  },
+  {
+   "table": "artists",
+   "column": "data_nascimento"
+  },
+  {
+   "table": "artists",
+   "column": "rg"
+  },
+  {
+   "table": "artists",
+   "column": "genero"
+  },
+  {
+   "table": "artists",
+   "column": "endereco"
+  },
+  {
+   "table": "artists",
+   "column": "banco"
+  },
+  {
+   "table": "artists",
+   "column": "agencia"
+  },
+  {
+   "table": "artists",
+   "column": "conta"
+  },
+  {
+   "table": "artists",
+   "column": "chave_pix"
+  },
+  {
+   "table": "artists",
+   "column": "titular_conta"
+  },
+  {
+   "table": "artists",
+   "column": "instagram"
+  },
+  {
+   "table": "artists",
+   "column": "tiktok"
+  },
+  {
+   "table": "artists",
+   "column": "tipo_perfil"
+  },
+  {
+   "table": "artists",
+   "column": "contatos_vinculados"
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_gerais"
+  },
+  {
+   "table": "artists",
+   "column": "notas_internas"
+  },
+  {
+   "table": "artists",
+   "column": "slug_artistico"
+  },
+  {
+   "table": "artists",
+   "column": "tags_musicais"
+  },
+  {
+   "table": "artists",
+   "column": "fase_carreira"
+  },
+  {
+   "table": "artists",
+   "column": "spotify_ouvintes"
+  },
+  {
+   "table": "artists",
+   "column": "youtube_inscritos"
+  },
+  {
+   "table": "artists",
+   "column": "deezer_fas"
+  },
+  {
+   "table": "artists",
+   "column": "apple_music_albuns"
+  },
+  {
+   "table": "artists",
+   "column": "soundcloud_seguidores"
+  },
+  {
+   "table": "artists",
+   "column": "instagram_seguidores"
+  },
+  {
+   "table": "artists",
+   "column": "tiktok_seguidores"
+  },
+  {
+   "table": "artists",
+   "column": "relacionamentos"
+  },
+  {
+   "table": "artists",
+   "column": "empresario_id"
+  },
+  {
+   "table": "artists",
+   "column": "empresario_nome"
+  },
+  {
+   "table": "artists",
+   "column": "empresario_telefone"
+  },
+  {
+   "table": "artists",
+   "column": "empresario_email"
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_id"
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_nome"
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_telefone"
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_email"
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_responsavel_id"
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_responsavel_nome"
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_responsavel_telefone"
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_responsavel_email"
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_selecionadas"
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_emails"
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_empresa_selecionadas"
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_empresa_emails"
+  },
+  {
+   "table": "artists",
+   "column": "contatos_equipe"
+  },
+  {
+   "table": "employees",
+   "column": "nome_completo"
+  },
+  {
+   "table": "employees",
+   "column": "rg"
+  },
+  {
+   "table": "employees",
+   "column": "data_nascimento"
+  },
+  {
+   "table": "employees",
+   "column": "endereco"
+  },
+  {
+   "table": "employees",
+   "column": "setor"
+  },
+  {
+   "table": "employees",
+   "column": "salario_base"
+  },
+  {
+   "table": "employees",
+   "column": "observacoes"
+  },
+  {
+   "table": "employees",
+   "column": "vinculo_usuario_id"
+  },
+  {
+   "table": "financial_categories",
+   "column": "template_id"
+  },
+  {
+   "table": "financial_categories",
+   "column": "nature"
+  },
+  {
+   "table": "financial_categories",
+   "column": "includes_in_pnl"
+  },
+  {
+   "table": "financial_categories",
+   "column": "level"
+  },
+  {
+   "table": "financial_categories",
+   "column": "is_active"
+  },
+  {
+   "table": "leave_requests",
+   "column": "funcionario_id"
+  },
+  {
+   "table": "leave_requests",
+   "column": "dias_totais"
+  },
+  {
+   "table": "leave_requests",
+   "column": "observacoes"
+  },
+  {
+   "table": "payroll_entries",
+   "column": "funcionario_id"
+  },
+  {
+   "table": "payroll_entries",
+   "column": "mes_referencia"
+  },
+  {
+   "table": "payroll_entries",
+   "column": "bonus"
+  },
+  {
+   "table": "payroll_entries",
+   "column": "data_pagamento"
+  },
+  {
+   "table": "payroll_entries",
+   "column": "observacoes"
+  },
+  {
+   "table": "rbac_error_logs",
+   "column": "created_at"
+  }
+ ],
+ "typeMismatch": [
+  {
+   "table": "billing_plans",
+   "column": "created_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "billing_plans",
+   "column": "updated_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "billing_settings",
+   "column": "created_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "billing_settings",
+   "column": "updated_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "billing_subscriptions",
+   "column": "current_period_start",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "billing_subscriptions",
+   "column": "grace_until",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "billing_subscriptions",
+   "column": "suspended_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "billing_subscriptions",
+   "column": "resumed_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "conversation_messages",
+   "column": "sender_type",
+   "declaredType": "enum",
+   "dbType": "message_sender_type"
+  },
+  {
+   "table": "conversations",
+   "column": "status",
+   "declaredType": "enum",
+   "dbType": "conversation_status"
+  },
+  {
+   "table": "conversations",
+   "column": "channel",
+   "declaredType": "enum",
+   "dbType": "conversation_channel"
+  },
+  {
+   "table": "financial_categories",
+   "column": "created_by",
+   "declaredType": "varchar",
+   "dbType": "uuid"
+  },
+  {
+   "table": "financial_categories",
+   "column": "updated_by",
+   "declaredType": "varchar",
+   "dbType": "uuid"
+  },
+  {
+   "table": "forms",
+   "column": "status",
+   "declaredType": "enum",
+   "dbType": "form_status"
+  },
+  {
+   "table": "invoices",
+   "column": "due_date",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "leads",
+   "column": "tags",
+   "declaredType": "text",
+   "dbType": "_text"
+  },
+  {
+   "table": "payment_events",
+   "column": "processed_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "payment_events",
+   "column": "created_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "tenant_billing_state",
+   "column": "last_payment_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "tenant_billing_state",
+   "column": "next_payment_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "tenant_billing_state",
+   "column": "grace_until",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "tenant_billing_state",
+   "column": "suspended_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "tenant_billing_state",
+   "column": "manual_override_until",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "tenant_billing_state",
+   "column": "created_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  },
+  {
+   "table": "tenant_billing_state",
+   "column": "updated_at",
+   "declaredType": "timestamp",
+   "dbType": "timestamptz"
+  }
+ ],
+ "nullabilityMismatch": [],
+ "defaultMismatch": [],
+ "databaseColumnOnly_resolvedViaDtoOrRawQuery": [
+  {
+   "table": "artists",
+   "column": "documentos_pessoais_url",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "presskit_url",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "data_nascimento",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000018_RebuildEmployeesInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "rg",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000018_RebuildEmployeesInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "genero",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\external-data\\external-data-exchange.service.ts",
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20240101000000_InitialSchema.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260718000010_ReleasesFormFieldColumns.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "endereco",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20240101000000_InitialSchema.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000005_CrmFinanceOpsFormFieldColumns.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "banco",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\automation\\native-skill-automation.runner.ts",
+    "apps\\api\\src\\core\\config\\env.schema.ts",
+    "apps\\api\\src\\core\\interceptors\\request-tenant-context.interceptor.ts",
+    "apps\\api\\src\\core\\rbac\\permission-resolver.service.ts",
+    "apps\\api\\src\\core\\rbac\\rbac.service.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "agencia",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\auth\\dto\\complete-onboarding.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "conta",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\guards\\must-change-password.guard.ts",
+    "apps\\api\\src\\core\\mail\\mail.service.ts",
+    "apps\\api\\src\\core\\security\\normalize-email.ts",
+    "apps\\api\\src\\database\\migration-classification.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "chave_pix",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "titular_conta",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "instagram",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\automation\\marketing-calendar-builder.automation.ts",
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20260521000040_ConversationsAndForms.ts",
+    "apps\\api\\src\\database\\migrations\\20260528000002_LeadsContactsOperationalRefactor.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "tiktok",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\automation\\marketing-calendar-builder.automation.ts",
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20260604000001_CustomerCareConversationExtensions.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "tipo_perfil",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "contatos_vinculados",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaFormModal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_gerais",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "notas_internas",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260718000010_ReleasesFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000004_RebuildReleasesInCanonicalFormOrder.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "slug_artistico",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\services\\artista.mapper.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "tags_musicais",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\services\\artista.mapper.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "fase_carreira",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\services\\artista.mapper.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "spotify_ouvintes",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "youtube_inscritos",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\services\\artista.mapper.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "deezer_fas",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "apple_music_albuns",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "soundcloud_seguidores",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "instagram_seguidores",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "tiktok_seguidores",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "relacionamentos",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\api\\src\\modules\\reports\\i18n\\field-labels.pt-br.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "empresario_id",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\services\\artista.mapper.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "empresario_nome",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "empresario_telefone",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "empresario_email",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_id",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\services\\artista.mapper.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_nome",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_telefone",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_email",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_responsavel_id",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\services\\artista.mapper.ts"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_responsavel_nome",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_responsavel_telefone",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "gravadora_responsavel_email",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_selecionadas",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_emails",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaVisao360Modal.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_empresa_selecionadas",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\pages\\ArtistaCadastro.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "distribuidoras_empresa_emails",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\pages\\ArtistaCadastro.tsx"
+   ]
+  },
+  {
+   "table": "artists",
+   "column": "contatos_equipe",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts",
+    "apps\\api\\src\\modules\\reports\\form-contracts\\report-form-contracts.ts",
+    "apps\\web\\src\\modules\\artist\\components\\ArtistaFormModal.tsx"
+   ]
+  },
+  {
+   "table": "employees",
+   "column": "nome_completo",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20260528000002_LeadsContactsOperationalRefactor.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000011_RebuildLeadsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000018_RebuildEmployeesInCanonicalFormOrder.ts"
+   ]
+  },
+  {
+   "table": "employees",
+   "column": "rg",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000018_RebuildEmployeesInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts"
+   ]
+  },
+  {
+   "table": "employees",
+   "column": "data_nascimento",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000001_RebuildArtistsInCanonicalFormOrder.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000018_RebuildEmployeesInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\artists\\dto\\create-artist.dto.ts"
+   ]
+  },
+  {
+   "table": "employees",
+   "column": "endereco",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20240101000000_InitialSchema.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000001_ArtistsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000005_CrmFinanceOpsFormFieldColumns.ts"
+   ]
+  },
+  {
+   "table": "employees",
+   "column": "setor",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20260521000060_InventoryLicensingFinancialRules.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000018_RebuildEmployeesInCanonicalFormOrder.ts",
+    "apps\\api\\src\\modules\\conversations\\musicchat-automation.service.ts"
+   ]
+  },
+  {
+   "table": "employees",
+   "column": "salario_base",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000018_RebuildEmployeesInCanonicalFormOrder.ts",
+    "apps\\web\\src\\modules\\rh\\components\\FolhaPagamentoFormModal.tsx",
+    "apps\\web\\src\\modules\\rh\\components\\FuncionarioFormModal.tsx",
+    "apps\\web\\src\\modules\\rh\\components\\RHViewModals.tsx"
+   ]
+  },
+  {
+   "table": "employees",
+   "column": "observacoes",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\automation\\artist-profile-analysis.automation.ts",
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20240101000000_InitialSchema.ts",
+    "apps\\api\\src\\database\\migrations\\20260521000060_InventoryLicensingFinancialRules.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000002_CatalogFormFieldColumns.ts"
+   ]
+  },
+  {
+   "table": "employees",
+   "column": "vinculo_usuario_id",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000018_RebuildEmployeesInCanonicalFormOrder.ts",
+    "apps\\web\\src\\modules\\rh\\components\\FuncionarioFormModal.tsx",
+    "apps\\web\\src\\modules\\rh\\pages\\RH.tsx",
+    "apps\\web\\src\\modules\\rh\\types\\rh.types.ts"
+   ]
+  },
+  {
+   "table": "financial_categories",
+   "column": "template_id",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20260614000004_CreateRoleTemplates.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000004_SharesContractsFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260718000002_FinancialCategories.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000012_RebuildContractsInCanonicalFormOrder.ts"
+   ]
+  },
+  {
+   "table": "financial_categories",
+   "column": "nature",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260718000002_FinancialCategories.ts",
+    "apps\\api\\src\\modules\\financial-categories\\dto\\financial-categories.dto.ts",
+    "apps\\api\\src\\modules\\financial-categories\\financial-categories.service.ts"
+   ]
+  },
+  {
+   "table": "financial_categories",
+   "column": "includes_in_pnl",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260718000002_FinancialCategories.ts",
+    "apps\\api\\src\\modules\\financial-categories\\dto\\financial-categories.dto.ts",
+    "apps\\api\\src\\modules\\financial-categories\\financial-categories.service.ts"
+   ]
+  },
+  {
+   "table": "financial_categories",
+   "column": "level",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\decorators\\roles.decorator.ts",
+    "apps\\api\\src\\core\\interceptors\\logging.interceptor.ts",
+    "apps\\api\\src\\core\\rbac\\rbac-decision.service.ts",
+    "apps\\api\\src\\core\\rbac\\rbac-distributed-cache.service.ts",
+    "apps\\api\\src\\core\\rbac\\rbac-error-log.service.ts"
+   ]
+  },
+  {
+   "table": "financial_categories",
+   "column": "is_active",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\auth-disabled.ts",
+    "apps\\api\\src\\database\\bootstrap-tenant-zero.ts",
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20240101000000_InitialSchema.ts",
+    "apps\\api\\src\\database\\migrations\\20260521000050_CrmPipelinesAnalytics.ts"
+   ]
+  },
+  {
+   "table": "leave_requests",
+   "column": "funcionario_id",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000019_RebuildPayrollEntriesInCanonicalFormOrder.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000025_RebuildLeaveRequestsInCanonicalFormOrder.ts",
+    "apps\\web\\src\\modules\\rh\\components\\FeriasAusenciasFormModal.tsx",
+    "apps\\web\\src\\modules\\rh\\components\\FolhaPagamentoFormModal.tsx"
+   ]
+  },
+  {
+   "table": "leave_requests",
+   "column": "dias_totais",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000025_RebuildLeaveRequestsInCanonicalFormOrder.ts",
+    "apps\\web\\src\\modules\\rh\\components\\FeriasAusenciasFormModal.tsx",
+    "apps\\web\\src\\modules\\rh\\components\\RHViewModals.tsx",
+    "apps\\web\\src\\modules\\rh\\pages\\RH.tsx"
+   ]
+  },
+  {
+   "table": "leave_requests",
+   "column": "observacoes",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\automation\\artist-profile-analysis.automation.ts",
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20240101000000_InitialSchema.ts",
+    "apps\\api\\src\\database\\migrations\\20260521000060_InventoryLicensingFinancialRules.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000002_CatalogFormFieldColumns.ts"
+   ]
+  },
+  {
+   "table": "payroll_entries",
+   "column": "funcionario_id",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000019_RebuildPayrollEntriesInCanonicalFormOrder.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000025_RebuildLeaveRequestsInCanonicalFormOrder.ts",
+    "apps\\web\\src\\modules\\rh\\components\\FeriasAusenciasFormModal.tsx",
+    "apps\\web\\src\\modules\\rh\\components\\FolhaPagamentoFormModal.tsx"
+   ]
+  },
+  {
+   "table": "payroll_entries",
+   "column": "mes_referencia",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000019_RebuildPayrollEntriesInCanonicalFormOrder.ts",
+    "apps\\web\\src\\modules\\rh\\components\\FolhaPagamentoFormModal.tsx",
+    "apps\\web\\src\\modules\\rh\\components\\RHViewModals.tsx",
+    "apps\\web\\src\\modules\\rh\\pages\\RH.tsx"
+   ]
+  },
+  {
+   "table": "payroll_entries",
+   "column": "bonus",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000019_RebuildPayrollEntriesInCanonicalFormOrder.ts",
+    "apps\\web\\src\\modules\\accounting\\constants\\transacao-constants.ts",
+    "apps\\web\\src\\modules\\rh\\components\\FolhaPagamentoFormModal.tsx",
+    "apps\\web\\src\\modules\\rh\\components\\RHViewModals.tsx"
+   ]
+  },
+  {
+   "table": "payroll_entries",
+   "column": "data_pagamento",
+   "evidenceFiles": [
+    "apps\\api\\src\\database\\migrations\\20260712000003_HrFormFieldColumns.ts",
+    "apps\\api\\src\\database\\migrations\\20260719000019_RebuildPayrollEntriesInCanonicalFormOrder.ts",
+    "apps\\web\\src\\modules\\accounting\\components\\TransacaoViewModal.tsx",
+    "apps\\web\\src\\modules\\dashboard\\hooks\\useOperationalDashboard.ts",
+    "apps\\web\\src\\modules\\rh\\components\\FolhaPagamentoFormModal.tsx"
+   ]
+  },
+  {
+   "table": "payroll_entries",
+   "column": "observacoes",
+   "evidenceFiles": [
+    "apps\\api\\src\\core\\automation\\artist-profile-analysis.automation.ts",
+    "apps\\api\\src\\database\\entities.ts",
+    "apps\\api\\src\\database\\migrations\\20240101000000_InitialSchema.ts",
+    "apps\\api\\src\\database\\migrations\\20260521000060_InventoryLicensingFinancialRules.ts",
+    "apps\\api\\src\\database\\migrations\\20260712000002_CatalogFormFieldColumns.ts"
+   ]
+  },
+  {
+   "table": "rbac_error_logs",
+   "column": "created_at",
+   "evidenceFiles": [
+    "apps\\api\\src\\common\\dto\\pagination.dto.ts",
+    "apps\\api\\src\\core\\rbac\\permission-resolver.service.ts",
+    "apps\\api\\src\\core\\rbac\\rbac-telemetry.service.ts",
+    "apps\\api\\src\\core\\skills\\skill-run.service.ts",
+    "apps\\api\\src\\core\\workflow\\workflow-execution.service.ts"
+   ]
+  }
+ ],
+ "databaseColumnOnly_trueGaps": []
+}

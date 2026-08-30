@@ -1,0 +1,1089 @@
+{
+  "auditPhase": "PHASE_1_DATABASE_BACKEND_LAYER_COMPLETE_PHASE_2_FRONTEND_LAYER_NOT_STARTED",
+  "scope": {
+    "totalPublicTables": 142,
+    "totalPublicColumns": 2382,
+    "partitionTables": [
+      "rbac_decision_logs_2026_06",
+      "rbac_decision_logs_2026_07",
+      "rbac_decision_logs_2026_08",
+      "rbac_decision_logs_2026_09",
+      "rbac_decision_logs_2026_10",
+      "rbac_decision_logs_default"
+    ],
+    "partitionNote": "excluded from standalone audit — identical schema to parent rbac_decision_logs, inherit its classification",
+    "standaloneColumnsAudited": 2232
+  },
+  "layer1_database_metadata": {
+    "status": "COMPLETE",
+    "method": "Mechanical extraction from docs/backend-v2/database-inventory/current-database-inventory.json (real PostgreSQL introspection, Prompt 93) — PK/FK/UNIQUE/CHECK/INDEX joined per column; TENANT_SCOPED/SENSITIVE derived via naming heuristics.",
+    "file": "docs/backend-v2/field-traceability/database-backend-column-mapping.json"
+  },
+  "layer2_database_to_backend_mapping": {
+    "status": "COMPLETE",
+    "method": "Mechanical extraction of every @Entity/@Column/@PrimaryColumn/@PrimaryGeneratedColumn/@CreateDateColumn/@UpdateDateColumn/@JoinColumn/@JoinTable declaration across apps/api/src (129 entities), cross-referenced against real DB columns. For tables/columns with no entity mapping, real grep-based raw-SQL/DTO usage evidence collected (file-level, not fabricated).",
+    "classificationCounts": {
+      "DIRECT": 1942,
+      "DIRECT_VIA_DTO_OR_RAW_QUERY": 67,
+      "NO_TABLE_CONSUMER": 126,
+      "DIRECT_RAW_SQL": 59,
+      "UNUSED_SCHEMA_FIELD": 30,
+      "RENAMED": 3,
+      "SYSTEM_TOOLING": 3,
+      "RELATION_ONLY": 2
+    },
+    "codeFieldOnly": [
+      {
+        "table": "campaign_assets",
+        "column": "file_size",
+        "entityClass": "CampaignAssetEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 2188
+      },
+      {
+        "table": "campaign_assets",
+        "column": "mime_type",
+        "entityClass": "CampaignAssetEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 2189
+      },
+      {
+        "table": "financial_categories",
+        "column": "path",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3052
+      },
+      {
+        "table": "financial_categories",
+        "column": "depth_level",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3053
+      },
+      {
+        "table": "financial_categories",
+        "column": "tree_order",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3054
+      },
+      {
+        "table": "financial_categories",
+        "column": "slug",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3056
+      },
+      {
+        "table": "financial_categories",
+        "column": "code",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3057
+      },
+      {
+        "table": "financial_categories",
+        "column": "description",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3058
+      },
+      {
+        "table": "financial_categories",
+        "column": "color",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3059
+      },
+      {
+        "table": "financial_categories",
+        "column": "icon",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3060
+      },
+      {
+        "table": "financial_categories",
+        "column": "transaction_types",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3061
+      },
+      {
+        "table": "financial_categories",
+        "column": "category_kind",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3062
+      },
+      {
+        "table": "financial_categories",
+        "column": "system_category",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3063
+      },
+      {
+        "table": "financial_categories",
+        "column": "protected",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3064
+      },
+      {
+        "table": "financial_categories",
+        "column": "active",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3065
+      },
+      {
+        "table": "financial_categories",
+        "column": "archived",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3066
+      },
+      {
+        "table": "financial_categories",
+        "column": "allow_manual_usage",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3067
+      },
+      {
+        "table": "financial_categories",
+        "column": "allow_ai_suggestions",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3068
+      },
+      {
+        "table": "financial_categories",
+        "column": "usage_count",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3069
+      },
+      {
+        "table": "financial_categories",
+        "column": "metadata",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3071
+      },
+      {
+        "table": "financial_categories",
+        "column": "deleted_at",
+        "entityClass": "FinancialCategoryEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 3076
+      },
+      {
+        "table": "notifications",
+        "column": "updated_at",
+        "entityClass": "NotificationEntity",
+        "file": "apps\\api\\src\\modules\\notifications\\entities\\notification.entity.ts",
+        "line": 11
+      },
+      {
+        "table": "rights_holders",
+        "column": "email_encrypted",
+        "entityClass": "RightsHolderEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 2347
+      },
+      {
+        "table": "rights_holders",
+        "column": "phone_encrypted",
+        "entityClass": "RightsHolderEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 2348
+      },
+      {
+        "table": "takedowns",
+        "column": "url",
+        "entityClass": "TakedownEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 1403
+      },
+      {
+        "table": "takedowns",
+        "column": "obra_id",
+        "entityClass": "TakedownEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 1405
+      },
+      {
+        "table": "takedowns",
+        "column": "artista_id",
+        "entityClass": "TakedownEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 1406
+      },
+      {
+        "table": "takedowns",
+        "column": "resposta",
+        "entityClass": "TakedownEntity",
+        "file": "apps\\api\\src\\database\\entities.ts",
+        "line": 1408
+      },
+      {
+        "table": "uploads",
+        "column": "updated_at",
+        "entityClass": "UploadEntity",
+        "file": "apps\\api\\src\\modules\\uploads\\entities\\upload.entity.ts",
+        "line": 11
+      }
+    ],
+    "typeMismatch": [
+      {
+        "table": "billing_plans",
+        "column": "created_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "billing_plans",
+        "column": "updated_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "billing_settings",
+        "column": "created_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "billing_settings",
+        "column": "updated_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "billing_subscriptions",
+        "column": "current_period_start",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "billing_subscriptions",
+        "column": "grace_until",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "billing_subscriptions",
+        "column": "suspended_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "billing_subscriptions",
+        "column": "resumed_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "conversation_messages",
+        "column": "sender_type",
+        "declaredType": "enum",
+        "dbType": "message_sender_type"
+      },
+      {
+        "table": "conversations",
+        "column": "status",
+        "declaredType": "enum",
+        "dbType": "conversation_status"
+      },
+      {
+        "table": "conversations",
+        "column": "channel",
+        "declaredType": "enum",
+        "dbType": "conversation_channel"
+      },
+      {
+        "table": "financial_categories",
+        "column": "created_by",
+        "declaredType": "varchar",
+        "dbType": "uuid"
+      },
+      {
+        "table": "financial_categories",
+        "column": "updated_by",
+        "declaredType": "varchar",
+        "dbType": "uuid"
+      },
+      {
+        "table": "forms",
+        "column": "status",
+        "declaredType": "enum",
+        "dbType": "form_status"
+      },
+      {
+        "table": "invoices",
+        "column": "due_date",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "leads",
+        "column": "tags",
+        "declaredType": "text",
+        "dbType": "_text"
+      },
+      {
+        "table": "payment_events",
+        "column": "processed_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "payment_events",
+        "column": "created_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "tenant_billing_state",
+        "column": "last_payment_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "tenant_billing_state",
+        "column": "next_payment_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "tenant_billing_state",
+        "column": "grace_until",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "tenant_billing_state",
+        "column": "suspended_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "tenant_billing_state",
+        "column": "manual_override_until",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "tenant_billing_state",
+        "column": "created_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      },
+      {
+        "table": "tenant_billing_state",
+        "column": "updated_at",
+        "declaredType": "timestamp",
+        "dbType": "timestamptz"
+      }
+    ],
+    "nullabilityMismatch": [],
+    "file": "docs/backend-v2/field-traceability/database-backend-column-mapping.json"
+  },
+  "layer3_frontend_mapping": {
+    "status": "IN_PROGRESS",
+    "method": "One module per pass, full depth (no sampling): pages -> components -> hooks/services -> HTTP endpoints -> backend controller/service -> database table/column (cross-referenced against layer2, already resolved). Real reads of actual source files, not mechanical grep-only.",
+    "modulesCompleted": [
+      "accounting",
+      "admin",
+      "artist",
+      "audiovisual",
+      "auth",
+      "catalog",
+      "contracts",
+      "crm-relationships",
+      "dashboard",
+      "events",
+      "integrations",
+      "inventory",
+      "leads",
+      "licensing",
+      "marketing",
+      "monitoring",
+      "musicchat",
+      "projects",
+      "releases",
+      "reports",
+      "rh",
+      "settings",
+      "support",
+      "workspace"
+    ],
+    "modulesPending": [],
+    "moduleReports": {
+      "accounting": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/accounting.md",
+        "componentsAudited": 22,
+        "hooksAudited": 11,
+        "realMappingGaps": 5,
+        "xlsxRuleViolations": 1,
+        "keyFindings": [
+          "entityLinks (Vínculos Gerenciais/P&L, required in Transacao form) is stripped by Zod validation server-side (not in createTransacaoSchema/patchTransacaoSchema) — never persisted anywhere; transaction_allocations (layer2: NO_TABLE_CONSUMER) confirmed as the intended but unused target.",
+          "/financial-categories/rules, /rules/preview, /rules/execute, /{id}/merge, /suggest called by TransacaoRules.tsx and FinanceCategoryRuleModal.tsx do not exist on the backend (financial-categories.controller.ts read in full) — entire custom categorization-rules CRUD is broken (400 on load).",
+          "pages/CategoriasFinanceiras.tsx is 100% disconnected from the real /financial-categories backend — operates entirely on localStorage (useFinancialCategoryRulesStore) with a different, incompatible shape than the real financial_categories tree schema.",
+          "Transacao attachment (anexo_url/anexo_nome) upload is not implemented end-to-end — local blob: URL only, explicitly nulled before submit, self-documented in code as future work.",
+          "Contabilidade.tsx 'P&L por Projeto' tab does not group by projeto_id at all — lists each transaction individually using its descricao as a fake project name (DISPLAY_MAPPING_MISMATCH).",
+          "TransacaoFormModal.tsx has a dead (unreachable, 0 call sites) exportFieldList() function producing a 3-worksheet XLSX — XLSX_MAX_SHEETS:2 rule violation, present in code but not currently triggerable by users."
+        ]
+      },
+      "admin": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/admin.md",
+        "componentsAudited": 21,
+        "hooksAudited": 3,
+        "realMappingGaps": 6,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "xlsxRuleViolations": 0,
+        "keyFindings": [
+          "AdminSettings.tsx (770 lines, 8 tabs: Geral/Email/Segurança/Notificações/Webhooks/Chaves API/Integrações/Usuários) is entirely non-functional — every 'Salvar Alterações' button only fires a fake toast.success, Webhooks/Chaves API are hardcoded empty arrays with no onClick on their 'new' buttons, Integrações only mutates local React state, Usuários (ADMIN_USERS) is permanently empty with no invite/create flow at all.",
+          "data/admin-source.ts: ADMIN_DATA_IS_MOCK hardcoded false and all 11 exports hardcoded empty/zeroed, by explicit design ('não existem mais dados fictícios em nenhum modo'). Only 3 of 11 exports have any real consumer (ADMIN_NOTIFICATIONS, ADMIN_USERS, ADMIN_PLATFORM_PROVIDERS) — the other 6 (ADMIN_KPIS, ADMIN_TENANTS, ADMIN_SECURITY_EVENTS, ADMIN_SYSTEM_METRICS, ADMIN_REVENUE, ADMIN_SUBSCRIPTIONS) are dead code, zero references anywhere.",
+          "AdminLayout.tsx shows an 'Admin analytics indisponível / endpoints administrativos ainda não implementados' banner unconditionally on every admin page (condition is !ADMIN_DATA_IS_MOCK, which is always true) — stale messaging that contradicts the fact 6 of 9 admin pages (Dashboard/Clients/Plans/Subscriptions/Audit/Support) do have real, working backend integrations via dedicated services (admin-tenants/admin-plans/admin-billing/admin-support/admin-audit .service.ts).",
+          "AdminAudit.tsx and AdminSupport.tsx are real (GET /audit-logs, GET /support-tickets) but both service mappers hardcode tenant_name:\"\" (endpoints are tenant-scoped to the current admin's own tenant, not cross-platform) — the visible 'Tenant' grid column is always blank, and the 'Super Admin' framing doesn't match the actual tenant-scoped data returned.",
+          "Backend authorization verified clean: billing.controller.ts requires @RequireRole('super_admin') on all 8 real admin/billing/tenant routes, matching the frontend SuperAdminRoute guard (checks user.role==='super_admin'). No AUTHORIZATION_GAP found.",
+          "AdminPlans (plan CRUD, 9 fields, /billing/plans) and AdminClients (tenant edit, 6 fields, /billing/admin/tenants) are fully real, clean, verified field-level mappings with correct bidirectional transforms (cents<->reais, JSON-nested limits/features)."
+        ]
+      },
+      "artist": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/artist.md",
+        "componentsAudited": 9,
+        "hooksAudited": 4,
+        "realMappingGaps": 3,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "credentialsRequiredLater": 2,
+        "keyFindings": [
+          "Two independent, parallel create/edit implementations coexist: ArtistaFormModal.tsx (services/artista.mapper.ts, ~45 fields) is the real, UI-reachable flow; ArtistaCadastro.tsx (forms/artist-form.definition.ts, ~71 fields, routed at /artistas/novo and /artistas/:id/editar) is a real, functional, but completely orphaned route — grep-confirmed zero links to it anywhere in the app.",
+          "Correction to Phase 1: ~41 of the 78 real `artists` columns (data_nascimento, rg, endereco, banco/agencia/conta/chave_pix/titular_conta, instagram_url/tiktok_url, empresario_*/gravadora_*, distribuidoras_*, relacionamentos, etc.) were classified DIRECT_VIA_DTO_OR_RAW_QUERY in Phase 1, but reading apps/api/src/modules/reports/form-contracts/report-form-contracts.ts (ARTISTS_CONTRACT) plus artists.service.ts create()/update() proves the application actually writes these values into the generic `metadata` jsonb column, never into the same-named physical columns — a deliberate, documented, working architecture (not a bug), but a real correction to how those 41 columns should be understood.",
+          "email/telefone/cpf_cnpj/manager_contato are correctly AES-256-GCM encrypted server-side (EncryptionService.encryptNullable/safeDecrypt) into email_encrypted/telefone_encrypted/cpf_cnpj_encrypted/manager_contato_encrypted, with a clean decrypt-on-read round-trip (toResponse() flattens both encrypted and metadata fields back to plain keys) — verified clean, no gap.",
+          "Real, working Spotify (OAuth client-credentials) and YouTube (Data API v3) platform-metrics sync exists (artist_platform_profiles table, 24 columns, fully DIRECT) via GET/POST /artists/:id/platform-profiles — distinct from a separate set of manually-entered static follower/listener counters stored in metadata, with no reconciliation between the two.",
+          "Backend authorization verified clean: artists.controller.ts requires @RequireRole+@RequirePermission+@CurrentTenant on every route (viewer/artist:read, editor/artist:create|update, manager/artist:delete); DELETE calls softDelete() (deleted_at), confirmed soft delete."
+        ]
+      },
+      "audiovisual": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/audiovisual.md",
+        "componentsAudited": 12,
+        "hooksAudited": 20,
+        "hooksWithRealConsumer": 4,
+        "realMappingGaps": 7,
+        "storageGaps": 1,
+        "workflowGaps": 1,
+        "approvalGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "Backend implements 9 full domains (audiovisual_projects/briefings/deliverables/shots/production_days/team_members/assets/tasks/approvals, 187 columns, 100% DIRECT, real REST controllers with consistent @RequireRole+@CurrentTenant) but repo-wide grep confirms only 4 of 20 defined hooks (all under audiovisual_projects) have any frontend consumer — briefings/deliverables/shots/production_days/team_members/tasks/approvals/assets (8 of 9 domains, 16 hooks) are fully built server-side with zero UI anywhere, including automatic per-stage task generation whose output (audiovisual_tasks rows) is unreachable.",
+          "AudiovisualFilterBar.tsx status filter dropdowns use Portuguese values ('agendada','em gravação','pendente'...) while the real stored/API values are English snake_case ('scheduled','recording','pending'...); projectMatchesFilters() does a substring match after accent-stripping, so selecting any of the 3 status filters always returns zero results — confirmed by direct code reading, live and reachable, not dead code.",
+          "audiovisual_projects.artist_id/release_id/campaign_id/event_id are exposed as real API filter query params in useAudiovisualProjects but are never written by AudiovisualProjectFormModal.tsx (which only sets the plain-text artist_name) — filtering by these relation IDs would always return empty in practice. financial_project_id has a real FK to projects.id but no form field writes it either.",
+          "The project pipeline status-transition endpoint (POST /audiovisual/projects/:id/transition, 8-stage workflow draft->...->published with real forward/backward transition rules and audit) has zero frontend consumer — the 3 status fields exposed in the form (capture_status/editing_status/approval_status) are separate simpler enums, not the pipeline status.",
+          "/audiovisual/projects/new (AudiovisualNewProject.tsx) is a real registered route with zero incoming links anywhere in the app (same orphan-route pattern as artist.md's ArtistaCadastro.tsx) — the real list page uses an inline modal instead.",
+          "Asset creation endpoint explicitly only registers a URL 'already uploaded externally' (no upload handling), and delete is soft-delete-only with the comment confirming the external storage file is never removed — but moot in practice since there is no frontend consumer for assets at all."
+        ]
+      },
+      "auth": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/auth.md",
+        "closesPendency": "artist.md :: ArtistaSignupPublic.tsx",
+        "publicSignupGaps": 1,
+        "realtimeAuthGaps": 1,
+        "authorizationGaps": 0,
+        "authenticationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "CRITICAL: ArtistaSignupPublic.tsx (public route /cadastro/:orgSlug, no auth) posts to POST /public/artists, which does not exist anywhere in apps/api/src (exhaustive grep confirmed) — the only public artist-adjacent endpoint is POST /public/artist-registration, which creates a Lead via LeadsService, a completely different model/controller. Every real submission of this entire multi-step public signup wizard 404s and is swallowed by a generic catch showing a toast — no artist is ever created. Even if the endpoint existed, several field names in the payload (spotify_artist_url/youtube_channel_url/instagram/tiktok) diverge from the real CreateArtistDto/DB column names already confirmed in artist.md.",
+          "TenantGuard verified as a strong, correct multi-tenancy implementation: X-Tenant-ID header sent by the frontend is never trusted as authority — it's resolved to a tenant via the JWT's own orgId claim first, then the header is only used as a consistency check (mismatch -> ForbiddenException); real membership is also resolved and validated server-side. TENANT_ISOLATION_GAPS: 0.",
+          "JWT verification is real and properly split: JWKS/ES256 against Supabase's own JWKS endpoint in production, separate HS256 dev-only fallback with a distinct issuer. DevAuthController is double-gated (conditional module registration outside production + runtime isProdLike check) — never reachable in production.",
+          "AuthContext.tsx signup flow (Register.tsx 3-step wizard -> supabase.auth.signUp with metadata -> auto-detected workspace provisioning via PATCH /auth/provision-workspace -> session refresh for new org_id claim) is real, well-connected, and verified field-by-field with no gap — a sharp contrast to the broken public artist signup.",
+          "AuthContextService.build() (GET /auth/context) has a real, previously-undocumented side effect: it auto-accepts any pending tenant_invitations row matching the current (tenant_id, auth_user_id) on every call — a working implicit invitation-acceptance mechanism.",
+          "AuthContext.signOut() does not call disconnectRealtimeChannels() — realtime private channels (tenant:<orgId>, user:<userId>) are not explicitly torn down on logout; ensureRealtimeChannels() returns early when orgId/userId are null rather than cleaning up, so stale channels can persist until a full page reload. Not a cross-tenant data leak (RLS still applies), but a real cleanup gap."
+        ]
+      },
+      "catalog": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/catalog.md",
+        "subdomainsAudited": 10,
+        "realMappingGaps": 9,
+        "splitValidationGaps": 2,
+        "storageGaps": 1,
+        "identifierGaps": 1,
+        "externalIntegrationGaps": 4,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "works.artista_id is hardcoded to null on every create AND edit in ObraFormModal.tsx (line ~486) — editing an obra that already has an artista_id set (e.g. via projetoToObraSeed) silently wipes the direct obra<->artist link on save, even though obraToFormFields() already computes the correct value from the record.",
+          "FonogramaFormModal.tsx audio upload is 100% fake: handleAudioUpload only reads File.name/File.size client-side and stores that into phonograms.arquivo_audio (jsonb) — the actual audio binary is never transmitted to any storage provider (no FormData, no upload endpoint call). phonograms.audio_file_id (a real uuid column, presumably meant to reference an uploads record) is never written by any real flow.",
+          "The entire registry backend module (rights-holders CRUD, external-identifiers, society accounts/submissions/sync, ABRAMUS payload builder) has zero frontend consumer anywhere — confirmed via exhaustive grep AND via entity-metadata.service.ts explicitly marking rights_holders/society_submissions/society_accounts/work_participants as NOT_REPORTABLE even in the generic reports/export tool. All 6 registry controllers are correctly auth-protected but structurally unreachable from the UI.",
+          "ABRAMUS integration is half-real: search (search-work/search-artist), credential configure/disconnect/status, and register-work are real backend routes wired to real hooks. But useAbramusImport (importing a search result into local obras/fonogramas), useAbramusLocalLookup (duplicate detection), and useAbramusSyncAll (used by the Sync All button in AbramusConfigDialog) are hardcoded stubs that always throw/return empty — no backend route exists for any of them. useAbramusRegisterFonograma/useAbramusGenerateISWC/useAbramusGenerateISRC/useAbramusSearchArtists/useAbramusRegistrationHistory are additionally dead code, never imported by any component.",
+          "GET /works and GET /phonograms default to PaginationDto.limit=50 server-side, and neither useObras() nor useFonogramas() (nor the Auditoria.tsx completeness-checker runner.ts, which reuses the same storage.list calls) ever pass a limit/offset param — any tenant with more than 50 obras or 50 fonogramas silently never sees older records in RegistroMusicas.tsx; the client-side pagination, filters, sort, and displayed totals/metrics all operate only over this truncated 50-row window with no indication to the user.",
+          "No sum-must-equal-100% validation exists anywhere (client or server) for work_participants.percentual or phonograms.participacao[*].percentual splits — the UI only displays a running total, never blocks submit. ISRC/ISWC/collective-management codes have no format validation and no database uniqueness constraint at any layer (works.iswc/isrc, phonograms.isrc are all unique:false with no check_constraint), so duplicate or malformed codes can be created silently, including via the generic XLSX import path which has no entity-specific dedup logic.",
+          "Import/export/XLSX for catalog is entirely delegated to the generic Central de Relatorios (report-form-contracts.ts WORKS_CONTRACT/PHONOGRAMS_CONTRACT, report-module-registry.ts), which always produces/requires exactly 1 worksheet per entity (both export and the import parser enforce this) — XLSX_RULE_VIOLATIONS: 0 for this module, no dead multi-sheet code path found."
+        ]
+      },
+      "contracts": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/contracts.md",
+        "subdomainsAudited": 13,
+        "realMappingGaps": 9,
+        "signatureGaps": 2,
+        "docusignGaps": 1,
+        "externalIntegrationGaps": 1,
+        "workflowGaps": 1,
+        "partyMappingGaps": 1,
+        "templateGaps": 1,
+        "financialTermGaps": 1,
+        "enumMismatch": 1,
+        "relationMismatch": 1,
+        "documentGenerationGaps": 1,
+        "authorizationGaps": 1,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "CRITICAL: POST /contract-templates (CreateContractTemplateDto: title/type/content/variables/metadata, English, fixed type enum) is completely disconnected from the fields TemplatesContratos.tsx actually sends (nome/tipo_servico/conteudo/descricao/ativo/variables_manifest/header_image/footer_image, pt-BR). With the global ValidationPipe(whitelist:true, forbidNonWhitelisted:true), every real template creation attempt returns HTTP 400 -- unlike contracts/works/phonograms, contract-templates has no legacy-alias compatibility layer. This blocks the entry point of the entire primary contract-creation flow (ContratoWizard Step 1 requires an existing active template).",
+          "ContratoWizard.tsx (the primary create/edit flow used by Contratos.tsx) never uses the official CreateContractDto.parties field (which the backend already routes to contracts.metadata.parties) -- instead it JSON-serializes the entire party/variable blob (including CPF, CNPJ, RG, email, phone, address, legal-representative data for every party) into contracts.observacoes, a plain unencrypted text column. That same column is exported verbatim by the generic Central de Relatorios XLSX export (observacoes is a col() field on CONTRACTS_CONTRACT) -- a bulk contracts export leaks full-text PII for every contract exported.",
+          "The Send for Signature button always fails by design in both places it exists: ContratoWizard.handleSave(true) hardcodes a toast.error + throw without calling any backend; SendForSigningDialog.tsx calls signingService.sendForSigning() -> resolveSigningAdapter() -> a universal stub that always Promise.rejects for all three providers (autentique, clicksign, docusign), confirmed by explicit code comments about never simulating success. DocuSign backend implements OAuth connect only (init/exchange/status/disconnect) -- no envelope/signature/webhook capability exists anywhere in apps/api/src.",
+          "In sharp contrast, the backend has a REAL, complete Autentique e-signature integration (POST /integrations/autentique/configure|send, real GraphQL calls, writes autentique_doc_id/signing_platform/metadata back onto the contract, emits CONTRACT_SENT_FOR_SIGNATURE, webhook receiver with shared-secret validation) -- confirmed via exhaustive grep to have ZERO frontend consumers anywhere in apps/web/src. A fully working signature-sending capability sits unused because the UI is deliberately routed through the stub adapter instead.",
+          "Contract -> accounting propagation is REAL_AUTOMATIC_PROPAGATION, not a gap: ContractEventsHandler.onContractSigned() (fired on the real CONTRACT_SIGNED domain event) creates a genuine provisional transactions row (tipo=receita, categoria=contratos, valor=contracts.valor, contrato_id/artista_id FKs), updates the artist to status=contratado, evaluates financial rules, and ContractWorkflowHandler creates 5 real CRM execution tasks plus enqueues a workflow followup job. However this automation is practically unreachable for wizard-created contracts: the aguardando_assinatura -> assinado transition has a real guard requiring arquivo_url to be truthy, but ContratoWizard (the primary flow) has no field for arquivo_url anywhere in its 6 steps -- only the secondary ContratoFormModal (reachable only via the catalog module) exposes it.",
+          "contact-contracts (GET/POST /contacts/:contactId/contracts) is backed by an in-memory JS Map, not Postgres -- data is lost on every restart/redeploy and not shared across instances; it also has zero frontend consumers. CategoryRegistry.tsx and VariableRegistry.tsx (843+531 lines, full CRUD UI with seeded data) are both 100% localStorage-backed, never synced to the backend despite looking like shared admin registries; the real contract_service_types table (32 rich columns: financial model, participants, signature/branding settings) is read only by the secondary ContratoFormModal and is never touched by CategoryRegistry.tsx despite its name, nor by the primary wizard -- four disconnected contract-type vocabularies coexist (hardcoded CONTRACT_TYPES const, localStorage contract_categories, contract_templates.tipo_servico, contract_service_types.slug).",
+          "GET /contracts and GET /contract-templates default to PaginationDto.limit=50 and the frontend hooks never override it -- same silent truncation pattern already documented in catalog.md, here also affecting the Auditoria.tsx completeness checker and the contract_service_types already-in-use archive-safety check."
+        ]
+      },
+      "crm-relationships": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/crm-relationships.md",
+        "subdomainsAudited": 10,
+        "realMappingGaps": 4,
+        "createMappingMismatch": 2,
+        "storageGaps": 1,
+        "importMappingGaps": 1,
+        "duplicateHandlingGaps": 1,
+        "searchGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "Confirmed in the codebase's own comments: there is no physical contacts table -- Contato and Cliente are the same physical entity (clients table, 39 columns), a documented domain decision (\"Contato = Cliente\"). The legacy /contacts facade (ContactsController/ContactsService) is a clean, correctly-tenant-isolated delegation to ClientsService but has zero frontend consumers -- the real frontend always calls /clients directly via clientsService/contactsService (crm-relationships module).",
+          "CRITICAL: ContatoFormModal.tsx (the only real create/edit UI, embedded in leads/pages/LeadsPage.tsx since /crm and /crm-relacionamentos both hard-redirect to /leads) captures ~15 real physical clients columns (foto, perfil, funcao, razao_social/nome_fantasia as distinct fields, logradouro/numero/complemento/bairro, status_contato, prioridade_contato, responsavel_email/telefone/cargo, interacoes[] jsonb) that never reach the backend on create or edit -- contacts.service.ts's toApiInput() never maps them (never sets payload.metadata either, despite CreateClientDto accepting it), and even if it did, CreateClientDto/UpdateClientDto don't declare those field names, so the global ValidationPipe(whitelist:true, forbidNonWhitelisted:true) would reject the request outright. The modal's own header comment claims these fields are persisted via payloadOperacional jsonb -- that claim is false today.",
+          "In sharp contrast to contracts.md's PII-in-plaintext finding, this module's real PII (email, phone, CPF/CNPJ) IS correctly AES-256-GCM encrypted end to end (email_encrypted/telefone_encrypted/cpf_cnpj_encrypted, same EncryptionService pattern as artists) -- the problem here is data LOSS, not exposure. However, those same 15 orphaned columns above (plus PII fields, decrypted) ARE registered as exportable/importable via the generic Central de Relatorios (CLIENTS_CONTRACT, report-form-contracts.ts), creating an asymmetry: an XLSX import can populate columns the live create form can never reach, and any bulk 'Contatos' export includes decrypted plaintext email/phone/document (same sanctioned pattern already used for artists/employees, not unique to this module, but registered per the audit's PII-export requirement).",
+          "A real, complete file-attachment backend exists (presigned upload to Cloudflare R2, POST /clients/:id/attachments/presign + confirm, backed by the real client_attachments table) but zero frontend component calls presign/confirm -- ContatoFormModal's attachment UI only uses URL.createObjectURL() (a local blob URL that dies on page reload) and never sends attachments in the create/update payload at all.",
+          "A whole alternate/richer Contact UI suite is dead code: components/ContactComponents.tsx (317 lines, 13 exported components -- ContactHeader, ContactDetailsPanel, ContactTimeline, ContactTags, ContactAttachments, ContactContracts, ContactNotes, ContactAgenda, CompanyRelations, SocialMediaSection, OperationalInfoSection, ContactForm with a real validated attachment dropzone) has zero consumers anywhere, confirmed via exhaustive grep -- not even its own barrel file (components/index.tsx) is imported by anything. Four Zustand stores (contact-agenda/contact-filters/contact-panel/contact-tags) are similarly dead, sibling to a fifth (useContactTimelineStore) already found and removed per the code's own comments.",
+          "Auditoria.tsx's CRM tab has two confirmed bugs: its fix_path (/crm?edit=<id>) is destroyed by the static <Navigate to=\"/leads\" replace /> redirect in crm.routes.tsx (query string dropped, not just /crm -- /crm-relacionamentos too), and its completeness check reads row.telefone/row.segmento against the raw GET /clients response, which actually uses phone/categoria -- so those two fields always show as missing even when genuinely filled in.",
+          "Artist<->CRM relationship (artists.contatos_equipe[].contactId, a loose UUID reference inside a jsonb array, no FK) is architecturally clean -- a true live reference resolved dynamically by EquipeContatosCRM.tsx, not a copy -- contrasting directly with contracts.md's finding that contract wizard parties copy CRM contact data by value with no traceable source reference."
+        ]
+      },
+      "dashboard": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/dashboard.md",
+        "widgetsAudited": 8,
+        "truncationGaps": 1,
+        "realtimeGaps": 1,
+        "crossDomainConsistencyGaps": 1,
+        "mockDataGaps": 1,
+        "fallbackGaps": 1,
+        "realMappingGaps": 1,
+        "displayMappingMismatch": 1,
+        "calculationMismatch": 1,
+        "authorizationGaps": 1,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "The Dashboard is a pure frontend cross-domain aggregator (no dedicated dashboard backend module beyond a real apps/api/src/modules/analytics -- all module folders under apps/web/src/modules/dashboard except pages/ and hooks/ are empty export{} stubs). It reuses 7 domain hooks (useArtistas, useContratos, useTransacoes, useEventos, useClientes, useLancamentos, useProjetos) via useMetrics.ts, all client-side filter/reduce over full in-memory arrays.",
+          "CRITICAL cross-cutting gap: the 4 top KPI StatCards (Artistas Cadastrados, Contratos Vigentes, Receita Total, Eventos do Mes) and the Artistas em Destaque ranking are all computed over arrays fetched with no limit override, which structurally hit the same PaginationDto.limit=50 backend default already confirmed byte-for-byte in works/phonograms/contracts/contract-templates/clients across prior module audits -- none of these are TOTAL_REAL for a tenant with more than 50 records in the relevant table.",
+          "The 'Receita Total' StatCard is mislabeled: it actually displays dashboardMetrics.receitaMensal, a rolling 30-day window (status='pago' only), not an all-time total nor even a calendar month. Meanwhile a real, more correct calculation exists and is silently unused: financeiroMetrics (a full P&L: receitasPagas/despesasPagas/lucroLiquido/margem/contasReceber/contasPagar) is computed by useMetrics() every render but never destructured/rendered anywhere in Dashboard.tsx, alongside crmMetrics (also fully computed, never shown).",
+          "A real, dedicated, well-engineered backend analytics module exists (AnalyticsController: GET /analytics/dashboard with 21 real tenant-scoped SQL COUNT/SUM/GROUP BY queries, immune to the 50-row truncation; GET /analytics/revenue, a real DATE_TRUNC('month') time series ready for a chart; GET /analytics/ai-usage) -- but GET /analytics/revenue and /ai-usage have zero frontend consumers (confirmed via exhaustive grep), and the Dashboard has zero charts despite this ready time-series source. Only 8 of the ~27 fields returned by GET /analytics/dashboard are actually read by the OperationalAlerts widget.",
+          "REALTIME_GAP confirmed by source: Dashboard.tsx subscribes to 14 useWsEvent() channels (artist.created, contract.signed, finance.transaction.created, etc. -- a real Supabase Realtime broadcast mechanism, verified working in auth.md) but exhaustive backend grep found zero call-sites that actually publish any of these event names as realtime broadcasts. Backend EventsService.emitTyped() only calls NestJS's internal EventEmitter2 (this.emitter.emit), with no bridge to Supabase Realtime -- confirmed by reading events.service.ts directly. The Activity Feed's live-update layer is therefore fully inert; combined with useActivityHistory() having no refetchInterval, the feed is effectively static between page remounts.",
+          "Two large dead-code blocks confirmed inert (not just unused but structurally unreachable): computeFromMockStorage() (~150 lines in useOperationalDashboard.ts, a full mock aggregation function never called since the hook always calls the real API) and an 11-listener window.addEventListener('musicos360:...') block in Dashboard.tsx (the only musicos360:* CustomEvent actually dispatched anywhere in the app is an unrelated auth token-refresh event).",
+          "Cross-domain consistency check found 3 of 4 compared KPI pairs diverge: the displayed 'Contratos Vigentes' (client-side, requires status='ativo' AND both data_inicio/data_fim present) vs the backend's own active_contracts_count (status IN ('vigente','ativo','assinado'), no date requirement, computed but not displayed); the displayed 'Contratos vencendo' alert (backend SQL, no status filter) vs the client-side equivalent (requires status='ativo'); and the displayed 'Receita Total' (rolling 30 days, status='pago' only) vs the backend's revenue_current_month (calendar month, accepts pending too, computed but not displayed) -- in every divergent case the more restrictive/truncation-prone client-side formula is what's actually shown, while the more accurate untruncated SQL formula is calculated by the backend and silently discarded."
+        ]
+      },
+      "events": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/events.md",
+        "subdomainsAudited": 4,
+        "displayMappingMismatch": 4,
+        "createMappingMismatch": 1,
+        "realMappingGaps": 2,
+        "truncationGaps": 1,
+        "recurrenceGaps": 1,
+        "reminderGaps": 1,
+        "storageGaps": 1,
+        "calendarIntegrationGaps": 1,
+        "financialIntegrationGaps": 1,
+        "timezoneGaps": 1,
+        "participantGaps": 1,
+        "relationMismatch": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "CRITICAL, cross-cutting: Agenda.tsx and SchedulerViewModal.tsx read a fictional field set (data_inicio, tipo_evento, horario_inicio, horario_fim, cidade, estado/uf, capacidade_publico, contato_telefone, contato_email, tipo_local, checklist) that does not exist anywhere in the real events table, CreateEventDto/UpdateEventDto, or the actual GET /events response (real fields: titulo, tipo, data, starts_at, data_fim, local, endereco, contato_local, valor_cache, publico_esperado, descricao, observacoes, participantes, status, artista_id, metadata). Confirmed effects: the calendar renders every event at 'now' (Agenda.tsx:252-254 always falls through to new Date() since data_inicio is always undefined), every event is treated as all-day, the type filter never matches, and SchedulerViewModal shows '-' for Data Inicio/Horario/Tipo/Cidade/Estado/Capacidade even when the underlying data exists. The create/edit form (SchedulerFormModal.tsx) is NOT affected -- it uses a correct defensive fallback chain (getInitialFormData()) and a buildPayload() that matches the real DTO exactly. Dashboard.tsx's own pre-existing code comment about needing a data_inicio ?? data fallback independently corroborates this exact issue.",
+          "CreateEventDto accepts a 'capacity' field (sent by SchedulerFormModal as capacidadePublico) but EventsService.dtoToEntity() never maps it to any column -- the value is silently dropped after passing validation successfully (a real CREATE_MAPPING_MISMATCH, not caught by ValidationPipe since the DTO does declare the field).",
+          "Participants are stored exclusively in events.participantes (jsonb, written correctly by SchedulerFormModal), but Agenda.tsx/SchedulerViewModal.tsx read them from evento.metadata.participants instead -- a field never written by the real create/edit flow (buildPayload() never sends metadata) -- so participant display is always empty except for a fallback to the single primary artist_id, silently losing employees/users/contacts and additional artists that were genuinely persisted.",
+          "XLSX import/export in Agenda.tsx (client-side only, not the shared report engine) both key off the same fictional field names as the display mismatch above. Import (handleExcelImport) builds create payloads with keys like tipo_evento/data_inicio/horario_inicio/cidade/estado/capacidade that don't exist on CreateEventDto, and even 'titulo' doesn't match the DTO's 'title' -- given the global ValidationPipe({whitelist:true, forbidNonWhitelisted:true}), every imported row would be rejected with HTTP 400. Export similarly produces a spreadsheet where most columns (tipo_evento, data_inicio, horario_inicio/fim, cidade, estado, valor_ingresso, capacidade) are always blank. Worksheet count is compliant (1 sheet), so this is a field-mapping bug, not an XLSX_RULE_VIOLATION.",
+          "No recurrence, reminders, attachments, calendar-external-integration, or automatic financial propagation exist in any layer for events (confirmed via DB schema, DTO, and full-file frontend reads) -- all four are NOT_IMPLEMENTED, not partial. events.valor_cache/publico_esperado never propagate to accounting/transactions (no @OnEvent handler for any event.* domain event was found, unlike ContractEventsHandler.onContractSigned() in contracts.md).",
+          "Auditoria.tsx's 'Agenda' tab requires row.data_inicio as obrigatorio against the raw GET /events response, which never contains that key -- guaranteeing a 100% false-positive (every event flagged incomplete regardless of actual data). Its fix_path (/agenda?edit=<id>) is also very likely dead: Agenda.tsx has no useSearchParams/query-param handling anywhere in the file (confirmed by full read), unlike the working ?edit= pattern already confirmed in contracts.md.",
+          "events.local has dual, indistinguishable semantics: free-text venue name for most event types, or a raw clients.id UUID (no FK, no type marker) when the event type triggers CRM-backed venue lookup (shows/TV/radio/podcast, via shouldUseCRMLocal in SchedulerFormModal.tsx) -- a real but minor schema-semantics inconsistency, not a hard bug.",
+          "Same systemic PaginationDto.limit=50 truncation already confirmed in works/phonograms/contracts/contract-templates/clients/dashboard applies here too: GET /events is never called with an overridden limit, so calendar, metrics (total/confirmados/pendentes/proximos7Dias), and XLSX export are all silently capped at the 50 most recent events per tenant.",
+          "Two dead-code artifacts confirmed via exhaustive grep: hooks/events.store.ts (Zustand, zero consumers) and services/events.service.ts's exported eventService object (zero consumers -- the real page uses useEventos() directly). evento.artistas (relation object read by SchedulerViewModal as a fallback) is also always undefined since EventsService never performs the corresponding join, unlike ContractsService's real artist join confirmed in contracts.md."
+        ]
+      },
+      "integrations": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/integrations.md",
+        "inventoryFile": "docs/backend-v2/field-traceability/integrations/integration-inventory.json",
+        "credentialReadinessFile": "docs/backend-v2/field-traceability/integrations/credential-readiness.json",
+        "providersAudited": 32,
+        "activeIntegrations": 14,
+        "partialIntegrations": 9,
+        "stubIntegrations": 7,
+        "configOnly": 2,
+        "uiOnly": 2,
+        "webhookIntegrations": 3,
+        "oauthIntegrations": 9,
+        "frontendConsumerGaps": 3,
+        "tokenRefreshGaps": 1,
+        "timeoutGaps": 1,
+        "realMappingGaps": 2,
+        "webhookSecurityGaps": 1,
+        "tenantIntegrationIsolationGaps": 0,
+        "fakeIntegrationGaps": 0,
+        "keyFindings": [
+          "The integrations backend (apps/api/src/modules/integrations/**) is the most maturely engineered module found in this entire audit series: a shared IntegrationBaseService provides AES-256-GCM encrypted credential/token storage, HMAC-signed OAuth state with TTL, and a circuit-breaker-guarded resilientFetch with 10s timeout; a shared WebhookService provides real idempotency (webhook_events.external_id UNIQUE), pre-processing persistence, and HMAC/shared-secret signature validation. Stripe's webhook uses the Stripe SDK's own constructEvent with a preserved raw body. This is a sharp contrast to most domain modules audited earlier, where the core gaps were backend field-mapping bugs -- here the backend is solid and gaps concentrate in frontend consumption and unresearched external APIs.",
+          "CRITICAL frontend-consumer gap: signing.adapter.ts's resolveSigningAdapter() returns a hardcoded 'unavailable' provider for EVERY SigningProviderId value, including 'autentique' -- even though Autentique has a complete, real, hardened backend (timeout, retry-count tracking, activity-log failures, idempotent webhook that marks contracts signed and emits DOMAIN_EVENTS.CONTRACT_SIGNED). SendForSigningDialog.tsx, the only real UI entry point for sending a contract to e-signature, always routes through this adapter via signingService.sendForSigning() and therefore always throws, for all 3 offered providers (Autentique/Clicksign/DocuSign) -- a stronger, more precise version of the 'zero frontend consumer' finding already registered in contracts.md.",
+          "Stripe billing is architecturally split the same way: POST /billing/checkout and POST /billing/portal are fully implemented, real, tested backend endpoints, but useStripeCheckout()/useStripePortal() in the frontend are explicit disabled stubs (disabledIntegration('Stripe')) and useStripeStatus() always returns a hardcoded status:'disabled' with staleTime:Infinity, never actually checking configuration. Only useStripeSubscription() (GET /billing/subscription, read-only) is genuinely wired to the real backend.",
+          "ACRCloud's current backend contract (RecognizeAudioDto{audioBase64} / ACRCloudResult{title?,artist?,album?,isrc?,confidence?}, a single flat result) is structurally different from what the real frontend hook (useACRCloud.ts) expects (FingerprintInput/FingerprintResult, an array of matches) -- already registered as a documentation-level resolution for the future v2 (doc36/37, FRONTEND_CONTRACT_WINS) but confirmed here still live and unfixed in the current apps/api code today.",
+          "Two providers (ACRCloud, ABRAMUS) use plain native fetch() with no timeout, no retry, and no circuit breaker, breaking from the otherwise consistent resilientFetch/CircuitBreakerRegistry pattern used by every other provider in the module (Spotify/Instagram/TikTok/GoogleAds/SoundCloud/AppleMusic/YouTube/Deezer all extend or reuse the same base). ABRAMUS additionally re-authenticates (username/password login) on every single API call, with no token caching.",
+          "Only Spotify (on-demand, via getValidToken()) and Instagram/Meta (proactive, InstagramTokenRefreshScheduler -- daily setInterval in long-running mode OR Vercel Cron via GET /internal/cron/instagram-token-refresh when process.env.VERCEL is set, refreshing tokens expiring within 7 days and marking connections needs_reauth on failure rather than silently deleting them) have any token-refresh mechanism. TikTok, Google Ads, DocuSign, and Stripe Connect all persist a refresh_token_encrypted that nothing ever uses.",
+          "The 6 digital distributors (ONErpm/DistroKid/Symphonic/SoundOn/MusicPro/SomVibe) remain exactly where docs 25/30/31 left them: a static catalog (distribution-platforms.ts) with connection state read from localStorage (musicos360_distributor_connections), never written by any code path, and portal links that explicitly declare 'Abrir o portal não conecta a conta ao sistema' -- honest placeholder, not fake integration, consistent with Decision D1 (official API per distributor, per-tenant auth, no shared credentials, no simulated integration) which remains unexecuted. A SEPARATE, more sophisticated generic backend framework for this purpose (ExternalDataExchangeService + ExternalDataProviderRegistry, POST /integrations/external-data/distributor/submit, idempotencyKey support, per-provider webhook HMAC secrets) already exists and is well-built, but has exactly 2 registered providers today: UnconfiguredDistributorProvider and UnconfiguredSocietyProvider, both explicit placeholders -- confirmed by the DTOs' own description strings ('não há default — nenhum provider real está registrado em produção'). This generic framework has zero frontend consumers; the frontend's distributor catalog is entirely disconnected from it.",
+          "ECAD and UBC (Brazilian rights-collection societies, parallel to ABRAMUS) have frontend hooks and config dialogs (useEcad.ts/useUbc.ts, EcadConfigDialog.tsx/UbcConfigDialog.tsx) with no backend controller or service anywhere -- UI_ONLY, not even a stub error path.",
+          "No FAKE_INTEGRATION_GAP was found anywhere in the module -- every unconfigured/unavailable path found (frontend signing/payments/streaming adapters, the Unconfigured* backend providers, the NF-e config screen) fails explicitly with a clear error rather than silently simulating success, a rule the codebase itself documents and consistently follows."
+        ]
+      },
+      "inventory": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/inventory.md",
+        "subdomainsAudited": 1,
+        "editMappingMismatch": 1,
+        "displayMappingMismatch": 2,
+        "enumMismatch": 1,
+        "defaultMismatch": 1,
+        "realMappingGaps": 2,
+        "truncationGaps": 1,
+        "duplicateHandlingGaps": 1,
+        "stockConcurrencyGaps": 1,
+        "inventoryHistoryGaps": 1,
+        "idempotencyGaps": 1,
+        "financialIntegrationGaps": 1,
+        "storageGaps": 1,
+        "movementReservationLoanMaintenanceGaps": 4,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "Much smaller module than prior audits: a single physical table (inventory_items, 19 columns), a single clean CRUD controller/service, and one frontend page + 2 modals + 1 hook. No stock_movements/warehouses/locations/reservations/loans/maintenance_records/suppliers/barcodes tables exist anywhere in the database -- confirmed via the Fase 1 column mapping and via exhaustive grep for cross-module consumers (zero references from projects/audiovisual/events). The 'status' field (disponivel/em_uso/manutencao/descartado/reservado on the backend) is the only trace of a reservation/loan/maintenance concept -- there are no dedicated fields, tables, or workflows behind those labels.",
+          "CRITICAL ENUM_MISMATCH across 3 independently-defined status vocabularies: the backend DTO accepts 5 values including 'reservado'; the frontend Zod schema (and the real InventarioFormModal UI) offers 6 values including 'emprestado' and 'danificado', neither accepted by the backend; a third shared TypeScript type (InventarioStatus) has yet another 5-value set. Concretely: selecting 'Emprestado' or 'Danificado' in the real, reachable create/edit form and submitting produces an HTTP 400 from the backend's class-validator @IsIn() check -- a live, user-triggerable bug -- while 'Reservado' (accepted by the backend) is never offered anywhere in the UI.",
+          "EDIT_MAPPING_MISMATCH: InventarioFormModal's edit-mode pre-fill (reset()) reads item.localCompra/item.numeroNotaFiscal/item.dataEntrada (camelCase) but the real GET /inventory/:id response uses local_compra/numero_nota_fiscal/data_entrada (snake_case, confirmed against both the DTO and the Fase 1 DB schema) -- these 3 real, persisted fields always render empty when editing an existing item, even though the CREATE path (onSubmit's payload builder) correctly maps them on write. The same 3 fields are also never displayed anywhere in the read-only detail modal (InventarioViewModal), so a user has no way to see them at all outside a freshly-created item.",
+          "The main table's 'Entrada' (date-received) column reads item.dataEntrada, always undefined against the real API -- always renders '-' even when data_entrada is genuinely populated. This is a pure display bug isolated to the module's own page: the generic Central de Relatorios export engine (report-form-contracts.ts, INVENTORY_ITEMS_CONTRACT) maps all 12 real columns with correct snake_case names and is unaffected.",
+          "Two client-side filters are structurally weak: the location filter compares against 4 hardcoded exact strings ('Estudio 1' etc.) against a genuinely free-text 'localizacao' field whose own placeholder ('Ex: Estudio A, Sala 201, Deposito') actively encourages values that will never match; the category filter only offers 5 of the 9 real category options selectable at creation time (Escritorio/Mobilia/Software/Outros items can never be isolated via the filter dropdown).",
+          "Stock model is a pure QUANTITY_SNAPSHOT (a single integer column, directly overwritten on every edit) with no ledger, no atomic movement records, and no optimistic locking -- concurrent edits are last-write-wins. Changing quantidade leaves no structured audit trail beyond the generic activity-log entry (action name only, no guaranteed old/new value diff) -- there is no way to reconstruct historical stock levels from any UI or straightforward query.",
+          "No integration with accounting exists in any form (not even a manual 'log as expense' button), despite the item form collecting valor_unitario, local_compra, and numero_nota_fiscal -- fields that strongly suggest a purchase record. No supplier/CRM relation exists either (local_compra is free text, correctly not invented as a fake clients relation per the audit's explicit instruction). No barcode/QR/serial-number identification exists in any layer -- 'nome' (free text, no uniqueness constraint anywhere) is the only identifier.",
+          "Same systemic PaginationDto.limit=50 silent truncation already confirmed in every prior module applies here too: GET /inventory is never called with an overridden limit, so the list, the top-of-page metrics (total/emUso/disponiveis/emManutencao/valorTotal), and the client-side pagination all operate over a subset for tenants with more than 50 items.",
+          "Auditoria.tsx's 'inventory' tab checks row.valor as a recommended field, but the real field name is valor_unitario -- guaranteed false-positive for every item with a genuinely filled-in unit value. Its fix_path (/inventario?edit=<id>) is also dead: Inventario.tsx has no query-param handling anywhere in the file.",
+          "Two dead-code artifacts confirmed via exhaustive grep: hooks/inventory.store.ts (and its store/ duplicate) and services/inventory.service.ts -- both zero consumers, same pattern already found in events/catalog/crm-relationships."
+        ]
+      },
+      "leads": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/leads.md",
+        "subdomainsAudited": 6,
+        "createMappingMismatch": 2,
+        "relationMismatch": 1,
+        "conversionMappingGaps": 1,
+        "conversionAtomicityGaps": 1,
+        "duplicateHandlingGaps": 2,
+        "searchGaps": 2,
+        "storageGaps": 1,
+        "truncationGaps": 1,
+        "deadSchemaFindings": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "Confirmed the LEAD != CONTACT/CLIENT boundary from crm-relationships.md: leads is a real, distinct physical table (34 columns) with its own workflow (leads.workflow.ts, 9-state enum, role-gated transitions). The /leads route is actually a combined 'CRM' page with a 'Contatos' tab that is 100% composed of already-audited crm-relationships components (ContatosTable/useContacts/ContatoFormModal), not re-audited here.",
+          "CRITICAL, headline finding: LeadInteractionsService.create() (the dedicated, real backend endpoint for lead interactions, /lead-interactions) spreads CreateLeadInteractionDto (camelCase keys leadId/type/notes) directly onto the LeadInteractionEntity, whose real properties are snake_case (lead_id/tipo/descricao) with no aliasing anywhere in the service -- lead_id is NOT NULL with no fallback, so every real POST /lead-interactions would fail on a database constraint violation. This bug is inert today only because zero frontend code calls this endpoint: the UI's real 'interaction history' feature is an entirely separate, fully working mechanism -- a manually-managed array embedded in leads.payload_servico.interacoes[], edited directly inside LeadFormModal/LeadViewModal, completely disconnected from the dedicated table/controller/permissions/audit-log system that exists in parallel.",
+          "Lead-to-client conversion is a real, non-trivial automated flow: changing a lead's status to 'fechado' triggers LEAD_CONVERTED (via the same in-process, non-durable EventEmitter2 bus already confirmed unreliable in events.md/dashboard.md), handled by LeadEventsHandler which creates a new ClientEntity AND, undocumented anywhere in the UI, a new ArtistEntity (status EM_NEGOCIACAO) for every single conversion regardless of the lead's actual type (brand/agency/venue/etc., not necessarily an artist). Client creation never checks for an existing client by email/phone/document (always CREATE_DUPLICATE), and copies almost none of the lead's contact data (email/phone/city/state never reach the new client). The whole sequence -- client creation, lead update (cliente_id + status='convertido'), artist creation -- runs as 3 independently try/caught operations outside the original DB transaction that set status='fechado', so a process crash between the two leaves the lead permanently stuck without ever completing conversion, with no retry.",
+          "CREATE_MAPPING_MISMATCH on the leads endpoint itself: the real form sends both 'phone' and 'whatsapp' for the lead's phone number, but CreateLeadDto only declares 'phone' -- 'whatsapp' is not a whitelisted field, which under the already-confirmed global ValidationPipe({whitelist:true, forbidNonWhitelisted:true}) most likely rejects the entire create/update request with HTTP 400. Even setting that aside, leads.whatsapp (the real physical column) is never written by any code path, so it stays permanently NULL.",
+          "Documented architectural duplication: 7 physical columns on `leads` (origem_lead, probabilidade_fechamento, responsavel, prioridade, temperatura, proximo_follow_up, valor_estimado) exist in the schema and entity but are never written by the real create/update flow -- the values the UI actually uses live inside the dados_internos_crm jsonb column instead, under matching key names. Same architectural pattern already documented for `artists` in artist.md.",
+          "Discovered, as a scope finding rather than a leads-specific bug: a fully-designed generic Pipeline/Kanban system (pipelines/pipeline_stages/pipeline_opportunities, 41 columns combined, SLA tracking, win_probability, stage_history) exists only as TypeORM entity declarations in database/entities.ts -- exhaustive search of apps/api/src found zero controller, service, or business logic anywhere consuming these 3 entities, and zero frontend references beyond an unrelated marketing landing-page copy string. This is dead schema at the application layer, unconnected to leads or any other module.",
+          "The status enum itself is verified fully correct and consistent (LeadStatus, 9 values, 1:1 identical between backend and frontend, with the frontend's own code comments documenting a past fix of a previously-incompatible vocabulary) -- a positive finding, contrasting with the still-broken 3-way status enum mismatch found in inventory.md the same session.",
+          "Uploads are 100% decorative (URL.createObjectURL, never persisted to a real storage provider) -- consistent with the dedicated lead_uploads table already confirmed NO_TABLE_CONSUMER in Phase 1 across all its columns. No import exists for leads at all; export delegates entirely and correctly to the shared Central de Relatorios engine, whose own code comments already document that the 2-level-nested conditional blocks and interacoes[] inside payload_servico are unsupported by that engine's 1-level jsonb extraction.",
+          "The frontend list hook uses a hardcoded ?limit=200 override (higher than the systemic PaginationDto default of 50 seen everywhere else, but still a hardcoded ceiling) -- all client-side filters, search, and the 5 top KPIs operate over this potentially-truncated array for tenants with more than 200 leads.",
+          "3 of the module's 4 Zustand stores (lead-modal.store.ts, lead-uploads.store.ts, lead-interactions.store.ts) are confirmed dead code via exhaustive grep -- only lead-filters.store.ts has a real consumer."
+        ]
+      },
+      "licensing": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/licensing.md",
+        "domainMeaning": "SYNC_LICENSING + MASTER_USE_LICENSING + MECHANICAL_LICENSING (single form/table)",
+        "subdomainsAudited": 1,
+        "databaseColumnOnly": 4,
+        "relationMismatch": 1,
+        "enumMismatch": 1,
+        "displayMappingMismatch": 2,
+        "realMappingGaps": 2,
+        "rightsClearanceGaps": 1,
+        "contractIntegrationGaps": 1,
+        "financialIntegrationGaps": 1,
+        "storageGaps": 1,
+        "workflowGaps": 1,
+        "approvalGaps": 1,
+        "expirationGaps": 1,
+        "licenseConflictGaps": 1,
+        "duplicateHandlingGaps": 1,
+        "truncationGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "Determined by evidence (not folder naming) that 'licensing' means sync licensing predominantly (the create modal's own title is literally 'Nova Licenca de Sync'), with master-use and mechanical licensing as secondary categories sharing the exact same form/table -- no rights-clearance, performance, software, or subscription licensing exists anywhere. A small, self-contained module: a single physical table (licenses, 27 cols), no satellite tables, no workflow service, no jobs, no external integrations.",
+          "CRITICAL Auditoria.tsx false-positive (severity 'obrigatorio'): the check requires row.cliente, but licenses.cliente (free-text) is never written by the real create/edit flow -- only cliente_id (the UUID) is sent. Every single license ever created via the real UI is therefore flagged as incomplete by the audit tool, even when a client is genuinely linked.",
+          "RELATION_MISMATCH: licenses.obra_musical/artista/artista_id/cliente are physical columns that appear designed to hold a denormalized snapshot of the licensed work/artist/client at the moment of negotiation, but none of them are ever written by the real form (only obra_id/cliente_id, the live FKs, are sent) -- the view modal always re-reads the CURRENT state of the linked work/artist/client via live lookups (useObras()/useDataQuery), meaning if a work is renamed or its linked artist changes after a license was created, the license's displayed title/artist silently changes retroactively, with no preserved record of what was true when the license was actually negotiated.",
+          "report-form-contracts.ts carries a stale, now-incorrect comment claiming amount/currency/percentage 'never persist' -- current code (CreateLicenseDto + LicensingService.normalizePayload(), which has its own comment confirming an explicit, symmetric field mapping) contradicts this directly. The real, current consequence: percentage and remuneration_type are excluded from the LICENSES_CONTRACT export fields, so a PERCENTAGE-type license's remuneration is entirely invisible in any generated report -- and the same export contract's searchableColumns still reference obra_musical/artista/cliente, the three confirmed-dead denormalized columns above, making 3 of 5 configured search columns structurally inert for any real license.",
+          "Status ('negociacao'/'proposta'/'ativa'/'expirada') has no WorkflowService, no transition validation, and no side effects -- any status can change to any other freely, unlike leads' regulated workflow. 'expirada' is entirely manual: data_fim is purely informational, with no scheduled job, no lazy calculation on read, and no notification -- a license with a past end date stays 'Ativa' indefinitely until someone edits it by hand.",
+          "No relation to contracts (no contrato_id column, no code reference in either direction) and no relation to accounting (LicensingService never imports EventsService or references transactions/invoices) -- a license's monetary value exists only as informational text and in a client-side KPI sum, with zero propagation to the financial or contract-signing domains despite conceptually requiring both in a real sync-licensing workflow.",
+          "No rights-holder/percentage-clearance modeling exists at all -- a licensed work is treated as a single atomic obra_id reference with no consultation of rights_holders (already audited in catalog.md) and no coverage calculation, despite 'clearing rights' being a core real-world concern for sync licensing.",
+          "The 'midiaFilter' dropdown on the list page offers a 'Radio' option that matches none of the 8 real midia_destino values the create form can ever produce -- a structurally dead filter option. The 'Valor Total' KPI sums only amount/valor for active licenses, silently excluding the percentage component of PERCENTAGE-only remuneration, understating real value.",
+          "Minor confirmed data divergence: selecting the 'Mecanica' license type saves the accented string 'mecânica' (the frontend's slugify only replaces spaces, not diacritics) while the reverse label lookup map keys on the unaccented 'mecanica' -- visually harmless only because of a generic capitalization fallback, but a genuine mismatch between intended and stored data.",
+          "Same systemic PaginationDto.limit=50 silent truncation as every prior module; 2 dead Zustand stores confirmed via grep (hooks/licensing.store.ts, store/licensing.store.ts)."
+        ]
+      },
+      "marketing": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/marketing.md",
+        "subdomainsAudited": 9,
+        "enumMismatch": 1,
+        "relationMismatch": 3,
+        "createMappingMismatch": 1,
+        "editMappingMismatch": 1,
+        "publicationGaps": 1,
+        "metricSourceOfTruthGaps": 1,
+        "metricMappingGaps": 1,
+        "attributionGaps": 1,
+        "financialIntegrationGaps": 1,
+        "syncGaps": 1,
+        "truncationGaps": 1,
+        "duplicateHandlingGaps": 1,
+        "timezoneGaps": 1,
+        "codeFieldOnly": 2,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "Largest, most architecturally fragmented module found this session: 13 physical tables, backend split across 2 module folders (campaigns/ + marketing/, 33 files combined), ~103 frontend files. CRITICAL discovery: two entirely separate, parallel campaign systems write to the same `campaigns` table. System A (CampaignsController/CampaignsService, `/campaigns`) has an English-named DTO (title/type/artistId/budget/startsAt/endsAt) spread directly onto an entity whose real properties are Portuguese and column-identical (nome/tipo/artista_id/orcamento/data_inicio/data_fim) with zero translation layer -- POST /campaigns would fail on a NOT NULL constraint on `nome`. Exhaustive grep confirmed zero real frontend consumers of this write path (only a dead TABLE_ENDPOINT map entry and one read-only GET /campaigns/:id call) -- System A and its sibling CampaignOperationsController (/campaigns/:id/tasks|assets, tables campaign_tasks/campaign_assets) are DEAD/ORPHANED, unreachable from the real UI.",
+          "System B (MarketingCampaignBuilderController/Service, `/marketing/campaigns`, POST .../draft) is the real, actively-used system -- it writes to the SAME campaigns table but hardcodes tipo='marketing_builder' always, and stores almost all real campaign data (objective, promotedEntityType/Id/Name, platforms, placements, creatives, audience, utm) exclusively inside metadata.marketingBuilder.payload jsonb, with only name/budget/dates mirrored to physical columns. Its own status vocabulary (DRAFT/READY/PENDING_REVIEW/ACTIVE/PAUSED/ARCHIVED etc., English uppercase) is entirely incompatible with System A's CampaignStatus enum (rascunho/ativa/pausada, Portuguese lowercase) -- both get written to the exact same physical `campaigns.status` column, producing a genuinely inconsistent, dual-vocabulary column at the data level (inert today only because System A is unreachable).",
+          "campaigns.artista_id (a real physical FK column) is never populated by the real (System B) creation flow -- the actual artist/promoted-entity link lives only inside metadata.marketingBuilder.payload.promotedEntityId. Re-validated and reinforced the Phase 1 CODE_FIELD_ONLY finding for campaign_assets.file_size/mime_type (declared on the entity, absent from the live table) -- now additionally confirmed that the entire campaign_assets/campaign_tasks subsystem it belongs to is itself orphaned.",
+          "Content scheduling/publishing (marketing_content_posts, MarketingContentsService) is a genuinely real, well-built subsystem: a real BullMQ queue delays jobs until the exact scheduled_for time, retries 3x with exponential backoff, and tracks publish_job_id/publication_status/publication_error end to end. But the actual provider-publish step (MarketingPublishingProcessor.publish()) always throws an explicit, honest error ('Publicacao real para {channel} nao configurada...') -- every scheduled post is guaranteed to end up status='falhou' after retries exhaust. Same 'never fake success' discipline already seen elsewhere in this codebase (signing.adapter.ts in integrations.md), applied consistently here too.",
+          "No campaign metrics (impressions/clicks/reach/conversions/etc.) are ever synced from any real ad platform, despite Meta/Google/TikTok/YouTube all having real, working OAuth connections already confirmed in integrations.md for organic-social/streaming purposes -- none of those connections are ever called from this module. All metrics are 100% manually entered by the user into the campaign builder payload, or zero. CONFIRMED FABRICATED DATA: Campanhas.tsx's campaignSpend() falls back to `budget * 0.41` (an arbitrary hardcoded coefficient) whenever real cost-per-result/conversions are unset (the common case) and displays this as 'Gasto Total' with the same visual treatment as genuine data -- a stronger, more concerning finding than the module's otherwise-consistent 'never fake success' pattern, since here a number IS fabricated and shown as real.",
+          "Closed the artist.md pendency: the Artist 360 profile's Marketing tab correctly links CAMPAIGNS to an artist via targetId===artistaId (which maps to the real, populated promotedEntityId field) -- functional. But the equivalent filter for CONTENT (c.targetId === artistaId) is structurally broken: marketing_content_posts has no target_id column at all (only target_type + target_name, confirmed in Phase 1), and the API never returns a targetId field -- the comparison is always undefined === artistaId (false), meaning the artist profile's 'Conteudos' section under the Marketing tab is permanently empty regardless of how much real content targets that artist.",
+          "Resolved the audiovisual.md pendency: audiovisual_projects.campaign_id (a real, filterable UUID field on both DTOs and the service's query builder) targets campaigns.id -- a logical (unenforced) FK, consistent with the loose-reference pattern already confirmed system-wide.",
+          "Resolved the leads.md attribution pendency: leads has no campaign_id/utm_* columns (already confirmed in leads.md); the campaign side has a free-form, unvalidated `utm` object inside the builder payload. Both sides exist independently with zero real correlation mechanism -- NO_MODEL attribution confirmed, not merely undiscovered.",
+          "A real, non-trivial cross-domain automation was confirmed: MarketingProjectsService.createFromCompletedProject(), triggered by the `projects` module's PROJECT_COMPLETED domain event, idempotently creates a MarketingProject workspace plus an automatic 'cover art' task, pre-populated with the artist's linked works/phonograms/uploads.",
+          "No Auditoria.tsx section exists for marketing (confirmed absent by exhaustive search, not invented). No import exists for the module; export/report-engine registration not confirmed active. Hardcoded, non-paginated limits (50-100) across essentially every list endpoint, consistent with every prior module this session."
+        ]
+      },
+      "monitoring": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/monitoring.md",
+        "domainMeaning": "CATALOG_MONITORING + ARTIST_MONITORING (rights/takedown/ECAD reconciliation) — not application observability",
+        "subdomainsAudited": 5,
+        "codeFieldOnly": 4,
+        "relationMismatch": 1,
+        "createMappingMismatch": 1,
+        "editMappingMismatch": 1,
+        "displayMappingMismatch": 1,
+        "externalIntegrationGaps": 1,
+        "realMappingGaps": 2,
+        "mockDataGaps": 1,
+        "truncationGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "Determined by evidence that 'monitoring' means catalog/rights monitoring (unauthorized-use detection, ECAD royalty reconciliation, DMCA-style takedowns), not application observability -- that vertical is already fully covered architecturally by the Pino/OTel/Sentry/Prometheus stack (docs 52/68) and has zero tenant-facing product surface in this module.",
+          "CRITICAL routing discovery: /monitoramento unconditionally redirects to /rights-monitoring (confirmed in catalog.routes.tsx), making Monitoramento.tsx -- a real, mostly well-built 442-line component wired to genuine data (useDeteccoes()/content_detections, GET /ecad-reports) with honest empty-states and an honest 'import not implemented' toast -- structurally unreachable by any user. The page users actually land on, RightsMonitoring.tsx, imports directly from rights-source.ts, whose own code comment states the backend has no real endpoints yet for public executions/broadcast detections/cue sheets/setlists -- all 5 exported arrays are hardcoded empty (RIGHTS_DATA_IS_MOCK=false, confirming this is honest absence, not fake data). Net effect: the reachable Rights Monitoring experience shows zero data across all 6 tabs, permanently, by design -- while a working alternative implementation sits dead behind the redirect.",
+          "CRITICAL, operationally-confirmed bug building on an existing Phase 1 finding: TakedownEntity declares 4 @Column properties (url, obra_id, artista_id, resposta) that don't exist in the live takedowns table (already flagged CODE_FIELD_ONLY in Phase 1). This audit found the exact trigger: TakedownsService.create() unconditionally sets `url: dto.url_infracao ?? null` on every call, and since `url` is a real TypeORM-declared column, repository.save() generates an INSERT referencing a column that doesn't exist -- every single POST /takedowns from the real, reachable /takedowns UI would fail with a SQL error. The frontend's own field mapping (TakedownFormModal.tsx) is correct; the bug is entirely backend-side. update() only triggers it when url_infracao changes.",
+          "content_detections is correctly mapped end-to-end (service, DTO, hook) and has a real, working GET/POST/PATCH/DELETE backend, but has literally zero reachable UI creation path -- the only form that could create one lives inside the dead Monitoramento.tsx page. Separately, ACRCloud (the real audio-fingerprinting integration, already confirmed working in integrations.md) is never connected to content_detections -- no automatic population from any real monitoring provider exists anywhere.",
+          "Minor architectural inconsistency within the same module: content_detections identifies the affected work/artist via real UUID columns (obra_id/artista_id), while takedowns identifies them via free-text columns (obra_afetada/artista) with no selector, no FK, and no lookup -- two incompatible patterns for the same underlying concept inside one module.",
+          "No alerts, alert rules, incidents, or notification delivery exist in any form (no supporting table, no evaluation job, no UI) -- the closest concept ('Divergencias' tab) is a static display category over data that structurally never exists (Gap #2), not an evaluated rule.",
+          "Confirmed NO fabricated/fake data anywhere in this module (contrast with marketing.md's budget*0.41) -- every empty/zero state found is honestly labeled as such in the UI itself, consistent with the 'never simulate success' discipline already seen system-wide, including in this module's own two 'ECAD import not available' error toasts.",
+          "No Auditoria.tsx section exists for this domain (confirmed absent). Same systemic PaginationDto.limit=50 truncation on the two directly-read services (content-detections, takedowns)."
+        ]
+      },
+      "musicchat": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/musicchat.md",
+        "domainMeaning": "CUSTOMER_SUPPORT_OMNICHANNEL_INBOX + TRIAGE_AUTOMATION -- not an AI/LLM chat assistant despite the brand name",
+        "musicchatRuntimeStatus": "PARTIAL",
+        "apiV2MigrationRequirement": "PARTIAL_REQUIRED",
+        "tablesAudited": 6,
+        "backendEndpointsAudited": 21,
+        "realtimeGap": 1,
+        "fileStorageGap": 1,
+        "externalChannelIngestionGap": 1,
+        "truncationGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "secretLoggingGap": 0,
+        "piiLoggingGap": 0,
+        "mockDataGap": 0,
+        "credentialsToAddNow": 0,
+        "keyFindings": [
+          "Resolved the central question by direct evidence, explicitly not reusing any prior historical decision: MusicChat is NOT an AI/LLM chat assistant. Exhaustive keyword search (openai/anthropic/llm/embedding/vector/gemini/groq/mistral/ollama/rag/completion) across apps/api/src/modules/conversations, apps/web/src/modules/musicchat, apps/web/src/shared/pages/MusicChat.tsx returned zero matches. It is a real customer-support omnichannel inbox (conversations/conversation_messages/conversation_notes -- a general-purpose messaging domain also used by leads) plus a triage/escalation automation layer (musicchat_automation_settings/events/notifications). MessageSenderType declares an unused AI enum value never actually constructed anywhere.",
+          "Classified MUSICCHAT_RUNTIME_STATUS: PARTIAL (not ACTIVE, not DEAD, not DEFERRED_NO_ACTIVE_CONSUMER). Both frontend routes are reachable (/chat and /admin/musicchat/automacoes), both backend controllers (ConversationsController 15 endpoints, MusicChatAutomationController 6 endpoints) are fully implemented with zero DTO/entity field-name mismatches -- a rare, fully-clean mapping for this audit series, in contrast to the critical create-bugs found in contracts/leads/marketing/monitoring. A proven ACTIVE CONSUMER chain exists for the internal/manual conversation flow (compose -> send -> real INSERT -> real Supabase Realtime broadcast) and for the admin settings flow. It is PARTIAL specifically because the 'omnichannel' premise is only half-real: the schema/UI fully model 5 external channels (whatsapp/instagram/facebook/tiktok/email) but no webhook or ingestion endpoint exists anywhere to actually receive a message from any external provider -- the only entry point (POST .../automation/inbound) has no automatic trigger, confirmed by an explicit grep for 'webhook' across the module (zero matches).",
+          "Notable POSITIVE finding, rare in this audit series: RealtimeService (apps/api/src/core/realtime/realtime.service.ts) is a genuinely real Supabase Realtime broadcast publisher (service-role key, RLS-authorized private tenant/user channels, replacing a legacy Socket.IO gateway incompatible with Vercel's stateless functions), and ConversationsService correctly calls it at all 7 state-changing operations (conversation:created/updated/message/assigned/transferred/closed/reopened). Confirmed the frontend's useWsEvent()/useWebSocket() hooks are ALSO built on the same real Supabase Realtime transport (ws-client.ts), not a legacy/dead socket -- the transport itself is unified and fully real end-to-end, unlike every other module audited this session (which only ever used the internal EventEmitter2 bus with no Supabase bridge).",
+          "REALTIME_GAP (reverse-direction, novel pattern for this session): despite the real publisher and real transport above, the single centralized app-wide realtime subscriber (useRealtimeSync.ts, mounted once via RealtimeLayer.tsx) only subscribes to artist.*/catalog.*/contract.*/crm.lead.*/finance.*/audit.entry.created -- none of the 7 conversation:* events are subscribed to anywhere in the frontend (confirmed by exhaustive grep of useWsEvent usage: 8 files total app-wide, none inside MusicChat.tsx or modules/musicchat/**). This is the mirror image of the usual pattern found elsewhere this session (frontend subscribes to nothing real; here backend publishes correctly to a real working transport but nobody listens) -- practical effect: an agent viewing a conversation does not see live updates when another agent/the automation engine changes it.",
+          "FILE_STORAGE_GAP: MusicChat.tsx's handleFileChange() builds attachment objects via url: URL.createObjectURL(file) -- a purely client-side, ephemeral blob: URL, never uploaded to any real storage backend (no Supabase Storage call, no multipart upload, no signed-URL request found anywhere in the file or in conversations.service.ts). This blob URL is what gets persisted verbatim in the attachments jsonb column via POST /conversations/:id/messages. Attachments visibly 'work' during the live composing session but are not real, shared, or durable files -- meaningless to any other user or after a page reload. The backend itself behaves honestly (stores whatever URL it's given); the gap is entirely a frontend architectural omission.",
+          "Confirmed clean on every other axis audited: 0 DTO/entity field mismatches (create/edit paths for conversations, messages, notes, and 21-field automation settings all symmetric with their entities), 0 authorization gaps and 0 tenant-isolation gaps (all 19 read/write service methods carry an explicit tenant_id predicate, all 21 endpoints carry @RequireRole with appropriately tiered viewer/editor/manager scoping), 0 secret/PII logging risk (the one logger.warn call logs only the exception string and event type, never message bodies or contact PII), 0 fabricated/mock data in the backend (recordEvent() defensively catches and logs its own persistence failure rather than crashing the parent operation -- a deliberate best-effort audit trail, not a hidden gap). Same systemic PaginationDto-style default limit=50 truncation on listMessages/listConversations as virtually every module this session.",
+          "AI/RAG/provider section resolved as fully N/A by evidence, not by assumption: AI_PROVIDER_USED=NONE, RAG_STATUS=NOT_IMPLEMENTED, STREAMING_STATUS=N/A (the only streaming-adjacent mechanism is the confirmed-real Supabase Realtime broadcast, explicitly not conflated with AI token streaming per the prompt's own instruction), TOKEN_USAGE_GAP/QUOTA_GAP/MODERATION_STATUS=N/A (not invented as missing requirements from an absent feature). CREDENTIALS_TO_ADD_NOW=0, cross-referenced against integration-inventory.json/credential-readiness.json from integrations.md -- neither lists any AI/LLM provider as a MusicChat dependency.",
+          "Recorded explicitly, per the prompt's own instruction, to prevent MusicChat's external-channel concept from being silently promoted to an API v2 requirement: API_V2_MIGRATION_REQUIREMENT=PARTIAL_REQUIRED -- the conversations/messages/notes CRUD, assignment/transfer/close-reopen, and automation-settings surface are real, clean, and should migrate; the external-channel webhook ingestion concept has no current implementation to preserve (migrating it would mean building it new, out of scope for a zero-gap port) and must not be treated as an existing requirement."
+        ]
+      },
+      "projects": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/projects.md",
+        "domainMeaning": "UNIVERSAL_FINANCIAL_PROJECT (schema intent, per FinancialOperationalBridges migration docstring) vs MUSIC_RELEASE_PROJECT (only real reachable UI, ProjetoFormModal.tsx) -- both true simultaneously, evidenced not assumed",
+        "subdomainsAudited": 5,
+        "displayMappingMismatch": 1,
+        "workflowGaps": 1,
+        "fileStorageGaps": 1,
+        "progressCalculationGaps": 1,
+        "financialIntegrationGaps": 1,
+        "projectAccountingGroupingGaps": 1,
+        "truncationGaps": 1,
+        "realMappingGaps": 5,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "CRITICAL, code-evidenced finding: ProjectPlanningAutomation (apps/api/src/core/automation/project-planning.automation.ts), a real AI feature that generates an operational plan on project completion and saves it to projects.metadata.aiPlan, issues raw SQL (`SELECT nome, tipo, descricao, artista_id, data_fim, metadata FROM projects...`) referencing TWO stale/non-existent columns: `nome` (renamed to `titulo` by migration 20260718000013_ProjectsFormFieldAlignment.ts, confirmed via its literal `ALTER TABLE projects RENAME COLUMN nome TO titulo`) and `data_fim` (never existed on `projects` at any point). Every real project completion (the one legitimate REVISAO->CONCLUIDO workflow path) fires this query, which throws a SQL error -- the AI planning feature is 100% broken, silently, on every invocation (the surrounding runner is explicitly designed so AI failure never reverts the completion itself, so the breakage is invisible to users).",
+          "artista_id and orcamento (both real, real DTO fields) are never set by the only reachable create/edit form (ProjetoFormModal.tsx, 770 lines read in full -- zero occurrences of either field, no artist selector or budget input exists at all in the UI). This is not merely a completeness-checker false-positive (though it is also that, closing the historical Auditoria.tsx pendency) -- it breaks two real downstream consumers confirmed this audit: Projetos.tsx's own 'Artista' filter dropdown can never match any project, and ArtistaVisao360Modal.tsx's Artist-360 'Projetos' count/list (artista_id === artistaId) is permanently zero for every artist in the system.",
+          "Confirmed a REAL_WORKFLOW (not FIELD_ONLY) for project status: a genuine state machine (apps/api/src/core/workflow/definitions/projects.workflow.ts, 5 states, 5 role-gated transitions) is enforced server-side via WorkflowService.transitionInTx inside a DB transaction, with allowed_transitions correctly computed per actor role and consumed by ProjetoViewModal.tsx's WorkflowTransitionPanel. However the separate raw Edit-form Status <Select> (ProjetoFormModal.tsx) offers only 4 of the 5 real ProjectStatus values (missing 'revisao') and sends PATCH requests unrestricted by the transition graph -- the backend correctly rejects illegal jumps, but the form gives no indication of which transitions are legal, unlike the ViewModal. Classified WORKFLOW_GAP: PARTIAL.",
+          "FILE_STORAGE_GAP, more severe than the equivalent pattern found in musicchat.md: ProjetoFormModal.tsx's audio-upload control is a hardcoded no-op stub (`const uploadFile = async (_file) => null`) -- not even an ephemeral client-side blob: URL is created. The UI shows the file's name/size as if attached and displays a 'carregado localmente' success toast, but the actual File object is never persisted anywhere and disappears the moment the modal closes.",
+          "project_assets (7-column table, real entity ProjectAssetEntity) is fully orphaned -- zero backend controller, zero service, zero frontend consumer found anywhere in the codebase, and no physical FK on either project_id or asset_id despite the naming. Pure dead schema.",
+          "Confirmed, from the projects side, the exact accounting.md finding about 'P&L por Projeto': PROJECT_ID_AVAILABLE_FOR_ACCOUNTING=SIM and TRANSACTIONS_LINKED_TO_PROJECT=SIM (transactions.projeto_id is real, populated by the transaction form's projetoVinculado field) but has no physical FK to projects.id (logical-only, consistent with works.projeto_id and shares.artista_projeto_id showing the same pattern). The accounting P&L-by-project tab never reads this column at all -- it groups by individual transaction description instead, despite its label. Nothing further to trace on the projects side; the display-layer gap is documented in accounting.md, not re-corrected here.",
+          "Resolved two real cross-module FK questions with direct evidence (not presumed from naming): (1) audiovisual_projects.financial_project_id and marketing_projects.financial_project_id are BOTH real composite FKs -> projects(tenant_id, id) (added by migration 20260718000009_FinancialOperationalBridges.ts, re-declared on every subsequent table rebuild) but neither is ever written by any frontend form in either module -- real, unreachable FKs. (2) marketing_content_posts.project_id (flagged ambiguous and left open in marketing.md #13) is conclusively resolved: it consistently maps to marketing_project_id (the marketing module's own internal workspace concept) in every read path of marketing.service.ts, NOT a reference to the universal projects table at all -- closing that pendency.",
+          "TRUNCATION_GAP, significant: useProjetos() sends zero filter/pagination query params; ProjectsService.list() defaults to a server-side limit=50 ORDER BY created_at DESC. Every client-side filter, search, sort, and all 4 KPI cards (ativos/concluidos/rascunhos/total) in Projetos.tsx are computed over this silently-truncated set with no 'showing 50 of N' indication anywhere -- for any tenant with more than 50 projects, the entire page (filters, KPIs, genre-dropdown options) operates on incomplete data. Separately (currently dormant, zero observable effect since no filter param is ever actually sent): QueryProjectDto declares type/artistId (camelCase) but ProjectsService.list() reads q['tipo']/q['artista_id'] (snake_case) -- a latent query-DTO field-name mismatch.",
+          "Confirmed Create=Edit field-set equivalence holds exactly for this module (verified, not presumed, per the prompt's explicit instruction) -- both forms are the same component with an identical field set. No CREATE_MAPPING_MISMATCH or EDIT_MAPPING_MISMATCH found anywhere. Two dead frontend files with zero consumers: hooks/projects.store.ts and services/projects.service.ts (both superseded by useProjetos/useDataQuery). Confirmed via the module's own metadata-guard test (Projetos.metadata-guard.test.ts:32, asserting the source does NOT match /importXlsx/) that the total absence of import/export/XLSX for this module is deliberate, not merely undiscovered."
+        ]
+      },
+      "releases": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/releases.md",
+        "domainMeaning": "RELEASE_AS_DISTRIBUTION_OBJECT -- music single/EP/album pipeline entity, no direct relation to phonograms, distinct from projects",
+        "subdomainsAudited": 5,
+        "createMappingMismatch": 1,
+        "editMappingMismatch": 1,
+        "workflowGaps": 1,
+        "displayMappingMismatch": 2,
+        "workMappingGaps": 1,
+        "tracklistMappingGaps": 1,
+        "identifierGaps": 1,
+        "defaultMismatch": 1,
+        "realMappingGaps": 2,
+        "artworkStorageGaps": 1,
+        "distributionImplementationGaps": 6,
+        "takedownGaps": 1,
+        "truncationGaps": 1,
+        "releaseAtomicityGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "CRITICAL, code-evidenced finding, the most severe found in this entire audit series: the real create/edit form (LancamentoFormModal.tsx) unconditionally injects an `internal_status` field into every POST /releases and PATCH /releases/:id payload (lines 943, 948, 958), but `internal_status` is not declared in CreateReleaseDto/UpdateReleaseDto and is not a physical column on ReleaseEntity. The global ValidationPipe({whitelist:true, forbidNonWhitelisted:true}) (confirmed in apps/api/src/create-app.ts:186-188) rejects the entire request with HTTP 400 before it reaches the controller. The releases module's own mapper file (form-to-payload.mapper.ts:11-12) documents this EXACT rule in its own header comment and correctly avoids it -- the violation is introduced 3 lines after the mapper returns, back in the calling component. Net effect: every single 'Novo Lancamento' (create) and every 'Editar' (edit) submission from the real UI is rejected by the backend and NEVER reaches the database. This makes the entire releases module's primary CRUD flow 100% non-functional via the real UI today.",
+          "Compounding second bug in the same flow: even if internal_status were removed, the same handleSubmit() immediately follows a successful create with a PATCH forcing status:'distributed' directly from DRAFT -- a transition NOT present in the real workflow graph (only DRAFT->METADATA_PENDING is legal from DRAFT per releases.workflow.ts), so WorkflowService.transitionInTx() would reject it independently even if the first bug were fixed.",
+          "Root-caused why the frontend introduces internal_status at all: Lancamentos.tsx's entire display-status model (resolveReleaseStatus() in lib/release-status.tsx) is built around a 3-tier priority read of release.platform_status -> release.internal_status -> release.status, resolving to a 7-value display taxonomy (pendente/em_espera/aprovado/distribuido/rejeitado/takedown/incompleto) distinct from the real 10-value backend ReleaseStatus workflow enum. Neither platform_status nor internal_status exists as a real column or DTO field anywhere -- this is a deliberate, product-intended field the backend contract was simply never extended to support, not a random typo.",
+          "SECOND independently critical, code-evidenced bug: ReleaseEventsHandler.onReleaseApproved() (release-events.handler.ts:71-97) persists an 'artist notification' with user_id: artistId, where artistId is an artists.id value -- but NotificationEntity.user_id is semantically a users.id (no artist-to-user link table exists anywhere in this schema, confirmed across this entire audit series). This notification is permanently unreachable by any real user's notification-list query -- a silent dead write, structurally identical in nature to the internal_status bug (wrong-typed ID in a field).",
+          "release_works (real M:N join table, release_id/work_id, both cascading FKs, no order column) is confirmed schema-only and never populated by any functional flow, from BOTH sides independently: catalog.md's own prior finding ('nenhum componente de catalog cria/edita/le release_works diretamente') plus this audit's confirmation that releases' own Work-picker (handleSelectObra() in LancamentoFormModal.tsx) exists only as a one-time autofill convenience -- selectedObraId is local component state, never sent in any payload, and no DTO field exists to send it to.",
+          "Tracklist ('Faixas') has no relational model at all: tracks live entirely inside releases.metadata.faixas jsonb with order = array index (no position column), per-track ISRC there is completely disconnected from phonograms.isrc, and per-track audio 'upload' is stripped before persistence and never uploaded anywhere. Contrasted with a genuine positive finding: releases.capa_url (cover artwork) IS a real, working end-to-end Cloudflare R2 upload (useUploadToR2, with an honest R2NotConfiguredError failure path) -- unlike the projects module's hardcoded-null audio-upload stub or musicchat's ephemeral blob: URLs, artwork upload here is real, undermined only by the fact the surrounding create/edit request never successfully reaches the database.",
+          "Revalidated (not re-audited in depth) the releases-specific interface to all 6 distributor providers (ONErpm/DistroKid/Symphonic/SoundOn/MusicPro/SomVibe): confirmed exactly matching integrations.md's own inventory -- 6 referenced, 0 active, 6 STUB. The 'connected' state is read from a localStorage key that is never written anywhere in the codebase (hasAnyConnected permanently false for every tenant). A separate, more mature backend distribution framework (ExternalDataExchangeService/ExternalDataProviderRegistry) exists with real REST endpoints but has exactly 2 registered providers today (both explicit Unconfigured*Provider placeholders) and zero frontend consumer anywhere -- two independently-built, currently-disconnected stubs, not integrated with releases at all.",
+          "Closed 3 real cross-module FK relations with direct evidence: audiovisual_projects.release_id (real column, used as a genuine query filter in AudiovisualProjectsService.list()) confirms AUDIOVISUAL_RELEASE_TRACEABILITY_COMPLETE=SIM; transaction_allocations.release_id and performance_metric_entries.release_id (both real FKs to releases(tenant_id,id), part of financial/analytics dimension CHECK constraints) confirm ACCOUNTING_RELEASE_TRACEABILITY_COMPLETE=SIM (VIA direct FK, not via project bridge). Separately disproved a plausible-looking relation: marketing/Metricas.tsx's 'releaseId' field is confirmed to be a synthetic/derived field read off an ad-hoc metrics record shape, NOT a real database column (marketing_content_posts has no release_id column at all) -- MARKETING_RELEASE_TRACEABILITY_COMPLETE=SIM as 'no real relation exists', not left ambiguous.",
+          "TRUNCATION_GAP, same pattern as projects.md: useLancamentos() sends zero filter/pagination query params; ReleasesService.list() defaults to limit=50 ORDER BY created_at DESC. Every client-side filter/search and all 4 KPI cards (total/distributed/pending/waitingAction) in Lancamentos.tsx operate on a silently-truncated dataset for any tenant with more than 50 releases. Confirmed Create=Edit field-set equivalence holds exactly (verified, not presumed). 2 dead frontend files (hooks/releases.store.ts, services/releases.service.ts, zero consumers) mirror the identical dead-service-layer pattern already found in catalog.md and projects.md. A dead duplicate ReleaseEntity/repository stub exists in apps/api/src/modules/releases/entities/repositories, unused in production, alive only in a tenant-isolation spec file."
+        ]
+      },
+      "reports": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/reports.md",
+        "inventoryFile": "docs/backend-v2/field-traceability/reports/report-inventory.json",
+        "domainMeaning": "EXPORT_CENTER -- entity-driven XLSX bulk export/import over a 22-table closed registry, plus 1 computed report (accounting_summary, P&L by artist)",
+        "subdomainsAudited": 4,
+        "reportsAudited": 22,
+        "activeReports": 22,
+        "filterMappingMismatch": 1,
+        "dateRangeMismatch": 1,
+        "reportSourceGaps": 1,
+        "exportPrivacyGaps": 1,
+        "xlsxRuleViolations": 1,
+        "truncationGaps": 0,
+        "exportCompletenessGaps": 0,
+        "reportQuerySecurityGaps": 0,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "Determined by direct evidence (not presumed): 'reports' is an EXPORT_CENTER, not a BI/analytics dashboard, not a report builder, not saved/scheduled reports -- a single frontend page (Relatorios.tsx, its own header comment: 'consome EXCLUSIVAMENTE a API... sem lista fixa, sem mock... o backend e a unica fonte da verdade') over a closed, 22-entry table registry (report-module-registry.ts), each with an explicit field contract (report-form-contracts.ts, 765 lines, actively consumed by 4+ services, guarded by a permanent form-contracts.guard.spec.ts). Confirmed SAVED_REPORT/SCHEDULED_REPORT/REPORT_TEMPLATE (as persisted concepts) are completely absent from the entire codebase, not merely undiscovered.",
+          "Assessed as the single most rigorously engineered module found in this entire audit series: full column/filter/sort allowlisting with parameterized SQL throughout (zero REPORT_QUERY_SECURITY_GAP), real formula-injection neutralization applied unconditionally to every exported cell, and -- a first this session -- ZERO TRUNCATION_GAP: exports bypass every other module's paginated list endpoints entirely, querying physical tables directly with a fail-closed 50,000-row ceiling (413 error, never a silent partial file) instead of the silent limit=50 truncation pattern found in virtually every other module audited this session (projects, releases, marketing, catalog, etc.). Tenant isolation confirmed at 4 independent, defense-in-depth layers (registry gate requiring a real tenant_id column before a table can even become reportable; mandatory WHERE tenant_id=$1 on every query; Postgres RLS session variable set on import transactions; cross-tenant FK-relationship validation on import).",
+          "EXPORT_PRIVACY_GAP found on the artists contract: email/telefone/cpf_cnpj receive real, deliberate column-level encryption (decrypted only at authorized manager-gated export time, per the contract's own comment explaining a prior heuristic exporter used to silently omit these fields entirely) -- but banco/conta/chave_pix/titular_conta (bank account data, same entity) are stored as plain unencrypted jsonb metadata and exported in plaintext at the identical permission tier, with no apparent product reason for two different sensitivity tiers on equivalently-sensitive fields of the same table.",
+          "Resolved contracts.observacoes per the prompt's explicit instruction: CONTRACT_OBSERVACOES_EXPORTED=SIM (CONTRACTS_CONTRACT includes col('observacoes')), PII_RISK_INHERITED_FROM_CONTRACTS=SIM -- whatever free-text/negotiation-detail risk contracts.md already documented for this column is inherited unchanged by the Reports export path, plaintext, no additional masking, gated only by the same uniform manager role as every other export.",
+          "Revalidated the accounting.md-flagged 3-sheet exportFieldList in TransacaoFormModal.tsx: confirmed exactly 3 worksheets (Campos/Itens/Catalogo Financeiro), confirmed genuinely dead (defined once, never wired to any button/handler anywhere in the file), and confirmed it does NOT functionally belong to the Reports module (uses the xlsx package directly, not ExportEngineService or even the shared xlsx.ts helper) -- recorded as an isolated XLSX_RULE_VIOLATION on that one artifact per the prompt's instruction that the single-sheet rule applies even to dead code, without inflating the Reports module's own (fully compliant, always-exactly-1-sheet) violation count.",
+          "Closed the P&L-by-project cross-module question definitively from the Reports side: the module's only computed report (accounting_summary, 'Contabilidade') performs a real, correctly artist-grouped aggregation (GROUP BY a.id, a.nome_artistico via a real FK join on transactions.artista_id) -- it does NOT attempt a project-grouped P&L at all, so accounting.md's documented 'P&L por Projeto' bug (Contabilidade.tsx's UI tab fabricating one pseudo-project per transaction) is structurally never inherited into any export, because no such export exists to inherit it into.",
+          "Confirmed the campaigns table (site of marketing.md's dual-incompatible-system and fabricated budget*0.41 metric findings) is entirely absent from the 22-table registry -- only marketing_tasks and marketing_content_posts are exportable from the marketing domain -- so those specific, well-documented marketing bugs are structurally unreachable through the Reports module.",
+          "Two minor, genuine gaps found: (1) searchableColumns is computed by ReportEntityDefinitionService for every entity but never actually consumed by ExportQueryBuilderService.build() -- a fully dormant, unreachable search capability on both the backend (defined, unused) and frontend (no search input exists in Relatorios.tsx either) sides; (2) date filtering only supports exact-match equality -- no real date-range (>=/<=) operator exists anywhere in the query builder despite several contracts marking date columns filterable."
+        ]
+      },
+      "rh": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/rh.md",
+        "domainMeaning": "Internal HR/employee records management (funcionarios, folha de pagamento, ferias/ausencias, documentos) -- Employee is structurally distinct from platform User/OrgMember, no FK exists between them",
+        "subdomainsAudited": 4,
+        "createMappingMismatch": 3,
+        "editMappingMismatch": 1,
+        "databaseColumnOnly": 8,
+        "realMappingGap": 4,
+        "enumMismatch": 1,
+        "workflowGaps": 1,
+        "displayMappingMismatch": 1,
+        "storageGaps": 1,
+        "truncationGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "CRITICAL, code-evidenced finding: this module ties with (and arguably exceeds) releases.md for the most severely broken CRUD surface found this session -- FOUR independent create-flow breaks, one per sub-resource, all confirmed by direct comparison of DTO vs actually-submitted form payload. (1) Employee create/update: CreateEmployeeDto requires 'nome' and whitelists 13 fields; FuncionarioFormModal.tsx never sends 'nome' at all and sends 8 unwhitelisted fields (nome_completo/rg/data_nascimento/endereco/setor/salario_base/observacoes/vinculo_usuario_id) -- every POST/PATCH /hr/employees from the real form is rejected with 400. (2) Payroll create: CreatePayrollEntryDto requires employee_id/competencia; FolhaPagamentoFormModal.tsx sends funcionario_id/mes_referencia instead -- same rejection. (3) Leave-request create: CreateLeaveRequestDto requires employee_id; FeriasAusenciasFormModal.tsx sends funcionario_id/dias_totais -- same rejection. (4) The 'Documentos' tab is wired to the WRONG endpoint entirely: TABLE_ENDPOINT.documentos_funcionario = '/hr/employees' (confirmed in api-client.ts), so it lists every employee of the tenant mislabeled as documents, and uploading a document POSTs to /hr/employees which CreateEmployeeDto rejects the same way as (1) -- even though the underlying file genuinely uploads to Cloudflare R2 first, its metadata record can never be created, an orphaned-upload pattern.",
+          "SECOND, independent critical finding: even reading the employee list is broken. Migration 20260712000003_HrFormFieldColumns.ts added 8 real physical columns to `employees` (nome_completo/rg/data_nascimento/endereco/setor/salario_base/observacoes/vinculo_usuario_id) but EmployeeEntity never declares any of them -- TypeORM never selects or returns them via GET /hr/employees. RH.tsx's table reads exactly these 4 fields (f.nome_completo/f.setor/f.salario_base/f.vinculo_usuario_id) for every row -- all four render blank for every employee that exists, and the search box + 'Setor' filter (which filter against these same always-undefined fields) are consequently both completely non-functional. The same physical/entity drift pattern recurs independently on payroll_entries (orphaned funcionario_id/mes_referencia/bonus/data_pagamento/observacoes) and leave_requests (orphaned funcionario_id/dias_totais/observacoes) -- confirmed hr.service.ts never references any of these 16 orphaned columns across all three tables, despite the originating migration's own docstring explicitly stating the intended design was for the service to mirror form field names into these legacy columns.",
+          "Confirmed Employee is NOT the same entity as a platform User/OrgMember -- EmployeeEntity has no FK to any auth/identity entity. The only attempted linkage (employees.vinculo_usuario_id, a real physical column) is wired up purely client-side as a display-only string dropdown, has no DB constraint, and -- per the entity/column drift finding above -- is invisible to the API regardless of whether it was ever successfully written, making the 'link an employee to their login' feature doubly non-functional.",
+          "No PATCH/DELETE route exists for payroll_entries at all, and leave-requests has exactly one status-changing route (PATCH .../approve, hardcoded to status:'aprovado' unconditionally, no way to set 'rejeitado' server-side) -- yet RH.tsx wires up full update/delete mutations for payroll and a working 'Reject' button for leave requests, both of which call routes that don't exist server-side (404). No workflow engine exists for either employees or leave requests (confirmed: apps/api/src/core/workflow/definitions/ only has entries for campaigns/contracts/leads/projects/releases/tickets) -- leave-request status is FIELD_ONLY dressed up with a partial one-way transition, not a real state machine.",
+          "ENUM_MISMATCH confirmed: backend EmployeeStatus = ativo|inativo|ferias|licenca|demitido; frontend STATUS_FUNCIONARIO = ativo|inativo|ferias(accented)|afastado|desligado -- three of five values diverge (accent + two entirely different vocabulary choices for the same lifecycle stage), which would independently cause an enum-validation rejection on top of the already-fatal nome/nome_completo mismatch if that were ever fixed in isolation.",
+          "Payroll net-salary math (salario_liquido = bruto - descontos + bonus) is computed 100% client-side with zero server-side recomputation or validation -- HrService.createPayroll() stores whatever value the client sends verbatim (moot today since the create call itself is rejected, but a real latent gap once/if the field-mapping bug is fixed). 'bonus' itself has no DTO field and no entity column at all -- silently discarded even in a hypothetical corrected payload.",
+          "Positive, independently-confirmed findings: tenant isolation is sound at the service layer (explicit tenant_id predicate on every query/update across all 3 sub-resources) and authorization is appropriately tiered (viewer/manager/admin split matches each action's sensitivity) -- these are structurally sound even though the functional CRUD built on top of them is broken; the two are genuinely independent axes. PII encryption (email/telefone/cpf via dedicated *_encrypted columns + real EncryptionService calls) mirrors the same deliberate, correct pattern already confirmed for artists/clients in reports.md -- this part of the module is well-engineered and not implicated in any of the CRUD-breaking bugs, since those requests fail validation before ever reaching the encryption code.",
+          "Direct, doubly-confirmed consequence for the Auditoria.tsx completeness checker: its RH rule checks for nome_completo on rows from the 'funcionarios' table/endpoint, but since GET /hr/employees never returns nome_completo at all (entity doesn't declare the column), this rule flags every employee in the system, unconditionally, as 'Funcionário sem nome' regardless of actual data completeness -- not a data-quality signal but a structural blind spot inherited directly from the entity/column gap."
+        ]
+      },
+      "settings": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/settings.md",
+        "domainMeaning": "Multi-surface configuration hub (tenant profile/branding, user preferences, notifications, security, access, integrations, localization, billing, feature configuration, public registration) -- no single backend `settings` module exists; frontend aggregates several independently-real backend modules plus one deliberately-stubbed local concept",
+        "subdomainsAudited": 10,
+        "settingsPersistenceGaps": 15,
+        "notificationSettingsGaps": 1,
+        "fakeSettingsSaveGaps": 5,
+        "localStorageGaps": 1,
+        "securitySettingsGaps": 6,
+        "realMappingGaps": 4,
+        "settingsConsumerGaps": 4,
+        "brandingGaps": 1,
+        "unusedSettingGaps": 5,
+        "featureEnforcementGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "keyFindings": [
+          "Determined 'settings' is a multi-surface umbrella UI with no single backend module of its own -- it aggregates company-settings (real), notifications (real but disconnected), billing (real but fragmented across 3 UIs), and RBAC (real, shared with auth), plus one deliberately-stubbed local concept (operational lists) that was never given a backend at all.",
+          "Notification preferences are a dead loop confirmed from both ends independently: the real, validated, audited backend (GET/PATCH /notifications/settings, tenant-scoped, 14 keys) has zero frontend callers anywhere in apps/web/src; the UI's 'Automacoes' tab instead reads/writes useUserSettings, a pure localStorage hook with superficially-similar but not identical keys, 4 of whose switches are hardcoded `<Switch checked={true}>` with no onCheckedChange handler at all (permanently on, non-interactive). Separately confirmed the one real email-sending path (email.processor.ts, contract_expiring job) sends unconditionally without ever checking notification_settings.enabled -- neither side of this feature reads what the other writes.",
+          "Branding logo upload confirmed broken end-to-end: LogoUploader.tsx has genuinely good client-side defense (MIME+extension allowlist plus real magic-byte sniffing blocking disguised executables) but POSTs to /api/v1/workspaces/{id}/logo, which does not exist as a backend route anywhere -- the service file's own header comment admits this is aspirational ('endpoints serao implementados no backend posteriormente'). The storage target (organizations.config.logoUrl/faviconUrl/colors) already exists and is already read/written by company-settings.service.ts -- nothing wires an actual file upload into it despite a real, working R2-backed uploads module existing elsewhere in the codebase that could have been reused.",
+          "Business-critical LOCAL_STORAGE_GAP confirmed: the organization's public-registration slug -- real, unique DB columns exist on both organizations.slug and tenants.slug, and the public-registration backend genuinely resolves workspaces by slug server-side -- is only ever set via saveOrgSlug(), which writes exclusively to one specific admin's browser localStorage (keyed per-user-id), never to any backend endpoint. A different admin opening Configuracoes.tsx sees an empty slug field even if the tenant already has a real one in the database. Compounds directly with a second, independent finding: the 'Cadastro Publico' tab's action buttons are all disabled with the tooltip 'Disponivel quando o backend de cadastro publico estiver ativo' even though public-registration.controller.ts and leads.service.ts already implement and actively track this feature server-side -- the rare inverse pattern for this audit series (backend shipped, frontend copy never updated), rather than the far more common frontend-ahead-of-backend pattern found everywhere else this session.",
+          "Billing found fragmented across THREE separate, inconsistent UI surfaces: the Configuracoes.tsx tab (correct architecture, backend-driven plans) calls a nonexistent GET /billing/invoices endpoint (only the super_admin-gated /billing/admin/invoices exists) -- every regular admin's invoice history is permanently, silently empty by construction, indistinguishable from genuinely having no invoices; a second standalone Billing.tsx page hardcodes plan pricing directly, contradicting the codebase's own explicit governance comment elsewhere ('planos NAO podem ser hardcoded na tela'); a third card in the Configuracoes tab shows an entirely fake, hardcoded payment-method display (•••• •••• •••• 4242) with three action buttons that show a toast pointing to email support instead of calling the real stripeClient.createCheckout/openPortal functions that genuinely exist and are correctly used one file over in Billing.tsx.",
+          "Confirmed feature flags (FeatureGate, wrapping 13 module pages across accounting/events/inventory/licensing/marketing/monitoring/rh) are enforced client-side ONLY -- an exhaustive grep for the plan-feature keys across the entire apps/api/src backend returns hits only in billing seed data and plan-definition maps, never in any NestJS guard -- downgrading a plan only hides the wrapped page, the underlying API for that module stays fully reachable via direct calls. Separately found a concrete, systemic navigation bug: FeatureGate's own 'Ver planos e fazer upgrade' button navigates to /settings/billing, a route that is not registered anywhere in settings.routes.tsx (only /configuracoes/billing exists) -- every one of the 13 gated pages' upgrade prompt links to a dead route.",
+          "Localization (timezone/currency/language) is confirmed genuinely persisted server-side via a fully real GET/PATCH /company-settings path (tenants.settings jsonb) -- but Configuracoes.tsx never renders any UI field for any of the three, and no consumer anywhere in the codebase (including accounting) reads the tenant's stored currency -- amount formatting uses a fixed pt-BR/BRL convention throughout instead. A fully orphaned, backend-ready, UI-less, consumer-less setting.",
+          "Positive, distinguishing finding for this module (unlike most others audited this session): the 'operational lists' stub (14 configurable lists feeding leads/events/marketing dropdowns, routed through settings.service.ts's storage.getRaw/setRaw wrapper) is a DELIBERATE, self-aware no-op, not a disguised fake-success bug -- the service file's own extensive header comment explains a prior React-tree-crashing incident that forced this fail-silent design and explicitly states the correct classification is 'nao suportado, nao sucesso fabricado' (not supported, not fabricated success). Cross-confirmed against the DB mapping showing the underlying operational_list_items table is real, migrated, and has every column tagged NO_TABLE_CONSUMER. Tenant isolation and authorization were confirmed sound throughout at the backend layer for every real endpoint found -- the module's genuine failures are entirely in field-mapping/wiring/scope-confusion, not security."
+        ]
+      },
+      "support": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/support.md",
+        "domainMeaning": "SUPPORT_TICKETS (real, tenant-scoped) + 4 self-documented fake sub-features (SUPPORT_CHAT, KNOWLEDGE_BASE/FAQ, INCIDENT_SUPPORT/status page, feature-request board) sharing one frontend module",
+        "subdomainsAudited": 6,
+        "enumMismatch": 2,
+        "codeFieldOnly": 1,
+        "displayMappingMismatch": 2,
+        "adminSupportScopeGaps": 1,
+        "messageMappingGaps": 1,
+        "attachmentStorageGaps": 1,
+        "slaGaps": 1,
+        "knowledgeBaseGaps": 1,
+        "notificationGaps": 1,
+        "assignmentGaps": 1,
+        "truncationGaps": 1,
+        "realMappingGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "adminSupportScopeResolved": true,
+        "adminSupportCrossTenantFunctional": false,
+        "adminKnowledgeSupportClassification": "DEV_ONLY",
+        "keyFindings": [
+          "Determined 'support' is one real, well-built tenant-scoped ticket system (SUPPORT_TICKETS) with FOUR entirely fake sub-features bolted onto the same frontend module -- confirmed by the module's own hook file header comment, which states outright that chat/knowledge-base/requests have no real endpoint and every mutation must fail explicitly rather than simulate a backend in localStorage. This is a deliberate, self-documented honesty pattern (toast errors, not fabricated success) distinct from most fake-feature findings elsewhere this session.",
+          "CLOSED the admin.md cross-module pendency on AdminSupport with full end-to-end evidence: confirmed the 'Support Hub'/'platform-wide ticket oversight' framing is backed by exactly one endpoint, GET /support-tickets?limit=200 -- the IDENTICAL tenant-scoped route the regular support module itself calls. No super_admin-only or cross-tenant route exists anywhere in SupportTicketsController (5 routes total, all tenant-scoped). admin-support.service.ts's own mapper hardcodes tenant_name:'' with a self-aware comment acknowledging the endpoint never exposes it. Classified UI_ONLY_CROSS_TENANT_FRAMING -- a functional gap relative to what the panel promises, explicitly NOT a security defect (isolation is total and correct in both directions, no elevated-privilege path exists anywhere).",
+          "CLOSED the AdminKnowledge classification: confirmed it has no independent knowledge-base concept or service of its own -- KnowledgeBaseManager.tsx imports the exact same fake useKnowledgeArticles() hook defined in modules/support/hooks/useSupport.ts (no separate admin-knowledge.service.ts exists anywhere). Classified DEV_ONLY (not STUB/DEAD) specifically because the code is honest about its own limitation and self-disables via an IS_PROD gate in production, showing an explicit 'funcionalidade indisponivel' empty state rather than ever exposing the localStorage mock to real users.",
+          "Most severe NEW finding (not in admin.md): a three-way ticket-status ENUM_MISMATCH. Backend truth is 6 states including pending_user and cancelled; the support module's own frontend type has only 5 states using 'waiting_customer' instead and omitting cancelled entirely; a THIRD, independently different spelling ('waiting') exists in the admin module's own separate copy of the same type. Every Record<TicketStatus,...> lookup map across 4 files (SupportTickets.tsx, SupportTicketDetail.tsx, SupportDashboard.tsx, AdminSupport.tsx) is keyed only by these incomplete frontend types -- confirmed a reachable, unguarded TypeError in AdminSupport.tsx specifically (`STATUS_CFG[t.status].bg` when t.status is genuinely 'pending_user' or 'cancelled', both real workflow-legal states any manager can reach).",
+          "Second, independent ENUM_MISMATCH found on ticket category: the backend DTO constrains category to 5 support-ticket-type values (billing/technical/feature-request/access/other) via class-validator, but the frontend's TicketCategory type declares 10 completely unrelated domain-area values (financeiro/analytics/distribuicao/contratos/artistas/projetos/usuarios/permissoes/integracoes/outro) -- any ticket created via the real form using the frontend's vocabulary would be rejected by the backend's @IsIn validator outright, a create-time rejection risk distinct from the status enum's display-time crash risk.",
+          "Attachments confirmed fake, and specifically MORE fake than any other upload pattern found this session: SupportChat.tsx's handleFileChange() reads only the browser File object's name/size/type client-side and string-concatenates a marker into outgoing chat text -- no URL.createObjectURL, no FormData, no network call of any kind, not even an ephemeral blob reference (contrast with musicchat.md's blob: URL pattern or releases.md's real R2 upload). Since the real ticket create/edit flow has NO attachment UI at all, this fake behavior is entirely confined to the already-100%-fake chat simulator.",
+          "Confirmed a genuine, well-engineered real subsystem underneath: a real workflow engine (7 transitions, role-gated, enforced in a DB transaction via WorkflowService.transitionInTx), real tenant isolation at every layer (0 authorization gaps, 0 tenant isolation gaps), a real (if narrow) SLA layer (sla_deadline/resolved_at columns, a compliance flag computed once at resolution), and a real AI-triage automation (support-triage.automation.ts, listens on ticket-created, writes classification into metadata.aiTriage, explicitly documented as side-effect-free). Also found: two independent notification handlers both fire on ticket resolution, persisting two separate DB rows for two DIFFERENT recipients (the requester via one handler, the resolving manager themselves via a second, generic handler) plus one real Supabase Realtime broadcast -- a duplicate/misdirected notification fan-out, not previously documented.",
+          "Confirmed 'Solicitante' (requester) displays a raw UUID in the real UI -- created_by/assigned_to are bare varchar(255) strings with no FK/typed relation to any users/contacts table anywhere in the module, and no join or lookup exists to resolve them to a display name. Cross-checked and confirmed crm-relationships/contacts has zero relation to this module at all -- there is no lookup path this could even use if display resolution were added. Also confirmed useTickets() sends an explicit limit=200 override (better than the systemic zero-override 50-row pattern found in most other modules this session), still a fixed ceiling with no pagination UI beyond it."
+        ]
+      },
+      "workspace": {
+        "status": "COMPLETE",
+        "file": "docs/backend-v2/field-traceability/modules/workspace.md",
+        "domainMeaning": "UI/DTO-facing name for the `tenants` table -- the app-scoping isolation unit; related but distinct from `organizations` (legal/billing parent, 1:1 in practice via provisioning, not schema-enforced)",
+        "workspaceTenantRelationship": "SAME_ENTITY",
+        "canonicalTenantIdentifier": "tenants.id (delivered as JWT app_metadata claim named \"org_id\")",
+        "subdomainsAudited": 7,
+        "displayMappingMismatch": 1,
+        "publicSlugGaps": 1,
+        "sessionStalenessGaps": 1,
+        "authorizationGaps": 0,
+        "tenantIsolationGaps": 0,
+        "provisioningAtomicityGaps": 0,
+        "provisioningIdempotencyGaps": 0,
+        "lastOwnerProtectionGaps": 0,
+        "storageTenantIsolationGaps": 0,
+        "keyFindings": [
+          "Resolved the module's central identity question with a precise, non-obvious finding: WORKSPACE_TENANT_RELATIONSHIP = SAME_ENTITY -- 'workspace' is purely the UI/DTO-facing name for the `tenants` database table (ProvisionWorkspaceDto.workspaceName/workspaceSlug write directly into tenants.name/tenants.slug, confirmed by direct read of WorkspaceProvisioningService.provision()), while `organizations` is a genuinely distinct legal/billing parent entity (CNPJ, billing_status, industry) in a tenants.org_id FK relationship, 1:1 in practice via provisioning but not schema-enforced. CANONICAL_TENANT_IDENTIFIER resolved precisely: the JWT claim used everywhere for tenant resolution is NAMED 'org_id' but its real runtime value, written by WorkspaceProvisioningService, is always `tenants.id` (`app_metadata: {org_id: membership.tenant_id, ...}`) -- a confusing naming artifact from an earlier design, not a semantic pointer to the organizations table. Confirmed self-consistent against TenantBootstrapResolver's 3-way OR match query.",
+          "Confirmed provisioning (WorkspaceProvisioningService.provision()) is genuinely atomic and idempotent -- the strongest, cleanest create-flow found in this entire audit series (0 CREATE_MAPPING_MISMATCH). Single Postgres transaction wraps organizations+tenants+org_members inserts, guarded by two advisory locks (per-user, per-slug), with an existing-active-membership short-circuit making re-invocation a genuine no-op rather than a duplicate-creation risk. The one step outside the DB transaction (Supabase Admin API app_metadata sync) is deliberately sequenced BEFORE commit, so a Supabase-side failure correctly rolls back the entire DB write via the catch block -- no split-state (workspace exists in Postgres but JWT never gets the claim) is reachable through this code path.",
+          "Confirmed TenantGuard (core authorization chokepoint for the entire system) never trusts the client-supplied X-Tenant-ID header as an authority -- the real tenant is always resolved server-side from the verified JWT's org_id claim, with the header used ONLY as a fail-closed consistency check (ForbiddenException if it doesn't match the JWT-resolved tenant). Membership is independently re-validated from the org_members table on every request (subject to a 60s distributed-cache TTL). This closes the multi-tenant identity chain that every other module in this 24-module audit series depended on and assumed correct -- now confirmed with direct evidence rather than inherited by convention.",
+          "Confirmed no workspace-switcher exists anywhere in the frontend (exhaustive grep of TenantContext.tsx/AuthContext.tsx, zero matches) -- one JWT session carries exactly one tenant claim, set once from /auth/context and never offered as a selectable list. Notably the schema itself does NOT prevent a single auth_user_id from holding active org_members rows in multiple tenants (unique constraint is per-tenant, not global) -- so multi-tenant membership is technically possible at the data layer, but nothing in the UI or /auth/context response ever surfaces a second membership or lets a user switch to it within a session. Classified as a confirmed architectural characteristic, not a gap, absent evidence the product intends session-level switching.",
+          "Confirmed the dual role model (org_members.role legacy string + role_id RBAC FK, already documented at the service level in auth.md) is disciplined and gap-free at the schema/write level specifically for workspace membership: every create/update/assignRole call performs an atomic dual-write via MembershipRoleResolverService, and last-owner protection (assertNotLastOwner) is confirmed enforced on BOTH the role-demotion and member-removal paths, not just one.",
+          "Found a third independent instance of the 'fragmented duplicate UI surface' pattern settings.md already documented twice (billing: 3 UIs; password-change: 2 UIs): /usuarios (Usuarios.tsx) can send invites but has zero UI for listing/resending/cancelling pending invitations and shows no pending-vs-accepted status distinction (since the membership row is created immediately at invite time, before acceptance) -- while Configuracoes.tsx's 'Usuarios' tab, via the same backend, has the complete surface (teamInvites/cancelInvite/resendInvite, all confirmed wired to real endpoints).",
+          "Closed the settings.md public-registration-slug pendency: PUBLIC_REGISTRATION_SLUG_WORKSPACE_OWNED=SIM -- confirmed the slug is semantically a workspace/tenant-level property (tenants.slug, real unique column, genuinely resolved server-side by the public registration backend) -- settings.md's finding that the admin UI only ever writes it to per-user localStorage stands confirmed and unchanged, with the domain-ownership question now conclusively resolved.",
+          "Found one genuine, bounded (not unbounded) SESSION_STALENESS_GAP: TenantGuard caches resolved tenant/membership for 60s via a distributed cache -- a just-deactivated membership could retain up to 60 seconds of continued access if its cache entry was populated immediately prior to deactivation. Classified as a real but self-healing window, not a permanent isolation bypass -- not counted as a TENANT_ISOLATION_GAP. Confirmed the one genuinely cross-tenant admin surface in the entire product (GET/PATCH /billing/admin/tenants, super_admin-gated) is properly backend-authorized, not merely UI-framed like AdminAudit/AdminSupport -- and confirmed no tenant-creation capability exists in any admin panel, consistent with admin.md's finding that provisioning is the sole creation path."
+        ]
+      }
+    },
+    "remainingSections": [
+      "5 (frontend chain re-derivation)",
+      "6 (component audit)",
+      "7 (hooks audit)",
+      "8 (create forms)",
+      "9 (edit forms)",
+      "10 (modals/drawers/wizards)",
+      "11 (table/grid columns)",
+      "12 (derived fields)",
+      "13 (relations/selects)",
+      "14 (join tables UI)",
+      "15 (filters)",
+      "16 (search)",
+      "17 (sort)",
+      "18 (pagination)",
+      "19 (import)",
+      "20 (export)",
+      "21 (XLSX rule check)",
+      "22 (financial field-level, frontend side)",
+      "23 (transaction->P&L full chain)",
+      "24 (realtime)",
+      "25 (storage)",
+      "26 (auth field layering, frontend side)",
+      "27 (integrations)",
+      "28 (UI-only fields)",
+      "30 (frontend fields without DB column)"
+    ]
+  }
+}

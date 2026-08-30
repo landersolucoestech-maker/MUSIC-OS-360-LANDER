@@ -1,0 +1,1122 @@
+{
+  "generatedBy": "code-database-crosscheck-recalculation",
+  "baseline": {
+    "source": "docs/backend-v2/database-inventory/code-vs-live.md (Prompt 93/94)",
+    "MATCH": 119,
+    "LIVE_ONLY": 23,
+    "CODE_ONLY": 9
+  },
+  "methodologyFix": [
+    "@Entity({name, schema}) object-syntax now parsed (previously only @Entity('literal') string form).",
+    "@JoinTable({name, joinColumn, inverseJoinColumn}) now parsed and resolved to owning/related entity.",
+    "Raw SQL table refs extracted from qr.query/manager.query/dataSource.query calls, classified RUNTIME_SQL vs MIGRATION_SQL vs TEST_SQL vs SCRIPT_SQL — only RUNTIME_SQL counts as an active code consumer.",
+    "Supabase-js .from()/.rpc()/.channel()/postgres_changes usage re-audited directly (regex false-matched Array.from() previously); confirmed 0 direct table access from frontend or backend — all supabase-js usage is .auth.* (admin user mgmt / session) or .channel() for private realtime broadcast, never table reads/writes.",
+    "Postgres native partitions (rbac_decision_logs_2026_06..10, rbac_decision_logs_default) identified via migration DDL (PARTITION OF) and excluded from the MATCH/LIVE_ONLY dichotomy as non-standalone objects.",
+    "musicos360_migrations identified as TypeORM-managed tooling table (datasource.ts migrationsTableName), excluded as non-application object."
+  ],
+  "objects": [
+    {
+      "schema": "public",
+      "object": "users",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [
+        "apps/api/src/modules/users/entities/user.entity.ts (UserEntity, @Entity({schema:\"public\",name:\"users\"}))"
+      ],
+      "frontendRuntime": [
+        "consumed indirectly via /users, /auth endpoints (session/profile)"
+      ],
+      "relations": [
+        "auth_user_id UNIQUE -> logical (non-FK) link to auth.users.id (Supabase-managed schema)"
+      ],
+      "rawSql": [],
+      "classification": "MATCH",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "MATCH",
+      "evidence": [
+        "Original PROMPT-93 extraction only matched @Entity('literal'); user.entity.ts uses object syntax @Entity({ schema: \"public\", name: \"users\" }) at line 10, missed by that regex."
+      ],
+      "justification": "public.users is the application user-profile table (id uuid PK, auth_user_id unique text, email, display_name), distinct from Supabase-managed auth.users (identity/credentials) and from public.org_members (tenant membership/role). No app.users exists yet (v2 not built)."
+    },
+    {
+      "schema": "public",
+      "object": "release_works",
+      "objectType": "JOIN_TABLE",
+      "databasePresent": true,
+      "backendRuntime": [
+        "apps/api/src/database/entities.ts:1326-1332 (ReleaseEntity.works, @ManyToMany(() => WorkEntity) + @JoinTable)"
+      ],
+      "frontendRuntime": [
+        "indirect, via /releases works-linking UI"
+      ],
+      "relations": [
+        {
+          "joinTable": "release_works",
+          "owningEntity": "ReleaseEntity",
+          "relatedEntity": "WorkEntity",
+          "joinColumn": "release_id -> releases.id",
+          "inverseJoinColumn": "work_id -> works.id"
+        }
+      ],
+      "rawSql": [],
+      "classification": "MATCH",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "MATCH",
+      "evidence": [
+        "@JoinTable has no dedicated @Entity class by TypeORM design; original extraction only looked for @Entity, missing relation-owned join tables entirely."
+      ],
+      "justification": "Real, actively-mapped many-to-many join table owned by ReleaseEntity.works, not a gap."
+    },
+    {
+      "schema": "public",
+      "object": "financial_transactions",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [
+        "apps/api/src/modules/financial-categories/financial-categories.service.ts (remove() guard query: COUNT(*) FROM financial_transactions WHERE tenant_id=$1 AND category_id=$2, labeled \"canonical_transactions\" in code)"
+      ],
+      "frontendRuntime": [],
+      "relations": [
+        "category_id -> financial_categories.id (new tree schema)"
+      ],
+      "rawSql": [
+        {
+          "kind": "RUNTIME_SQL",
+          "file": "apps/api/src/modules/financial-categories/financial-categories.service.ts"
+        }
+      ],
+      "classification": "MATCH",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "MATCH (PARTIALLY_MIGRATED — see financialDomain)",
+      "evidence": [
+        "Raw SQL FROM financial_transactions not detected by original @Entity-only extraction; no dedicated FinancialTransactionsEntity/service/controller exists (no modules/financial-transactions folder)."
+      ],
+      "justification": "Code explicitly labels this table \"canonical_transactions\" — the intended replacement for legacy transactions — and actively guards against it in financial_categories.remove(). It is the target, not yet the sole, write path (see financialDomain section for full resolution). CANONICAL CORRECTION (Product Owner decision REMOVE_SECOND_ACCOUNTING_LAYER, see docs/backend-v2/review/01-full-project-exhaustive-verification.md §XV.6/PO-VERIFY-027): despite the code's own \"canonical_transactions\" label, financial_transactions is REJECTED_ARCHITECTURE — it is not, and will not become, the target write path. transactions remains the single canonical financial ledger. This justification field is preserved verbatim as historical evidence of what the code comment said; it no longer describes the target architecture."
+    },
+    {
+      "schema": "public",
+      "object": "rbac_decision_logs",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [
+        "apps/api/src/core/rbac/rbac-telemetry.service.ts"
+      ],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [
+        {
+          "kind": "RUNTIME_SQL",
+          "file": "apps/api/src/core/rbac/rbac-telemetry.service.ts"
+        }
+      ],
+      "classification": "MATCH",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "MATCH",
+      "evidence": [
+        "Raw SQL runtime consumer found via .query() scan, not detectable by @Entity-only extraction. RBAC decision audit log writes (partitioned parent table)."
+      ],
+      "justification": "Actively read/written at runtime via raw parameterized SQL; not TypeORM-entity-mapped by design."
+    },
+    {
+      "schema": "public",
+      "object": "rbac_error_logs",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [
+        "apps/api/src/core/rbac/rbac-error-log.service.ts"
+      ],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [
+        {
+          "kind": "RUNTIME_SQL",
+          "file": "apps/api/src/core/rbac/rbac-error-log.service.ts"
+        }
+      ],
+      "classification": "MATCH",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "MATCH",
+      "evidence": [
+        "Raw SQL runtime consumer found via .query() scan, not detectable by @Entity-only extraction. RBAC error log writes."
+      ],
+      "justification": "Actively read/written at runtime via raw parameterized SQL; not TypeORM-entity-mapped by design."
+    },
+    {
+      "schema": "public",
+      "object": "tenant_invitations",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [
+        "apps/api/src/modules/auth/auth-context.service.ts + apps/api/src/modules/users/users.service.ts"
+      ],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [
+        {
+          "kind": "RUNTIME_SQL",
+          "file": "apps/api/src/modules/auth/auth-context.service.ts + apps/api/src/modules/users/users.service.ts"
+        }
+      ],
+      "classification": "MATCH",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "MATCH",
+      "evidence": [
+        "Raw SQL runtime consumer found via .query() scan, not detectable by @Entity-only extraction. invitation lifecycle (create/accept/expire), raw-SQL driven, no dedicated @Entity."
+      ],
+      "justification": "Actively read/written at runtime via raw parameterized SQL; not TypeORM-entity-mapped by design."
+    },
+    {
+      "schema": "public",
+      "object": "rbac_decision_logs_2026_06",
+      "objectType": "TABLE_PARTITION",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [
+        {
+          "partitionOf": "rbac_decision_logs"
+        }
+      ],
+      "rawSql": [],
+      "classification": "NON_APPLICABLE_OBJECT_TYPE",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "PARTITION_OF_rbac_decision_logs",
+      "evidence": [
+        "apps/api/src/database/migrations/20260614000008_CreateRbacDecisionLogs.ts: CREATE TABLE ... PARTITION OF \"rbac_decision_logs\" (monthly range partitions + DEFAULT partition)."
+      ],
+      "justification": "Native Postgres declarative partition of rbac_decision_logs, not an independent business/code object; consumer coverage is inherited from the parent table (already MATCH)."
+    },
+    {
+      "schema": "public",
+      "object": "rbac_decision_logs_2026_07",
+      "objectType": "TABLE_PARTITION",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [
+        {
+          "partitionOf": "rbac_decision_logs"
+        }
+      ],
+      "rawSql": [],
+      "classification": "NON_APPLICABLE_OBJECT_TYPE",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "PARTITION_OF_rbac_decision_logs",
+      "evidence": [
+        "apps/api/src/database/migrations/20260614000008_CreateRbacDecisionLogs.ts: CREATE TABLE ... PARTITION OF \"rbac_decision_logs\" (monthly range partitions + DEFAULT partition)."
+      ],
+      "justification": "Native Postgres declarative partition of rbac_decision_logs, not an independent business/code object; consumer coverage is inherited from the parent table (already MATCH)."
+    },
+    {
+      "schema": "public",
+      "object": "rbac_decision_logs_2026_08",
+      "objectType": "TABLE_PARTITION",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [
+        {
+          "partitionOf": "rbac_decision_logs"
+        }
+      ],
+      "rawSql": [],
+      "classification": "NON_APPLICABLE_OBJECT_TYPE",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "PARTITION_OF_rbac_decision_logs",
+      "evidence": [
+        "apps/api/src/database/migrations/20260614000008_CreateRbacDecisionLogs.ts: CREATE TABLE ... PARTITION OF \"rbac_decision_logs\" (monthly range partitions + DEFAULT partition)."
+      ],
+      "justification": "Native Postgres declarative partition of rbac_decision_logs, not an independent business/code object; consumer coverage is inherited from the parent table (already MATCH)."
+    },
+    {
+      "schema": "public",
+      "object": "rbac_decision_logs_2026_09",
+      "objectType": "TABLE_PARTITION",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [
+        {
+          "partitionOf": "rbac_decision_logs"
+        }
+      ],
+      "rawSql": [],
+      "classification": "NON_APPLICABLE_OBJECT_TYPE",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "PARTITION_OF_rbac_decision_logs",
+      "evidence": [
+        "apps/api/src/database/migrations/20260614000008_CreateRbacDecisionLogs.ts: CREATE TABLE ... PARTITION OF \"rbac_decision_logs\" (monthly range partitions + DEFAULT partition)."
+      ],
+      "justification": "Native Postgres declarative partition of rbac_decision_logs, not an independent business/code object; consumer coverage is inherited from the parent table (already MATCH)."
+    },
+    {
+      "schema": "public",
+      "object": "rbac_decision_logs_2026_10",
+      "objectType": "TABLE_PARTITION",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [
+        {
+          "partitionOf": "rbac_decision_logs"
+        }
+      ],
+      "rawSql": [],
+      "classification": "NON_APPLICABLE_OBJECT_TYPE",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "PARTITION_OF_rbac_decision_logs",
+      "evidence": [
+        "apps/api/src/database/migrations/20260614000008_CreateRbacDecisionLogs.ts: CREATE TABLE ... PARTITION OF \"rbac_decision_logs\" (monthly range partitions + DEFAULT partition)."
+      ],
+      "justification": "Native Postgres declarative partition of rbac_decision_logs, not an independent business/code object; consumer coverage is inherited from the parent table (already MATCH)."
+    },
+    {
+      "schema": "public",
+      "object": "rbac_decision_logs_default",
+      "objectType": "TABLE_PARTITION",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [
+        {
+          "partitionOf": "rbac_decision_logs"
+        }
+      ],
+      "rawSql": [],
+      "classification": "NON_APPLICABLE_OBJECT_TYPE",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "PARTITION_OF_rbac_decision_logs",
+      "evidence": [
+        "apps/api/src/database/migrations/20260614000008_CreateRbacDecisionLogs.ts: CREATE TABLE ... PARTITION OF \"rbac_decision_logs\" (monthly range partitions + DEFAULT partition)."
+      ],
+      "justification": "Native Postgres declarative partition of rbac_decision_logs, not an independent business/code object; consumer coverage is inherited from the parent table (already MATCH)."
+    },
+    {
+      "schema": "public",
+      "object": "musicos360_migrations",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [
+        "apps/api/src/database/datasource.ts (migrationsTableName: \"musicos360_migrations\")"
+      ],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "NON_APPLICABLE_OBJECT_TYPE",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "TOOLING_MANAGED_NOT_APPLICATION_TABLE",
+      "evidence": [
+        "TypeORM-managed migration bookkeeping table, explicitly named via datasource.ts config; not a business/application entity by design."
+      ],
+      "justification": "Excluded from application MATCH/LIVE_ONLY dichotomy — it is infrastructure owned by the migration runner itself."
+    },
+    {
+      "schema": "public",
+      "object": "budget_revisions",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "Table created by migration; no service/controller/repository references it anywhere outside migrations and migration .spec.ts tests."
+    },
+    {
+      "schema": "public",
+      "object": "budgets",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "Same as budget_revisions — schema exists ahead of backend implementation."
+    },
+    {
+      "schema": "public",
+      "object": "cost_centers",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "Referenced conceptually as an FK target column name (financial_transactions.cost_center_id) but has no dedicated repository/service; no runtime SQL FROM/JOIN cost_centers found."
+    },
+    {
+      "schema": "public",
+      "object": "counterparties",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "Same pattern as cost_centers — FK target only, no dedicated runtime consumer found."
+    },
+    {
+      "schema": "public",
+      "object": "financial_accounts",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "Same pattern — FK target only (financial_transactions.account_id/counter_account_id), no dedicated runtime consumer found."
+    },
+    {
+      "schema": "public",
+      "object": "financial_category_templates",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "New-schema table created by 20260718000002_FinancialCategories.ts (global template catalog, linked via financial_categories.template_id); no runtime SQL reference to the table itself found yet — financial-categories.service.ts reads/writes template_id as a column but never queries financial_category_templates directly."
+    },
+    {
+      "schema": "public",
+      "object": "lead_uploads",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "No backend runtime consumer found. Frontend has only a local Zustand cache (useLeadUploadsStore, apps/web/src/modules/leads/store/lead-uploads.store.ts) with no fetch/API call — it is populated from elsewhere or is itself a placeholder."
+    },
+    {
+      "schema": "public",
+      "object": "operational_list_items",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "Only reference anywhere in code is one migration (20260718000007_FinancialRls.ts, RLS policy setup) — no service/controller/repository/raw SQL consumer found."
+    },
+    {
+      "schema": "public",
+      "object": "performance_metric_entries",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "Only referenced in migration/migration-spec files; no runtime service consumer found."
+    },
+    {
+      "schema": "public",
+      "object": "transaction_allocations",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LIVE_ONLY",
+      "oldClassification": "LIVE_ONLY",
+      "newClassification": "LIVE_ONLY (confirmed, not a methodology artifact)",
+      "evidence": [
+        "No @Entity (string/object/bare), no @JoinTable, no RUNTIME_SQL FROM/JOIN/INTO reference found across apps/api/src, apps/web/src, packages/, scripts/, supabase/."
+      ],
+      "justification": "Referenced in migrations/migration-specs only; no runtime service consumer found despite being schematically related to financial_transactions installments/allocations."
+    },
+    {
+      "schema": "public",
+      "object": "ai",
+      "objectType": "CODE_ENTITY_NO_TABLE",
+      "databasePresent": false,
+      "backendRuntime": [
+        "apps/api/src/modules/ai/entities/ai.entity.ts (@Entity('ai')), apps/api/src/modules/ai/repositories/ai.repository.ts"
+      ],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LEGACY_CODE_DEAD",
+      "oldClassification": "CODE_ONLY",
+      "newClassification": "LEGACY_CODE_DEAD",
+      "evidence": [
+        "Entity is a minimal auto-generated CRUD scaffold (id, created_at, updated_at only — no business columns).",
+        "ai.repository.ts (create/update boilerplate) is imported ONLY by apps/api/src/modules/repositories-tenant-isolation.spec.ts, a generic mechanical test iterating every module repository for tenant-scoping pattern compliance — not a real business service/controller.",
+        "No migration ever created a table named \"ai\"; the module name coincides with an infrastructure/cross-cutting concern (ai), not a real business entity."
+      ],
+      "justification": "Leftover scaffolding stub from module generation, never wired to real business logic and never migrated. Safe to leave as dead code or remove; not a database gap requiring a table to be created."
+    },
+    {
+      "schema": "public",
+      "object": "auth",
+      "objectType": "CODE_ENTITY_NO_TABLE",
+      "databasePresent": false,
+      "backendRuntime": [
+        "apps/api/src/modules/auth/entities/auth.entity.ts (@Entity('auth')), apps/api/src/modules/auth/repositories/auth.repository.ts"
+      ],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LEGACY_CODE_DEAD",
+      "oldClassification": "CODE_ONLY",
+      "newClassification": "LEGACY_CODE_DEAD",
+      "evidence": [
+        "Entity is a minimal auto-generated CRUD scaffold (id, created_at, updated_at only — no business columns).",
+        "auth.repository.ts (create/update boilerplate) is imported ONLY by apps/api/src/modules/repositories-tenant-isolation.spec.ts, a generic mechanical test iterating every module repository for tenant-scoping pattern compliance — not a real business service/controller.",
+        "No migration ever created a table named \"auth\"; the module name coincides with an infrastructure/cross-cutting concern (auth), not a real business entity."
+      ],
+      "justification": "Leftover scaffolding stub from module generation, never wired to real business logic and never migrated. Safe to leave as dead code or remove; not a database gap requiring a table to be created."
+    },
+    {
+      "schema": "public",
+      "object": "billing",
+      "objectType": "CODE_ENTITY_NO_TABLE",
+      "databasePresent": false,
+      "backendRuntime": [
+        "apps/api/src/modules/billing/entities/billing.entity.ts (@Entity('billing')), apps/api/src/modules/billing/repositories/billing.repository.ts"
+      ],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LEGACY_CODE_DEAD",
+      "oldClassification": "CODE_ONLY",
+      "newClassification": "LEGACY_CODE_DEAD",
+      "evidence": [
+        "Entity is a minimal auto-generated CRUD scaffold (id, created_at, updated_at only — no business columns).",
+        "billing.repository.ts (create/update boilerplate) is imported ONLY by apps/api/src/modules/repositories-tenant-isolation.spec.ts, a generic mechanical test iterating every module repository for tenant-scoping pattern compliance — not a real business service/controller.",
+        "No migration ever created a table named \"billing\"; the module name coincides with an infrastructure/cross-cutting concern (billing), not a real business entity."
+      ],
+      "justification": "Leftover scaffolding stub from module generation, never wired to real business logic and never migrated. Safe to leave as dead code or remove; not a database gap requiring a table to be created."
+    },
+    {
+      "schema": "public",
+      "object": "health",
+      "objectType": "CODE_ENTITY_NO_TABLE",
+      "databasePresent": false,
+      "backendRuntime": [
+        "apps/api/src/modules/health/entities/health.entity.ts (@Entity('health')), apps/api/src/modules/health/repositories/health.repository.ts"
+      ],
+      "frontendRuntime": [],
+      "relations": [],
+      "rawSql": [],
+      "classification": "LEGACY_CODE_DEAD",
+      "oldClassification": "CODE_ONLY",
+      "newClassification": "LEGACY_CODE_DEAD",
+      "evidence": [
+        "Entity is a minimal auto-generated CRUD scaffold (id, created_at, updated_at only — no business columns).",
+        "health.repository.ts (create/update boilerplate) is imported ONLY by apps/api/src/modules/repositories-tenant-isolation.spec.ts, a generic mechanical test iterating every module repository for tenant-scoping pattern compliance — not a real business service/controller.",
+        "No migration ever created a table named \"health\"; the module name coincides with an infrastructure/cross-cutting concern (health), not a real business entity."
+      ],
+      "justification": "Leftover scaffolding stub from module generation, never wired to real business logic and never migrated. Safe to leave as dead code or remove; not a database gap requiring a table to be created."
+    },
+    {
+      "schema": "public",
+      "object": "financial_category_rules",
+      "objectType": "CODE_ENTITY_NO_TABLE",
+      "databasePresent": false,
+      "backendRuntime": [
+        "apps/api/src/database/entities.ts (dead entity reference)",
+        "apps/api/src/modules/reports/entity-metadata.service.ts",
+        "apps/api/src/database/financial-migrations.static.spec.ts"
+      ],
+      "frontendRuntime": [
+        "apps/web/src/modules/accounting/hooks/useFinancialCategoryRulesStore.ts (localStorage-only, NO API call — seed-data + window.localStorage, confirmed by full file read)"
+      ],
+      "relations": [],
+      "rawSql": [
+        {
+          "kind": "MIGRATION_SQL",
+          "file": "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts (DROP TABLE, ordered, fail-fast pre-checked 0 rows)"
+        }
+      ],
+      "classification": "RENAMED_TABLE",
+      "oldClassification": "CODE_ONLY",
+      "newClassification": "DROPPED_BY_AUTHORIZED_MIGRATION (superseded)",
+      "evidence": [
+        "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts explicitly (docstring + DO $$ pre-flight block) verifies the 6 legacy tables (financial_categories + 5 satellites: category_centers/links/favorites/rules/rule_runs) exist, have the OLD signature (slug/category_kind/depth_level columns) and 0 rows, then DROPs all 6 in dependency-safe order and CREATEs the new tree-based financial_categories + financial_category_templates.",
+        "Migration docstring: \"Fase 12 classificou o módulo legado como SUBSTITUÍDO pela definição nova\" — an explicit, authorized (Fase 13B) architectural decision, not an accidental loss.",
+        "apps/web frontend hook that superficially resembles this feature (useFinancialCategoryRulesStore) is 100% local (localStorage + seed array), calls no API — confirms zero live frontend runtime dependency on the dropped tables."
+      ],
+      "justification": "Table was deliberately dropped by an authorized, documented migration as part of replacing the old rules-engine categorization model with the new tenant-scoped tree model (financial_categories/financial_category_templates, both confirmed live and MATCH/LIVE_ONLY respectively). Remaining code references (entities.ts, entity-metadata.service.ts) are dead code left over from before the cutover, not evidence of a missing table."
+    },
+    {
+      "schema": "public",
+      "object": "financial_category_links",
+      "objectType": "CODE_ENTITY_NO_TABLE",
+      "databasePresent": false,
+      "backendRuntime": [
+        "apps/api/src/database/entities.ts (dead entity reference)",
+        "apps/api/src/modules/reports/entity-metadata.service.ts",
+        "apps/api/src/database/financial-migrations.static.spec.ts"
+      ],
+      "frontendRuntime": [
+        "apps/web/src/modules/accounting/hooks/useFinancialCategoryRulesStore.ts (localStorage-only, NO API call — seed-data + window.localStorage, confirmed by full file read)"
+      ],
+      "relations": [],
+      "rawSql": [
+        {
+          "kind": "MIGRATION_SQL",
+          "file": "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts (DROP TABLE, ordered, fail-fast pre-checked 0 rows)"
+        }
+      ],
+      "classification": "RENAMED_TABLE",
+      "oldClassification": "CODE_ONLY",
+      "newClassification": "DROPPED_BY_AUTHORIZED_MIGRATION (superseded)",
+      "evidence": [
+        "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts explicitly (docstring + DO $$ pre-flight block) verifies the 6 legacy tables (financial_categories + 5 satellites: category_centers/links/favorites/rules/rule_runs) exist, have the OLD signature (slug/category_kind/depth_level columns) and 0 rows, then DROPs all 6 in dependency-safe order and CREATEs the new tree-based financial_categories + financial_category_templates.",
+        "Migration docstring: \"Fase 12 classificou o módulo legado como SUBSTITUÍDO pela definição nova\" — an explicit, authorized (Fase 13B) architectural decision, not an accidental loss.",
+        "apps/web frontend hook that superficially resembles this feature (useFinancialCategoryRulesStore) is 100% local (localStorage + seed array), calls no API — confirms zero live frontend runtime dependency on the dropped tables."
+      ],
+      "justification": "Table was deliberately dropped by an authorized, documented migration as part of replacing the old rules-engine categorization model with the new tenant-scoped tree model (financial_categories/financial_category_templates, both confirmed live and MATCH/LIVE_ONLY respectively). Remaining code references (entities.ts, entity-metadata.service.ts) are dead code left over from before the cutover, not evidence of a missing table."
+    },
+    {
+      "schema": "public",
+      "object": "financial_category_favorites",
+      "objectType": "CODE_ENTITY_NO_TABLE",
+      "databasePresent": false,
+      "backendRuntime": [
+        "apps/api/src/database/entities.ts (dead entity reference)",
+        "apps/api/src/modules/reports/entity-metadata.service.ts",
+        "apps/api/src/database/financial-migrations.static.spec.ts"
+      ],
+      "frontendRuntime": [
+        "apps/web/src/modules/accounting/hooks/useFinancialCategoryRulesStore.ts (localStorage-only, NO API call — seed-data + window.localStorage, confirmed by full file read)"
+      ],
+      "relations": [],
+      "rawSql": [
+        {
+          "kind": "MIGRATION_SQL",
+          "file": "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts (DROP TABLE, ordered, fail-fast pre-checked 0 rows)"
+        }
+      ],
+      "classification": "RENAMED_TABLE",
+      "oldClassification": "CODE_ONLY",
+      "newClassification": "DROPPED_BY_AUTHORIZED_MIGRATION (superseded)",
+      "evidence": [
+        "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts explicitly (docstring + DO $$ pre-flight block) verifies the 6 legacy tables (financial_categories + 5 satellites: category_centers/links/favorites/rules/rule_runs) exist, have the OLD signature (slug/category_kind/depth_level columns) and 0 rows, then DROPs all 6 in dependency-safe order and CREATEs the new tree-based financial_categories + financial_category_templates.",
+        "Migration docstring: \"Fase 12 classificou o módulo legado como SUBSTITUÍDO pela definição nova\" — an explicit, authorized (Fase 13B) architectural decision, not an accidental loss.",
+        "apps/web frontend hook that superficially resembles this feature (useFinancialCategoryRulesStore) is 100% local (localStorage + seed array), calls no API — confirms zero live frontend runtime dependency on the dropped tables."
+      ],
+      "justification": "Table was deliberately dropped by an authorized, documented migration as part of replacing the old rules-engine categorization model with the new tenant-scoped tree model (financial_categories/financial_category_templates, both confirmed live and MATCH/LIVE_ONLY respectively). Remaining code references (entities.ts, entity-metadata.service.ts) are dead code left over from before the cutover, not evidence of a missing table."
+    },
+    {
+      "schema": "public",
+      "object": "financial_category_centers",
+      "objectType": "CODE_ENTITY_NO_TABLE",
+      "databasePresent": false,
+      "backendRuntime": [
+        "apps/api/src/database/entities.ts (dead entity reference)",
+        "apps/api/src/modules/reports/entity-metadata.service.ts",
+        "apps/api/src/database/financial-migrations.static.spec.ts"
+      ],
+      "frontendRuntime": [
+        "apps/web/src/modules/accounting/hooks/useFinancialCategoryRulesStore.ts (localStorage-only, NO API call — seed-data + window.localStorage, confirmed by full file read)"
+      ],
+      "relations": [],
+      "rawSql": [
+        {
+          "kind": "MIGRATION_SQL",
+          "file": "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts (DROP TABLE, ordered, fail-fast pre-checked 0 rows)"
+        }
+      ],
+      "classification": "RENAMED_TABLE",
+      "oldClassification": "CODE_ONLY",
+      "newClassification": "DROPPED_BY_AUTHORIZED_MIGRATION (superseded)",
+      "evidence": [
+        "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts explicitly (docstring + DO $$ pre-flight block) verifies the 6 legacy tables (financial_categories + 5 satellites: category_centers/links/favorites/rules/rule_runs) exist, have the OLD signature (slug/category_kind/depth_level columns) and 0 rows, then DROPs all 6 in dependency-safe order and CREATEs the new tree-based financial_categories + financial_category_templates.",
+        "Migration docstring: \"Fase 12 classificou o módulo legado como SUBSTITUÍDO pela definição nova\" — an explicit, authorized (Fase 13B) architectural decision, not an accidental loss.",
+        "apps/web frontend hook that superficially resembles this feature (useFinancialCategoryRulesStore) is 100% local (localStorage + seed array), calls no API — confirms zero live frontend runtime dependency on the dropped tables."
+      ],
+      "justification": "Table was deliberately dropped by an authorized, documented migration as part of replacing the old rules-engine categorization model with the new tenant-scoped tree model (financial_categories/financial_category_templates, both confirmed live and MATCH/LIVE_ONLY respectively). Remaining code references (entities.ts, entity-metadata.service.ts) are dead code left over from before the cutover, not evidence of a missing table."
+    },
+    {
+      "schema": "public",
+      "object": "financial_category_rule_runs",
+      "objectType": "CODE_ENTITY_NO_TABLE",
+      "databasePresent": false,
+      "backendRuntime": [
+        "apps/api/src/database/entities.ts (dead entity reference)",
+        "apps/api/src/modules/reports/entity-metadata.service.ts",
+        "apps/api/src/database/financial-migrations.static.spec.ts"
+      ],
+      "frontendRuntime": [
+        "apps/web/src/modules/accounting/hooks/useFinancialCategoryRulesStore.ts (localStorage-only, NO API call — seed-data + window.localStorage, confirmed by full file read)"
+      ],
+      "relations": [],
+      "rawSql": [
+        {
+          "kind": "MIGRATION_SQL",
+          "file": "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts (DROP TABLE, ordered, fail-fast pre-checked 0 rows)"
+        }
+      ],
+      "classification": "RENAMED_TABLE",
+      "oldClassification": "CODE_ONLY",
+      "newClassification": "DROPPED_BY_AUTHORIZED_MIGRATION (superseded)",
+      "evidence": [
+        "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts explicitly (docstring + DO $$ pre-flight block) verifies the 6 legacy tables (financial_categories + 5 satellites: category_centers/links/favorites/rules/rule_runs) exist, have the OLD signature (slug/category_kind/depth_level columns) and 0 rows, then DROPs all 6 in dependency-safe order and CREATEs the new tree-based financial_categories + financial_category_templates.",
+        "Migration docstring: \"Fase 12 classificou o módulo legado como SUBSTITUÍDO pela definição nova\" — an explicit, authorized (Fase 13B) architectural decision, not an accidental loss.",
+        "apps/web frontend hook that superficially resembles this feature (useFinancialCategoryRulesStore) is 100% local (localStorage + seed array), calls no API — confirms zero live frontend runtime dependency on the dropped tables."
+      ],
+      "justification": "Table was deliberately dropped by an authorized, documented migration as part of replacing the old rules-engine categorization model with the new tenant-scoped tree model (financial_categories/financial_category_templates, both confirmed live and MATCH/LIVE_ONLY respectively). Remaining code references (entities.ts, entity-metadata.service.ts) are dead code left over from before the cutover, not evidence of a missing table."
+    },
+    {
+      "schema": "public",
+      "object": "financial_categories",
+      "objectType": "TABLE",
+      "databasePresent": true,
+      "backendRuntime": [
+        "apps/api/src/modules/financial-categories/financial-categories.service.ts (full CRUD: list/getTree/search/findById/create/update/move/reorder/archive/restore/remove/descendants/ancestors, all raw parameterized SQL)",
+        "apps/api/src/modules/financial-categories/financial-categories.controller.ts"
+      ],
+      "frontendRuntime": [
+        "apps/web/src/modules/accounting/pages/CategoriasFinanceiras.tsx"
+      ],
+      "relations": [
+        "template_id -> financial_category_templates.id",
+        "parent_id -> financial_categories.id (self, tree)"
+      ],
+      "rawSql": [
+        {
+          "kind": "RUNTIME_SQL",
+          "file": "apps/api/src/modules/financial-categories/financial-categories.service.ts"
+        }
+      ],
+      "classification": "MATCH",
+      "oldClassification": "MATCH (baseline)",
+      "newClassification": "MATCH (confirmed CURRENT_FUNCTIONAL_SOURCE for category taxonomy)",
+      "evidence": [
+        "Full service/controller pair, real frontend page, matches live column signature exactly (id, tenant_id, parent_id, template_id, name, nature, includes_in_pnl, level, is_active, sort_order + audit columns)."
+      ],
+      "justification": "The new tree-based schema created by 20260718000002 is the live, fully-wired, actively-used category taxonomy — not a duplicate or unused structure."
+    }
+  ],
+  "financialDomain": {
+    "tables": [
+      {
+        "table": "transactions",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [
+          "financial-classification.automation.ts",
+          "financial-categories.service.ts (legacy_transactions guard)",
+          "seeds/03_operational_seed.ts",
+          "reports/computed-fields/accounting-summary.report.ts"
+        ],
+        "frontendRuntimeConsumers": [
+          "modules/accounting (transacao-form, TransacaoViewModal)"
+        ],
+        "formConsumers": [
+          "TransacaoFormModal.tsx"
+        ],
+        "tableGridConsumers": [
+          "accounting transactions grid"
+        ],
+        "reportConsumers": [
+          "report-module-registry.ts (label: \"Transações Financeiras\")",
+          "accounting-summary.report.ts (P&L computation source)"
+        ],
+        "pnlDependency": true,
+        "relations": [
+          "financial_category_id -> financial_categories.id"
+        ],
+        "status": "LEGACY_FUNCTIONAL"
+      },
+      {
+        "table": "financial_transactions",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [
+          "financial-categories.service.ts (canonical_transactions guard only — no create/update path found; no dedicated module/service/controller exists)"
+        ],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [
+          "category_id -> financial_categories.id",
+          "account_id/counter_account_id -> financial_accounts.id",
+          "counterparty_id -> counterparties.id",
+          "cost_center_id -> cost_centers.id"
+        ],
+        "status": "PARTIALLY_MIGRATED"
+      },
+      {
+        "table": "financial_categories",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [
+          "financial-categories.service.ts + .controller.ts (full CRUD)"
+        ],
+        "frontendRuntimeConsumers": [
+          "CategoriasFinanceiras.tsx"
+        ],
+        "formConsumers": [
+          "category create/edit tree UI"
+        ],
+        "tableGridConsumers": [
+          "category tree view"
+        ],
+        "reportConsumers": [
+          "P&L category grouping (includes_in_pnl column)"
+        ],
+        "pnlDependency": true,
+        "relations": [
+          "template_id -> financial_category_templates.id",
+          "parent_id -> self (tree)"
+        ],
+        "status": "CURRENT_FUNCTIONAL_SOURCE"
+      },
+      {
+        "table": "financial_category_templates",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [
+          "parent_id -> self",
+          "referenced by financial_categories.template_id"
+        ],
+        "status": "PARTIALLY_MIGRATED (created, not yet actively queried)"
+      },
+      {
+        "table": "financial_category_audit_logs",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [
+          "FinancialCategoryAuditLogEntity (database/entities.ts:3148), consumed via TypeORM repository (not raw SQL) presumably by financial-categories.service.ts emit()"
+        ],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [
+          "tenant_id scoped"
+        ],
+        "status": "CURRENT_FUNCTIONAL_SOURCE (audit trail)"
+      },
+      {
+        "table": "financial_rules",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [
+          "FinancialRuleEntity (database/entities.ts:2284), tenant_id+tipo+ativo indexed — distinct table from the DROPPED financial_category_rules"
+        ],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [],
+        "status": "ACTIVE (independent of the financial_category_rules replacement — do not confuse the two)"
+      },
+      {
+        "table": "budgets",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [],
+        "status": "UNUSED_NEW_SCHEMA"
+      },
+      {
+        "table": "budget_revisions",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [
+          "budget_id -> budgets.id (presumed)"
+        ],
+        "status": "UNUSED_NEW_SCHEMA"
+      },
+      {
+        "table": "cost_centers",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [
+          "referenced by financial_transactions.cost_center_id (FK target only)"
+        ],
+        "status": "UNUSED_NEW_SCHEMA"
+      },
+      {
+        "table": "counterparties",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [
+          "referenced by financial_transactions.counterparty_id (FK target only)"
+        ],
+        "status": "UNUSED_NEW_SCHEMA"
+      },
+      {
+        "table": "financial_accounts",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [
+          "referenced by financial_transactions.account_id/counter_account_id (FK target only)"
+        ],
+        "status": "UNUSED_NEW_SCHEMA"
+      },
+      {
+        "table": "transaction_allocations",
+        "databasePresent": true,
+        "rowCountEstimate": 0,
+        "backendRuntimeConsumers": [],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [],
+        "status": "UNUSED_NEW_SCHEMA"
+      },
+      {
+        "table": "invoices",
+        "databasePresent": true,
+        "rowCountEstimate": null,
+        "backendRuntimeConsumers": [
+          "modules/invoices (existing legacy module, not part of this migration wave)"
+        ],
+        "frontendRuntimeConsumers": [
+          "invoices UI (Nota Fiscal)"
+        ],
+        "formConsumers": [
+          "invoice form"
+        ],
+        "tableGridConsumers": [
+          "invoices grid"
+        ],
+        "reportConsumers": [
+          "report-module-registry.ts (label: \"Nota Fiscal\")"
+        ],
+        "pnlDependency": false,
+        "relations": [],
+        "status": "LEGACY_FUNCTIONAL (unaffected by the financial_categories/financial_transactions migration)"
+      },
+      {
+        "table": "payment_events",
+        "databasePresent": true,
+        "rowCountEstimate": null,
+        "backendRuntimeConsumers": [
+          "billing-enforcement.service.ts (Stripe webhook event ledger)"
+        ],
+        "frontendRuntimeConsumers": [],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [],
+        "pnlDependency": false,
+        "relations": [
+          "stripe_event_id unique"
+        ],
+        "status": "CURRENT_FUNCTIONAL_SOURCE (billing/subscription domain, not accounting P&L)"
+      },
+      {
+        "table": "accounting_summary",
+        "databasePresent": false,
+        "rowCountEstimate": null,
+        "backendRuntimeConsumers": [
+          "reports/computed-fields/accounting-summary.report.ts (computed on demand from transactions, not persisted)"
+        ],
+        "frontendRuntimeConsumers": [
+          "Reports Hub, \"Contabilidade\" module"
+        ],
+        "formConsumers": [],
+        "tableGridConsumers": [],
+        "reportConsumers": [
+          "report-module-registry.ts (computed: true)"
+        ],
+        "pnlDependency": true,
+        "relations": [],
+        "status": "DEAD (correctly non-physical by design — doc62 Source-of-Truth rule: P&L must never be a second independently-persisted record)"
+      }
+    ],
+    "legacyDroppedSet": {
+      "tables": [
+        "financial_categories(old shape)",
+        "financial_category_centers",
+        "financial_category_links",
+        "financial_category_favorites",
+        "financial_category_rules(old shape)",
+        "financial_category_rule_runs"
+      ],
+      "droppedBy": "apps/api/src/database/migrations/20260718000002_FinancialCategories.ts",
+      "replacedBy": [
+        "financial_categories (new tree shape)",
+        "financial_category_templates"
+      ],
+      "status": "DUPLICATED_MODEL -> RESOLVED (old model formally decommissioned by authorized migration; not a live duplication anymore)"
+    },
+    "functionalSourceDetermination": {
+      "categoryTaxonomy": "financial_categories (new tree schema) is CURRENT_FUNCTIONAL_SOURCE — full service/controller/frontend page, matches doc62 P&L category-grouping need via includes_in_pnl.",
+      "transactionLedger": "transactions (legacy, Portuguese columns) is still the LEGACY_FUNCTIONAL primary write/read path — used by automation, seeds, and the accounting-summary P&L computation. financial_transactions is PARTIALLY_MIGRATED: schema exists, is referenced as \"canonical\" in code comments/guard logic, has FK-normalized structure, but has no create/update/list runtime path yet (no dedicated module found) — migration is declared in intent (naming, guard-check) but not executed in the write path. [text preserved verbatim as historical evidence — see poDecisionCorrection]",
+      "supportingFinancialSchema": "budgets/budget_revisions/cost_centers/counterparties/financial_accounts/transaction_allocations/financial_category_templates are UNUSED_NEW_SCHEMA — created ahead of the backend code that would consume them (schema-first buildout), zero runtime consumers found anywhere in apps/api or apps/web. [text preserved verbatim as historical evidence — see poDecisionCorrection]",
+      "conclusion": "No arbitrary choice was made. Evidence (migration docstrings, code guard-checks labeling \"canonical\" vs \"legacy\", frontend page wiring, report registry) shows a real, in-progress, intentional migration: legacy transactions+old rules-based categories -> new financial_transactions+financial_categories(tree)+supporting normalized tables, with the category side complete and functional and the transaction ledger side still mid-migration (schema ready, write path not yet cut over). [conclusion preserved verbatim as historical evidence — see poDecisionCorrection: this migration direction was subsequently REJECTED by the Product Owner]",
+      "poDecisionCorrection": "CANONICAL CORRECTION (Product Owner decision REMOVE_SECOND_ACCOUNTING_LAYER, resolves PO-VERIFY-027 — see docs/backend-v2/review/01-full-project-exhaustive-verification.md §XV.6 and docs/backend-v2/gap-resolution/00-canonical-gap-register.md): the 'in-progress migration' read above is superseded. financial_transactions, financial_accounts, cost_centers, counterparties, transaction_allocations, performance_metric_entries, budgets and budget_revisions are REJECTED_ARCHITECTURE — none will be used by the v2 architecture, as target, future path, or valid alternative. transactions is, and remains, the single canonical financial ledger; there will be no second ledger. The 8 tables are not deleted physically by this correction (documental only)."
+    }
+  },
+  "counters": {
+    "PREVIOUS_MATCH_OBJECTS": 119,
+    "PREVIOUS_LIVE_ONLY_OBJECTS": 23,
+    "PREVIOUS_CODE_ONLY_OBJECTS": 9,
+    "FINAL_MATCH_OBJECTS": 125,
+    "FINAL_LIVE_ONLY_OBJECTS": 10,
+    "FINAL_CODE_ONLY_OBJECTS": 9,
+    "RECLASSIFIED_AS_NON_APPLICABLE_OBJECT_TYPE": 7,
+    "REAL_CODE_ONLY_GAPS": 0,
+    "LIVE_CODE_MISMATCHES": 0,
+    "FIELD_MISMATCHES": "NOT_EXHAUSTIVELY_COMPUTED_FOR_ALL_125_MATCH_TABLES (scoped field check done for financial_categories only: FinancialCategoryRow interface in financial-categories.service.ts matches live columns id/tenant_id/parent_id/template_id/name/nature/includes_in_pnl/level/is_active/sort_order/created_at/updated_at/created_by/updated_by exactly, 0 mismatches; financial_transactions/transactions have no typed TS interface to diff against since neither has a dedicated service — full 142-table field-by-field diff registered as future work, not required by section 26 zero-conditions)",
+    "RELATION_MISMATCHES": 0,
+    "FINANCIAL_DATABASE_TABLES": 14,
+    "FINANCIAL_DATABASE_TABLES_NOTE": "14 physical tables + 1 deliberately non-physical computed report entry (accounting_summary), matching doc62 Source-of-Truth rule.",
+    "FINANCIAL_ACTIVE_RUNTIME_TABLES": 7,
+    "FINANCIAL_ACTIVE_RUNTIME_TABLES_LIST": [
+      "transactions",
+      "financial_categories",
+      "financial_category_audit_logs",
+      "financial_rules",
+      "invoices",
+      "payment_events",
+      "financial_transactions(partial: guard-check read only, no create/update path)"
+    ],
+    "FINANCIAL_UNUSED_TABLES": 7,
+    "FINANCIAL_UNUSED_TABLES_LIST": [
+      "financial_category_templates",
+      "budgets",
+      "budget_revisions",
+      "cost_centers",
+      "counterparties",
+      "financial_accounts",
+      "transaction_allocations"
+    ],
+    "FINANCIAL_DUPLICATED_MODELS": 0,
+    "FINANCIAL_DUPLICATED_MODELS_NOTE": "The apparent duplication (old rules-based financial_categories+5 satellites vs new tree-based financial_categories+templates) was RESOLVED, not duplicated: the old set was formally DROPPED by an authorized migration (20260718000002_FinancialCategories.ts) before the new set was created — they never coexisted live.",
+    "USERS_PREVIOUS_CLASSIFICATION": "LIVE_ONLY",
+    "USERS_FINAL_CLASSIFICATION": "MATCH",
+    "RELEASE_WORKS_PREVIOUS_CLASSIFICATION": "LIVE_ONLY",
+    "RELEASE_WORKS_FINAL_CLASSIFICATION": "MATCH (JOIN_TABLE)",
+    "UNKNOWN_OBJECT_CLASSIFICATIONS": 0,
+    "UNRESOLVED_TABLE_ALIASES": 0,
+    "UNRESOLVED_ENTITY_TABLE_MAPPING": 0,
+    "UNRESOLVED_JOIN_TABLE_MAPPING": 0,
+    "UNRESOLVED_FINANCIAL_MODEL_CLASSIFICATION": 0
+  },
+  "frontendCrossCheckNote": {
+    "baselineSource": "docs/backend-v2/78 sec.6 + database-inventory frontend heuristic (Prompt 93): 51 tables with identified frontend consumer, 91 without, out of 142.",
+    "scopeOfThisPass": "Full component->hook/service->endpoint->backend->repository->table chain re-verified in depth only for the financial domain (see financialDomain section) and for users/release_works/rbac_*/tenant_invitations (this pass). Re-deriving the chain for the remaining ~130 tables at the same depth was out of reasonable scope for this pass and is not required by section 26 zero-conditions (only UNKNOWN_OBJECT_CLASSIFICATIONS and the 4 UNRESOLVED_* counters must be 0).",
+    "correctionsFoundThisPass": [
+      "financial_category_rules frontend hook (useFinancialCategoryRulesStore) previously would have looked like a frontend consumer for a CODE_ONLY table; confirmed to be 100% local (localStorage), so it does NOT count as a real frontend runtime consumer of any database table — corrects a potential false-positive in the original heuristic.",
+      "tenant_invitations, rbac_decision_logs, rbac_error_logs confirmed to have real backend runtime consumers (previously invisible to the @Entity-only method); frontend consumers for these are indirect (admin/RBAC UI) and not individually re-verified this pass."
+    ],
+    "DATABASE_TABLES_WITH_FRONTEND_CONSUMER": 51,
+    "DATABASE_TABLES_WITHOUT_KNOWN_FRONTEND_CONSUMER": 91,
+    "FRONTEND_DATA_WITHOUT_CLEAR_DATABASE_SOURCE": 0,
+    "FRONTEND_DATA_WITHOUT_CLEAR_DATABASE_SOURCE_NOTE": "No frontend data source was found this pass pointing to a table/endpoint that does not resolve to a real database object; the useFinancialCategoryRulesStore case is the closest candidate but it explicitly never calls an API (pure localStorage), so it is UI-local state, not unsourced database data."
+  },
+  "supabaseDirectAccessAudit": {
+    "SUPABASE_DIRECT_TABLE_ACCESS_FROM": 0,
+    "SUPABASE_DIRECT_TABLE_ACCESS_RPC": 0,
+    "SUPABASE_POSTGRES_CHANGES_SUBSCRIPTIONS": 0,
+    "SUPABASE_AUTH_USAGE_FILES": [
+      "apps/api/src/database/bootstrap-tenant-zero.cli.ts",
+      "apps/api/src/modules/auth/auth-password.service.ts",
+      "apps/api/src/modules/auth/dev-auth.controller.ts",
+      "apps/api/src/modules/auth/workspace-provisioning.service.ts",
+      "apps/api/src/modules/users/users.service.ts",
+      "apps/api/scripts/provision-staging-rbac-users.ts",
+      "apps/api/scripts/verify-signup-provisioning.ts",
+      "apps/web/src/app/providers/AuthContext.tsx",
+      "apps/web/src/lib/supabase.ts"
+    ],
+    "SUPABASE_REALTIME_CHANNEL_USAGE_FILES": [
+      "apps/api/src/core/realtime/realtime.service.ts (private broadcast channels, not postgres_changes)",
+      "apps/web/src/shared/lib/ws-client.ts (private broadcast channels, not postgres_changes)"
+    ],
+    "conclusion": "All table-level data access goes through the backend API (TypeORM entities + raw parameterized SQL). Supabase-js is used exclusively for Auth (admin user mgmt, session, sign-in/up/out, password reset) and Realtime private broadcast channels — never .from()/.rpc()/postgres_changes. Consistent with doc73 decision SUPABASE_DATA_API_DIRECT_ACCESS_REQUIRED_FOR_APP_SCHEMA: NAO."
+  }
+}

@@ -1,0 +1,486 @@
+[
+  {
+    "id": "DEC-001",
+    "gapIds": [
+      "GAP-0001"
+    ],
+    "question": "O que é canonicamente um \"project\" (`projects` table)? UNIVERSAL_FINANCIAL_PROJECT (hub financeiro/operacional que audiovisual/marketing/accounting podem referenciar via financial_project_id) ou MUSIC_RELEASE_PROJECT (projeto de lançamento musical, único uso real da UI hoje)?",
+    "options": [
+      "UNIVERSAL_FINANCIAL_PROJECT — expandir ProjetoFormModal.tsx para expor artista_id/orcamento/vínculos financeiros, tornando projects o hub real previsto pela migration FinancialOperationalBridges",
+      "MUSIC_RELEASE_PROJECT — aceitar o uso atual como definitivo, remover/depreciar financial_project_id e a suposição de hub universal",
+      "DUAL_MODEL — introduzir um discriminador explícito (project_type) permitindo ambos os usos coexistirem de forma declarada, não acidental"
+    ],
+    "recommendedOption": "UNIVERSAL_FINANCIAL_PROJECT — expandir ProjetoFormModal.tsx para expor artista_id/orcamento/vínculos financeiros, tornando projects o hub real previsto pela migration FinancialOperationalBridges",
+    "reason": "A migration 20260718000009_FinancialOperationalBridges.ts já implementou financial_project_id como FK real em audiovisual_projects e marketing_projects, e accounting já espera agrupar por projeto — reverter esse schema historicamente investido custaria mais que completar a UI que falta.",
+    "blocksSchemaV2Design": true,
+    "blocksApiV2Implementation": true,
+    "status": "RESOLVED",
+    "selectedOption": "MUSICAL_PROJECT_CANONICAL_HUB",
+    "userDecisionResolved": true,
+    "resolutionSummary": "projects is the canonical Musical Project/Song entity. projects.id is the cross-domain linkage key for that musical project — used by Work/Phonogram/Release/Accounting/Audiovisual/Marketing and other related domains to indicate that a given record belongs to this specific song/musical project. This is a correction of the previously-registered UNIVERSAL_FINANCIAL_PROJECT interpretation, which incorrectly generalized the entity into a generic financial/operational hub.",
+    "architecturalCaveat": "MUSICAL_PROJECT_CANONICAL_HUB does not mean projects is merely a container for the rich track/composer/performer/producer sub-form seen today (project_tracks/project_track_participants) to the exclusion of cross-domain relations — those relations (financial_project_id on audiovisual_projects/marketing_projects, transactions.projeto_id) are a first-class, intended part of the model: they let other domains' records declare \"this belongs to this song/musical project.\" Consequently, in the future schema/API v2, projects.id remains the correct cross-domain linkage key; what changes is only the INTERPRETATION of why that linkage exists (because the record belongs to a specific song, not because projects is a generic financial entity).",
+    "preservedRelations": [
+      "audiovisual_projects.financial_project_id -> projects (real FK, preserved as semantically valid — LEGACY_NAMING: the column name implies a financial purpose, but its actual function is to link an audiovisual record to its parent musical project/song; not renamed in this step)",
+      "marketing_projects.financial_project_id -> projects (real FK, preserved as semantically valid — same LEGACY_NAMING note as audiovisual_projects)",
+      "transactions.projeto_id -> projects (real logical relation, preserved as semantically valid — correctly named already; links a financial transaction to the musical project/song it belongs to, e.g. recording costs or streaming revenue for a specific song)",
+      "works.projeto_id -> projects (real logical relation, confirmed populated via ObraFormModal.tsx's \"projetoSelecionado\" selector — ALREADY_CORRECT under the corrected definition, not previously highlighted as evidence for DEC-001 but directly relevant)"
+    ],
+    "rejectedOptions": {
+      "DUAL_MODEL": "Still not selected, now for a clearer reason: there is no second \"kind\" of project needing a discriminator, because the generic-financial-hub reading that would have justified a dual model has been invalidated. projects is uniformly the Musical Project/Song entity. This decision still does not authorize creating project_category/project_kind/project_domain/project_subtype or any new discriminator column.",
+      "UNIVERSAL_FINANCIAL_PROJECT": "INVALIDATED (was the original selectedOption, now corrected — see supersededDecision). Rejected as the canonical definition per explicit Product Owner domain-authority correction: projects is not a generic financial/operational hub. This does not eliminate or alter the real cross-domain relations (financial_project_id, transactions.projeto_id) — it only corrects why they exist."
+    },
+    "implementationStatus": "NOT_STARTED — this remains a documental decision only (now corrected). ProjetoFormModal.tsx has not been modified. GAP-0033, GAP-0013, and the new GAP-0168 remain unresolved. No schema v2/API v2 work has begun. No column was renamed (financial_project_id LEGACY_NAMING is noted, not fixed).",
+    "supersededDecision": {
+      "selectedOption": "UNIVERSAL_FINANCIAL_PROJECT",
+      "status": "INVALIDATED_BY_PRODUCT_OWNER_DOMAIN_CORRECTION",
+      "resolutionSummary": "projects is the canonical universal financial/operational project entity. The existing music-release project UI is a specialized use of that entity, not the exclusive semantic definition of projects.",
+      "architecturalCaveat": "UNIVERSAL_FINANCIAL_PROJECT does not mean every project is a music release. The flow at /projetos (ProjetoFormModal.tsx, project_tracks, project_track_participants) is a specialization (MUSIC_RELEASE_PROJECT) within the broader `projects` concept. Consequently, in the future schema/API v2, music-release-specific fields must not become universal requirements of every project. HOW this specialization is technically modeled is NOT decided here — it is left to the dependent gaps/contracts, in their own order.",
+      "preservedRelations": [
+        "audiovisual_projects.financial_project_id -> projects (real FK, preserved as semantically valid)",
+        "marketing_projects.financial_project_id -> projects (real FK, preserved as semantically valid)",
+        "transactions.projeto_id -> projects (real logical relation, preserved as semantically valid)"
+      ],
+      "rejectedOptions": {
+        "DUAL_MODEL": "Not selected. This decision does NOT authorize creating project_category / project_kind / project_domain / project_subtype or any new discriminator column now. If a technical need for discrimination is proven during v2 schema design, it must be raised as its own derived question, not presumed from DEC-001.",
+        "MUSIC_RELEASE_PROJECT": "Rejected as the exclusive canonical definition — contradicted by financial_project_id (audiovisual/marketing), transactions.projeto_id, the migration's own documented intent, and proven cross-domain financial relations. Rejection does not eliminate or alter the existing music-release flow."
+      },
+      "implementationStatus": "NOT_STARTED — this is a documental decision only. ProjetoFormModal.tsx has not been modified, GAP-0033 and GAP-0013 remain unresolved, no schema v2 or API v2 work has begun.",
+      "invalidationReason": "Product Owner explicitly corrected the domain definition (PROMPT 129): projects is not a generic financial/operational hub. The \"universal financial hub\" reading over-generalized 2 real cross-domain relations (financial_project_id, transactions.projeto_id) into an incorrect claim about the entity's fundamental nature. The original question/options/recommendedOption/reason fields at the top level of this record are preserved unmodified as the historical record of what was originally asked and decided."
+    },
+    "correctionApplied": true,
+    "correctionAuthority": "PRODUCT_OWNER",
+    "canonicalDecision": "projects is the canonical Musical Project/Song entity — not a generic financial/operational hub. projects.id is the cross-domain identifier used to link records belonging to the same musical project/song (Work, Phonogram, Release, Accounting Transaction, Audiovisual, Marketing, and other related domains). The existence of real cross-domain relations (financial_project_id, transactions.projeto_id) does not change the musical nature of projects — those relations exist BECAUSE other domains' activity belongs to a specific song/musical project, not because projects is itself a financial entity.",
+    "musicalProjectFieldsConfirmed": {
+      "projects": [
+        "titulo (nome/título)",
+        "genero",
+        "tipo (tipo de lançamento)",
+        "status",
+        "artista_id (real, unwritten by the only reachable form)",
+        "orcamento (real, unwritten by the only reachable form)",
+        "descricao",
+        "observacoes"
+      ],
+      "project_tracks": [
+        "nome",
+        "soloFeat",
+        "originalRemix",
+        "instrumental",
+        "duração",
+        "gênero",
+        "idioma",
+        "letra",
+        "audioUrl (upload stub, not a real pipeline)"
+      ],
+      "project_track_participants": [
+        "compositor",
+        "interprete",
+        "produtor (per-track, real, populated)"
+      ]
+    },
+    "crossDomainRelationsMatrix": [
+      {
+        "domain": "Work/Obra",
+        "currentColumn": "works.projeto_id",
+        "target": "projects.id",
+        "status": "ALREADY_CORRECT (real, logical-only, confirmed populated via ObraFormModal.tsx)"
+      },
+      {
+        "domain": "Phonogram",
+        "currentColumn": "none direct",
+        "target": "projects.id (transitive via phonograms.obra_id -> works.id -> works.projeto_id)",
+        "status": "ALREADY_CORRECT transitively — no direct column exists or is required today; TO_BE_DESIGNED if direct denormalization is ever wanted"
+      },
+      {
+        "domain": "Release",
+        "currentColumn": "none — ReleaseEntity has no project_id/projeto_id column",
+        "target": "projects.id",
+        "status": "MISSING_RELATION — only a one-time manual form-prefill convenience (projetoToLancamentoSeed) exists, never persisted, no automation. New gap GAP-0168 created to track this."
+      },
+      {
+        "domain": "Accounting Transaction",
+        "currentColumn": "transactions.projeto_id",
+        "target": "projects.id",
+        "status": "ALREADY_CORRECT (real, logical-only, populated by the transaction form; just not read/grouped by the P&L display — GAP-0013)"
+      },
+      {
+        "domain": "Audiovisual",
+        "currentColumn": "audiovisual_projects.financial_project_id",
+        "target": "projects.id",
+        "status": "ALREADY_CORRECT relation (real DB-enforced FK) + LEGACY_NAMING (column name) + MISSING at the UI-write level (no form sets it — GAP-0033)"
+      },
+      {
+        "domain": "Marketing",
+        "currentColumn": "marketing_projects.financial_project_id",
+        "target": "projects.id",
+        "status": "ALREADY_CORRECT relation (real DB-enforced FK) + LEGACY_NAMING (column name) + MISSING at the UI-write level (no form sets it — GAP-0033)"
+      }
+    ]
+  },
+  {
+    "id": "DEC-002",
+    "gapIds": [
+      "GAP-0002"
+    ],
+    "question": "Das 4 vocabulárias de \"tipo de contrato\" (frontend hardcoded morto, contract_categories em localStorage, contract_templates.tipo_servico, contract_service_types.slug com 32 colunas ricas), qual é a fonte canônica?",
+    "options": [
+      "contract_service_types — é a mais rica (32 colunas incl. termos financeiros) e já é uma tabela real; migrar ContratoWizard para lê-la e remover as outras 3",
+      "contract_templates.tipo_servico — é o que efetivamente chega a contracts.tipo hoje via o wizard principal; formalizar como única fonte e depreciar contract_service_types",
+      "Consolidar em uma nova tabela única de tipos, migrando dados das 2 tabelas reais e removendo o hardcode/localStorage"
+    ],
+    "recommendedOption": "contract_service_types — é a mais rica (32 colunas incl. termos financeiros) e já é uma tabela real; migrar ContratoWizard para lê-la e remover as outras 3",
+    "reason": "contract_service_types já modela os termos financeiros que GAP-0055 (propagação financeira de contratos) precisará — escolher a vocabulária mais rica evita retrabalho na Wave 4.",
+    "blocksSchemaV2Design": false,
+    "blocksApiV2Implementation": false,
+    "status": "RESOLVED",
+    "selectedOption": "CONTRACT_SERVICE_TYPES_CANONICAL",
+    "userDecisionResolved": true,
+    "canonicalDecision": "contract_service_types is the canonical contract-type vocabulary. Wizard and Quick modes must consume the same ContractServiceType source. contract_templates.tipo_servico and contracts.tipo cannot remain independent free-text vocabularies. The physical reference key and legacy value migration are deferred to schema/migration resolution.",
+    "canonicalTypeEntity": "ContractServiceType",
+    "canonicalTypeSource": "contract_service_types",
+    "sourceClassification": {
+      "contract_service_types": "CANONICAL_SOURCE_OF_TRUTH",
+      "contract_templates.tipo_servico": "LEGACY/DENORMALIZED_REFERENCE_TO_CANONICAL_TYPE — its future physical form (service_type_id vs service_type_slug) is NOT decided by DEC-002; only that it cannot remain an independent free-text vocabulary",
+      "contract_categories": "DISPLAY_ONLY — may continue to exist conceptually as a grouping/label layer, NOT a contract-type source of truth",
+      "CONTRACT_TYPES": "DEAD_LEGACY_VOCABULARY — not removed by this decision, just formally classified as dead"
+    },
+    "dec004Constraint": "WIZARD and QUICK (DEC-004, UNIFIED_CONFIGURABLE_CONTRACT_COMPONENT, RESOLVED) must consume the same canonical ContractServiceType vocabulary. It is prohibited for the future canonical architecture to keep WIZARD reading contract_templates.tipo_servico free text while QUICK reads contract_service_types. QUICK mode already consumes contract_service_types today — that is PRESERVED_AS_CANONICAL_DIRECTION and requires no change under this decision. WIZARD mode's current template-derived free-text source NEEDS_FUTURE_CONTRACT_ALIGNMENT.",
+    "canonicalReferenceKey": "TO_BE_DEFINED_DURING_SCHEMA_CONTRACT_RESOLUTION",
+    "canonicalReferenceKeyNote": "DEC-002 resolves WHICH vocabulary/entity is canonical, not WHICH physical key (id vs slug) will be used in FKs/contracts. No additional decision is created solely to pick id vs slug now — that is a technical schema/contract call for the resolution step.",
+    "contractsTipoNote": "contracts.tipo must not remain an independent vocabulary source; its future semantics are a representation/reference of the canonical ContractServiceType. Whether it becomes an FK, stays a denormalized slug, or is kept for compatibility is NOT decided here — that is left to schema/API v2 resolution, preserving DEC-002's direction.",
+    "serviceTypeRuleConsumption": "IMPLEMENTATION_GAPS_REMAIN — making contract_service_types canonical does not mean its requires_* conditional fields or its 5 financial-term columns are already correctly consumed anywhere; that remains unimplemented.",
+    "gap0055Note": "GAP-0055 (contracts financial terms -> accounting propagation) remains an independent, unresolved gap. DEC-002 RESOLVED != GAP-0055 RESOLVED. This decision may provide future structure for that propagation but does not implement or fix it.",
+    "legacyDataNote": "contract_templates.tipo_servico and contracts.tipo may hold historical free-text values.",
+    "legacyTypeReconciliationRequired": true,
+    "dataMigrationRequired": "POSSIVEL",
+    "legacyMappingStatus": "REQUIRES_DATA_RECONCILIATION_DURING_MIGRATION_PREPARATION",
+    "legacyMappingRule": "If all persisted legacy values can be mapped deterministically during migration preparation: no additional human decision required. If semantically ambiguous values are found: only those specific values are escalated to a decision at that time — not invented now, not guessed by textual similarity.",
+    "implementationStatus": "NOT_STARTED — this is a documental decision only. ContratoWizard.tsx, the QUICK mode, contract_templates, contracts.tipo, and contract_service_types were not modified. No FK was created. No legacy data was mapped or migrated."
+  },
+  {
+    "id": "DEC-003",
+    "gapIds": [
+      "GAP-0003"
+    ],
+    "question": "ArtistaFormModal.tsx (~45 campos, em uso real) e ArtistaCadastro.tsx (~71 campos, órfão/inalcançável) implementam o mesmo fluxo de criação de artista com cobertura de campos divergente. Qual deve ser mantido/expandido, e o que fazer com o outro?",
+    "options": [
+      "Manter ArtistaFormModal.tsx como único fluxo; portar os ~26 campos exclusivos de ArtistaCadastro.tsx para ele e remover o órfão",
+      "Substituir ArtistaFormModal.tsx por ArtistaCadastro.tsx (reconectando-o à navegação), já que tem cobertura de campos maior",
+      "Manter os dois deliberadamente para dois fluxos distintos (ex.: cadastro rápido vs completo), documentando a diferença explicitamente"
+    ],
+    "recommendedOption": "Manter ArtistaFormModal.tsx como único fluxo; portar os ~26 campos exclusivos de ArtistaCadastro.tsx para ele e remover o órfão",
+    "reason": "ArtistaFormModal.tsx é o único componente com navegação real; consolidar nele evita manter uma segunda superfície de UI sem tráfego algum.",
+    "blocksSchemaV2Design": false,
+    "blocksApiV2Implementation": false,
+    "status": "RESOLVED",
+    "selectedOption": "ARTISTA_FORM_MODAL_CANONICAL",
+    "userDecisionResolved": true,
+    "canonicalDecision": "ArtistaFormModal.tsx is the single canonical artist create/edit implementation. ArtistaCadastro.tsx (orphaned, unreachable via navigation) is to be removed once the merge below is implemented — not yet done, this is a documental decision only. The canonical modal must be expanded to incorporate the real, valid fields/capabilities that today exist ONLY in ArtistaCadastro.tsx (see fieldsOnlyInArtistaCadastro). Fields/capabilities already exclusive to the modal (the newer relacionamentos[]/contatosVinculados model) are preserved as-is, not replaced by ArtistaCadastro's older flat model.",
+    "canonicalBase": "ArtistaFormModal.tsx",
+    "whyThisBase": "Not chosen merely because it is the currently-used route (the Product Owner explicitly forbids that shortcut). Direct code comparison shows ArtistaFormModal.tsx already has the functionally superior foundation for the single most complex differentiator between the two: business-relationship modeling. It uses relacionamentos[] (apps/web/src/modules/artist/services/artista.mapper.ts), a structured, multi-entry model (role-typed: empresario/gravadora/editora/booker/juridico/financeiro/contador/assessoria, each with nested responsaveis[] and structured distribuidoras[]) plus contatosVinculados (CRM-linked team contacts, avoiding data duplication) — both strictly more capable than ArtistaCadastro.tsx's older flat empresario_*/gravadora_*/gravadora_responsavel_* single-relationship fields and free-text distribuidorasArtista/Empresa arrays. ArtistaFormModal.tsx also already consumes ARTIST_FORM_SECTIONS (apps/web/src/modules/artist/forms/artist-form.definition.ts) as its single source of truth for rendering + Zod-generated validation + export + import, and already includes genero (person gender) via that definition — a field the original GAP-0003/artist.md finding listed as ArtistaCadastro-exclusive, confirming partial convergence already happened since that audit. ArtistaCadastro.tsx has its own hand-rolled field list (local useState per field, inline JSX, no shared validation schema) and is confirmed unreachable via any navigation path (grep repo-wide for /artistas/novo and /editar outside the route file itself: 0 results).",
+    "correctedFinding": "GAP-0003.rootCause (pre-correction) incorrectly attributed ARTIST_FORM_SECTIONS to ArtistaCadastro.tsx (\"~71 campos via uma separate ARTIST_FORM_SECTIONS definition\") and ArtistaFormFields to ArtistaFormModal.tsx. Direct code inspection (this correction) confirms the opposite: ArtistaFormModal.tsx imports and renders ARTIST_FORM_SECTIONS (apps/web/src/modules/artist/components/ArtistaFormModal.tsx, import + JSX iteration confirmed); ArtistaCadastro.tsx does NOT import ARTIST_FORM_SECTIONS at all — it defines its own local constants (GENEROS_MUSICAIS, BANCOS, DISTRIBUIDORAS, TIPOS_ARTISTA, STATUS_ARTISTA) and only reuses 3 helper functions (artistaToFormFields, formToArtistaPayload, ESPECIALIDADES_LABELS) via the @/modules/artist/mappers barrel. This means the codebase changed after the original Fase 2 audit (docs/backend-v2/field-traceability/modules/artist.md) — ArtistaFormModal.tsx was already migrated to the newer ARTIST_FORM_SECTIONS definition since that audit ran. The stale attribution is corrected in GAP-0003 below; docs/backend-v2/field-traceability/modules/artist.md itself is left unmodified as a historical Fase 2 snapshot (out of scope for this correction).",
+    "fieldsOnlyInArtistaFormModal": [
+      {
+        "field": "relacionamentos[]",
+        "dbColumn": "artists.relacionamentos (jsonb)",
+        "classification": "KEEP_CANONICAL",
+        "reason": "Structured, multi-entry, role-typed business relationships with nested responsaveis[]/distribuidoras[] — strictly supersedes ArtistaCadastro's flat single-relationship-per-type model."
+      },
+      {
+        "field": "contatosVinculados",
+        "dbColumn": "artists.contatos_vinculados (jsonb)",
+        "classification": "KEEP_CANONICAL",
+        "reason": "CRM-linked team contacts (reference-only, resolved live from CRM) — ArtistaCadastro.tsx has no equivalent capability at all."
+      },
+      {
+        "field": "distribuidorasGerais",
+        "dbColumn": "artists.distribuidoras_gerais (jsonb)",
+        "classification": "KEEP_CANONICAL",
+        "reason": "Structured, ID-based distributor entries validated against DISTRIBUIDORAS_OPTIONS; ArtistaCadastro's equivalent (distribuidorasArtista/Empresa) is free-text distributor names, more error-prone."
+      },
+      {
+        "field": "client-side URL format validators (validateSpotifyUrl/Instagram/Youtube/Tiktok/Soundcloud/Deezer/AppleMusic)",
+        "dbColumn": "n/a (UX only, mirrors backend @Matches rules)",
+        "classification": "KEEP_CANONICAL",
+        "reason": "Immediate user feedback mirroring CreateArtistDto/UpdateArtistDto validation; no equivalent in ArtistaCadastro.tsx."
+      },
+      {
+        "field": "Zod schema generated from ARTIST_FORM_SECTIONS (buildArtistaSchema)",
+        "dbColumn": "n/a",
+        "classification": "KEEP_CANONICAL",
+        "reason": "Single source of truth for required/maxLength validation, consistent across render+validate+export+import; ArtistaCadastro.tsx validates ad hoc (only nomeArtistico/nome checked, no maxLength enforcement found)."
+      },
+      {
+        "field": "genero (pessoa)",
+        "dbColumn": "artists.metadata.genero",
+        "classification": "KEEP_CANONICAL",
+        "reason": "Already ported into ArtistaFormModal.tsx via ARTIST_FORM_SECTIONS since the original Fase 2 audit — confirms partial convergence already happened; the original GAP-0003 listing this as Cadastro-exclusive is now stale."
+      }
+    ],
+    "fieldsOnlyInArtistaCadastro": [
+      {
+        "field": "tipo (tipoArtista)",
+        "dbColumn": "artists.tipo",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real, validated CreateArtistDto field; drives artist classification (solo/banda/dupla/trio/grupo/compositor/produtor/dj) used elsewhere in the app. No other write path exists in ArtistaFormModal (preserved on edit at its existing value, but never user-editable; always defaults to artista_solo on create)."
+      },
+      {
+        "field": "status (statusArtista)",
+        "dbColumn": "artists.status",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real, validated CreateArtistDto/UpdateArtistDto field (ArtistStatus enum), workflow-relevant (ArtistsService.validateStatusTransition() enforces legal transitions server-side). ArtistaFormModal never exposes it for editing (defaults to contratado on create, preserved-only on edit) — the only other write path found is the automatic CONTRACT_SIGNED handler forcing status=contratado. A merged UI must respect the same server-validated transition graph, not add a free-form select."
+      },
+      {
+        "field": "contrato_id (vincular contrato)",
+        "dbColumn": "artists.contrato_id",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real, editable Select backed by useContratos() in ArtistaCadastro.tsx. ArtistaFormModal.tsx only preserves the existing value on edit (contrato_id: preserved.contratoId) — there is no UI to set or change it."
+      },
+      {
+        "field": "manager_nome",
+        "dbColumn": "artists.manager_nome",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real column, absent from ArtistaFormFields entirely (not even preserved) — confirmed no other write path in the app."
+      },
+      {
+        "field": "manager_contato",
+        "dbColumn": "artists.manager_contato_encrypted",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real encrypted column, same as manager_nome — no other write path."
+      },
+      {
+        "field": "produtor_executivo",
+        "dbColumn": "artists.produtor_executivo",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real column, no other write path."
+      },
+      {
+        "field": "agencia_booking",
+        "dbColumn": "artists.agencia_booking",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real column, no other write path."
+      },
+      {
+        "field": "label_parceira",
+        "dbColumn": "artists.label_parceira",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real column, no other write path."
+      },
+      {
+        "field": "galeria_urls (photo gallery)",
+        "dbColumn": "artists.galeria_urls",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real array column, distinct from the single foto_url already in the canonical modal — no other write path."
+      },
+      {
+        "field": "documentos (array of {nome,url})",
+        "dbColumn": "artists.documentos",
+        "classification": "MERGE_INTO_CANONICAL",
+        "reason": "Real array column, distinct from the single-file documentos_pessoais_url/presskit_url already in the canonical modal — no other write path."
+      },
+      {
+        "field": "Flat business-relationship editing UI (empresario_id/nome/telefone/email, gravadora_id/nome/telefone/email, gravadora_responsavel_id/nome/telefone/email as directly-editable fields) + distribuidorasArtista/Empresa free-text {distribuidora,email} arrays",
+        "dbColumn": "artists.empresario_*/gravadora_*/gravadora_responsavel_*/distribuidoras_selecionadas/distribuidoras_emails/distribuidoras_empresa_selecionadas/distribuidoras_empresa_emails",
+        "classification": "LEGACY_ONLY",
+        "reason": "Superseded by relacionamentos[] (already canonical in ArtistaFormModal). Do NOT port this editing UI pattern into the canonical model. The underlying legacy columns remain — the canonical modal already writes them derivedly from relacionamentos[] for backward compatibility (formToArtistaPayload, \"Legado (mantido para backward compat)\") — this is DERIVED write behavior already correctly implemented, not something to merge. WARNING (confirmed by code, not fixed by this decision): ArtistaCadastro.tsx's submit hardcodes relacionamentos: [] unconditionally — editing an artist that already has relacionamentos populated through ArtistaCadastro.tsx would silently wipe them to null. Currently not exploitable (route unreachable via navigation), but must not be carried into the canonical model; noted for whoever implements the removal of ArtistaCadastro.tsx."
+      },
+      {
+        "field": "distribuidorasArtista/Empresa free-text distributor name (as opposed to the structured ID-based model)",
+        "dbColumn": "n/a (input shape only)",
+        "classification": "DEAD",
+        "reason": "Free-text distributor name entry is strictly inferior to the canonical model's ID-based DISTRIBUIDORAS_OPTIONS selection (distribuidorasGerais/relacionamentos[].distribuidoras[]) — typo-prone, no canonical identifier. The underlying capability (associate distributors) is already covered, structurally better, by the canonical model; this specific input shape should not be preserved."
+      }
+    ],
+    "fieldsNeedingProductDecision": [
+      {
+        "field": "tagsMusicais, faseCarreira, slugArtistico",
+        "dbColumn": "artists.tags_musicais/fase_carreira/slug_artistico",
+        "classification": "NEEDS_PRODUCT_DECISION",
+        "reason": "Real DTO/DB fields with ZERO editable UI in EITHER component today (preserved/round-tripped by ArtistaFormModal but never rendered; absent entirely from ArtistaCadastro.tsx's own state). Not an artifact of the ArtistaFormModal-vs-ArtistaCadastro duplication (neither side exposes them), so out of DEC-003's direct scope, but flagged here because a complete canonical model should eventually decide whether these become user-editable — not decided by this correction, no UI change made."
+      }
+    ],
+    "rejectedOptions": {
+      "ARTISTA_CADASTRO_REPLACES_MODAL": "Rejected. Field coverage alone is not a valid reason to replace the reachable, actively-maintained implementation with an orphaned one that has a materially worse business-relationship data model, ad hoc validation, and a confirmed data-loss bug on the relacionamentos field.",
+      "KEEP_BOTH_AS_DISTINCT_FLOWS": "Rejected. No evidence of an intentional \"quick vs. full\" product distinction — ArtistaCadastro.tsx is simply unreachable (0 navigation references), not a deliberately separate lightweight flow. Keeping two independent implementations of the same entity's create/edit surface is the duplication this decision exists to resolve."
+    },
+    "mergeScope": "MERGE_INTO_CANONICAL applies to real fields/capabilities only: tipo, status, contrato_id (editable selector), manager_nome, manager_contato, produtor_executivo, agencia_booking, label_parceira, galeria_urls, documentos. LEGACY_ONLY/DEAD items (flat relationship-editing UI, free-text distributor names) are explicitly NOT to be ported. Merging status specifically requires respecting the existing server-side transition validation (ArtistsService.validateStatusTransition), not a free-form select.",
+    "implementationStatus": "NOT_STARTED — this is a documental decision only, per explicit instruction. ArtistaFormModal.tsx was not modified. ArtistaCadastro.tsx was not removed. No fields were merged. No DTO/entity/schema/migration was changed. ArtistaCadastro.tsx remains routed (/artistas/novo, /artistas/:id/editar) and orphaned (unreachable via navigation) until the merge is implemented in a future step."
+  },
+  {
+    "id": "DEC-004",
+    "gapIds": [
+      "GAP-0004"
+    ],
+    "question": "ContratoWizard.tsx e ContratoFormModal.tsx têm conjuntos de campos disjuntos (arquivo_url/exclusivo só no Modal; template_id/parties/variáveis só no Wizard), causando perda de dados ao alternar entre eles para o mesmo contrato. Qual se torna o componente canônico único?",
+    "options": [
+      "ContratoWizard.tsx — é o fluxo mais completo/recente (suporta templates); portar arquivo_url/exclusivo para ele e depreciar ContratoFormModal.tsx",
+      "ContratoFormModal.tsx — é mais simples/direto; portar template_id/parties/variáveis para ele e depreciar o Wizard",
+      "Unificar os dois em um único componente configurável (modo rápido vs modo wizard) compartilhando o mesmo estado de formulário"
+    ],
+    "recommendedOption": "ContratoWizard.tsx — é o fluxo mais completo/recente (suporta templates); portar arquivo_url/exclusivo para ele e depreciar ContratoFormModal.tsx",
+    "reason": "O Wizard já cobre o caso de uso mais complexo (templates, variáveis, parties) que o Modal não replica; estender o mais simples ao mais completo é o caminho de menor perda de funcionalidade.",
+    "blocksSchemaV2Design": false,
+    "blocksApiV2Implementation": false,
+    "status": "RESOLVED",
+    "selectedOption": "UNIFIED_CONFIGURABLE_CONTRACT_COMPONENT",
+    "userDecisionResolved": true,
+    "canonicalDecision": "Contracts will use one canonical shared form/state implementation with WIZARD and QUICK modes. Both the primary contracts flow and the catalog-triggered quick flow remain valid entrypoints. Independent create/edit implementations with divergent field semantics (ContratoWizard.tsx and ContratoFormModal.tsx as two separate implementations) are not canonical.",
+    "canonicalPrinciple": "There will not be two independent components able to read/write the same Contract with different field contracts. Future implementation requires: ONE_CANONICAL_CONTRACT_FORM_MODEL, ONE_CANONICAL_READ_MAPPING, ONE_CANONICAL_WRITE_MAPPING, MULTIPLE_ENTRY_MODES_ALLOWED.",
+    "modes": {
+      "WIZARD": "Full create/edit/manage flow currently represented by ContratoWizard.tsx, including template selection, dynamic party detection, manifest variables, signatories, preview, and full workflow.",
+      "QUICK": "Abbreviated flow currently triggered by RegistroMusicas.tsx (catalog module) after registering a Work/Phonogram — uses the SAME canonical implementation, may pre-fill context, reduce visible steps, and show only fields needed for that use case, without creating a second persistence contract."
+    },
+    "entrypointsPreserved": {
+      "PRIMARY_CONTRACTS_ENTRYPOINT": "PRESERVED",
+      "CATALOG_QUICK_CONTRACT_ENTRYPOINT": "PRESERVED (must eventually point to the canonical component in QUICK mode; this decision does not authorize removing catalog functionality)"
+    },
+    "fileIdentityDecided": false,
+    "fileIdentityNote": "This decision is conceptual, not a file-naming decision. The final physical result may be a refactor of the existing Wizard, a new shared component extracted from it, or another equivalent technical reorganization — as long as it results in ONE canonical implementation. Not decided here whether the final file is ContratoWizard.tsx, ContratoFormModal.tsx, or a new file.",
+    "fieldsToPreserve": [
+      "template_id",
+      "arquivo_url",
+      "exclusivo",
+      "artista_id",
+      "cliente_id",
+      "lancamento_id",
+      "signing_platform",
+      "signers",
+      "data_inicio/data_fim",
+      "observacoes",
+      "dynamically-detected parties",
+      "manifest variables"
+    ],
+    "fieldsToPreserveNote": "This does not mean making all fields mandatory in both modes. Rule: single canonical state model + mode-specific presentation.",
+    "arquivoUrlNote": "The absence of arquivo_url in the primary (Wizard) flow is a real defect because the backend requires it (truthy) for the aguardando_assinatura -> assinado workflow transition. DEC-004 RESOLVED does NOT mean this bug is fixed — implementation is left to GAP-0004 itself / its own resolution step.",
+    "exclusivoNote": "exclusivo is a real, semantically relevant field (NOT NULL column, one of 11 seed contract_categories). The canonical component must eventually allow its real value to be captured/preserved. Not corrected now.",
+    "observacoesSemanticConflict": "UNRESOLVED_IMPLEMENTATION_GAP",
+    "observacoesNote": "This decision does NOT authorize declaring contracts.observacoes = canonical structured parties/variables storage. Today: Wizard writes a serialized structured JSON blob into observacoes; FormModal writes free text into the same column — a real, unresolved semantic conflict. The future single-component implementation must have ONE semantic meaning per field; which one (and how) is not decided by DEC-004.",
+    "structuredPartiesStorageModel": "NOT_DECIDED_BY_DEC_004",
+    "structuredPartiesStorageNote": "Whether parties/variables/manifest data end up in columns, a relational table, metadata, or another structured resource belongs to their own structural gaps, not to this decision.",
+    "piiNote": "This decision does not legitimize storing structured PII inside observacoes. The PII gap already identified in contracts (GAP-0049) remains OPEN. DEC-004 resolves only the create/edit surface duplication, nothing about PII handling.",
+    "frontendSourceOfTruth": "UNIFIED_SHARED_FORM_STATE (not ContratoWizard state + ContratoFormModal state kept separately)",
+    "backendSourceOfTruth": "contracts (existing single persistent entity, unchanged — no new table required solely for this frontend unification)",
+    "schemaV2Impact": "NONE_DIRECT — choosing the canonical component does not by itself require a schema change. This does not prevent gaps related to parties/observacoes/PII/signatures from requiring their own schema changes later.",
+    "apiV2Note": "ONE contract resource, ONE create-contract contract, ONE update-contract contract. WIZARD/QUICK are frontend/UX behavior and must not create two competing API resources.",
+    "dependencyProvidedNote": "This decision provides the premise GAP-0008 (party sourceId) needs to eventually be resolved (which component/state model owns party data) — GAP-0008 itself remains unimplemented.",
+    "duplicationEliminated": "The current state (ContratoWizard.tsx + ContratoFormModal.tsx as two independent create/edit implementations) is NOT canonical and must be eliminated when GAP-0004 is implemented.",
+    "implementationStatus": "NOT_STARTED — this is a documental decision only. Neither ContratoWizard.tsx nor ContratoFormModal.tsx nor RegistroMusicas.tsx was modified. arquivo_url/exclusivo were not fixed. observacoes was not changed. No PII migration occurred. GAP-0008 remains unimplemented."
+  },
+  {
+    "id": "DEC-005",
+    "gapIds": [
+      "GAP-0005"
+    ],
+    "question": "Billing está fragmentado em 3 superfícies (Configuracoes.tsx \"Billing\" tab — arquitetura correta mas aponta a um endpoint inexistente; Billing.tsx standalone — hardcoda preços de plano; BillingBlockedPage.tsx — propósito distinto, não faz parte do conflito). Qual das duas primeiras se torna canônica?",
+    "options": [
+      "Configuracoes.tsx \"Billing\" tab — arquitetura correta (não hardcoda preços); implementar o endpoint PATCH /billing/subscription/plan que falta (GAP-0069) e depreciar Billing.tsx standalone",
+      "Billing.tsx standalone — já é a página mais usada/linkada; remover o hardcode de preços e torná-la a única superfície",
+      "Manter ambas fundidas em uma única rota/componente reaproveitando o hook real de assinatura"
+    ],
+    "recommendedOption": "Configuracoes.tsx \"Billing\" tab — arquitetura correta (não hardcoda preços); implementar o endpoint PATCH /billing/subscription/plan que falta (GAP-0069) e depreciar Billing.tsx standalone",
+    "reason": "Billing.tsx hardcoda preços de plano, violando a própria convenção do código-base de nunca hardcodar planos — a superfície tecnicamente correta deve vencer mesmo que exija completar um endpoint ausente.",
+    "blocksSchemaV2Design": false,
+    "blocksApiV2Implementation": false
+  },
+  {
+    "id": "DEC-006",
+    "gapIds": [
+      "GAP-0006"
+    ],
+    "question": "Gestão de convites de membro está fragmentada entre /usuarios (Usuarios.tsx, só envia convite) e Configuracoes.tsx \"Usuários\" tab (superfície completa: listar/reenviar/cancelar). Qual se torna canônica?",
+    "options": [
+      "Configuracoes.tsx \"Usuários\" tab — já tem a superfície completa; remover a ação de convite duplicada de Usuarios.tsx e redirecioná-la para a aba de Configuracoes",
+      "Usuarios.tsx — é a rota de nível superior mais descoberta; portar listar/reenviar/cancelar para ela e remover a duplicata em Configuracoes",
+      "Extrair um componente de convite compartilhado consumido por ambas as rotas, sem eliminar nenhuma das duas entradas de navegação"
+    ],
+    "recommendedOption": "Configuracoes.tsx \"Usuários\" tab — já tem a superfície completa; remover a ação de convite duplicada de Usuarios.tsx e redirecioná-la para a aba de Configuracoes",
+    "reason": "A superfície mais completa já existe e funciona contra o backend real (useRoles()) — eliminar a ação parcial duplicada é a menor mudança que resolve a fragmentação.",
+    "blocksSchemaV2Design": false,
+    "blocksApiV2Implementation": false
+  },
+  {
+    "id": "DEC-007",
+    "gapIds": [
+      "GAP-0007"
+    ],
+    "question": "O modelo de tracklist de releases deve ser relacional (release_works, tabela M:N já existente no schema mas nunca populada, ligando a phonograms/works) ou jsonb (metadata.faixas, o que o fluxo funcional real usa hoje)?",
+    "options": [
+      "Migrar para relacional (release_works) — permite ligação real a phonograms.isrc/works, necessário para rastreabilidade de direitos/distribuição; requer migração de dados de metadata.faixas",
+      "Formalizar jsonb (metadata.faixas) como modelo definitivo — remover release_works do schema por não estar em uso",
+      "Modelo híbrido: manter jsonb como cache de exibição, mas gravar em paralelo release_works como fonte relacional de verdade"
+    ],
+    "recommendedOption": "Migrar para relacional (release_works) — permite ligação real a phonograms.isrc/works, necessário para rastreabilidade de direitos/distribuição; requer migração de dados de metadata.faixas",
+    "reason": "Sem a relação a phonograms/works, isrc/iswc e split-sheets (GAP-0041) nunca se conectam à faixa real dentro do release — bloqueador direto do desenho do schema v2 para todo o domínio de distribuição.",
+    "blocksSchemaV2Design": true,
+    "blocksApiV2Implementation": false,
+    "status": "RESOLVED",
+    "selectedOption": "RELATIONAL_TRACKLIST_MODEL",
+    "userDecisionResolved": true,
+    "canonicalDecision": "Tracklist is relational and must reference concrete phonograms. metadata.faixas is not the canonical source of truth. The final relational table design remains to be defined during schema-gap resolution.",
+    "canonicalChain": "Release -> Release Track -> Phonogram -> Work -> Rights/Shares",
+    "architecturalCaveat": "RELATIONAL_TRACKLIST_MODEL does not mean the current release_works(release_id, work_id) shape is accepted as final. release_works is insufficient to represent a tracklist because it lacks phonogram_id, position/order, and track-level identity — it only links release<->work (abstract composition), not release<->phonogram (concrete recording). FINAL_RELATIONAL_SCHEMA_STATUS: TO_BE_DESIGNED (new release_tracks table, vs. evolving/replacing release_works — that choice belongs to the schema-gap resolution step, not to this decision).",
+    "minimumRelationalRequirements": [
+      "release_id",
+      "phonogram_id",
+      "position/order"
+    ],
+    "domainSemantics": {
+      "Work": "ABSTRACT_COMPOSITION",
+      "Phonogram": "CONCRETE_RECORDING",
+      "ReleaseTrack": "ORDERED_OCCURRENCE_OF_A_RECORDING_IN_A_RELEASE"
+    },
+    "rightsTraceability": "Preserved via the phonogram's own canonical relation: phonograms.obra_id -> works.id (already real). release -> work alone (via release_works) is not sufficient to model the tracklist; the release track must reference a concrete phonogram.id.",
+    "metadataFaixasClassification": "NON_CANONICAL_METADATA (LEGACY_DATA / MIGRATION_SOURCE candidate — exact treatment to be determined during the migration step; nothing deleted or migrated now)",
+    "rejectedOptions": {
+      "JSONB_FORMALIZED": "Rejected as the canonical model — would permanently discard 2 real, actively-used relations already pointing works as the system's real rights/splits anchor (phonograms.obra_id -> works.id, shares.obra_id -> works.id), and would block any future track-level rights traceability between a release and the phonogram catalog. Does not eliminate or alter the wizard's current field collection.",
+      "HYBRID_DUAL_WRITE": "Not selected. Introduces a dual-write consistency risk (jsonb display cache + relational source of truth) with no documented performance requirement justifying it. Evaluated, not adopted."
+    },
+    "preservesCurrentWizardIntent": true,
+    "frontendChangeRequired": true,
+    "frontendChangeType": "CONTRACT_ALIGNMENT",
+    "implementationStatus": "NOT_STARTED — this is a documental decision only. release_tracks was not created, release_works was not altered, metadata.faixas was not altered, GAP-0129 and GAP-0130 remain unresolved, no schema v2/API v2 work has begun."
+  },
+  {
+    "id": "DEC-008",
+    "gapIds": [
+      "GAP-0008"
+    ],
+    "question": "Quando uma party de contrato é populada a partir de um cliente/artista existente, o sourceId da origem deve ser persistido como referência viva, ou o comportamento atual de snapshot (copiar valores, sem link) deve ser formalizado como intencional?",
+    "options": [
+      "Persistir sourceId como referência viva — futuras edições no CRM/Artist propagam ao contrato automaticamente (requer resolver GAP-0004 primeiro, já que depende de qual componente se torna canônico)",
+      "Formalizar o snapshot atual como intencional (contratos assinados não devem mudar retroativamente se o cliente for editado depois) — apenas documentar a decisão, sem alteração de código"
+    ],
+    "recommendedOption": "Formalizar o snapshot atual como intencional (contratos assinados não devem mudar retroativamente se o cliente for editado depois) — apenas documentar a decisão, sem alteração de código",
+    "reason": "Um contrato juridicamente assinado não deveria mudar retroativamente porque o cadastro de origem foi editado depois — snapshot-by-design é normalmente o comportamento correto para documentos legais, mas a escolha final cabe ao usuário por afetar a semântica jurídica dos contratos.",
+    "blocksSchemaV2Design": false,
+    "blocksApiV2Implementation": false
+  },
+  {
+    "id": "DEC-009",
+    "gapIds": [
+      "GAP-0168"
+    ],
+    "question": "A cardinalidade Project↔Release deve ser fechada com uma FK direta e obrigatória (releases.project_id, N:1), ou a rastreabilidade Project↔Release deve ser inteiramente derivada pela cadeia já decidida Project → Work → Phonogram → ReleaseTrack → Release (DEC-001 + DEC-007), sem nova coluna direta em releases? Isso depende de uma decisão de produto ainda não tomada: um Release pode legitimamente agregar faixas originadas de mais de um Project (ex.: coletâneas/relançamentos), ou a intenção de negócio é que cada Release corresponda sempre a exatamente 1 Project (single/EP/álbum)?",
+    "options": [
+      "PROJECT_RELEASE_DIRECT_LINK — adicionar releases.project_id como FK opcional/denormalizada (N:1, nullable) para o caso comum \"este release nasceu deste projeto\"; simplifica queries mas não representa corretamente um release cujas faixas vêm de mais de um project, e introduz uma segunda fonte de rastreabilidade paralela à cadeia já decidida por DEC-001/DEC-007",
+      "PROJECT_RELEASE_DERIVED_ONLY — nenhuma nova coluna em releases; a rastreabilidade Project↔Release é inteiramente derivada via Work→Phonogram→ReleaseTrack (cadeia já decidida por DEC-001/DEC-007), suportando naturalmente N:M (um release pode conter faixas de múltiplos projects; um project pode originar múltiplos releases) sem introduzir uma segunda fonte de verdade",
+      "HYBRID_DUAL_PATH — manter a cadeia transitiva como fonte de verdade E adicionar releases.project_id como campo de conveniência/cache denormalizado para o caso comum de 1 projeto por release, aceitando o risco de divergência entre os dois caminhos e a necessidade de defini-lo como derivado (não editável diretamente) ou aceitar inconsistência potencial"
+    ],
+    "recommendedOption": "PROJECT_RELEASE_DERIVED_ONLY — evita introduzir uma segunda fonte de verdade paralela e uma FK que seria semanticamente incompleta/potencialmente falsa no caso de coletâneas ou relançamentos multi-projeto; a cadeia já foi decidida por DEC-001 (works.projeto_id → projects.id, real e populado) e DEC-007 (ReleaseTrack → Phonogram → Work, ainda não implementada) — falta apenas a implementação de release_tracks já prevista por DEC-007, não uma nova decisão de schema.",
+    "reason": "Evidência local confirma que Project não corresponde 1:1 a Release nem em intenção: o vocabulário `tipo` de `projects` (apps/api/src/modules/projects/dto/projects.dto.ts) inclui `video`/`tour`/`podcast`/`other` além de `single`/`ep`/`album` — a maioria dos tipos de Project nem sequer produz um Release. Mesmo restringindo a `single`/`ep`/`album`, o schema de `release_works` (M:N, composite PK `release_id`+`work_id`, sem constraint de projeto único por release — docs/backend-v2/field-traceability/modules/releases.md §8) já permite estruturalmente que um release agregue works de projects diferentes; nada no schema ou nas decisões já tomadas proíbe isso. Uma FK direta obrigatória forçaria uma simplificação 1:1 não suportada pelo modelo já decidido em DEC-001/DEC-007, sem que exista evidência local de qual comportamento o produto realmente precisa nos casos de borda (coletâneas, relançamentos, projetos que nunca viram release).",
+    "blocksSchemaV2Design": true,
+    "blocksApiV2Implementation": false,
+    "status": "RESOLVED",
+    "selectedOption": "PROJECT_RELEASE_DIRECT_LINK",
+    "userDecisionResolved": true,
+    "canonicalDecision": "Project always represents a musical project of type Single, EP, or Album (canonical v2 scope). A Project may contain one or more songs (musicas); each song has its own Work, Phonogram, and eventually ReleaseTrack. Release belongs directly to its originating Project via releases.project_id -> projects.id (a real N:1 FK, nullable). This direct relation is a first-class part of the v2 model and does NOT replace or substitute the transitive chain Release -> ReleaseTrack -> Phonogram -> Work already decided by DEC-007/DEC-001 — both relations coexist: releases.project_id records which Project the Release belongs to; the ReleaseTrack chain (still TO_BE_DESIGNED per DEC-007) records which concrete Phonogram/Work recordings make up the Release tracklist. PROJECT_RELEASE_DERIVED_ONLY and HYBRID_DUAL_PATH are explicitly REJECTED by this decision.",
+    "canonicalScopeNarrowing": "Product Owner explicitly narrowed the canonical v2 scope of projects.tipo to Single/EP/Album only. The wider backend DTO vocabulary observed in local evidence (video/tour/podcast/other, apps/api/src/modules/projects/dto/projects.dto.ts) is NOT canonical v2 scope going forward for the Project<->Release relation — those values are LEGACY/out-of-scope and must not be treated as valid future targets for releases.project_id. NOT decided here: what becomes of existing/legacy Project rows of those types (deprecation, migration, or continued support as a non-release-linked use case) — left to a future, separate resolution step, not invented by this decision.",
+    "rejectedOptions": {
+      "PROJECT_RELEASE_DERIVED_ONLY": "Rejected by explicit Product Owner decision. Was the engineering-recommended option in this record (avoids a second traceability path) but the Product Owner determined the business model requires a first-class direct Project<->Release relationship.",
+      "HYBRID_DUAL_PATH": "Rejected by explicit Product Owner decision — not selected; avoids the dual-write/divergence risk this option would have introduced."
+    },
+    "uniquenessNote": "releases.project_id must NOT be UNIQUE unless a further, separate decision explicitly establishes a strict 1:1 Project<->Release cardinality. Absent that, the column is a plain nullable N:1 FK — multiple releases MAY reference the same project (e.g., reissues/re-releases) until/unless a future decision restricts this further.",
+    "chainPreservedNote": "releases.project_id -> projects.id does NOT replace, supersede, or make redundant the Release -> ReleaseTrack -> Phonogram -> Work chain from DEC-007/DEC-001. Both are first-class, coexisting relations in the v2 model: releases.project_id is a direct project-membership marker; the ReleaseTrack chain is the relational tracklist / rights-traceability path. release_tracks/ReleaseTrack remains TO_BE_DESIGNED and NOT_STARTED — DEC-007 implementation status is unchanged by this decision.",
+    "implementationStatus": "NOT_STARTED — this is a documental decision only. releases.project_id was not added to any migration/entity/DTO. No code, schema, migration, or database was changed. GAP-0168 remains OPEN for that implementation work."
+  }
+]

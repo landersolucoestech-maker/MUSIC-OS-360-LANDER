@@ -235,7 +235,6 @@ Before every production deploy:
 | `SUPABASE_URL` | YES | Supabase project URL |
 | `SUPABASE_ANON_KEY` | YES | Supabase anon key (JWT validation) |
 | `ENCRYPTION_KEY` | YES | 32-byte hex key for field encryption |
-| `ENCRYPTION_IV_SECRET` | YES | IV derivation secret |
 | `STRIPE_SECRET_KEY` | YES (billing) | Stripe API key |
 | `STRIPE_WEBHOOK_SECRET` | YES (billing) | Stripe webhook signing secret |
 | `REDIS_URL` | NO | Redis connection (queues degrade gracefully) |

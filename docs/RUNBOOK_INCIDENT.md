@@ -128,7 +128,7 @@ Print this section. Or pin in `#ops-incident`.
 - [ ] Page CTO + CEO + security
 - [ ] Identify scope: which user saw which tenant's data? grep `audit_logs` by `request_id` / `correlation_id`
 - [ ] Preserve evidence: snapshot Sentry events, lock the audit_logs table changes
-- [ ] Rotate `ENCRYPTION_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`
+- [ ] Rotate `ENCRYPTION_KEY` and `SUPABASE_SERVICE_ROLE_KEY`
 - [ ] LGPD/GDPR: 72-hour clock starts for breach notification
 - [ ] Public disclosure via status page within 24h if confirmed
 
