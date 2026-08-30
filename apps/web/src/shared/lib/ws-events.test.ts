@@ -30,6 +30,15 @@ describe('ALL_WS_EVENT_NAMES', () => {
       'billing:payment_failed': true,
       'billing:cancelled': true,
       'data:changed': true,
+      'conversation:created': true,
+      'conversation:updated': true,
+      'conversation:message': true,
+      'conversation:assigned': true,
+      'conversation:transferred': true,
+      'conversation:closed': true,
+      'conversation:reopened': true,
+      'internalConversation:created': true,
+      'internalConversation:message': true,
     };
 
     expect([...ALL_WS_EVENT_NAMES].sort()).toEqual(Object.keys(allMapKeys).sort());

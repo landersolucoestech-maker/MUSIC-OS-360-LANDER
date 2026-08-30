@@ -140,7 +140,11 @@ function statusVariant(status: CampaignStatus): BadgeVariant {
 
 function campaignSpend(campaign: MarketingCampaign): number {
   const calculated = campaign.metrics.costPerResult * campaign.metrics.conversions;
-  return calculated > 0 ? calculated : campaign.budget * 0.41;
+  return calculated > 0 ? calculated : 0;
+}
+
+function hasSpendData(campaign: MarketingCampaign): boolean {
+  return campaign.metrics.costPerResult * campaign.metrics.conversions > 0;
 }
 
 function campaignCtr(campaign: MarketingCampaign): number {
@@ -589,7 +593,7 @@ function CampaignViewModal({
             </h3>
             <div className="grid gap-x-12 gap-y-3 sm:grid-cols-2">
               <MetricLine icon={DollarSign} label="Orçamento:" value={formatCurrency(campaign.budget)} />
-              <MetricLine icon={DollarSign} label="Gasto:" value={formatCurrency(campaignSpend(campaign))} />
+              <MetricLine icon={DollarSign} label="Gasto:" value={hasSpendData(campaign) ? formatCurrency(campaignSpend(campaign)) : "Indisponível"} />
               <MetricLine icon={MousePointer2} label="Cliques:" value={compactNumber(campaign.metrics.clicks)} />
               <MetricLine icon={BarChart3} label="Impressões:" value={compactNumber(campaign.metrics.impressions)} />
               <MetricLine icon={BarChart3} label="Conversões:" value={compactNumber(campaign.metrics.conversions)} />

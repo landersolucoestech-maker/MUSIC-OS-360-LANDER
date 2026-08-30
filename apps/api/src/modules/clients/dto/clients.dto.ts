@@ -19,6 +19,8 @@ export class CreateClientDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(15)  zipCode?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(150) responsible?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+  @ApiPropertyOptional({ enum: ['low', 'medium', 'high', 'strategic'] })
+  @IsOptional() @IsIn(['low', 'medium', 'high', 'strategic']) priority?: string;
 }
 
 export class UpdateClientDto extends PartialType(CreateClientDto) {

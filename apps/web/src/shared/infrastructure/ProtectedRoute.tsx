@@ -22,7 +22,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/app/providers/AuthContext";
-import { AUTH_DISABLED } from "@/shared/lib/env";
+import { AUTH_DISABLED, DEV_AUTH_BYPASS } from "@/shared/lib/env";
 
 interface ProtectedRouteProps {
   /** Se omitido, renderiza as rotas filho via <Outlet> (padrão React Router v6). */
@@ -41,7 +41,7 @@ export function ProtectedRoute({
   /**
    * O utilizador mock está sempre "autenticado" apenas em desenvolvimento.
    */
-  const allowRouteBypass = AUTH_DISABLED;
+  const allowRouteBypass = AUTH_DISABLED || DEV_AUTH_BYPASS;
   if (allowRouteBypass) {
     return children ? <>{children}</> : <Outlet />;
   }

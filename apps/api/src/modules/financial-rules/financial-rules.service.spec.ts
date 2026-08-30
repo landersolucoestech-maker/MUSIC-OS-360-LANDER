@@ -72,3 +72,46 @@ describe('FinancialRulesService.update — concorrência otimista (Task K)', () 
     ).rejects.toThrow(ConflictException);
   });
 });
+
+/**
+ * REM-03 (Remaining Product Completion Backlog): calculo:'faixa' não tem
+ * estrutura de brackets persistida (feature "em breve" no frontend —
+ * FinancialRules.tsx). evaluateRules() computava 0 em silêncio e emitia
+ * FINANCIAL_RULE_TRIGGERED como se fosse um resultado real. Agora pula a
+ * regra e avisa — nunca fabrica um resultado.
+ */
+describe('FinancialRulesService.evaluateRules — calculo não implementado (REM-03)', () => {
+  function makeEvalService(rule: Record<string, unknown>) {
+    const qb = {
+      where: jest.fn().mockReturnThis(),
+      getMany: jest.fn(async () => [rule]),
+    };
+    const repo = { createQueryBuilder: jest.fn(() => qb) };
+    const ds = { getRepository: jest.fn(() => repo) } as any;
+    const events = { emitTyped: jest.fn(), emit: jest.fn() } as unknown as EventsService;
+    const svc = new FinancialRulesService(ds, events);
+    return { svc, events };
+  }
+
+  it("calculo:'faixa' não emite FINANCIAL_RULE_TRIGGERED (nunca fabrica computed=0)", async () => {
+    const { svc, events } = makeEvalService({
+      id: 'rule-faixa', tenant_id: 'tenant-1', nome: 'Comissão em faixas', tipo: 'comissao',
+      calculo: 'faixa', valor: '10', ativo: true, condicoes: {},
+    });
+
+    await svc.evaluateRules('tenant-1', 'transaction.created', { entityId: 'tx-1', entityType: 'transaction', valor: 1000 });
+
+    expect(events.emitTyped).not.toHaveBeenCalled();
+  });
+
+  it("calculo:'percentual' continua emitindo normalmente (regressão)", async () => {
+    const { svc, events } = makeEvalService({
+      id: 'rule-pct', tenant_id: 'tenant-1', nome: 'Comissão padrão', tipo: 'comissao',
+      calculo: 'percentual', valor: '10', ativo: true, condicoes: {},
+    });
+
+    await svc.evaluateRules('tenant-1', 'transaction.created', { entityId: 'tx-1', entityType: 'transaction', valor: 1000 });
+
+    expect(events.emitTyped).toHaveBeenCalledTimes(1);
+  });
+});

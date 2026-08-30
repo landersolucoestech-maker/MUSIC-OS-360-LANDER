@@ -29,6 +29,8 @@ import {
   TIPO_LEAD_OPTIONS,
 } from "../constants/lead-form-options";
 import { TIPO_INTERACAO_OPTIONS, type Interacao } from "./LeadFormModal";
+import { useLeadInteractions } from "../hooks/useLeadInteractions";
+import { LEAD_INTERACTION_TYPE_LABELS } from "../services/lead-interactions.service";
 
 // ─────────────────────────────────────────────
 // Combos — espelho exato do LeadFormModal
@@ -142,6 +144,11 @@ function Row({
 export function LeadViewModal({
   open, onOpenChange, lead, onEdit,
 }: LeadViewModalProps) {
+  // REM-04 (GAP-10): registro real de interações da equipe (lead_interactions),
+  // distinto do "Histórico de Interações" abaixo (que vem do payload do
+  // formulário de captação). Hook chamado antes do early-return (Rules of Hooks).
+  const { data: interacoesEquipe = [] } = useLeadInteractions(lead?.id);
+
   if (!lead) return null;
 
   const ps  = (lead.payloadServico   ?? {}) as Record<string, unknown>;
@@ -323,6 +330,38 @@ export function LeadViewModal({
                     <p className="flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground">
                       <MessageSquare className="h-3.5 w-3.5" />
                       Interação {idx + 1} · {lookup(TIPO_INTERACAO_OPTIONS, it.tipo)} · {fmtDate(it.data)}{it.horario ? ` ${it.horario}` : ""}
+                    </p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">
+                      {it.descricao || "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ══════════════════════════════════════
+              REGISTRO DE INTERAÇÕES DA EQUIPE (REM-04 / GAP-10)
+          ══════════════════════════════════════ */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold tracking-wider text-muted-foreground border-b pb-1">
+              Registro de Interações da Equipe
+            </h3>
+            {interacoesEquipe.length === 0 ? (
+              <p className="text-sm italic text-muted-foreground">
+                Nenhuma interação registrada pela equipe ainda.
+              </p>
+            ) : (
+              <div className="space-y-3" data-testid="lead-view-interacoes-equipe">
+                {interacoesEquipe.map((it) => (
+                  <div
+                    key={it.id}
+                    className="rounded-md border bg-muted/20 p-3 space-y-1"
+                    data-testid={`lead-view-interacao-equipe-${it.id}`}
+                  >
+                    <p className="flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      {LEAD_INTERACTION_TYPE_LABELS[it.tipo] ?? it.tipo} · {fmtDate(it.data)}
                     </p>
                     <p className="text-sm text-foreground whitespace-pre-wrap">
                       {it.descricao || "—"}

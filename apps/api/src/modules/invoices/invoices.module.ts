@@ -5,9 +5,10 @@ import { InvoiceEventsHandler }     from './handlers/invoice-events.handler';
 import { InvoiceOverdueScheduler }  from './schedulers/invoice-overdue.scheduler';
 import { InvoiceOverdueCronController } from './schedulers/invoice-overdue-cron.controller';
 import { ActivityLogsModule }       from '../activity-logs/activity-logs.module';
+import { FinancialRulesModule }     from '../financial-rules/financial-rules.module';
 
 @Module({
-  imports:     [ActivityLogsModule],
+  imports:     [ActivityLogsModule, FinancialRulesModule],
   controllers: [InvoicesController, InvoiceOverdueCronController],
   providers:   [InvoicesService, InvoiceEventsHandler, InvoiceOverdueScheduler],
   exports:     [InvoicesService],

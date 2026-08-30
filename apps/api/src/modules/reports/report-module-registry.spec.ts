@@ -62,8 +62,8 @@ describe('REPORT_MODULE_REGISTRY — lista fechada e ordem exata (Bloco 31)', ()
       expect(orderedLabels).toEqual(EXPECTED_ORDERED_LABELS);
     });
 
-    it('"forms" e "pipelines" nunca são reportáveis', () => {
-      for (const table of ['forms', 'pipelines']) {
+    it('"pipelines" nunca é reportável', () => {
+      for (const table of ['pipelines']) {
         const e = inv.entities.find((x) => x.tableName === table);
         expect(e?.reportable).toBe(false);
       }

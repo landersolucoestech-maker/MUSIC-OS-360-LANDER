@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { FeatureFlags } from "@/shared/lib/feature-flags";
 import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-flags";
-import { AUTH_DISABLED, IS_DEV } from "@/shared/lib/env";
+import { AUTH_DISABLED, DEV_AUTH_BYPASS, IS_DEV } from "@/shared/lib/env";
 import { ROLE_PERMISSIONS } from "./tenant-labels";
 import { tenantModulePermissionKeys } from "@/shared/lib/permission-map";
 import { api, getAccessToken } from "@/shared/lib/api-client";
@@ -193,6 +193,12 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 // mostra aqui.
 const AUTH_DISABLED_TENANT_ID = "a900b3a8-fa1c-5a6b-a852-1b0689e27fe3";
 
+// DEV ONLY (VITE_DISABLE_AUTH=true) — tenant sintético central, IDs
+// deliberadamente distintos do AUTH_DISABLED_TENANT_ID acima (ver nota em
+// AuthContext.tsx: este flag não pressupõe nenhum bypass correspondente no
+// backend). Permissões de owner para liberar toda a navegação/UI local.
+const DEV_AUTH_BYPASS_TENANT_ID = "00000000-0000-4000-8000-000000000002";
+
 function buildInitialTenant(): Tenant {
   if (AUTH_DISABLED) {
     return {
@@ -200,6 +206,15 @@ function buildInitialTenant(): Tenant {
       id: AUTH_DISABLED_TENANT_ID,
       name: "LANDER RECORDS",
       slug: "lander-records",
+      permissions: ROLE_PERMISSIONS.owner,
+    };
+  }
+  if (DEV_AUTH_BYPASS) {
+    return {
+      ...BASE_TENANT,
+      id: DEV_AUTH_BYPASS_TENANT_ID,
+      name: "DEV BYPASS TENANT",
+      slug: "dev-bypass",
       permissions: ROLE_PERMISSIONS.owner,
     };
   }
@@ -262,11 +277,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   // FONTE ÚNICA de autorização: permissões resource:action vindas de membership.permissions.
   // null = ainda não carregado (ou MOCK/AUTH_DISABLED) → usePermissions faz fail-open de UI.
   const [permissionKeys, setPermissionKeys] = useState<string[] | null>(null);
-  const [contextLoading, setContextLoading] = useState<boolean>(!AUTH_DISABLED);
+  const [contextLoading, setContextLoading] = useState<boolean>(!(AUTH_DISABLED || DEV_AUTH_BYPASS));
   const [contextError, setContextError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (AUTH_DISABLED) return;
+    if (AUTH_DISABLED || DEV_AUTH_BYPASS) return;
     if (!session?.access_token) return;
 
     let active = true;
@@ -393,7 +408,7 @@ export function useSyncTenantFromJWT(_userEmail?: string): void {
   // Função interna de sincronização — partilhada pelos dois efeitos abaixo
   const syncFromJwt = React.useCallback(() => {
     
-    if (AUTH_DISABLED) return;
+    if (AUTH_DISABLED || DEV_AUTH_BYPASS) return;
 
     // JWT claims (app_metadata.role + app_metadata.org_id via Hook)
     const token = getAccessToken();

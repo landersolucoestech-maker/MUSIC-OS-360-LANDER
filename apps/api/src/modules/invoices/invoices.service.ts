@@ -65,7 +65,14 @@ export class InvoicesService {
     const qb = this.repository
       .createQueryBuilder('i')
       .where('i.tenant_id = :tenantId', { tenantId })
-      .andWhere('i.deleted_at IS NULL');
+      .andWhere('i.deleted_at IS NULL')
+      // REM-06: `invoices` também recebe as faturas Stripe da assinatura SaaS
+      // do próprio tenant (billing.service.ts upsertStripeInvoice, tipo=
+      // 'stripe_subscription'). Este endpoint (RequireRole('viewer')) é a
+      // listagem de Notas Fiscais emitidas pelo tenant aos SEUS clientes —
+      // sem este filtro, um viewer via /invoices contornava a barreira
+      // RequireRole('admin') que protege os mesmos dados em /billing/subscription.
+      .andWhere("i.tipo != 'stripe_subscription'");
 
     if (query.status) qb.andWhere('i.status = :status', { status: query.status });
 
@@ -97,6 +104,9 @@ export class InvoicesService {
     const result = await this.repository
       .createQueryBuilder('i')
       .where('i.id = :id AND i.tenant_id = :tenantId AND i.deleted_at IS NULL', { id, tenantId })
+      // REM-06: mesma exclusão de list() — nunca expor uma fatura Stripe de
+      // assinatura SaaS via GET /invoices/:id.
+      .andWhere("i.tipo != 'stripe_subscription'")
       .getOne();
     if (!result) throw new NotFoundException('Nota fiscal não encontrada');
     return this.mapInvoice(result);

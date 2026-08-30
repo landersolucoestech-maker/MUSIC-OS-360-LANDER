@@ -27,6 +27,7 @@ export interface ApiClient {
   instagram: string | null;
   endereco_completo: string | null;
   status: string;
+  prioridade_contato: string | null;
   observacoes: string | null;
   responsavel_nome: string | null;
   attachments: unknown[] | null;
@@ -58,6 +59,7 @@ export interface CreateApiClientInput {
   zipCode?: string;
   responsible?: string;
   notes?: string;
+  priority?: "low" | "medium" | "high" | "strategic";
 }
 
 export type UpdateApiClientInput = Partial<CreateApiClientInput> & {

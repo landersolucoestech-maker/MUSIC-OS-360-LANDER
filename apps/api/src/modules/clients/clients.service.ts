@@ -289,7 +289,7 @@ export class ClientsService {
   private normalizeClientPayload(input: Record<string, unknown>, isCreate = false) {
     const {
       name, type, category, address, avatarUrl: _avatarUrl,
-      city, state, instagram, zipCode, responsible, notes,
+      city, state, instagram, zipCode, responsible, notes, priority,
       ...rest
     } = input;
     void _avatarUrl;
@@ -306,6 +306,7 @@ export class ClientsService {
     if (zipCode !== undefined) mapped['cep'] = zipCode;
     if (responsible !== undefined) mapped['responsavel_nome'] = responsible;
     if (notes !== undefined) mapped['observacoes'] = notes;
+    if (priority !== undefined) mapped['prioridade_contato'] = priority;
     return mapped;
   }
 }

@@ -532,10 +532,18 @@ function ContentScheduleModal({
    *  - caso contrário → status "agendado" (agendamento interno).
    */
   const finalize = (publish: boolean) => {
+    // "Publicar via Integração" (ITEM 6) precisa entrar na fila real de
+    // publicação (scheduleIfNeeded só dispara para status "agendado" — ver
+    // marketing-contents.service.ts) para efetivamente tentar publicar via
+    // MarketingPublishingProcessor. Setar "publicado" diretamente aqui pulava
+    // a fila inteira: o conteúdo ficava marcado como publicado sem que
+    // nenhuma chamada real à plataforma jamais acontecesse. delay=0 quando
+    // scheduled_for já passou/é agora, então isto ainda publica imediatamente
+    // quando a data/hora escolhida é "agora".
     const nextStatus: ContentStatus = !isEmpresa
       ? "agendado"
       : publish
-        ? "publicado"
+        ? "agendado"
         : values.status;
     const nextValues: ContentFormValues = { ...values, status: nextStatus };
 

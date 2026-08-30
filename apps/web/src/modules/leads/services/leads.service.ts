@@ -7,9 +7,10 @@
  * nunca chamava a API — toda criação/edição era perdida ao recarregar.
  *
  * `historicoInteracoes` não é embutido na resposta do lead — existe um
- * endpoint real e separado (`/lead-interactions?lead_id=`), ainda não
- * integrado a esta tela (ver Parte 79). Mantido vazio aqui em vez de
- * fabricar histórico, conforme exigido para eliminação de mocks.
+ * endpoint real e separado (`/lead-interactions?leadId=`). REM-04 (Remaining
+ * Product Completion Backlog / GAP-10) integrou esse endpoint diretamente em
+ * LeadViewModal via useLeadInteractions() em vez de embuti-lo aqui — mantido
+ * vazio nesta camada para não duplicar a fonte de verdade.
  */
 import { api } from "@/shared/lib/api-client";
 import type { Lead, LeadClientType, LeadServiceType, LeadInternalCRMData } from "../types";

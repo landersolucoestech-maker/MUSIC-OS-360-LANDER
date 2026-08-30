@@ -10,13 +10,16 @@
  * Escopo deliberadamente restrito aos arquivos corrigidos nesta Parte, não ao
  * repositório inteiro: VariableRegistry.tsx / CategoryRegistry.tsx (registros
  * de contrato, sem entidade equivalente em Relatórios), o botão "Importar
- * Relatório ECAD" em Monitoramento.tsx/RightsMonitoring.tsx (stub não
- * funcional, dialog completo já implementado), o "Exportar OFX" de
- * Financeiro.tsx (domínio de conciliação bancária, não dado de entidade) e
- * código morto já não-renderizado (Metricas.tsx `ExportDropdown`,
- * ExecucaoDetail.tsx, AudiovisualProductionWorkspace.tsx) NÃO estão cobertos
- * por este guard — são divergências remanescentes documentadas no relatório
+ * Relatório ECAD" em RightsMonitoring.tsx (stub não funcional, dialog
+ * completo já implementado), o "Exportar OFX" de Financeiro.tsx (domínio de
+ * conciliação bancária, não dado de entidade) e código morto já
+ * não-renderizado (Metricas.tsx `ExportDropdown`) NÃO estão cobertos por
+ * este guard — são divergências remanescentes documentadas no relatório
  * final da Parte 86, não silenciosamente ignoradas.
+ *
+ * AudiovisualProductionWorkspace.tsx (citado aqui anteriormente) foi removido
+ * no audit de completude do produto (Decision Gate item 10) — confirmado sem
+ * rota, sem consumidor, guarda de dead-code só documentava.
  */
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";

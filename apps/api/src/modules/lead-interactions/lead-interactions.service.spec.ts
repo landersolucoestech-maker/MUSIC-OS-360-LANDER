@@ -1,0 +1,76 @@
+import 'reflect-metadata';
+import { LeadInteractionsService } from './lead-interactions.service';
+import type { CreateLeadInteractionDto, QueryLeadInteractionDto } from './dto/lead-interactions.dto';
+
+/**
+ * REM-04 (Remaining Product Completion Backlog): dois bugs reais descobertos
+ * ao integrar `historicoInteracoes` (sempre []) ao endpoint real:
+ * - list() lia `query.lead_id`, mas o DTO expõe `leadId` — o filtro por
+ *   lead nunca funcionava (retornava interações de todos os leads do tenant).
+ * - create() espalhava o DTO (leadId/type/notes) direto na entity, cujas
+ *   colunas reais são lead_id/tipo/descricao — todo POST violava NOT NULL
+ *   em lead_id/tipo.
+ */
+function makeQb(rows: unknown[]) {
+  return {
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    getManyAndCount: jest.fn(async () => [rows, rows.length]),
+  };
+}
+
+function makeService(rows: unknown[] = []) {
+  const qb = makeQb(rows);
+  const repo = {
+    createQueryBuilder: jest.fn(() => qb),
+    create: jest.fn((data: unknown) => ({ ...(data as object) })),
+    save: jest.fn(async (entity: unknown) => ({ id: 'interaction-1', ...(entity as object) })),
+  };
+  const ds = { getRepository: jest.fn(() => repo) } as any;
+  const svc = new LeadInteractionsService(ds);
+  return { svc, repo, qb };
+}
+
+describe('LeadInteractionsService.list — filtro por leadId (REM-04)', () => {
+  it('filtra por lead_id quando leadId é enviado na query', async () => {
+    const { svc, qb } = makeService();
+    await svc.list('tenant-1', { leadId: 'lead-1' } as unknown as QueryLeadInteractionDto);
+
+    expect(qb.andWhere).toHaveBeenCalledWith('i.lead_id = :leadId', { leadId: 'lead-1' });
+  });
+
+  it('sem leadId, não filtra por lead (lista todas as interações do tenant)', async () => {
+    const { svc, qb } = makeService();
+    await svc.list('tenant-1', {} as unknown as QueryLeadInteractionDto);
+
+    expect(qb.andWhere).not.toHaveBeenCalled();
+  });
+});
+
+describe('LeadInteractionsService.create — mapeamento DTO → colunas reais (REM-04)', () => {
+  it('grava lead_id/tipo/descricao nas colunas reais da entity', async () => {
+    const { svc, repo } = makeService();
+    await svc.create('tenant-1', 'user-1', {
+      leadId: 'lead-1', type: 'call', notes: 'Ligação de follow-up',
+    } as CreateLeadInteractionDto);
+
+    const created = (repo.create as jest.Mock).mock.calls[0][0];
+    expect(created.lead_id).toBe('lead-1');
+    expect(created.tipo).toBe('call');
+    expect(created.descricao).toBe('Ligação de follow-up');
+    expect(created.leadId).toBeUndefined();
+    expect(created.type).toBeUndefined();
+  });
+
+  it('notes ausente persiste descricao como null (não undefined)', async () => {
+    const { svc, repo } = makeService();
+    await svc.create('tenant-1', 'user-1', {
+      leadId: 'lead-1', type: 'note',
+    } as CreateLeadInteractionDto);
+
+    expect((repo.create as jest.Mock).mock.calls[0][0].descricao).toBeNull();
+  });
+});

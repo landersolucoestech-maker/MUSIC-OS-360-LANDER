@@ -37,7 +37,7 @@ describe('ownership prechecks and tenant-scoped final operations', () => {
     const storage = { exists: jest.fn().mockResolvedValue(true) };
     const events = { emitTyped: jest.fn() };
     const ds = { getRepository: jest.fn(() => repo) };
-    const controller = new UploadsController(ds as never, storage as never, events as never);
+    const controller = new UploadsController(ds as never, storage as never, events as never, {} as never);
 
     await controller.confirm({ id: 'tenant-1' }, { userId: 'user-1' }, 'file-1');
 
@@ -58,7 +58,7 @@ describe('ownership prechecks and tenant-scoped final operations', () => {
       createDownloadUrl: jest.fn(),
     };
     const ds = { getRepository: jest.fn(() => repo) };
-    const controller = new UploadsController(ds as never, storage as never, { emitTyped: jest.fn() } as never);
+    const controller = new UploadsController(ds as never, storage as never, { emitTyped: jest.fn() } as never, {} as never);
 
     await expect(controller.confirm({ id: 'tenant-b' }, { userId: 'user-1' }, 'file-a')).rejects.toBeInstanceOf(NotFoundException);
     await expect(controller.download({ id: 'tenant-b' }, 'file-a')).rejects.toBeInstanceOf(NotFoundException);

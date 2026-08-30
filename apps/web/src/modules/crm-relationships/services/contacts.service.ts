@@ -19,9 +19,10 @@
  * `relation "contacts" does not exist`. Nunca foi notado porque o frontend
  * sempre usou este mock.
  *
- * `attachments`/`tags`/`priority`/`website`/`linkedArtistId`/`timeline` não
- * têm coluna física equivalente em `clients` — sempre vazios/undefined na
- * leitura, nunca enviados na escrita, em vez de fabricar dado inexistente.
+ * `attachments`/`tags`/`website`/`linkedArtistId`/`timeline` não têm coluna
+ * física equivalente em `clients` — sempre vazios/undefined na leitura, nunca
+ * enviados na escrita, em vez de fabricar dado inexistente. `priority` É uma
+ * coluna real (`prioridade_contato`) — lida/escrita normalmente abaixo.
  */
 import type { Contact } from "../types";
 import type { ContatoFormPayload } from "../modals/ContatoFormModal";
@@ -48,7 +49,7 @@ function fromApi(c: ApiClient): Contact {
     notes: c.observacoes ?? undefined,
     tags: [],
     status: (c.status ?? "active") as Contact["status"],
-    priority: "medium",
+    priority: (c.prioridade_contato ?? "medium") as Contact["priority"],
     payloadOperacional: c.metadata ?? {},
     attachments: Array.isArray(c.attachments) ? (c.attachments as Contact["attachments"]) : [],
     timeline: [],
@@ -74,6 +75,7 @@ function toApiInput(data: Partial<Omit<Contact, "id" | "createdAt" | "updatedAt"
   if (data.zipCode !== undefined) payload.zipCode = data.zipCode;
   if (data.responsible !== undefined) payload.responsible = data.responsible;
   if (data.notes !== undefined) payload.notes = data.notes;
+  if (data.priority !== undefined) payload.priority = data.priority;
   if (data.payloadOperacional !== undefined) payload.metadata = data.payloadOperacional;
   return payload;
 }

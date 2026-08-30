@@ -340,6 +340,127 @@ export enum IntegrationStatus {
   DISABLED     = "disabled",
 }
 
+/**
+ * Classificação arquitetural de uma integração. Separa conceitos que NUNCA
+ * podem substituir uns aos outros (wave de refatoração 2026-08-24):
+ *
+ *   A. PUBLIC ARTIST DATA — métricas públicas de artista (Spotify, YouTube,
+ *      Deezer…). NÃO vive neste catálogo: chega via Soundcharts e é
+ *      normalizada em artists/platform-profiles. Não é conectável pelo cliente.
+ *   B. INTERNAL_PLATFORM  — o MUSIC OS 360 usa com credenciais DA PLATAFORMA.
+ *      O cliente não conecta, não configura e não deve vê-las no catálogo
+ *      comercial (Soundcharts, ACRCloud, Resend).
+ *   C. COMMERCIAL         — o CLIENTE conecta a própria conta. Governadas por
+ *      publicação + audiência + entitlement do plano + capacidade técnica.
+ *   D. COMMERCIAL_FUTURE  — comerciais por natureza, mas ainda sem adapter
+ *      real. Existem para governança/roadmap; nunca utilizáveis.
+ *   E. PLATFORM_BILLING   — infraestrutura de cobrança da própria plataforma
+ *      (Stripe). Não é integração de cliente nem entitlement.
+ */
+export enum IntegrationClassification {
+  INTERNAL_PLATFORM = "internal_platform",
+  COMMERCIAL        = "commercial",
+  PLATFORM_BILLING  = "platform_billing",
+}
+
+/**
+ * Só COMMERCIAL participa de catálogo comercial, entitlement de plano e da tela
+ * de governança client-facing. "Futuro" NÃO é uma classificação: um provedor
+ * comercial ainda não operacional é COMMERCIAL com technicalState=PLANNED e
+ * publication=COMING_SOON.
+ */
+export const CUSTOMER_FACING_CLASSIFICATIONS: readonly IntegrationClassification[] = [
+  IntegrationClassification.COMMERCIAL,
+];
+
+/**
+ * Estado TÉCNICO/operacional do adapter — governado pelo admin, distinto da
+ * capacidade em código (existe adapter?) e da publicação (rollout comercial).
+ * Nunca reduzir a um booleano `enabled`.
+ */
+export enum IntegrationTechnicalState {
+  PLANNED           = "planned",
+  IN_DEVELOPMENT    = "in_development",
+  CONFIGURING       = "configuring",
+  AWAITING_PROVIDER = "awaiting_provider",
+  HOMOLOGATING      = "homologating",
+  READY             = "ready",
+  DEGRADED          = "degraded",
+  DISABLED          = "disabled",
+  RETIRED           = "retired",
+}
+
+/** Estados técnicos em que o provedor pode de facto operar. */
+export const OPERATIONAL_TECHNICAL_STATES: readonly IntegrationTechnicalState[] = [
+  IntegrationTechnicalState.READY,
+  IntegrationTechnicalState.HOMOLOGATING,
+  IntegrationTechnicalState.DEGRADED,
+];
+
+/** Rollout comercial — separado de técnico, entitlement e conexão. */
+export enum IntegrationPublicationState {
+  HIDDEN                  = "hidden",
+  COMING_SOON             = "coming_soon",
+  BETA                    = "beta",
+  AVAILABLE               = "available",
+  TEMPORARILY_UNAVAILABLE = "temporarily_unavailable",
+}
+
+/**
+ * Reason codes ESTÁVEIS. O frontend ramifica por estes valores — nunca por
+ * texto humano.
+ */
+export enum IntegrationReasonCode {
+  HIDDEN                  = "HIDDEN",
+  COMING_SOON             = "COMING_SOON",
+  TECHNICAL_NOT_READY     = "TECHNICAL_NOT_READY",
+  TEMPORARILY_UNAVAILABLE = "TEMPORARILY_UNAVAILABLE",
+  AUDIENCE_NOT_ALLOWED    = "AUDIENCE_NOT_ALLOWED",
+  PLAN_NOT_INCLUDED       = "PLAN_NOT_INCLUDED",
+  NOT_CONNECTED           = "NOT_CONNECTED",
+  CONNECTED               = "CONNECTED",
+  REQUIRES_REAUTH         = "REQUIRES_REAUTH",
+  PROVIDER_ERROR          = "PROVIDER_ERROR",
+  NOT_IMPLEMENTED         = "NOT_IMPLEMENTED",
+  NOT_CUSTOMER_FACING     = "NOT_CUSTOMER_FACING",
+}
+
+/**
+ * Chave dentro de `billing_plans.features` que guarda a lista DINÂMICA de slugs
+ * comerciais incluídos no plano. Estrutura genérica de propósito: adicionar uma
+ * integração comercial nova não exige schema nem código por provedor.
+ *
+ *   billing_plans.features = { ..., "integrations": ["docusign","whatsapp"] }
+ */
+export const PLAN_INTEGRATIONS_FEATURE_KEY = "integrations";
+
+/**
+ * Estado de governança de um PROVEDOR EXTERNO (serviço de terceiros que um
+ * tenant conecta com credenciais próprias). Distinto de IntegrationStatus, que
+ * é o valor persistido na coluna `integrations.status`: este aqui é derivado
+ * pelo backend a partir do estado real (pré-requisitos de plataforma +
+ * credenciais do tenant + saúde da última chamada) e é o contrato que o
+ * frontend consome.
+ *
+ * NÃO usar para módulos internos/infraestrutura (storage, filas, observabilidade,
+ * IA interna, CRM/financeiro/suporte internos) — governança externa cobre só
+ * quem é, de facto, um provedor de terceiros.
+ *
+ * O frontend deve ramificar por ESTES valores, nunca por texto humano.
+ */
+export enum ExternalProviderStatus {
+  /** Pré-requisito de plataforma ausente (ex.: credenciais de app no ambiente) — o tenant não consegue sequer tentar conectar. */
+  DEPENDENCY_NOT_MET      = "dependency_not_met",
+  /** Pré-requisitos satisfeitos, mas este tenant ainda não conectou. */
+  AVAILABLE_NOT_CONNECTED = "available_not_connected",
+  /** Conectado e sem falha registada. */
+  CONNECTED               = "connected",
+  /** Token expirado/revogado — precisa de nova autorização. */
+  REQUIRES_REAUTH         = "requires_reauth",
+  /** Conectado, mas a última interação com o provedor falhou. */
+  PROVIDER_ERROR          = "provider_error",
+}
+
 // ─── Webhooks ─────────────────────────────────────────────────────────────────
 
 export enum WebhookEventStatus {

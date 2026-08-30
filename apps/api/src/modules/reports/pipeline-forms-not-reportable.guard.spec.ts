@@ -1,13 +1,17 @@
 /**
  * pipeline-forms-not-reportable.guard.spec.ts  ·  Parte 87 (atualizado Parte 88)
  *
- * Guarda permanente: "forms" (Formulários), "pipelines" (Pipelines) e
- * "pipeline_opportunities" (Oportunidades de Pipeline) nunca podem aparecer
- * na Central de Relatórios — nem no inventário de entidades, nem em
- * /definitions, nem via export/import/template diretos. Continuam existindo
- * normalmente em seus próprios módulos, apenas fora do escopo de Relatórios.
+ * Guarda permanente: "pipelines" (Pipelines) e "pipeline_opportunities"
+ * (Oportunidades de Pipeline) nunca podem aparecer na Central de Relatórios
+ * — nem no inventário de entidades, nem em /definitions, nem via
+ * export/import/template diretos. Continuam existindo normalmente em seus
+ * próprios módulos, apenas fora do escopo de Relatórios.
  * Parte 88: pipeline_opportunities removida explicitamente do registry
  * (ainda sem contrato explícito auditado) — deixou de ser exceção.
+ * 2026-08-22: "forms" removida deste guard — o módulo genérico Forms
+ * (DropGenericFormsModule20260822000005) deixou de existir por decisão de
+ * produto; a tabela não existe mais, então não há mais o que "excluir de
+ * Relatórios".
  */
 import { EntityMetadataService } from './entity-metadata.service';
 import { ReportEntityDefinitionService } from './definitions/report-entity-definition.service';
@@ -20,9 +24,9 @@ import { ImportMapperService } from './import/import-mapper.service';
 import { ImportValidationService } from './import/import-validation.service';
 import { ReportTableGuardService } from './report-table-guard.service';
 
-const BLOCKED_TABLES = ['forms', 'pipelines', 'pipeline_opportunities'];
+const BLOCKED_TABLES = ['pipelines', 'pipeline_opportunities'];
 
-describe('Guarda permanente: forms/pipelines nunca reportáveis (Parte 87)', () => {
+describe('Guarda permanente: pipelines nunca reportáveis (Parte 87)', () => {
   const metadata = new EntityMetadataService();
   const inv = metadata.scan();
 

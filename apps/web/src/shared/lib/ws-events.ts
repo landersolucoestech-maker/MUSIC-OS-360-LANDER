@@ -60,6 +60,19 @@ export interface WsEventMap {
 
   // ── Dados alterados (invalidação de cache) ───────────────────────────────────
   'data:changed':                 { entity: string; id: string };
+
+  // ── MusicChat / Conversations (Inbox operacional) ────────────────────────────
+  'conversation:created':     { conversationId: string; subject: string; channel: string };
+  'conversation:updated':     { conversationId: string; status: string; assigned_to: string | null };
+  'conversation:message':     { conversationId: string; messageId: string; senderId: string; senderType: string; bodyPreview: string; deliveryStatus?: string | null };
+  'conversation:assigned':    { conversationId: string; assigneeId: string | null };
+  'conversation:transferred': { conversationId: string; assigneeId: string | null; queueId: string | null; sectorId: string | null };
+  'conversation:closed':      { conversationId: string; closedBy: string };
+  'conversation:reopened':    { conversationId: string; reopenedBy: string };
+
+  // ── Chat Interno (equipe <-> equipe — isolado da Central de Atendimento acima) ──
+  'internalConversation:created': { conversationId: string };
+  'internalConversation:message': { conversationId: string; messageId: string };
 }
 
 /** Union of all known WS event names (useful for exhaustive switches). */
@@ -96,5 +109,14 @@ export const ALL_WS_EVENT_NAMES = [
   'billing:payment_failed',
   'billing:cancelled',
   'data:changed',
+  'conversation:created',
+  'conversation:updated',
+  'conversation:message',
+  'conversation:assigned',
+  'conversation:transferred',
+  'conversation:closed',
+  'conversation:reopened',
+  'internalConversation:created',
+  'internalConversation:message',
 ] as const satisfies readonly WsEventName[];
 

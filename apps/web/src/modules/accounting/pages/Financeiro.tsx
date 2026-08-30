@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import {
   DollarSign, TrendingUp, TrendingDown, FileText,
-  Plus, Search, Upload, Tags,
+  Plus, Search, Upload, Tags, Zap,
   Eye, Pencil, Trash2, X, MoreHorizontal,
 } from "lucide-react";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
@@ -206,6 +206,11 @@ export default function Financeiro() {
           <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5">
             <Link to="/accounting/categorias">
               <Tags className="h-3.5 w-3.5" /> Categorias Financeiras
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+            <Link to="/accounting/automacoes">
+              <Zap className="h-3.5 w-3.5" /> Automações
             </Link>
           </Button>
           <RequirePermission module="accounting" action="write">

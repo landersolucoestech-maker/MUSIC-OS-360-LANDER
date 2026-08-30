@@ -157,6 +157,7 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
     col('template_id'), // campo do wizard (regra 2026-07-12: coluna própria)
     ro('autentique_doc_id'), // estado técnico da integração de assinatura
     ro('versoes'),           // histórico de versões (gerado pelo fluxo de assinatura)
+    ro('documentos'),        // anexos reais do R2 (REM-02), mesmo padrão de versoes
   ],
   excludedFormFields: {
     metadata: 'objeto jsonb interno bruto',
@@ -284,6 +285,7 @@ const CLIENTS_CONTRACT: ReportFormContract = {
     zipCode: 'cep',
     responsible: 'responsavel_nome',
     notes: 'observacoes',
+    priority: 'prioridade_contato',
   },
 };
 

@@ -39,7 +39,6 @@ import {
   Settings,
   LogOut,
   ClipboardCheck,
-  Building2,
   ChevronsUpDown,
   CheckCircle2,
   Activity,

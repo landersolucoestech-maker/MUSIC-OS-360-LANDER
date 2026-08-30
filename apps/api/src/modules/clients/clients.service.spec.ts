@@ -91,6 +91,36 @@ describe('ClientsService — encryption', () => {
     });
   });
 
+  describe('priority (GAP-11: prioridade_contato is a real column, must round-trip)', () => {
+    it('maps CreateClientDto.priority onto the prioridade_contato column on create', async () => {
+      const { svc, repo } = makeService();
+
+      await svc.create('tenant-1', 'user-1', { name: 'Alice', priority: 'strategic' } as any);
+
+      const saved = (repo.save as jest.Mock).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved['prioridade_contato']).toBe('strategic');
+    });
+
+    it('does not touch prioridade_contato when priority is omitted', async () => {
+      const { svc, repo } = makeService();
+
+      await svc.create('tenant-1', 'user-1', { name: 'Bob' } as any);
+
+      const saved = (repo.save as jest.Mock).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved['prioridade_contato']).toBeUndefined();
+    });
+
+    it('returns the persisted prioridade_contato as-is on read (mapClient passthrough)', async () => {
+      const { svc } = makeService([
+        { id: 'uuid-1', tenant_id: 'tenant-1', name: 'Bob', prioridade_contato: 'high' },
+      ]);
+
+      const result = await svc.findById('tenant-1', 'uuid-1') as Record<string, unknown>;
+
+      expect(result['prioridade_contato']).toBe('high');
+    });
+  });
+
   describe('mapClient — decryption on read', () => {
     it('decrypts encrypted fields and removes raw encrypted columns from output', async () => {
       const encryptedEmail = `enc:v1:${Buffer.from('bob@example.com').toString('base64')}`;

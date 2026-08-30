@@ -360,46 +360,60 @@ export default function ArtistaSignupPublic() {
 
     setIsSubmitting(true);
     try {
-      // Cadastro público cria DIRETAMENTE um artista (sem Lead/CRM/status intermediário).
-      const artistaPayload = {
-        nome_artistico:          nomeArtistico.trim(),
-        nome_civil:              nome.trim() || null,
-        genero_musical:          generoMusical || null,
-        genero:                  genero || null,
-        especialidades:          especialidades.length > 0 ? especialidades : null,
-        observacoes:             biografia.trim() || null,
-        foto_url:                fotoUrl || null,
-        documentos_pessoais_url: documentosPessoaisUrl || null,
-        presskit_url:            presskitUrl || null,
-        data_nascimento:         dataNascimento || null,
-        cpf_cnpj:                cpfCnpj || null,
-        rg:                      rg || null,
-        endereco:                endereco || null,
-        telefone:                telefone.trim() || null,
-        email:                   email.trim() || null,
-        banco:                   banco || null,
-        agencia:                 agencia || null,
-        conta:                   conta || null,
-        chave_pix:               chavePix || null,
-        titular_conta:           titularConta || null,
-        spotify_artist_url:      spotify || null,
-        youtube_channel_url:     youtube || null,
-        instagram:               instagram || null,
-        tiktok:                  tiktok || null,
-        deezer_url:              deezer || null,
-        apple_music_url:         appleMusic || null,
-        soundcloud_url:          soundcloud || null,
-        tipo_perfil:             tipoPerfil,
-        contatos_equipe:         contatosEquipe.length > 0 ? contatosEquipe : null,
-        distribuidoras_gerais:   distribuidorasGerais.length > 0 ? distribuidorasGerais : null,
-        notas_internas:          notasInternas || null,
-        status:                  "ativo",
-        origem:                  "public_artist_form",
+      // Cadastro público cria um Lead (fonte=public_artist_application) via
+      // LeadsService.submitPublicArtistRegistration — não um artista direto.
+      // O contrato real do DTO (PublicArtistRegistrationDto/
+      // PublicArtistApplicationDto) só tem colunas próprias para um subset
+      // dos campos deste formulário; o restante (bancários, documentos,
+      // distribuição, contatos da equipe, endereço completo) vai em
+      // additionalData — nada é descartado silenciosamente.
+      const socialLinks: Record<string, string> = {};
+      if (spotify)    socialLinks.spotify    = spotify;
+      if (youtube)    socialLinks.youtube    = youtube;
+      if (instagram)  socialLinks.instagram  = instagram;
+      if (tiktok)     socialLinks.tiktok     = tiktok;
+      if (deezer)     socialLinks.deezer     = deezer;
+      if (appleMusic) socialLinks.appleMusic = appleMusic;
+      if (soundcloud) socialLinks.soundcloud = soundcloud;
+
+      const additionalData: Record<string, unknown> = {
+        nomeCivil: nome.trim() || null,
+        genero: genero || null,
+        especialidades: especialidades.length > 0 ? especialidades : null,
+        fotoUrl: fotoUrl || null,
+        documentosPessoaisUrl: documentosPessoaisUrl || null,
+        presskitUrl: presskitUrl || null,
+        dataNascimento: dataNascimento || null,
+        cpfCnpj: cpfCnpj || null,
+        rg: rg || null,
+        endereco: endereco || null,
+        banco: banco || null,
+        agencia: agencia || null,
+        conta: conta || null,
+        chavePix: chavePix || null,
+        titularConta: titularConta || null,
+        tipoPerfil: tipoPerfil,
+        contatosEquipe: contatosEquipe.length > 0 ? contatosEquipe : null,
+        distribuidorasGerais: distribuidorasGerais.length > 0 ? distribuidorasGerais : null,
+        notasInternas: notasInternas || null,
       };
 
       const result = await publicApi.post<{ id: string; protocol?: string }>(
-        "/public/artists",
-        { workspaceSlug: orgSlug, ...artistaPayload, acceptedTerms, companyWebsite },
+        "/public/artist-registration",
+        {
+          workspaceSlug: orgSlug,
+          artistName: nomeArtistico.trim(),
+          artisticName: nomeArtistico.trim(),
+          fullName: nome.trim(),
+          email: email.trim(),
+          phone: telefone.trim() || undefined,
+          musicalGenre: generoMusical || undefined,
+          message: biografia.trim() || undefined,
+          socialLinks,
+          additionalData,
+          acceptedTerms,
+          companyWebsite,
+        },
       );
       setProtocol(result.protocol ?? result.id ?? "OK");
       setSuccess(true);

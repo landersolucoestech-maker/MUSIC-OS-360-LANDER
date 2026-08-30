@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock("@/shared/lib/env", () => ({
   AUTH_DISABLED: false,
+  DEV_AUTH_BYPASS: false,
   IS_DEV: false,
 }));
 

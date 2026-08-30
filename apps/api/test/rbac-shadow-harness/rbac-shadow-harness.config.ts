@@ -73,8 +73,8 @@ export function loadHarnessConfig(): HarnessConfig {
 
   return {
     apiUrl: requireEnv('STAGING_API_URL').replace(/\/+$/, ''),
-    supabaseUrl: requireEnv('SUPABASE_URL').replace(/\/+$/, ''),
-    supabaseAnonKey: requireEnv('SUPABASE_ANON_KEY'),
+    supabaseUrl: requireEnv('STAGING_SUPABASE_URL').replace(/\/+$/, ''),
+    supabaseAnonKey: requireEnv('STAGING_SUPABASE_ANON_KEY'),
     tenants,
     credentials,
     targets: {

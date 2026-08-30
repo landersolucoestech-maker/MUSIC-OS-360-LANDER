@@ -5,9 +5,10 @@ import { DATA_SOURCE } from '../../../database/database.module';
 import { DatabaseContextService } from '../../../database/database-context.service';
 import { ContractEntity, CrmTaskEntity } from '../../../database/entities';
 import { ActivityLogsService } from '../../activity-logs/activity-logs.service';
+import { FinancialRulesService } from '../../financial-rules/financial-rules.service';
 import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { DomainEvent } from '../../../core/events/events.service';
-import type { TransactionPaidPayload } from '../../../core/events/domain-events.types';
+import type { TransactionCreatedPayload, TransactionPaidPayload } from '../../../core/events/domain-events.types';
 
 @Injectable()
 export class TransactionEventsHandler {
@@ -18,11 +19,39 @@ export class TransactionEventsHandler {
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
     @Optional() private readonly activityLogs: ActivityLogsService,
+    @Optional() private readonly financialRules: FinancialRulesService,
     @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
     if (ds) {
       this.contractRepo = ds.getRepository(ContractEntity);
       this.taskRepo     = ds.getRepository(CrmTaskEntity);
+    }
+  }
+
+  @OnEvent(DOMAIN_EVENTS.TRANSACTION_CREATED)
+  async onTransactionCreated(event: DomainEvent<TransactionCreatedPayload>): Promise<void> {
+    const tenantId = event?.tenantId;
+    if (!tenantId) {
+      this.logger.warn('TransactionEventsHandler: evento sem tenantId — abortado (fail-closed)');
+      return;
+    }
+    if (!this.financialRules) return;
+
+    const { transactionId, tipo, categoria, valor, source } = event.payload;
+    // A transação provisória criada por contract.signed já avalia regras sob
+    // esse trigger — evita disparo duplicado para a mesma ação de negócio.
+    if (source === 'contract.signed') return;
+
+    try {
+      await this.financialRules.evaluateRules(tenantId, 'transaction.created', {
+        entityId: transactionId,
+        entityType: 'transaction',
+        valor: parseFloat(valor),
+        categoria,
+        tipo,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to evaluate financial rules for transaction.created "${transactionId}" — ${String(err)}`);
     }
   }
 
@@ -43,7 +72,20 @@ export class TransactionEventsHandler {
     await runInContext(async (manager) => {
       const contractRepo = manager ? manager.getRepository(ContractEntity) : this.contractRepo;
       const taskRepo     = manager ? manager.getRepository(CrmTaskEntity)  : this.taskRepo;
-      const { transactionId, contratoId, valor, paidBy, paidAt } = event.payload;
+      const { transactionId, tipo, contratoId, valor, paidBy, paidAt } = event.payload;
+
+      if (this.financialRules) {
+        try {
+          await this.financialRules.evaluateRules(tenantId, 'transaction.paid', {
+            entityId: transactionId,
+            entityType: 'transaction',
+            valor: parseFloat(valor),
+            tipo,
+          });
+        } catch (err) {
+          this.logger.warn(`Failed to evaluate financial rules for transaction.paid "${transactionId}" — ${String(err)}`);
+        }
+      }
 
       // Update linked contract metadata with last payment info
       if (contractRepo && contratoId) {

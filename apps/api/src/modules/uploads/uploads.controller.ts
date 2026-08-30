@@ -26,6 +26,7 @@ import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
 import { PresignUploadDto } from './dto/presign-upload.dto';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { PlanLimitService } from '../../core/billing/plan-limit.service';
 
 @ApiTags('Uploads')
 @ApiBearerAuth()
@@ -38,6 +39,7 @@ export class UploadsController {
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly storage: StorageService,
     private readonly events: EventsService,
+    private readonly planLimit: PlanLimitService,
   ) {
     if (ds) this.repo = ds.getRepository(UploadEntity);
   }
@@ -60,10 +62,11 @@ export class UploadsController {
   @ApiOperation({ summary: 'Obter URL pré-assinada para upload directo ao R2' })
   async presign(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser()   user:   { userId: string; orgId?: string | null },
     @Body()          dto:    PresignUploadDto,
   ) {
     const repo = this.requireRepo();
+    await this.planLimit.enforce(tenant.id, user.orgId ?? tenant.id, 'storageGb');
     const { presignedUrl, key, fileId, publicUrl } = await this.storage.createPresignedUpload({
       tenantId:  tenant.id,
       userId:    user.userId,

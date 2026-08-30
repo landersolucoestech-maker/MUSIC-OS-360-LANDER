@@ -18,7 +18,10 @@ export class LeadInteractionsService {
       .createQueryBuilder('i')
       .where('i.tenant_id = :tenantId', { tenantId });
 
-    if (q.lead_id) qb.andWhere('i.lead_id = :leadId', { leadId: q.lead_id });
+    // REM-04: DTO expõe `leadId` (camelCase) — `q.lead_id` nunca existia,
+    // então o filtro por lead nunca funcionou (retornava todas as
+    // interações do tenant, não só as do lead pedido).
+    if (q.leadId) qb.andWhere('i.lead_id = :leadId', { leadId: q.leadId });
 
     qb.orderBy('i.created_at', q.ascending ? 'ASC' : 'DESC')
       .skip(q.offset ?? 0)
@@ -29,11 +32,18 @@ export class LeadInteractionsService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateLeadInteractionDto): Promise<LeadInteractionEntity> {
+    // REM-04: o spread `...dto` gravava campos inexistentes na entity
+    // (leadId/type/notes) e deixava as colunas reais (lead_id/tipo NOT NULL)
+    // vazias — todo POST falhava com violação de constraint. Mapeado
+    // explicitamente para as colunas reais; `metadata` do DTO não tem
+    // coluna correspondente nesta entity e não é persistido.
     const entity = this.repo!.create({
       tenant_id:  tenantId,
-      ...(dto as any),
+      lead_id:    dto.leadId,
+      tipo:       dto.type,
+      descricao:  dto.notes ?? null,
       created_by: userId,
-    });
+    } as any);
     return this.repo!.save(entity as any) as any;
   }
 

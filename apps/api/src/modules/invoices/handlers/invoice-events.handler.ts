@@ -5,6 +5,7 @@ import { DATA_SOURCE } from '../../../database/database.module';
 import { DatabaseContextService } from '../../../database/database-context.service';
 import { CrmTaskEntity } from '../../../database/entities';
 import { ActivityLogsService } from '../../activity-logs/activity-logs.service';
+import { FinancialRulesService } from '../../financial-rules/financial-rules.service';
 import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { DomainEvent } from '../../../core/events/events.service';
 import type {
@@ -22,6 +23,7 @@ export class InvoiceEventsHandler {
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
     @Optional() private readonly activityLogs: ActivityLogsService,
+    @Optional() private readonly financialRules: FinancialRulesService,
     @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
     if (ds) this.taskRepo = ds.getRepository(CrmTaskEntity);
@@ -106,6 +108,18 @@ export class InvoiceEventsHandler {
 
     const { invoiceId, numero, valor, dataVencimento } = event.payload;
     this.logger.warn(`Invoice overdue: ${numero ?? invoiceId} R$${valor} (venceu ${dataVencimento})`);
+
+    if (this.financialRules) {
+      try {
+        await this.financialRules.evaluateRules(tenantId, 'invoice.overdue', {
+          entityId: invoiceId,
+          entityType: 'invoice',
+          valor: parseFloat(valor),
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to evaluate financial rules for invoice.overdue "${invoiceId}" — ${String(err)}`);
+      }
+    }
 
     if (this.activityLogs) {
       try {

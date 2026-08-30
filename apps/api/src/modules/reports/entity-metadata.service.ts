@@ -39,12 +39,10 @@ import {
 // explícita para aparecer em Relatórios.
 const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   // ── Operacionais NÃO reportáveis (fora do registry fechado de Relatórios) ──
-  // Parte 87: "forms" e "pipelines" (features de formulário/pipeline musical
-  // — FormEntity/PipelineEntity) nunca podem aparecer na Central de
+  // Parte 87: "pipelines" (PipelineEntity) nunca pode aparecer na Central de
   // Relatórios (nem export, nem import, nem no inventário de entidades) —
-  // seguem existindo normalmente em suas próprias telas/módulos, fora de
-  // Relatórios.
-  forms: EntityCategory.NOT_REPORTABLE,
+  // segue existindo normalmente em seu próprio módulo, fora de Relatórios.
+  // ("forms" removida — DropGenericFormsModule20260822000005.)
   pipelines: EntityCategory.NOT_REPORTABLE,
   // Parte 89 — não fazem parte da lista de 22 módulos autorizados pelo
   // usuário. Continuam existindo normalmente em seus próprios módulos.
@@ -55,6 +53,9 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   support_tickets: EntityCategory.NOT_REPORTABLE,
   ecad_reports: EntityCategory.NOT_REPORTABLE,
   conversations: EntityCategory.NOT_REPORTABLE,
+  internal_conversations: EntityCategory.NOT_REPORTABLE,
+  internal_conversation_participants: EntityCategory.NOT_REPORTABLE,
+  internal_messages: EntityCategory.NOT_REPORTABLE,
   financial_categories: EntityCategory.NOT_REPORTABLE,
   financial_rules: EntityCategory.NOT_REPORTABLE,
   payroll_entries: EntityCategory.NOT_REPORTABLE,
@@ -161,6 +162,10 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   asset_usage_logs: EntityCategory.INFRA,
   domain_event_log: EntityCategory.INFRA,
   health: EntityCategory.INFRA,
+  // Governança de integrações (migration 20260823000001): config GLOBAL da
+  // plataforma, sem tenant_id e sem dado de negócio — não é reportável.
+  integration_categories: EntityCategory.INFRA,
+  platform_integrations: EntityCategory.INFRA,
   hr: EntityCategory.INFRA,
   organizations: EntityCategory.INFRA,
   tenants: EntityCategory.INFRA,

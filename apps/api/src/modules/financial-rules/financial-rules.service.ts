@@ -126,9 +126,19 @@ export class FinancialRulesService {
       // Compute result
       const valor  = context.valor ?? 0;
       const ruleVal = parseFloat(String(rule.valor));
-      let computed = 0;
+      let computed: number;
       if (rule.calculo === 'percentual') computed = (valor * ruleVal) / 100;
       else if (rule.calculo === 'fixo')  computed = ruleVal;
+      else {
+        // REM-03: 'faixa' (tiered/bracket) ainda não tem estrutura de faixas
+        // persistida (schema de brackets é decisão de produto em aberto — ver
+        // FinancialRules.tsx "Faixa (em breve)"). Nunca fabricar computed=0
+        // como se fosse um resultado real — pula a regra e avisa.
+        this.logger.warn(
+          `evaluateRules: regra "${rule.nome}" (${rule.id}) usa calculo="${rule.calculo}" ainda não implementado — pulando, nenhum evento emitido`,
+        );
+        continue;
+      }
 
       const result = { trigger, computed, ruleCalculo: rule.calculo, ruleValor: ruleVal, contextValor: valor };
 

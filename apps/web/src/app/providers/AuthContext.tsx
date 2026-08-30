@@ -24,7 +24,7 @@ import {
   setAccessToken,
   setTenantId,
 } from "@/shared/lib/api-client";
-import { IS_DEV, AUTH_DISABLED } from "@/shared/lib/env";
+import { IS_DEV, AUTH_DISABLED, DEV_AUTH_BYPASS } from "@/shared/lib/env";
 import { normalizeEmail } from "@/shared/lib/normalize-email";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -185,15 +185,33 @@ const AUTH_DISABLED_USER: User = {
   user_metadata: { full_name: "LANDER RECORDS (Owner Sintético — DEV/STAGING)", role: "owner" },
 };
 
+// DEV ONLY (VITE_DISABLE_AUTH=true) — usuário sintético central para navegar a
+// UI sem login. Deliberadamente distinto do AUTH_DISABLED_USER acima: este NÃO
+// espelha nenhum dado real do backend (o backend não tem, e não precisa ter,
+// nenhum bypass correspondente sob este flag) — IDs claramente sintéticos para
+// nunca serem confundidos com um tenant/usuário real.
+const DEV_BYPASS_USER: User = {
+  id: "00000000-0000-4000-8000-000000000001",
+  email: "dev-bypass@local.dev",
+  role: "super_admin",
+  org_id: "00000000-0000-4000-8000-000000000002",
+  mustChangePassword: false,
+  user_metadata: { full_name: "DEV BYPASS USER (VITE_DISABLE_AUTH — DEV ONLY)", role: "super_admin" },
+};
+
+const AUTH_BYPASS_ACTIVE = AUTH_DISABLED || DEV_AUTH_BYPASS;
+
 function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<User | null>(AUTH_DISABLED ? AUTH_DISABLED_USER : null);
+  const [user, setUser] = useState<User | null>(
+    AUTH_DISABLED ? AUTH_DISABLED_USER : DEV_AUTH_BYPASS ? DEV_BYPASS_USER : null,
+  );
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(!AUTH_DISABLED);
+  const [loading, setLoading] = useState(!AUTH_BYPASS_ACTIVE);
   const initDone = useRef(false);
 
   useEffect(() => {
-    if (AUTH_DISABLED) return;
+    if (AUTH_BYPASS_ACTIVE) return;
     if (initDone.current) return;
     initDone.current = true;
 
