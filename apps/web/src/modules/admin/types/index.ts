@@ -1,7 +1,5 @@
 export type TenantStatus = "active" | "trial" | "suspended" | "cancelled" | "past_due" | "pending";
 export type PlanTier = "starter" | "growth" | "pro" | "professional" | "enterprise";
-export type AdminUserRole = "super_admin" | "admin" | "operator" | "viewer";
-export type AdminRole = "super_admin" | "admin" | "operator" | "support" | "finance" | "viewer";
 export type AdminUserStatus = "active" | "blocked";
 export type SubscriptionStatus = "active" | "trial" | "past_due" | "payment_grace" | "read_only" | "suspended" | "cancelled" | "unpaid";
 export type BillingCycle = "monthly" | "annual";
@@ -107,14 +105,20 @@ export interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: AdminUserRole;
+  /** Slug real do papel (fonte: tabela `roles`/`org_members.role` — sem enum fixo, sem tradução artificial). */
+  role_slug: string;
+  /** Nome legível do papel, já resolvido pelo backend (tabela `roles.name`). */
+  role_name: string;
   tenant_id: string;
   tenant_name: string;
   status: AdminUserStatus;
-  last_login: string;
-  created_at: string;
-  mfa_enabled: boolean;
-  sessions_count: number;
+  /** null = indisponível (usuário sem correspondência no Supabase Auth). */
+  last_login: string | null;
+  joined_at: string | null;
+  /** null = indisponível (usuário sem correspondência no Supabase Auth). */
+  mfa_enabled: boolean | null;
+  /** Supabase Admin API não expõe contagem de sessões ativas — sempre null, nunca fabricado. */
+  sessions_count: null;
 }
 
 export interface AdminAuditLog {

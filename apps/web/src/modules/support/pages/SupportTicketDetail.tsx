@@ -52,7 +52,7 @@ export default function SupportTicketDetail() {
   const { id } = useParams<{ id: string }>();
   const { tickets, updateTicket } = useTickets();
   const ticket = tickets.find((t) => t.id === id);
-  const { messages, addMessage } = useTicketMessages(id ?? "");
+  const { messages, addMessage, isSending } = useTicketMessages(id ?? "");
   const [reply, setReply] = useState("");
 
   if (!ticket) {
@@ -71,10 +71,15 @@ export default function SupportTicketDetail() {
     );
   }
 
-  function handleSend() {
+  async function handleSend() {
     if (!reply.trim()) return;
-    addMessage(reply.trim(), "support");
-    setReply("");
+    try {
+      await addMessage(reply.trim(), "support");
+      setReply("");
+    } catch {
+      // Erro já reportado via toast em useTicketMessages; mantém o texto
+      // digitado para o usuário não perder a resposta e poder tentar de novo.
+    }
   }
 
   return (
@@ -178,10 +183,10 @@ export default function SupportTicketDetail() {
                   size="sm"
                   className="gap-1.5 text-xs"
                   onClick={handleSend}
-                  disabled={!reply.trim()}
+                  disabled={!reply.trim() || isSending}
                   data-testid="button-send-reply"
                 >
-                  <Send className="h-3.5 w-3.5" /> Enviar
+                  <Send className="h-3.5 w-3.5" /> {isSending ? "Enviando..." : "Enviar"}
                 </Button>
               </div>
             </div>

@@ -53,8 +53,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { useKnowledgeArticles } from "@/modules/support/hooks/useSupport";
-import { SUPPORT_KNOWLEDGE_CATEGORIES } from "@/modules/support/data/support-source";
+import { useKnowledgeArticlesAdmin, useKnowledgeCategories } from "@/modules/support/hooks/useSupport";
 import type { KnowledgeArticle, KnowledgeArticleType, KnowledgeArticleStatus } from "@/modules/support/types";
 
 const STATUS_OPTIONS: Array<{ value: KnowledgeArticleStatus; label: string }> = [
@@ -95,7 +94,7 @@ interface ArticleFormState {
 
 const EMPTY_FORM: ArticleFormState = {
   title: "",
-  category_id: SUPPORT_KNOWLEDGE_CATEGORIES[0]?.id ?? "",
+  category_id: "",
   type: "article",
   summary: "",
   content: "",
@@ -103,9 +102,20 @@ const EMPTY_FORM: ArticleFormState = {
   status: "published",
 };
 
+function slugify(name: string): string {
+  return name
+    .normalize("NFD")
+    .toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 export function KnowledgeBaseManager() {
-  const { articles, createArticle, updateArticle, removeArticle, togglePublished, moveArticle } =
-    useKnowledgeArticles();
+  const { articles, isLoading: loadingArticles, createArticle, updateArticle, removeArticle, togglePublished, moveArticle } =
+    useKnowledgeArticlesAdmin();
+  const { categories: SUPPORT_KNOWLEDGE_CATEGORIES, isLoading: loadingCategories, createCategory, removeCategory } =
+    useKnowledgeCategories();
+  const isLoading = loadingArticles || loadingCategories;
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("todas");
@@ -114,6 +124,9 @@ export function KnowledgeBaseManager() {
   const [editing, setEditing] = useState<KnowledgeArticle | null>(null);
   const [form, setForm] = useState<ArticleFormState>(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeArticle | null>(null);
+  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryDeleteTarget, setCategoryDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -133,7 +146,7 @@ export function KnowledgeBaseManager() {
 
   function openCreate() {
     setEditing(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, category_id: SUPPORT_KNOWLEDGE_CATEGORIES[0]?.id ?? "" });
     setFormOpen(true);
   }
 
@@ -151,7 +164,7 @@ export function KnowledgeBaseManager() {
     setFormOpen(true);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const title = form.title.trim();
     if (!title) {
       toast.error("Informe o título do conteúdo.");
@@ -161,33 +174,69 @@ export function KnowledgeBaseManager() {
       toast.error("Informe o conteúdo.");
       return;
     }
-    const category = SUPPORT_KNOWLEDGE_CATEGORIES.find((c) => c.id === form.category_id);
+    if (!form.category_id) {
+      toast.error("Cadastre e selecione uma categoria antes de continuar.");
+      return;
+    }
     const payload = {
       title,
       category_id: form.category_id,
-      category_name: category?.name ?? "Geral",
       type: form.type,
       summary: form.summary.trim(),
       content: form.content,
       featured: form.featured,
       status: form.status,
-      published: form.status === "published",
     };
-    if (editing) {
-      updateArticle(editing.id, payload);
-      toast.success("Conteúdo atualizado.");
-    } else {
-      createArticle(payload);
-      toast.success("Conteúdo cadastrado.");
+    try {
+      if (editing) {
+        await updateArticle(editing.id, payload);
+        toast.success("Conteúdo atualizado.");
+      } else {
+        await createArticle(payload);
+        toast.success("Conteúdo cadastrado.");
+      }
+      setFormOpen(false);
+    } catch {
+      // erro já reportado via toast pelo hook (onError da mutation)
     }
-    setFormOpen(false);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return;
-    removeArticle(deleteTarget.id);
-    toast.success("Conteúdo excluído.");
-    setDeleteTarget(null);
+    try {
+      await removeArticle(deleteTarget.id);
+      toast.success("Conteúdo excluído.");
+      setDeleteTarget(null);
+    } catch {
+      // erro já reportado via toast pelo hook
+    }
+  }
+
+  async function handleCreateCategory() {
+    const name = newCategoryName.trim();
+    if (!name) {
+      toast.error("Informe o nome da categoria.");
+      return;
+    }
+    try {
+      await createCategory({ slug: slugify(name) || name.toLowerCase(), name });
+      toast.success("Categoria criada.");
+      setNewCategoryName("");
+      setCategoryFormOpen(false);
+    } catch {
+      // erro já reportado via toast pelo hook
+    }
+  }
+
+  async function handleDeleteCategory() {
+    if (!categoryDeleteTarget) return;
+    try {
+      await removeCategory(categoryDeleteTarget.id);
+      toast.success("Categoria excluída.");
+      setCategoryDeleteTarget(null);
+    } catch {
+      // erro já reportado via toast pelo hook (bloqueia se houver artigos vinculados)
+    }
   }
 
   return (
@@ -249,8 +298,39 @@ export function KnowledgeBaseManager() {
           </Select>
         </div>
 
+        {/* Categorias */}
+        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed border-border p-2.5">
+          <span className="mr-1 text-[11px] font-medium text-muted-foreground">Categorias:</span>
+          {SUPPORT_KNOWLEDGE_CATEGORIES.length === 0 && (
+            <span className="text-[11px] text-muted-foreground">Nenhuma categoria cadastrada.</span>
+          )}
+          {SUPPORT_KNOWLEDGE_CATEGORIES.map((cat) => (
+            <Badge key={cat.id} variant="neutral" className="gap-1 pr-1 text-[10px]">
+              {cat.name}
+              <button
+                type="button"
+                onClick={() => setCategoryDeleteTarget({ id: cat.id, name: cat.name })}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                aria-label={`Excluir categoria ${cat.name}`}
+              >
+                <Trash2 className="h-2.5 w-2.5" />
+              </button>
+            </Badge>
+          ))}
+          <Button
+            variant="ghost" size="sm"
+            className="h-6 gap-1 px-2 text-[11px]"
+            onClick={() => setCategoryFormOpen(true)}
+          >
+            <Plus className="h-3 w-3" />
+            Nova categoria
+          </Button>
+        </div>
+
         {/* Lista */}
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">Carregando...</div>
+        ) : filtered.length === 0 ? (
           <EmptyState
             icon={BookOpen}
             title="Nenhum conteúdo encontrado"
@@ -465,6 +545,46 @@ export function KnowledgeBaseManager() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Nova categoria */}
+      <Dialog open={categoryFormOpen} onOpenChange={(open) => { setCategoryFormOpen(open); if (!open) setNewCategoryName(""); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Nova categoria</DialogTitle>
+            <DialogDescription>Categorias organizam os conteúdos da base de conhecimento.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Nome</Label>
+            <Input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Ex.: Financeiro"
+              onKeyDown={(e) => e.key === "Enter" && handleCreateCategory()}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCategoryFormOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateCategory}>Criar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de exclusão de categoria */}
+      <AlertDialog open={Boolean(categoryDeleteTarget)} onOpenChange={(open) => !open && setCategoryDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir categoria</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir &quot;{categoryDeleteTarget?.name}&quot;? Categorias com artigos
+              vinculados não podem ser excluídas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCategory}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

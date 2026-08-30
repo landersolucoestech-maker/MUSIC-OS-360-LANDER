@@ -1,6 +1,13 @@
+/**
+ * components/SupportCenterView.tsx
+ *
+ * Central de Atendimento (equipe <-> público externo) — árvore de
+ * componentes/estado/serviço próprios, isolados de Chat Interno
+ * (modules/musicchat-interno). Renderizada pelo tab "Central de Atendimento"
+ * em modules/musicchat/pages/MusicChat.tsx — nunca junto com o tab "Chat
+ * Interno" (o pai não usa `forceMount`, então só o tab ativo é montado).
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { MainLayout } from "@/shared/components/MainLayout";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -19,15 +26,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Separator } from "@/shared/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Textarea } from "@/shared/ui/textarea";
 import {
   ChatAttachment,
   resolveAttachmentKind,
   type ChatAttachmentData,
+  type ChatAttachmentKind,
 } from "@/shared/components/ChatAttachment";
 import { toast } from "sonner";
-import { useMarketingOAuth } from "@/modules/integrations/hooks/useMarketingOAuth";
 import { LeadFormModal, type LeadFormPayload } from "@/modules/leads/modals/LeadFormModal";
 import { useLeads } from "@/modules/leads/hooks";
 import type { Lead, LeadClientType, LeadServiceType } from "@/modules/leads/types";
@@ -39,6 +45,8 @@ import { useMusicChatAutomationSettings } from "@/modules/musicchat/hooks/useMus
 import { useMusicChatTriageRules } from "@/modules/musicchat/hooks/useMusicChatTriageRules";
 import { musicChatConversationsService } from "@/modules/musicchat/services/conversations.service";
 import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
+import { useUploadToR2, R2NotConfiguredError, type UploadCategory } from "@/shared/hooks/useUploadToR2";
+import { useWsEvent } from "@/shared/hooks/useWsEvent";
 import { useTenant } from "@/app/providers/TenantContext";
 import {
   Archive,
@@ -50,24 +58,17 @@ import {
   Headphones,
   Inbox,
   Link,
-  MessageCircle,
-  MessageSquare,
   Mic,
   Paperclip,
   Phone,
-  Plus,
   Search,
   Send,
-  Settings,
   Tag,
   UserPlus,
-  Users,
   X,
 } from "lucide-react";
 import { SiFacebook, SiInstagram, SiTiktok } from "react-icons/si";
 
-type MusicChatArea = "internal" | "support";
-type InternalFilter = "todas" | "nao-lidas" | "favoritas";
 type SupportChannel = "whatsapp" | "instagram" | "facebook" | "tiktok" | "site" | "custom";
 type SupportStatus =
   | "nova"
@@ -78,7 +79,7 @@ type SupportStatus =
   | "arquivada";
 type DeadlineState = "on_track" | "at_risk" | "overdue";
 
-interface SupportConversation {
+export interface SupportConversation {
   id: string;
   customer: string;
   handle: string;
@@ -122,6 +123,8 @@ interface SupportMessage {
   body: string;
   time: string;
   attachments?: ChatAttachmentData[];
+  deliveryStatus?: "sent" | "failed" | "internal_only";
+  deliveryError?: string;
 }
 
 const statusLabels: Record<SupportStatus, string> = {
@@ -198,6 +201,25 @@ function recordingDurationLabel(seconds: number) {
 }
 
 const teamMembers = ["Ana Mendes", "Lucas Araujo", "Bianca Rocha", "Sem responsável"];
+
+// Persisted in sessionStorage (not React state) because SupportCenterView fully unmounts when
+// the user switches to the Chat Interno tab and back (no forceMount, by design — see
+// MusicChat.tsx). Without this, an in-progress reply draft or pending (already-uploaded, awaiting
+// send) attachments are silently lost on every tab switch — same pattern already used by
+// ChatInternoView for its own draft state. An in-progress audio recording is intentionally NOT
+// persisted here: the underlying MediaStream/MediaRecorder cannot survive an unmount, and the
+// existing unmount cleanup already stops the mic tracks cleanly (correct behavior, not a bug).
+const draftKey = (conversationId: string) => `musicchat-support:draft:${conversationId}`;
+const attachmentsKey = (conversationId: string) => `musicchat-support:attachments:${conversationId}`;
+
+function readPersistedAttachments(conversationId: string): ChatAttachmentData[] {
+  try {
+    const raw = sessionStorage.getItem(attachmentsKey(conversationId));
+    return raw ? (JSON.parse(raw) as ChatAttachmentData[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 const quickReplies = [
   "Olá! Recebemos o seu contato e já estamos verificando. Em instantes retornamos.",
@@ -376,73 +398,6 @@ function ChannelIcon({ channel }: { channel: SupportChannel }) {
   return <Phone className="h-3.5 w-3.5" />;
 }
 
-function InternalChatView() {
-  const [activeFilter, setActiveFilter] = useState<InternalFilter>("todas");
-
-  return (
-    <div className="flex h-[calc(100vh-248px)] min-h-[560px] gap-4">
-      <Card className="flex w-[350px] flex-col border-border bg-card">
-        <CardHeader className="space-y-4 pb-3">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4" />
-              Chat Interno
-            </CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Conversas entre usuários, grupos e departamentos da empresa.
-            </p>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar conversas internas..." className="pl-9" />
-          </div>
-          <div className="flex items-center gap-2">
-            {[
-              ["todas", "Todas"],
-              ["nao-lidas", "Não lidas"],
-              ["favoritas", "Favoritas"],
-            ].map(([value, label]) => (
-              <Button
-                key={value}
-                variant={activeFilter === value ? "default" : "outline"}
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => setActiveFilter(value as InternalFilter)}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-          <MessageCircle className="mb-3 h-12 w-12 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">Nenhuma conversa ainda</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            O chat interno continua isolado da Central de Atendimento.
-          </p>
-          <Button variant="link" size="sm" className="mt-2 h-auto p-0">
-            Iniciar nova conversa
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="flex flex-1 flex-col border-border bg-card">
-        <CardContent className="flex h-full flex-col items-center justify-center text-center">
-          <MessageCircle className="mb-4 h-16 w-16 text-muted-foreground" />
-          <h3 className="mb-2 text-lg font-semibold text-foreground">Selecione uma conversa interna</h3>
-          <p className="mb-4 max-w-sm text-sm text-muted-foreground">
-            Escolha um canal, grupo ou conversa direta para acessar histórico, arquivos, aúdios e notificações.
-          </p>
-          <Button className="h-8 gap-1.5 text-xs">
-            <Plus className="h-3.5 w-3.5" />
-            Nova Mensagem
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 function ConversationListItem({
   conversation,
   active,
@@ -490,17 +445,30 @@ function ConversationListItem({
   );
 }
 
-function SupportCenterView() {
+export function SupportCenterView({
+  pendingNewConversation,
+  onConsumePendingNewConversation,
+}: {
+  /** Conversa recém-criada pelo NewConversationDialog (state vive no componente pai, que
+   *  controla o header) — consumida uma vez via useEffect para upsert + auto-seleção. */
+  pendingNewConversation?: SupportConversation | null;
+  onConsumePendingNewConversation?: () => void;
+}) {
+  const { canWrite } = useTenant();
+  const canReply = canWrite("musicchat");
   const { createLead } = useLeads();
   const { createContact } = useContacts();
   const { settings: automationSettings } = useMusicChatAutomationSettings();
   const { runEscalations } = useMusicChatTriageRules();
   const [conversations, setConversations] = useState<SupportConversation[]>([]);
   const [messagesByConv, setMessagesByConv] = useState<Record<string, SupportMessage[]>>({});
-  const [selectedId, setSelectedId] = useState("");
+  // Persisted so the selected conversation survives an unmount from switching to the
+  // Chat Interno tab and back (this view has no forceMount, by design).
+  const [selectedId, setSelectedId] = useState(() => sessionStorage.getItem("musicchat-support:selected-id") ?? "");
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [channelFilter, setChannelFilter] = useState<string>("todos");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
+  const [searchQuery, setSearchQuery] = useState("");
   const [draft, setDraft] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -510,6 +478,9 @@ function SupportCenterView() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferTarget, setTransferTarget] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachmentData[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const sendAttemptRef = useRef<{ key: string; signature: string } | null>(null);
+  const { upload: uploadAttachment, isUploading: isUploadingAttachment } = useUploadToR2();
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -517,11 +488,20 @@ function SupportCenterView() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
-  const { isConnected: isMarketingConnected } = useMarketingOAuth();
+  // Facebook/Instagram/TikTok/Website: isMarketingConnected() reflete só a
+  // integração de marketing (posts/ads) via OAuth — não existe webhook real
+  // de mensagens/DM para nenhum destes canais (só WhatsApp tem). Mostrar
+  // "conectado" aqui seria enganoso — sempre indisponível para mensagens
+  // até existir integração real de messaging. Website: não há widget/embed
+  // de chat do site nem endpoint público de visitor session no backend —
+  // o canal "site"/custom hoje só existe para formulário estático (campo
+  // assunto), não para conversa em tempo real. Mais um canal na lista,
+  // honestamente indisponível — não é o canal oficial/padrão.
   const messagingChannels = [
-    { id: "facebook", label: "Facebook", connected: isMarketingConnected("meta_business"), icon: SiFacebook },
-    { id: "instagram", label: "Instagram", connected: isMarketingConnected("meta_business"), icon: SiInstagram },
-    { id: "tiktok", label: "TikTok", connected: isMarketingConnected("tiktok_business"), icon: SiTiktok },
+    { id: "facebook", label: "Facebook", connected: false, icon: SiFacebook },
+    { id: "instagram", label: "Instagram", connected: false, icon: SiInstagram },
+    { id: "tiktok", label: "TikTok", connected: false, icon: SiTiktok },
+    { id: "site", label: "Website", connected: false, icon: Globe },
   ];
   const quickReplyOptions = useMemo(
     () => (automationSettings?.templates?.length ? automationSettings.templates.slice(0, 3).map((template) => template.body) : quickReplies),
@@ -547,6 +527,30 @@ function SupportCenterView() {
     return () => { active = false; };
   }, []);
 
+  // Realtime real (Section 14): backend já publica conversation:* no canal
+  // tenant:<id> (RealtimeService.sendToTenant). Ao chegar um evento,
+  // re-busca do servidor em vez de aplicar patch local — evita mensagem
+  // duplicada entre o append otimista do próprio envio e o broadcast do
+  // mesmo evento voltando pelo realtime.
+  // Escopado por conversationId (Section 26 do wave de remediação): antes cada evento
+  // refazia list() inteiro (até 200 linhas) para toda conversa do tenant, mesmo quando só
+  // uma mudou — O(eventos × tamanho da lista) por agente conectado. Agora busca só a
+  // conversa afetada e faz upsert local.
+  useWsEvent("conversation:created", (data) => refreshConversation(data.conversationId));
+  useWsEvent("conversation:updated", (data) => refreshConversation(data.conversationId));
+  useWsEvent("conversation:assigned", (data) => refreshConversation(data.conversationId));
+  useWsEvent("conversation:transferred", (data) => refreshConversation(data.conversationId));
+  useWsEvent("conversation:closed", (data) => refreshConversation(data.conversationId));
+  useWsEvent("conversation:reopened", (data) => refreshConversation(data.conversationId));
+  useWsEvent("conversation:message", (data) => {
+    refreshConversation(data.conversationId); // last_message_at/status vivem na conversa
+    if (data.conversationId) {
+      void musicChatConversationsService.messages(data.conversationId)
+        .then((rows) => setMessagesByConv((previous) => ({ ...previous, [data.conversationId]: rows })))
+        .catch(() => {});
+    }
+  });
+
   useEffect(() => {
     if (!selectedId || messagesByConv[selectedId]) return;
     let active = true;
@@ -559,6 +563,10 @@ function SupportCenterView() {
       });
     return () => { active = false; };
   }, [selectedId, messagesByConv]);
+
+  useEffect(() => {
+    if (selectedId) sessionStorage.setItem("musicchat-support:selected-id", selectedId);
+  }, [selectedId]);
 
   useEffect(() => {
     if (!isRecording || !recordingStartedAt) return undefined;
@@ -578,6 +586,7 @@ function SupportCenterView() {
   }, []);
 
   const filteredConversations = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
     return conversations.filter((conversation) => {
       const matchesChannel = channelFilter === "todos" || conversation.channel === channelFilter;
       // "Arquivada" só aparece quando o filtro de status a seleciona explicitamente;
@@ -586,9 +595,24 @@ function SupportCenterView() {
         statusFilter === "todos"
           ? conversation.status !== "arquivada"
           : conversation.status === statusFilter;
-      return matchesChannel && matchesStatus;
+      const matchesQuery =
+        query.length === 0 ||
+        conversation.customer.toLowerCase().includes(query) ||
+        conversation.protocol.toLowerCase().includes(query) ||
+        conversation.tags.some((tag) => tag.toLowerCase().includes(query));
+      return matchesChannel && matchesStatus && matchesQuery;
     });
-  }, [conversations, channelFilter, statusFilter]);
+  }, [conversations, channelFilter, statusFilter, searchQuery]);
+
+  // Estatísticas reais computadas da lista carregada — nunca números fixos.
+  const conversationStats = useMemo(() => {
+    const active = conversations.filter((c) => c.status !== "arquivada");
+    return {
+      novas: active.filter((c) => c.status === "nova").length,
+      semResponsavel: active.filter((c) => c.assignee === "Sem responsável").length,
+      resolvidas: active.filter((c) => c.status === "resolvida").length,
+    };
+  }, [conversations]);
 
   const selectedConversation =
     filteredConversations.find((conversation) => conversation.id === selectedId) ?? filteredConversations[0];
@@ -596,6 +620,33 @@ function SupportCenterView() {
   const isClosed = selectedConversation?.status === "resolvida" || selectedConversation?.status === "arquivada";
 
   const messages = selectedConversation ? messagesByConv[selectedConversation.id] ?? [] : [];
+
+  // Restore only — writes happen directly in the draft/attachment handlers below, not via a
+  // second effect keyed on `draft`/`pendingAttachments` (that would race this restore: it would
+  // see the pre-restore value on the same render pass and immediately overwrite what was just
+  // read — same reasoning as ChatInternoView's draft restore).
+  useEffect(() => {
+    if (selectedConversation) {
+      setDraft(sessionStorage.getItem(draftKey(selectedConversation.id)) ?? "");
+      setPendingAttachments(readPersistedAttachments(selectedConversation.id));
+    } else {
+      setDraft("");
+      setPendingAttachments([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversation?.id]);
+
+  const persistAttachments = (conversationId: string, list: ChatAttachmentData[]) => {
+    if (list.length > 0) sessionStorage.setItem(attachmentsKey(conversationId), JSON.stringify(list));
+    else sessionStorage.removeItem(attachmentsKey(conversationId));
+  };
+
+  const handleDraftChange = (value: string) => {
+    setDraft(value);
+    if (!selectedConversation) return;
+    if (value) sessionStorage.setItem(draftKey(selectedConversation.id), value);
+    else sessionStorage.removeItem(draftKey(selectedConversation.id));
+  };
 
   const updateConversation = (
     id: string,
@@ -610,6 +661,29 @@ function SupportCenterView() {
       }),
     );
   };
+
+  /** Insere/atualiza uma única conversa em memória a partir de um GET escopado —
+   *  usado pelos handlers de realtime abaixo em vez de refazer list() inteiro por evento. */
+  const upsertConversation = (conversation: SupportConversation) => {
+    setConversations((prev) => {
+      const exists = prev.some((c) => c.id === conversation.id);
+      return exists
+        ? prev.map((c) => (c.id === conversation.id ? conversation : c))
+        : [conversation, ...prev];
+    });
+  };
+
+  const refreshConversation = (conversationId: string) => {
+    void musicChatConversationsService.get(conversationId).then(upsertConversation).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!pendingNewConversation) return;
+    upsertConversation(pendingNewConversation);
+    setSelectedId(pendingNewConversation.id);
+    onConsumePendingNewConversation?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingNewConversation]);
 
   const appendMessage = (id: string, message: SupportMessage) => {
     setMessagesByConv((prev) => ({ ...prev, [id]: [...(prev[id] ?? []), message] }));
@@ -667,7 +741,7 @@ function SupportCenterView() {
     }
   };
 
-  const handleAddTag = () => {
+  const handleAddTag = async () => {
     if (!selectedConversation) return;
     const tag = tagDraft.trim();
     if (!tag) return;
@@ -675,14 +749,20 @@ function SupportCenterView() {
       toast.info("Essa tag já está adicionada.");
       return;
     }
-    updateConversation(
-      selectedConversation.id,
-      (conversation) => ({ ...conversation, tags: [...conversation.tags, tag] }),
-      `Tag adicionada: ${tag}`,
-    );
-    toast.success(`Tag "${tag}" adicionada.`);
-    setTagDraft("");
-    setTagOpen(false);
+    const nextTags = [...selectedConversation.tags, tag];
+    try {
+      const updated = await musicChatConversationsService.update(selectedConversation.id, {
+        tags: nextTags,
+        expectedUpdatedAt: getExpectedUpdatedAt(selectedConversation),
+      });
+      setConversations((previous) => previous.map((item) => (item.id === updated.id ? updated : item)));
+      toast.success(`Tag "${tag}" adicionada.`);
+      setTagDraft("");
+      setTagOpen(false);
+    } catch (err) {
+      if (handleConcurrencyConflict(err, "conversa")) return;
+      toast.error("Não foi possível adicionar a tag.");
+    }
   };
 
   const handleCreateLead = () => {
@@ -728,33 +808,52 @@ function SupportCenterView() {
     toast.success("Contato criado e vinculado ao CRM.");
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Envio real ao storage (R2) via presigned URL — blob: local não persiste além da
+  // sessão/aba atual e nunca deve ser tratado como sucesso de anexo (ver useUploadToR2).
+  const attachmentCategoryFor = (kind: ChatAttachmentKind): UploadCategory =>
+    kind === "audio" ? "audio" : kind === "image" ? "images" : "documents";
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
-    if (files.length > 0) {
-      const attachments = files.map((file) => ({
-        kind: resolveAttachmentKind(file.type, file.name),
-        name: file.name,
-        mime: file.type || (file.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream"),
-        url: URL.createObjectURL(file),
-      }));
-      setPendingAttachments((prev) => [...prev, ...attachments]);
-      toast.success(
-        files.length === 1
-          ? `Anexo selecionado: ${files[0].name}`
-          : `${files.length} anexos selecionados.`,
-      );
-    }
     event.target.value = "";
+    if (files.length === 0) return;
+
+    let successCount = 0;
+    for (const file of files) {
+      const kind = resolveAttachmentKind(file.type, file.name);
+      try {
+        const publicUrl = await uploadAttachment({ file, category: attachmentCategoryFor(kind), entity: "conversation" });
+        setPendingAttachments((prev) => {
+          const next = [
+            ...prev,
+            {
+              kind,
+              name: file.name,
+              mime: file.type || (file.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream"),
+              url: publicUrl,
+            },
+          ];
+          if (selectedConversation) persistAttachments(selectedConversation.id, next);
+          return next;
+        });
+        successCount += 1;
+      } catch (err) {
+        toast.error(
+          err instanceof R2NotConfiguredError
+            ? err.message
+            : `Falha ao enviar "${file.name}" — anexo não adicionado.`,
+        );
+      }
+    }
+    if (successCount > 0) {
+      toast.success(successCount === 1 ? `Anexo enviado: ${files[0].name}` : `${successCount} anexos enviados.`);
+    }
   };
 
   const handleRemovePendingAttachment = (url: string) => {
-    setPendingAttachments((prev) => prev.filter((attachment) => attachment.url !== url));
-  };
-
-  const handleToggleRecordingLegacy = () => {
-    setIsRecording((prev) => {
-      const next = !prev;
-      toast.info(next ? "Gravação de áudio iniciada." : "Gravação de áudio finalizada.");
+    setPendingAttachments((prev) => {
+      const next = prev.filter((attachment) => attachment.url !== url);
+      if (selectedConversation) persistAttachments(selectedConversation.id, next);
       return next;
     });
   };
@@ -821,16 +920,21 @@ function SupportCenterView() {
 
         const extension = blob.type.includes("webm") ? "webm" : "ogg";
         const name = `audio-atendimento-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`;
-        setPendingAttachments((prev) => [
-          ...prev,
-          {
-            kind: "audio",
-            name,
-            mime: blob.type || "audio/webm",
-            url: URL.createObjectURL(blob),
-          },
-        ]);
-        toast.success("Áudio gravado e pronto para envio.");
+        const audioFile = new File([blob], name, { type: blob.type || "audio/webm" });
+        void uploadAttachment({ file: audioFile, category: "audio", entity: "conversation" })
+          .then((publicUrl) => {
+            setPendingAttachments((prev) => {
+              const next = [...prev, { kind: "audio" as const, name, mime: blob.type || "audio/webm", url: publicUrl }];
+              if (selectedConversation) persistAttachments(selectedConversation.id, next);
+              return next;
+            });
+            toast.success("Áudio gravado e pronto para envio.");
+          })
+          .catch((err) => {
+            toast.error(
+              err instanceof R2NotConfiguredError ? err.message : "Falha ao enviar o áudio gravado.",
+            );
+          });
       };
 
       recorder.start();
@@ -857,21 +961,31 @@ function SupportCenterView() {
   };
 
   const handleQuickReply = (text: string) => {
-    setDraft(text);
+    handleDraftChange(text);
   };
 
   const handleSend = async () => {
     if (!selectedConversation) return;
+    if (isSending) return; // guarda contra reentrância (duplo clique/duplo Enter)
     const body = draft.trim();
     if (!body && pendingAttachments.length === 0) return;
     const sentAt = currentTimeLabel();
     const attachments = pendingAttachments;
     const fallbackBody = attachments.length === 1 ? "Anexo enviado." : `${attachments.length} anexos enviados.`;
+    setIsSending(true);
+    // Chave de idempotência por PAYLOAD: reenviar o mesmo texto após um timeout reusa a chave
+    // (backend replaya em vez de duplicar a mensagem); texto editado gera chave nova, senão a
+    // edição seria descartada em favor da resposta antiga em cache.
+    const signature = `${selectedConversation.id}|${body || fallbackBody}|${attachments.map((a) => a.url).join(",")}`;
+    if (sendAttemptRef.current?.signature !== signature) {
+      sendAttemptRef.current = { key: crypto.randomUUID(), signature };
+    }
     try {
       const saved = await musicChatConversationsService.sendMessage(
         selectedConversation.id,
         body || fallbackBody,
         attachments,
+        sendAttemptRef.current.key,
       );
       appendMessage(selectedConversation.id, saved);
       updateConversation(selectedConversation.id, (conversation) => ({
@@ -879,10 +993,13 @@ function SupportCenterView() {
         lastMessage: body || fallbackBody,
         lastMessageAt: sentAt,
       }));
-      setDraft("");
+      handleDraftChange("");
       setPendingAttachments([]);
+      persistAttachments(selectedConversation.id, []);
     } catch {
       toast.error("Não foi possível enviar a mensagem.");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -900,7 +1017,7 @@ function SupportCenterView() {
         time: currentTimeLabel(),
       });
       toast.success("Nota interna registrada.");
-      setDraft("");
+      handleDraftChange("");
     } catch {
       toast.error("Não foi possível registrar a nota interna.");
     }
@@ -908,7 +1025,7 @@ function SupportCenterView() {
 
   return (
     <>
-    <div className="grid h-[calc(100vh-248px)] min-h-[620px] grid-cols-[320px_minmax(420px,1fr)_320px] gap-4">
+    <div className="grid min-h-[620px] gap-4 lg:h-[calc(100vh-248px)] lg:grid-cols-[320px_minmax(420px,1fr)_320px]">
       <Card className="flex min-w-0 flex-col overflow-hidden border-border bg-card">
         <CardHeader className="space-y-4 pb-3">
           <div className="flex items-start justify-between gap-3">
@@ -927,26 +1044,36 @@ function SupportCenterView() {
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Canais de mensagens
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               {messagingChannels.map((channel) => {
                 const Icon = channel.icon;
                 return (
-                  <Badge key={channel.id} variant={channel.connected ? "secondary" : "outline"} className="gap-1 text-[10px]">
-                    <Icon className="h-3 w-3" />
-                    {channel.label}
-                    <span className="text-[9px] opacity-70">{channel.connected ? "conectado" : "desconectado"}</span>
-                  </Badge>
+                  <div key={channel.id} className="rounded-md border border-border bg-muted/30 px-2 py-1.5">
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-foreground">
+                      <Icon className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{channel.label}</span>
+                    </div>
+                    <p className="mt-0.5 text-[9px] text-muted-foreground">
+                      {channel.connected ? "conectado" : "mensagens indisponíveis"}
+                    </p>
+                  </div>
                 );
               })}
             </div>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar cliente, protocolo ou tag..." className="pl-9" />
+            <Input
+              placeholder="Buscar cliente, protocolo ou tag..."
+              aria-label="Buscar cliente, protocolo ou tag"
+              className="pl-9"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Select value={channelFilter} onValueChange={setChannelFilter}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-8 text-xs" aria-label="Filtrar por canal">
                 <SelectValue placeholder="Canal" />
               </SelectTrigger>
               <SelectContent>
@@ -959,7 +1086,7 @@ function SupportCenterView() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-8 text-xs" aria-label="Filtrar por status">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -974,9 +1101,9 @@ function SupportCenterView() {
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             {[
-              ["Novas", "4"],
-              ["Prazo risco", "2"],
-              ["Sem resp.", "2"],
+              ["Novas", String(conversationStats.novas)],
+              ["Resolvidas", String(conversationStats.resolvidas)],
+              ["Sem resp.", String(conversationStats.semResponsavel)],
             ].map(([label, value]) => (
               <div key={label} className="rounded-md border border-border bg-muted/30 px-2 py-2">
                 <p className="text-sm font-semibold text-foreground">{value}</p>
@@ -986,14 +1113,24 @@ function SupportCenterView() {
           </div>
         </CardHeader>
         <ScrollArea className="flex-1">
-          {filteredConversations.map((conversation) => (
-            <ConversationListItem
-              key={conversation.id}
-              conversation={conversation}
-              active={selectedConversation?.id === conversation.id}
-              onSelect={() => setSelectedId(conversation.id)}
-            />
-          ))}
+          {loadingConversations ? (
+            <p className="p-4 text-center text-sm text-muted-foreground">Carregando...</p>
+          ) : filteredConversations.length === 0 ? (
+            <p className="p-4 text-center text-sm text-muted-foreground">
+              {conversations.length === 0
+                ? "Nenhuma conversa ainda."
+                : "Nenhuma conversa corresponde aos filtros atuais."}
+            </p>
+          ) : (
+            filteredConversations.map((conversation) => (
+              <ConversationListItem
+                key={conversation.id}
+                conversation={conversation}
+                active={selectedConversation?.id === conversation.id}
+                onSelect={() => setSelectedId(conversation.id)}
+              />
+            ))
+          )}
         </ScrollArea>
       </Card>
 
@@ -1082,6 +1219,16 @@ function SupportCenterView() {
                         <span className="text-[10px] opacity-70">{message.time}</span>
                       </div>
                       {message.body && <p className="text-sm leading-relaxed">{message.body}</p>}
+                      {message.sender === "agent" && message.deliveryStatus === "failed" && (
+                        <p className="mt-1 text-[10px] font-medium text-destructive">
+                          Falha no envio{message.deliveryError ? `: ${message.deliveryError}` : ""}
+                        </p>
+                      )}
+                      {message.sender === "agent" && message.deliveryStatus === "internal_only" && (
+                        <p className="mt-1 text-[10px] text-primary-foreground/70">
+                          Registrado apenas internamente — canal sem envio externo real
+                        </p>
+                      )}
                       {(message.attachments?.length ?? 0) > 0 && (
                         <div className="mt-2 space-y-2">
                           {message.attachments!.map((attachment) => (
@@ -1099,7 +1246,11 @@ function SupportCenterView() {
             </ScrollArea>
 
             <div className="border-t border-border p-4">
-              {isClosed ? (
+              {!canReply ? (
+                <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-center text-sm text-muted-foreground">
+                  Você não tem permissão para responder no MusicChat.
+                </p>
+              ) : isClosed ? (
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
                   <div>
                     <p className="text-sm font-medium text-foreground">Conversa finalizada</p>
@@ -1169,7 +1320,7 @@ function SupportCenterView() {
                     placeholder="Digite uma mensagem para o cliente..."
                     className="min-h-[78px] resize-none"
                     value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
+                    onChange={(event) => handleDraftChange(event.target.value)}
                   />
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-1">
@@ -1177,7 +1328,8 @@ function SupportCenterView() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        title="Anexar arquivo"
+                        title={isUploadingAttachment ? "Enviando anexo…" : "Anexar arquivo"}
+                        disabled={isUploadingAttachment}
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <Paperclip className="h-4 w-4" />
@@ -1224,11 +1376,11 @@ function SupportCenterView() {
                     <Button
                       size="sm"
                       className="h-8 gap-1.5 text-xs"
-                      disabled={isRecording || (!draft.trim() && pendingAttachments.length === 0)}
+                      disabled={isSending || isRecording || (!draft.trim() && pendingAttachments.length === 0)}
                       onClick={handleSend}
                     >
                       <Send className="h-3.5 w-3.5" />
-                      Enviar
+                      {isSending ? "Enviando…" : "Enviar"}
                     </Button>
                   </div>
                 </div>
@@ -1538,65 +1690,5 @@ function SupportCenterView() {
       </>
     )}
     </>
-  );
-}
-
-export default function MusicChat() {
-  const navigate = useNavigate();
-  const { hasPermission } = useTenant();
-  const [activeArea, setActiveArea] = useState<MusicChatArea>("internal");
-  const canManageAutomation = hasPermission("musicchat", "write") || hasPermission("settings", "write");
-
-  const headerActions = (
-    <div className="flex items-center gap-2">
-      {canManageAutomation && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1.5 text-xs"
-          onClick={() => navigate("/admin/musicchat/automacoes")}
-        >
-          <Settings className="h-3.5 w-3.5" />
-          Configurações
-        </Button>
-      )}
-      <Button size="sm" className="h-8 gap-1.5 text-xs" data-testid="button-nova-mensagem">
-        <Plus className="h-3.5 w-3.5" />
-        {activeArea === "support" ? "Nova Conversa" : "Nova Mensagem"}
-      </Button>
-    </div>
-  );
-
-  return (
-    <MainLayout
-      title="MusicChat"
-      description="Chat interno e central multicanal de atendimento"
-      actions={headerActions}
-    >
-      <div className="space-y-4 pt-[10px] pb-[10px]">
-        <Tabs value={activeArea} onValueChange={(value) => setActiveArea(value as MusicChatArea)}>
-          <div className="flex items-center justify-between gap-4">
-            <TabsList>
-              <TabsTrigger value="internal" className="gap-2">
-                <Users className="h-4 w-4" />
-                Chat Interno
-              </TabsTrigger>
-              <TabsTrigger value="support" className="gap-2">
-                <Headphones className="h-4 w-4" />
-                Central de Atendimento
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="internal" className="mt-4">
-            <InternalChatView />
-          </TabsContent>
-
-          <TabsContent value="support" className="mt-4">
-            <SupportCenterView />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </MainLayout>
   );
 }

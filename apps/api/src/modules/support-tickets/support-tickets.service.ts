@@ -2,17 +2,18 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
-import { SupportTicketEntity } from '../../database/entities';
+import { SupportTicketEntity, SupportTicketMessageEntity } from '../../database/entities';
 import { SupportTicketStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
-import type { CreateSupportTicketDto, UpdateSupportTicketDto, QuerySupportTicketDto } from './dto/support-tickets.dto';
+import type { CreateSupportTicketDto, UpdateSupportTicketDto, QuerySupportTicketDto, CreateSupportTicketMessageDto } from './dto/support-tickets.dto';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
 
 @Injectable()
 export class SupportTicketsService {
   private readonly ds:   DataSource | null = null;
   private readonly repo: Repository<SupportTicketEntity> | null = null;
+  private readonly messagesRepo: Repository<SupportTicketMessageEntity> | null = null;
 
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
@@ -22,6 +23,7 @@ export class SupportTicketsService {
     if (ds) {
       this.ds   = ds;
       this.repo = ds.getRepository(SupportTicketEntity);
+      this.messagesRepo = ds.getRepository(SupportTicketMessageEntity);
     }
   }
 
@@ -52,6 +54,50 @@ export class SupportTicketsService {
         limit:  typeof q['limit']  === 'number' ? q['limit']  : 50,
       },
     };
+  }
+
+  /**
+   * REM-01 (Remaining Product Completion Backlog): AdminSupport panel
+   * (frontend `admin-support.service.ts`) called this real `list()` — which
+   * is `@CurrentTenant()`-scoped by design (a tenant's own manager list of
+   * their own tickets) — so a super_admin only ever saw the ONE tenant they
+   * happened to be scoped to, never the cross-tenant view the panel implies.
+   * Real cross-tenant admin listing, mirroring the `admin-users`/
+   * `billing.service.ts` admin/* convention: raw SQL, no tenant_id filter
+   * (relies on `super_admin_full_access` RLS + `RequireRole('super_admin')`
+   * at the controller), joined with `tenants` for `tenant_name`.
+   */
+  async listAdmin(query: { search?: string; status?: string; priority?: string }) {
+    const ds = this.ds!;
+    const params: unknown[] = [];
+    const filters: string[] = ['t.deleted_at IS NULL', 'tn.deleted_at IS NULL'];
+
+    if (query.search) {
+      params.push(`%${query.search.toLowerCase()}%`);
+      filters.push(`(lower(t.subject) LIKE $${params.length} OR lower(t.ticket_number) LIKE $${params.length} OR lower(tn.name) LIKE $${params.length})`);
+    }
+    if (query.status) {
+      params.push(query.status);
+      filters.push(`t.status = $${params.length}`);
+    }
+    if (query.priority) {
+      params.push(query.priority);
+      filters.push(`t.priority = $${params.length}`);
+    }
+
+    return ds.query(
+      `
+      SELECT
+        t.id, t.subject, t.category, t.tenant_id, tn.name AS tenant_name,
+        t.status, t.priority, t.assigned_to, t.created_at, t.updated_at, t.resolved_at
+      FROM support_tickets t
+      JOIN tenants tn ON tn.id = t.tenant_id
+      WHERE ${filters.join(' AND ')}
+      ORDER BY t.created_at DESC
+      LIMIT 200
+      `,
+      params,
+    );
   }
 
   async findById(
@@ -199,5 +245,35 @@ export class SupportTicketsService {
       { deleted_at: new Date() } as QueryDeepPartialEntity<SupportTicketEntity>,
     );
     return { deleted: true };
+  }
+
+  // ── Messages (GAP-04: reply thread on a ticket) ────────────────────────────
+
+  async listMessages(tenantId: string, ticketId: string): Promise<SupportTicketMessageEntity[]> {
+    await this.findById(tenantId, ticketId);
+    return this.messagesRepo!
+      .createQueryBuilder('m')
+      .where('m.tenant_id = :tenantId AND m.ticket_id = :ticketId', { tenantId, ticketId })
+      .orderBy('m.created_at', 'ASC')
+      .getMany();
+  }
+
+  async addMessage(
+    tenantId: string,
+    ticketId: string,
+    sender: { id: string; name: string; role: 'user' | 'support' | 'admin' },
+    dto: CreateSupportTicketMessageDto,
+  ): Promise<SupportTicketMessageEntity> {
+    await this.findById(tenantId, ticketId);
+    const entity = this.messagesRepo!.create({
+      tenant_id: tenantId,
+      ticket_id: ticketId,
+      sender_id: sender.id,
+      sender_name: sender.name,
+      sender_role: sender.role,
+      message: dto.message,
+      internal_note: dto.internal_note ?? false,
+    });
+    return this.messagesRepo!.save(entity);
   }
 }

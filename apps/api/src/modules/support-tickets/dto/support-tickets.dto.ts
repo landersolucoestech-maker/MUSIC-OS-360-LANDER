@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsDate, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsDate, IsBoolean, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { SupportTicketStatus, SupportTicketPriority } from '@music-os-360/types';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
@@ -28,4 +28,15 @@ export class QuerySupportTicketDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() priority?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() category?: string;
+}
+
+export class AdminListSupportTicketsDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) search?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() priority?: string;
+}
+
+export class CreateSupportTicketMessageDto {
+  @ApiProperty() @IsString() @MaxLength(10000) message!: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() internal_note?: boolean;
 }

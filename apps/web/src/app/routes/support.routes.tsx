@@ -6,7 +6,6 @@ const SupportDashboard    = lazy(() => import("@/modules/support/pages/SupportDa
 const SupportTickets      = lazy(() => import("@/modules/support/pages/SupportTickets"));
 const SupportTicketDetail = lazy(() => import("@/modules/support/pages/SupportTicketDetail"));
 const SupportKnowledge      = lazy(() => import("@/modules/support/pages/SupportKnowledge"));
-const SupportChat         = lazy(() => import("@/modules/support/pages/SupportChat"));
 const SupportStatus       = lazy(() => import("@/modules/support/pages/SupportStatus"));
 const SupportRequests     = lazy(() => import("@/modules/support/pages/SupportRequests"));
 
@@ -19,7 +18,11 @@ export function supportRoutes(P: SuspenseRouteComponent) {
       <Route path="/support/knowledge"        element={<P><SupportKnowledge /></P>} />
       {/* Gestão da Base de Conhecimento é exclusiva do Painel Admin. */}
       <Route path="/support/knowledge/manage" element={<Navigate to="/admin/knowledge" replace />} />
-      <Route path="/support/chat"          element={<P><SupportChat /></P>} />
+      {/* Chat ao Vivo — não é um segundo sistema de chat: aponta para o
+          MusicChat real (/chat), que já cobre exatamente este caso de uso na
+          aba "internal" (conversa com a própria equipe). A antiga SupportChat
+          era uma demo com respostas automáticas fake, sem backend algum. */}
+      <Route path="/support/chat"          element={<Navigate to="/chat" replace />} />
       <Route path="/support/status"        element={<P><SupportStatus /></P>} />
       <Route path="/support/requests"      element={<P><SupportRequests /></P>} />
     </>

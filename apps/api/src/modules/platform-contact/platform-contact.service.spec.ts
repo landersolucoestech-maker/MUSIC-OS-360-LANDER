@@ -1,0 +1,73 @@
+import 'reflect-metadata';
+import { ServiceUnavailableException } from '@nestjs/common';
+import { PlatformContactService } from './platform-contact.service';
+import type { PlatformContactDto } from './dto/platform-contact.dto';
+
+/**
+ * Platform Commercial Contact (decisão de produto 2026-08-22): contato
+ * institucional da landing do Music OS 360 — nunca cria Support
+ * Ticket/MusicChat/lead/tenant record; encaminha por e-mail via MailService
+ * real para PLATFORM_CONTACT_RECIPIENT_EMAIL (nunca um endereço inventado).
+ */
+function makeService(hasRecipient = true) {
+  const recipient = hasRecipient ? 'contato@musicos360.com.br' : undefined;
+  const mail = { send: jest.fn(async () => ({ id: 'mail-1' })) };
+  const config = { get: jest.fn(() => recipient) };
+  const svc = new PlatformContactService(mail as never, config as never);
+  return { svc, mail, config };
+}
+
+function lastMailCall(mail: { send: jest.Mock }): { to: string; replyTo: string; html: string } {
+  const calls = mail.send.mock.calls as unknown as Array<[{ to: string; replyTo: string; html: string }]>;
+  return calls[0]![0];
+}
+
+const BASE_DTO: PlatformContactDto = {
+  name: 'Fulano Empresa',
+  email: 'fulano@empresa.com',
+  company: 'Empresa X',
+  message: 'Gostaríamos de saber mais sobre o Music OS 360.',
+};
+
+describe('PlatformContactService.submit', () => {
+  it('encaminha por e-mail para o destinatário configurado, com reply-to do remetente', async () => {
+    const { svc, mail } = makeService();
+    const result = await svc.submit(BASE_DTO);
+
+    expect(result).toEqual({ accepted: true });
+    expect(mail.send).toHaveBeenCalledTimes(1);
+    const call = lastMailCall(mail);
+    expect(call.to).toBe('contato@musicos360.com.br');
+    expect(call.replyTo).toBe('fulano@empresa.com');
+    expect(call.html).toContain('Fulano Empresa');
+    expect(call.html).toContain('Gostaríamos de saber mais');
+  });
+
+  it('escapa HTML no nome/empresa/mensagem antes de interpolar no e-mail', async () => {
+    const { svc, mail } = makeService();
+    await svc.submit({
+      ...BASE_DTO,
+      name: '<img src=x onerror=alert(1)>',
+      message: '<script>alert(2)</script>',
+    });
+
+    const html = lastMailCall(mail).html;
+    expect(html).not.toContain('<img src=x onerror=alert(1)>');
+    expect(html).not.toContain('<script>alert(2)</script>');
+    expect(html).toContain('&lt;img');
+  });
+
+  it('honeypot preenchido: aceita em silêncio, nunca envia e-mail', async () => {
+    const { svc, mail } = makeService();
+    const result = await svc.submit({ ...BASE_DTO, website: 'https://bot.example' });
+
+    expect(result).toEqual({ accepted: true });
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+
+  it('sem PLATFORM_CONTACT_RECIPIENT_EMAIL configurado: 503 honesto, nunca finge sucesso', async () => {
+    const { svc, mail } = makeService(false);
+    await expect(svc.submit(BASE_DTO)).rejects.toThrow(ServiceUnavailableException);
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+});

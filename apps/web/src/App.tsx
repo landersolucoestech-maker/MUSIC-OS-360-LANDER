@@ -15,7 +15,7 @@ import { createQueryClient } from "@/shared/lib/query-config";
 import type { SuspenseRouteComponent } from "@/app/routes/types";
 import "@/shared/domain-events/consistency";
 import { RealtimeLayer } from "@/shared/infrastructure/RealtimeLayer";
-import { AUTH_DISABLED } from "@/shared/lib/env";
+import { AUTH_DISABLED, DEV_AUTH_BYPASS } from "@/shared/lib/env";
 import { runClientMigrations } from "@/shared/lib/migrations";
 import { publicRoutes } from "@/app/routes/public.routes";
 import { artistRoutes } from "@/app/routes/artist.routes";
@@ -27,6 +27,7 @@ import { marketingRoutes } from "@/app/routes/marketing.routes";
 import { workspaceRoutes } from "@/app/routes/workspace.routes";
 import { settingsRoutes } from "@/app/routes/settings.routes";
 import { operationsRoutes } from "@/app/routes/operations.routes";
+import { chatRoutes } from "@/app/routes/chat.routes";
 import { adminRoutes } from "@/app/routes/admin.routes";
 import { contractsRoutes } from "@/app/routes/contracts.routes";
 import { reportsRoutes } from "@/app/routes/reports.routes";
@@ -49,7 +50,7 @@ const SuspenseRoute: SuspenseRouteComponent = ({ children }) => (
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (AUTH_DISABLED) return <>{children}</>;
+  if (AUTH_DISABLED || DEV_AUTH_BYPASS) return <>{children}</>;
   if (loading) return <PageSkeleton />;
   if (!user) return <Navigate to="/auth" replace />;
   return <>{children}</>;
@@ -80,7 +81,7 @@ function BillingGuard({ children }: { children: React.ReactNode }) {
 function Home() {
   const { user, loading } = useAuth();
   const { tenant } = useTenant();
-  if (AUTH_DISABLED) return <Navigate to="/dashboard" replace />;
+  if (AUTH_DISABLED || DEV_AUTH_BYPASS) return <Navigate to="/dashboard" replace />;
   if (loading) return <PageSkeleton />;
   if (!user) return <Landing />;
   if (user.mustChangePassword) return <Navigate to="/change-required-password" replace />;
@@ -98,7 +99,7 @@ const ProtectedRoute: SuspenseRouteComponent = ({ children }) => (
 
 function SuperAdminGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (AUTH_DISABLED) return <>{children}</>;
+  if (AUTH_DISABLED || DEV_AUTH_BYPASS) return <>{children}</>;
   if (loading) return <PageSkeleton />;
   const role = user?.role;
   if (!user || role !== "super_admin") return <Navigate to="/" replace />;
@@ -126,6 +127,25 @@ function AuthDisabledBanner() {
       className="fixed inset-x-0 top-0 z-[9999] bg-destructive px-4 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-destructive-foreground"
     >
       ⚠ AUTH_DISABLED ativo — sessão, tenant e permissões são falsos (dev bypass). Nunca use para validar login real.
+    </div>
+  );
+}
+
+/**
+ * DEV ONLY — banner crítico, sempre visível, quando VITE_DISABLE_AUTH está
+ * ativo. Mesmo propósito do AuthDisabledBanner acima, mas para o bypass
+ * puramente de frontend: sem sessão Supabase real nenhuma por trás, e sem
+ * suposição de que o backend também tenha auth desligada — chamadas de API
+ * autenticadas podem retornar 401/403 normalmente.
+ */
+function DevAuthBypassBanner() {
+  if (!DEV_AUTH_BYPASS) return null;
+  return (
+    <div
+      role="alert"
+      className="fixed inset-x-0 top-0 z-[9999] bg-destructive px-4 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-destructive-foreground"
+    >
+      ⚠ VITE_DISABLE_AUTH ativo (DEV ONLY) — login, sessão e MFA pulados no frontend. Chamadas de API que exigem auth real podem retornar 401/403. Nunca use para validar login real.
     </div>
   );
 }
@@ -162,6 +182,7 @@ const App = () => {
               <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <AuthDisabledBanner />
+                <DevAuthBypassBanner />
                 <TenantContextErrorBanner />
                 <BillingNotice />
                 <Routes>
@@ -180,6 +201,7 @@ const App = () => {
                   {marketingRoutes(ProtectedRoute)}
                   {settingsRoutes(ProtectedRoute)}
                   {operationsRoutes(ProtectedRoute)}
+                  {chatRoutes(ProtectedRoute)}
                   {contractsRoutes(ProtectedRoute)}
                   <Route path="/contratos-v2" element={<Navigate to="/contratos" replace />} />
                   <Route path="/contratos-v2/*" element={<Navigate to="/contratos" replace />} />

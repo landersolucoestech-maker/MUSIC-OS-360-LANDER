@@ -27,6 +27,34 @@ export const AUTH_DISABLED: boolean =
   import.meta.env.VITE_AUTH_DISABLED === "true";
 
 /**
+ * DEV_AUTH_BYPASS — VITE_DISABLE_AUTH=true — DEV ONLY.
+ *
+ * Bypass de autenticação/autorização puramente de FRONTEND para navegar a
+ * interface sem login durante desenvolvimento local. Diferente de
+ * AUTH_DISABLED: este flag não pressupõe que o backend também tenha auth
+ * desligada — chamadas de API que exigem token real continuam podendo
+ * retornar 401/403 normalmente (ver api-client.ts para o único ajuste
+ * relacionado: o circuit-breaker de 401 é pulado sob este flag para não
+ * bloquear a navegação inteira por 30s a cada chamada autenticada).
+ *
+ * `deriveDevAuthBypass` é a derivação pura (testável sem mockar
+ * import.meta.env). A garantia de segurança central: `isDev` só pode ser
+ * `true` quando o Vite compila em modo de desenvolvimento (import.meta.env.DEV
+ * é decidido em build-time pelo modo do build, não é uma env var lida em
+ * runtime) — logo, mesmo que VITE_DISABLE_AUTH=true vaze para um `.env` de
+ * staging/produção por engano, um build de produção nunca terá DEV === true
+ * e o bypass permanece desativado.
+ */
+export function deriveDevAuthBypass(isDev: boolean, flagValue: string | undefined): boolean {
+  return isDev === true && flagValue === "true";
+}
+
+export const DEV_AUTH_BYPASS: boolean = deriveDevAuthBypass(
+  import.meta.env.DEV === true,
+  import.meta.env.VITE_DISABLE_AUTH as string | undefined,
+);
+
+/**
  * URL base da API backend. String vazia = URLs relativas (same-domain, proxy Vite).
  *
  * Sanitização defensiva: remove sufixos /api/v1 ou /api caso VITE_API_URL já os

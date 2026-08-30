@@ -3,11 +3,18 @@ import type { AdminSupportTicket, SupportTicketStatus, SupportTicketPriority } f
 
 /**
  * Serviço real de tickets de suporte para o Painel Admin.
- * Usa o endpoint existente `GET /support-tickets` (tenant-scoped, RequireRole manager),
- * que retorna `{ data, meta }`. Sem fonte mock runtime — o mapeamento é defensivo
- * porque o endpoint é escopado ao tenant atual (não expõe tenant_name).
+ *
+ * REM-01 (Remaining Product Completion Backlog): usava `GET /support-tickets`
+ * (tenant-scoped, RequireRole manager) — um super_admin só via os tickets do
+ * ÚNICO tenant ao qual sua sessão estava vinculada, nunca uma visão
+ * cross-tenant real, apesar do painel implicar isso. Agora usa o endpoint
+ * real `GET /support-tickets/admin` (RequireRole super_admin, sem filtro de
+ * tenant_id — RLS `super_admin_full_access`), que já retorna `tenant_name`
+ * via join real com `tenants`. `requester_email`/`first_response_at`
+ * continuam indisponíveis honestamente (a entidade não tem essas colunas
+ * hoje) — não fabricados.
  */
-interface RawTicket {
+interface RawAdminTicket {
   id: string;
   subject?: string;
   category?: string | null;
@@ -15,40 +22,34 @@ interface RawTicket {
   priority?: SupportTicketPriority;
   assigned_to?: string | null;
   tenant_id?: string;
-  requester_email?: string | null;
+  tenant_name?: string;
   created_at?: string;
   updated_at?: string;
-  first_response_at?: string | null;
   resolved_at?: string | null;
 }
 
-function toAdminTicket(r: RawTicket): AdminSupportTicket {
+function toAdminTicket(r: RawAdminTicket): AdminSupportTicket {
   const created = r.created_at ?? new Date().toISOString();
   return {
     id: r.id,
     subject: r.subject ?? "(sem assunto)",
     category: r.category ?? "",
     tenant_id: r.tenant_id ?? "",
-    tenant_name: "",
-    requester_email: r.requester_email ?? "",
+    tenant_name: r.tenant_name ?? "",
+    requester_email: "",
     status: (r.status ?? "open") as SupportTicketStatus,
     priority: (r.priority ?? "medium") as SupportTicketPriority,
     assigned_to: r.assigned_to ?? undefined,
     created_at: created,
     updated_at: r.updated_at ?? created,
-    first_response_at: r.first_response_at ?? undefined,
+    first_response_at: undefined,
     resolved_at: r.resolved_at ?? undefined,
   };
 }
 
 export const adminSupportService = {
   async list(): Promise<AdminSupportTicket[]> {
-    // api.get() já desembrulha o envelope {data,timestamp}; o controller
-    // retorna {data: [...], meta} diretamente (TransformInterceptor preserva
-    // objetos que já têm `data`), então o valor aqui já É o array — o
-    // `res?.data ?? []` anterior sempre caía no fallback e a tela de
-    // tickets do Admin nunca mostrava nenhum ticket real.
-    const res = await api.get<RawTicket[]>("/support-tickets?limit=200");
+    const res = await api.get<RawAdminTicket[]>("/support-tickets/admin");
     return (res ?? []).map(toAdminTicket);
   },
 };

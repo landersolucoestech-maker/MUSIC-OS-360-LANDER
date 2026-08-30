@@ -9,8 +9,7 @@ import {
   CommandInput, CommandItem, CommandList,
 } from "@/shared/ui/command";
 import { cn } from "@/shared/lib/utils";
-import { SUPPORT_KNOWLEDGE_CATEGORIES as MOCK_KNOWLEDGE_CATEGORIES } from "../data/support-source";
-import { useKnowledgeArticles } from "../hooks/useSupport";
+import { useKnowledgeArticles, useKnowledgeCategories } from "../hooks/useSupport";
 import type { KnowledgeArticle } from "../types";
 import {
   Search, BookOpen, Eye, ThumbsUp,
@@ -98,7 +97,9 @@ function ArticleModal({ article, onClose }: { article: KnowledgeArticle; onClose
 }
 
 export default function SupportKnowledge() {
-  const { articles, incrementViews } = useKnowledgeArticles();
+  const { articles, isLoading: loadingArticles, incrementViews } = useKnowledgeArticles();
+  const { categories: knowledgeCategories, isLoading: loadingCategories } = useKnowledgeCategories();
+  const isLoading = loadingArticles || loadingCategories;
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedArticle, setSelectedArticle]   = useState<KnowledgeArticle | null>(null);
   const [commandOpen, setCommandOpen]           = useState(false);
@@ -166,6 +167,12 @@ export default function SupportKnowledge() {
           </div>
         </div>
 
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <p className="text-[13px] text-muted-foreground">Carregando artigos...</p>
+          </div>
+        ) : (
+        <>
         {/* Category quick-filter chips */}
         <div className="flex flex-wrap gap-2">
           <button
@@ -181,7 +188,7 @@ export default function SupportKnowledge() {
             <FileText className="h-3 w-3" />
             Todos ({totalArticles})
           </button>
-          {MOCK_KNOWLEDGE_CATEGORIES.map((cat) => {
+          {knowledgeCategories.map((cat) => {
             const count = articles.filter((a) => a.category_id === cat.id).length;
             return (
               <button
@@ -220,7 +227,7 @@ export default function SupportKnowledge() {
         <div>
           {selectedCategory !== "all" && (
             <h3 className="text-[13px] font-semibold text-foreground mb-3">
-              {MOCK_KNOWLEDGE_CATEGORIES.find((c) => c.id === selectedCategory)?.name}
+              {knowledgeCategories.find((c) => c.id === selectedCategory)?.name}
               {" "}· {filtered.length} artigo{filtered.length !== 1 ? "s" : ""}
             </h3>
           )}
@@ -246,6 +253,8 @@ export default function SupportKnowledge() {
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* Command menu — quick search */}
@@ -253,7 +262,7 @@ export default function SupportKnowledge() {
         <CommandInput placeholder="Buscar artigo..." data-testid="input-command-search" />
         <CommandList>
           <CommandEmpty>Nenhum artigo encontrado.</CommandEmpty>
-          {MOCK_KNOWLEDGE_CATEGORIES.map((cat) => {
+          {knowledgeCategories.map((cat) => {
             const catArticles = articles.filter((a) => a.category_id === cat.id);
             if (catArticles.length === 0) return null;
             return (

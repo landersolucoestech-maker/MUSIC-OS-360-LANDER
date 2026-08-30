@@ -47,29 +47,6 @@ export interface SupportMessage {
   created_at: string;
 }
 
-export interface ChatRoom {
-  id: string;
-  tenant_id: string;
-  participant_name: string;
-  participant_email: string;
-  last_message?: string;
-  last_message_at?: string;
-  unread_count: number;
-  status: 'active' | 'resolved';
-  online: boolean;
-}
-
-export interface ChatMessage {
-  id: string;
-  tenant_id: string;
-  room_id: string;
-  sender: 'user' | 'support';
-  sender_name: string;
-  message: string;
-  created_at: string;
-  type: 'text' | 'image' | 'file';
-}
-
 export interface KnowledgeCategory {
   id: string;
   name: string;
@@ -84,7 +61,7 @@ export type KnowledgeArticleStatus = "draft" | "published" | "archived";
 
 export interface KnowledgeArticle {
   id: string;
-  tenant_id: string;
+  /** Conteúdo global (Music OS 360) — não tenant-scoped. */
   category_id: string;
   category_name: string;
   title: string;

@@ -42,7 +42,7 @@ function formatDate(iso: string) {
 }
 
 export default function SupportRequests() {
-  const { requests, addRequest, upvote } = useRequests();
+  const { requests, addRequest, upvote, isCreating } = useRequests();
   const [search, setSearch]           = useState("");
   const [typeFilter, setTypeFilter]   = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -73,22 +73,37 @@ export default function SupportRequests() {
         : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-  function handleVote(id: string) {
+  async function handleVote(id: string) {
     if (votedIds.has(id)) return;
-    upvote(id);
+    // Marca localmente antes de confirmar (evita duplo-clique durante o
+    // round-trip); reverte se a chamada falhar, para não travar o voto real.
     setVotedIds((prev) => new Set([...prev, id]));
+    try {
+      await upvote(id);
+    } catch {
+      setVotedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!form.title.trim()) return;
-    addRequest({
-      title: form.title,
-      description: form.description,
-      type: form.type,
-      priority: form.priority,
-    });
-    setShowModal(false);
-    setForm({ title: "", description: "", type: "feature", priority: "medium" });
+    try {
+      await addRequest({
+        title: form.title,
+        description: form.description,
+        type: form.type,
+        priority: form.priority,
+      });
+      setShowModal(false);
+      setForm({ title: "", description: "", type: "feature", priority: "medium" });
+    } catch {
+      // Erro já reportado via toast em useRequests; mantém o modal aberto e o
+      // formulário preenchido para o usuário poder tentar de novo.
+    }
   }
 
   const totalVotes = requests.reduce((s, r) => s + r.votes, 0);
@@ -302,8 +317,8 @@ export default function SupportRequests() {
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setShowModal(false)}>Cancelar</Button>
-            <Button size="sm" onClick={handleCreate} disabled={!form.title.trim()} data-testid="button-submit-request">
-              Enviar Solicitação
+            <Button size="sm" onClick={handleCreate} disabled={!form.title.trim() || isCreating} data-testid="button-submit-request">
+              {isCreating ? "Enviando..." : "Enviar Solicitação"}
             </Button>
           </DialogFooter>
         </DialogContent>

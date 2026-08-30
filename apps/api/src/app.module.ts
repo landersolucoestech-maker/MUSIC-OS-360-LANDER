@@ -61,6 +61,9 @@ import { UsersModule }             from './modules/users/users.module';
 import { AuditLogModule }          from './modules/audit-log/audit-log.module';
 import { ActivityLogsModule }       from './modules/activity-logs/activity-logs.module';
 import { SupportTicketsModule }    from './modules/support-tickets/support-tickets.module';
+import { SupportRequestsModule }   from './modules/support-requests/support-requests.module';
+import { KnowledgeBaseModule }     from './modules/knowledge-base/knowledge-base.module';
+import { AdminUsersModule }        from './modules/admin-users/admin-users.module';
 import { IntegrationsModule }      from './modules/integrations/integrations.module';
 import { AIModule }                from './modules/ai/ai.module';
 import { BillingModule }           from './modules/billing/billing.module';
@@ -73,7 +76,8 @@ import { SkillsModule }           from './core/skills/skills.module';
 import { AssetsModule }           from './modules/assets/assets.module';
 import { WorkflowModule }         from './core/workflow/workflow.module';
 import { ConversationsModule }    from './modules/conversations/conversations.module';
-import { FormsModule }            from './modules/forms/forms.module';
+import { InternalChatModule }     from './modules/internal-chat/internal-chat.module';
+import { PlatformContactModule }  from './modules/platform-contact/platform-contact.module';
 import { AnalyticsModule }        from './modules/analytics/analytics.module';
 import { InventoryModule }        from './modules/inventory/inventory.module';
 import { LicensingModule }        from './modules/licensing/licensing.module';
@@ -170,6 +174,9 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     AuditLogModule,
     ActivityLogsModule,
     SupportTicketsModule,
+    SupportRequestsModule,
+    KnowledgeBaseModule,
+    AdminUsersModule,
 
     // ── Módulos FASE 7 — Integrações Reais ───────────────────────────────────
     IntegrationsModule,
@@ -198,9 +205,13 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
 
     // ── Phase 9 — Conversations/Inbox ─────────────────────────────────────────
     ConversationsModule,
+    InternalChatModule,
 
-    // ── Phase 12 — Forms & Submissions ────────────────────────────────────────
-    FormsModule,
+    // Phase 12 — Forms & Submissions removido (DropGenericFormsModule20260822000005):
+    // decisão de produto — nenhum Form Builder genérico.
+
+    // ── Platform Commercial Contact — contato institucional da landing ────────
+    PlatformContactModule,
 
     // ── Phase 13 — Analytics & AI Governance ──────────────────────────────────
     AnalyticsModule,
