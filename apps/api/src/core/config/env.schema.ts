@@ -484,6 +484,13 @@ export const envSchema = z.object({
   // endereços reais durante testes manuais em staging. Sem efeito fora de staging.
   STAGING_MAIL_ALLOWLIST_DOMAINS: z.string().default('example.com'),
 
+  // Platform Commercial Contact (decisão de produto 2026-08-22): destino do
+  // formulário de contato institucional da landing do próprio Music OS 360
+  // (empresas interessadas em contratar a plataforma) — NUNCA um endereço
+  // inventado no código. Opcional: se ausente, o endpoint responde
+  // honestamente indisponível (503) em vez de fingir que enviou.
+  PLATFORM_CONTACT_RECIPIENT_EMAIL: z.string().email().optional(),
+
   // Parte 66: authenticates Vercel Cron requests to the /internal/cron/*
   // endpoints (CronAuthGuard) — replaces the setInterval-based schedulers
   // that ran inside the long-lived Node process, which Vercel Functions
@@ -545,6 +552,12 @@ export const envSchema = z.object({
 
   SOUNDCLOUD_CLIENT_ID: z.string().optional(),
 
+  // Soundcharts — fonte de métricas públicas de audiência (backend-only,
+  // client_credentials). Nunca expor via VITE_* — client_secret não pode
+  // chegar ao navegador (ver SoundchartsService).
+  SOUNDCHARTS_CLIENT_ID: z.string().optional(),
+  SOUNDCHARTS_CLIENT_SECRET: z.string().optional(),
+
   META_APP_ID: z.string().optional(),
   META_APP_SECRET: z.string().optional(),
   META_REDIRECT_URI: z.string().optional(),
@@ -561,6 +574,13 @@ export const envSchema = z.object({
   DOCUSIGN_INTEGRATION_KEY: z.string().optional(),
   DOCUSIGN_CLIENT_SECRET: z.string().optional(),
   DOCUSIGN_AUTH_BASE_URL: z.string().url().default('https://account-d.docusign.com'),
+  // HMAC key configurada no DocuSign Connect. Sem ela o webhook é rejeitado
+  // fail-closed (mesma regra do AUTENTIQUE_WEBHOOK_SECRET) — nunca processar
+  // um callback de assinatura sem verificar a assinatura HMAC.
+  DOCUSIGN_WEBHOOK_SECRET: z
+    .string()
+    .min(24, 'DOCUSIGN_WEBHOOK_SECRET must have at least 24 characters')
+    .optional(),
 
   GOOGLE_ADS_CLIENT_ID: z.string().optional(),
   GOOGLE_ADS_CLIENT_SECRET: z.string().optional(),

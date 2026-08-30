@@ -120,6 +120,7 @@ export class NotificationHandler {
   @OnEvent('takedown.requested')
   @OnEvent('tenant.created')
   @OnEvent('user.invited')
+  @OnEvent('financial_rule.triggered')
   async onDomainNotificationEvent(event: DomainEvent<unknown>): Promise<void> {
     await this.handle(event);
   }

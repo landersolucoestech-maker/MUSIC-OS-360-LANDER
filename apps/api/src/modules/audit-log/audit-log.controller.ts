@@ -13,7 +13,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation }         from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { AuditLogService } from './audit-log.service';
-import { QueryAuditLogDto } from './dto/audit-log.dto';
+import { QueryAuditLogDto, AdminListAuditLogsDto } from './dto/audit-log.dto';
 
 @ApiTags('Audit Logs')
 @ApiBearerAuth()
@@ -29,6 +29,14 @@ export class AuditLogController {
     @Query() q: QueryAuditLogDto,
   ) {
     return this.svc.list(t.id, q);
+  }
+
+  // Rota admin ANTES de ':id' — do contrário ':id' capturaria 'admin'.
+  @Get('admin')
+  @RequireRole('super_admin')
+  @ApiOperation({ summary: 'Listar audit trail de todos os tenants (painel Admin SaaS, super_admin)' })
+  listAdmin(@Query() q: AdminListAuditLogsDto) {
+    return this.svc.listAdmin(q);
   }
 
   @Get(':id')

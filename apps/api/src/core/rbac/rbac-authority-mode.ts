@@ -5,12 +5,9 @@ export function getPersistedAuthorityMode(): PersistedAuthorityMode {
     .trim()
     .toUpperCase();
   if (raw === 'OFF' || raw === 'SHADOW' || raw === 'ON') return raw;
-  return process.env['RBAC_PERMISSION_ENFORCEMENT'] === 'true'
-    ? 'ON'
-    : 'SHADOW';
+  return 'SHADOW';
 }
 
 export function isPermissionEnforcementEnabled(): boolean {
   return getPersistedAuthorityMode() === 'ON';
 }
-

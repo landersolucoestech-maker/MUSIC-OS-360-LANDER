@@ -62,13 +62,12 @@ function makeGuard(required: string[], rbacPerms: string[] | Error): Permissions
 const MEMBER = { role: 'editor', role_id: 'r-1', tenant_id: 't-1' };
 
 afterEach(() => {
-  delete process.env['RBAC_PERMISSION_ENFORCEMENT'];
   delete process.env['RBAC_PERSISTED_AUTHORITY'];
   jest.restoreAllMocks();
 });
 
 function enforcementOn(): void {
-  process.env['RBAC_PERMISSION_ENFORCEMENT'] = 'true';
+  process.env['RBAC_PERSISTED_AUTHORITY'] = 'ON';
 }
 
 // ── Enforcement OFF (modo observação) ─────────────────────────────────────────

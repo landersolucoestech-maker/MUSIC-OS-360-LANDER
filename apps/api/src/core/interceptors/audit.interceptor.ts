@@ -100,6 +100,7 @@ const ENTITY_TABLE_MAP: Record<string, string> = {
   client:      'clients',
   ticket:      'support_tickets',
   role:        'roles',
+  conversation: 'conversations',
 };
 
 /** Request shape expected inside the interceptor */

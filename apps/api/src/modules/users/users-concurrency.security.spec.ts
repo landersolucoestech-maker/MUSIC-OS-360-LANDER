@@ -55,6 +55,7 @@ describe('UsersService — Task L (separação RBAC + concorrência)', () => {
       rbacCache as never,
       {} as never,
       {} as never,
+      {} as never,
     );
     return { service, repo, roleResolver, rbacCache };
   }

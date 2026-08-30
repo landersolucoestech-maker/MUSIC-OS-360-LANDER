@@ -107,7 +107,7 @@ describe('P2-9 event handlers context propagation', () => {
   it('InvoiceEventsHandler wraps activity log writes in tenant context', async () => {
     const dbContext = context();
     const activityLogs = { create: jest.fn().mockResolvedValue(undefined) };
-    const handler = new InvoiceEventsHandler(null, activityLogs as any, dbContext as any);
+    const handler = new InvoiceEventsHandler(null, activityLogs as any, undefined as any, dbContext as any);
 
     await handler.onInvoiceCreated({
       type: DOMAIN_EVENTS.INVOICE_CREATED,
@@ -122,6 +122,23 @@ describe('P2-9 event handlers context propagation', () => {
       payload: { invoiceId: 'i1', createdBy: 'u1' },
     } as any);
     expect(dbContext.runInTenantContext).toHaveBeenCalledTimes(1);
+  });
+
+  it('InvoiceEventsHandler.onInvoiceOverdue evaluates financial rules with the invoice.overdue trigger', async () => {
+    const dbContext = context();
+    const financialRules = { evaluateRules: jest.fn().mockResolvedValue(undefined) };
+    const handler = new InvoiceEventsHandler(null, undefined as any, financialRules as any, dbContext as any);
+
+    await handler.onInvoiceOverdue({
+      type: DOMAIN_EVENTS.INVOICE_OVERDUE,
+      tenantId: 't1',
+      payload: { invoiceId: 'i1', numero: '1', valor: '250', dataVencimento: '2026-06-01' },
+    } as any);
+
+    expect(financialRules.evaluateRules).toHaveBeenCalledWith(
+      't1', 'invoice.overdue',
+      expect.objectContaining({ entityId: 'i1', entityType: 'invoice', valor: 250 }),
+    );
   });
 
   it('CampaignEventsHandler persists notification inside tenant context', async () => {

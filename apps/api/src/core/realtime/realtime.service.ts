@@ -15,21 +15,39 @@
  * authorization logic of its own, matching how WsGateway's room-join
  * decision used to live in the gateway, not the emitters.
  *
+ * Every caller across the codebase passes `tenants.id` (the PK) to
+ * sendToTenant/sendToUser — never `tenants.org_id`, even though the RLS
+ * policy and the frontend subscription (ws-client.ts) both key the topic on
+ * `org_id`. Rather than touch every caller in every module, this service
+ * resolves `tenants.id -> org_id` internally (cached) before building the
+ * topic string, so the public API keeps accepting the tenant id every
+ * caller already has in scope, and the topic published always matches what
+ * RLS/the frontend actually authorize/subscribe to.
+ *
  * If SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY are unset (e.g. some local/test
  * setups), every method is a silent no-op — mirrors WsGateway's tolerance of
  * a missing Redis adapter (single-instance mode) rather than crashing.
  */
 
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { TenantEntity } from '../../database/entities';
 
 @Injectable()
 export class RealtimeService implements OnModuleDestroy {
   private readonly logger = new Logger(RealtimeService.name);
   private readonly client: SupabaseClient | null;
+  private readonly tenantRepo: Repository<TenantEntity> | null = null;
+  /** tenants.id -> tenants.org_id — org_id never changes for a given tenant row. */
+  private readonly orgIdCache = new Map<string, string>();
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @Inject(DATA_SOURCE) ds: DataSource | null,
+  ) {
     const url            = this.config.get<string>('SUPABASE_URL');
     const serviceRoleKey = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -43,6 +61,32 @@ export class RealtimeService implements OnModuleDestroy {
         'RealtimeService: SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — broadcasts desativados (no-op)',
       );
     }
+    if (ds) {
+      this.tenantRepo = ds.getRepository(TenantEntity);
+    }
+  }
+
+  /** Resolve tenants.id -> tenants.org_id (o identificador real do tópico RLS/frontend). */
+  private async resolveOrgId(tenantId: string): Promise<string | null> {
+    const cached = this.orgIdCache.get(tenantId);
+    if (cached) return cached;
+    if (!this.tenantRepo) return null;
+
+    const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } as any, select: ['org_id'] as any });
+    if (!tenant) {
+      this.logger.warn(`RealtimeService: tenant ${tenantId} não encontrado — broadcast pulado`);
+      return null;
+    }
+    this.orgIdCache.set(tenantId, tenant.org_id);
+    return tenant.org_id;
+  }
+
+  /** Publica em `tenant:<org_id>`, resolvendo tenantId -> org_id primeiro. */
+  private broadcastToTenant(tenantId: string, event: string, payload: unknown): void {
+    if (!this.client) return;
+    void this.resolveOrgId(tenantId).then((orgId) => {
+      if (orgId) this.broadcast(`tenant:${orgId}`, event, payload);
+    });
   }
 
   onModuleDestroy(): void {
@@ -74,7 +118,7 @@ export class RealtimeService implements OnModuleDestroy {
 
   /** Emite evento para todos os clientes do tenant. */
   sendToTenant(tenantId: string, event: string, data: unknown): void {
-    this.broadcast(`tenant:${tenantId}`, event, data);
+    this.broadcastToTenant(tenantId, event, data);
   }
 
   /**
@@ -85,7 +129,17 @@ export class RealtimeService implements OnModuleDestroy {
    */
   sendToUser(tenantId: string, userId: string, event: string, data: unknown): void {
     this.broadcast(`user:${userId}`, event, data);
-    this.broadcast(`tenant:${tenantId}`, event, data);
+    this.broadcastToTenant(tenantId, event, data);
+  }
+
+  /**
+   * Emite evento SOMENTE para o utilizador — sem o fan-out para o canal do
+   * tenant que sendToUser() faz. Usar para eventos privados ponto-a-ponto
+   * (ex.: chat interno) onde o próprio ID da conversa/mensagem não deve ser
+   * visível para membros do tenant que não participam dela.
+   */
+  sendToUserOnly(userId: string, event: string, data: unknown): void {
+    this.broadcast(`user:${userId}`, event, data);
   }
 
   /**
@@ -93,6 +147,6 @@ export class RealtimeService implements OnModuleDestroy {
    * O frontend invalida a query correspondente ao receber este evento.
    */
   notifyDataChanged(tenantId: string, entity: string, id: string): void {
-    this.broadcast(`tenant:${tenantId}`, 'data:changed', { entity, id });
+    this.broadcastToTenant(tenantId, 'data:changed', { entity, id });
   }
 }

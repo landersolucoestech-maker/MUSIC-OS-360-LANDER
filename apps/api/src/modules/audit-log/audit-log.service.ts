@@ -15,8 +15,10 @@ import type { QueryAuditLogDto } from './dto/audit-log.dto';
 @Injectable()
 export class AuditLogService {
   private readonly repo: Repository<AuditLogEntity> | null = null;
+  private readonly ds: DataSource | null = null;
 
   constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    this.ds = ds;
     if (ds) this.repo = ds.getRepository(AuditLogEntity);
   }
 
@@ -45,6 +47,45 @@ export class AuditLogService {
 
     const [data, total] = await qb.getManyAndCount();
     return { data, meta: { total, offset, limit } };
+  }
+
+  /**
+   * REM-01 (Remaining Product Completion Backlog): the Admin SaaS panel's
+   * `admin-audit.service.ts` was calling this same `list()` — `@CurrentTenant()`-
+   * scoped by design — so a super_admin only ever saw their own one tenant's
+   * audit trail, never a real cross-tenant view. Mirrors the same
+   * `listAdmin()` convention added to support-tickets: raw SQL, no tenant_id
+   * filter (relies on `super_admin_full_access` RLS + `RequireRole('super_admin')`
+   * at the controller), joined with `tenants` for `tenant_name`.
+   */
+  async listAdmin(query: { action?: string; entity?: string; limit?: number }) {
+    if (!this.ds) return [];
+    const params: unknown[] = [];
+    const filters: string[] = ['tn.deleted_at IS NULL'];
+
+    if (query.action) {
+      params.push(`%${query.action}%`);
+      filters.push(`a.action ILIKE $${params.length}`);
+    }
+    if (query.entity) {
+      params.push(query.entity);
+      filters.push(`a.entity = $${params.length}`);
+    }
+    params.push(Math.min(query.limit ?? 200, 500));
+
+    return this.ds.query(
+      `
+      SELECT
+        a.id, a.action, a.entity, a.entity_id, a.user_id, a.actor_role,
+        a.tenant_id, tn.name AS tenant_name, a.ip_address, a.created_at
+      FROM audit_logs a
+      JOIN tenants tn ON tn.id = a.tenant_id
+      WHERE ${filters.join(' AND ')}
+      ORDER BY a.created_at DESC
+      LIMIT $${params.length}
+      `,
+      params,
+    );
   }
 
   /** Fetch a single audit log entry (tenant-safe) */

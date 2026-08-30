@@ -10,7 +10,7 @@ const PERMISSION_KEY_FORMAT = /^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$/;
  *
  * Exige que o membro possua TODAS as permissões informadas (semântica AND).
  * Coexiste com @RequireRole: a rota pode ter ambos (exige hierarquia E permissão).
- * O enforcement real depende da flag RBAC_PERMISSION_ENFORCEMENT (ver PermissionsGuard).
+ * O enforcement real depende de RBAC_PERSISTED_AUTHORITY (ver PermissionsGuard).
  *
  * As chaves são validadas no formato `resource:action` em tempo de decoração (boot),
  * para falhar cedo em caso de typo.

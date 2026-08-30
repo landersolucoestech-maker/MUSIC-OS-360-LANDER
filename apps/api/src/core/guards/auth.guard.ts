@@ -106,7 +106,7 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
 
     const rawSupabaseUrl =
       this.config?.get<string>('SUPABASE_URL') ??
-      process.env['VITE_SUPABASE_URL'] ??
+      process.env['SUPABASE_URL'] ??
       '';
     const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
 

@@ -244,7 +244,6 @@ VITE_MOCK_MODE=false
 SUPABASE_URL=https://<project-id>.supabase.co
 DATABASE_URL=postgresql://...
 ENCRYPTION_KEY=<64-char hex>
-ENCRYPTION_IV_SECRET=<random string>
 ```
 
 ---

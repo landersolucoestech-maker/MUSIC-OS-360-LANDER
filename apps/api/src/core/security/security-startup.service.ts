@@ -48,10 +48,7 @@ export class SecurityStartupService implements OnApplicationBootstrap {
       {
         name:    'SUPABASE_URL presente',
         fatal:   true,
-        check:   () => Boolean(
-          this.getConfig('SUPABASE_URL') ??
-          process.env['VITE_SUPABASE_URL']
-        ),
+        check:   () => Boolean(this.getConfig('SUPABASE_URL')),
         message: 'SUPABASE_URL não definida — autenticação JWT não funcionará',
       },
       {
@@ -87,15 +84,6 @@ export class SecurityStartupService implements OnApplicationBootstrap {
         fatal:   false,
         check:   () => !prodLike || Boolean(this.getConfig('RESEND_API_KEY')),
         message: 'RESEND_API_KEY não definida em produção — emails transacionais não serão enviados',
-      },
-      {
-        name:    'JWT_SECRET / SUPABASE_JWT_SECRET presente',
-        fatal:   false,
-        check:   () => Boolean(
-          this.getConfig('SUPABASE_JWT_SECRET') ??
-          this.getConfig('JWT_SECRET')
-        ),
-        message: 'SUPABASE_JWT_SECRET não definido — verificação de assinatura HMAC pode falhar',
       },
       {
         name:    'AUTH/MOCK bypass desativado em prod-like',

@@ -29,3 +29,8 @@ export class QueryAuditLogDto extends PaginationDto {
   @ApiPropertyOptional({ example: '2025-12-31T23:59:59Z' })
   @IsOptional() @IsDateString() toDate?: string;
 }
+
+export class AdminListAuditLogsDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() action?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() entity?: string;
+}

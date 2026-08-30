@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { ROLE_HIERARCHY } from '../../core/rbac/role-hierarchy';
 import { MailService } from '../../core/mail/mail.service';
+import { PlanLimitService } from '../../core/billing/plan-limit.service';
 
 @Injectable()
 export class UsersService {
@@ -23,6 +24,7 @@ export class UsersService {
     private readonly rbacCache: RbacDistributedCacheService,
     private readonly config: ConfigService,
     private readonly mail: MailService,
+    private readonly planLimit: PlanLimitService,
   ) {
     if (ds) this.repo = ds.getRepository(OrgMemberEntity);
   }
@@ -165,6 +167,7 @@ export class UsersService {
     ) as unknown[];
     if (pending.length > 0) throw new ConflictException('Já existe um convite pendente para este email');
     if (!tenant) throw new NotFoundException('Tenant não encontrado ou inativo');
+    await this.planLimit.enforce(tenantId, tenant.org_id, 'users');
 
     const supabase = this.supabaseAdmin();
     const redirectBase = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5000';

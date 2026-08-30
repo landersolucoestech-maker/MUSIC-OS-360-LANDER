@@ -21,6 +21,7 @@ describe('UsersService last owner protection', () => {
       { delete: jest.fn() } as never,
       {} as never,
       {} as never,
+      {} as never,
     );
 
     await expect(

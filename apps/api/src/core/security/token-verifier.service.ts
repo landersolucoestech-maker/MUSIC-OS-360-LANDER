@@ -54,9 +54,7 @@ export class TokenVerifierService implements OnModuleInit {
   }
 
   onModuleInit(): void {
-    const supabaseUrl = normalizeSupabaseUrl(
-      this.getConfig('SUPABASE_URL') ?? process.env['VITE_SUPABASE_URL'] ?? '',
-    );
+    const supabaseUrl = normalizeSupabaseUrl(this.getConfig('SUPABASE_URL') ?? '');
     if (!supabaseUrl) {
       throw new Error('SUPABASE_URL is required for TokenVerifierService');
     }

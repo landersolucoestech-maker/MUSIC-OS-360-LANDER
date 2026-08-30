@@ -259,6 +259,10 @@ export interface TransactionCreatedPayload {
   contratoId:    string | null;
   artistaId:     string | null;
   createdBy:     string;
+  /** Quando definido, identifica o fluxo de origem (ex.: 'contract.signed') —
+   * usado para evitar disparo duplicado de financial-rules quando a criação
+   * desta transação já foi causada por outro evento que também avalia regras. */
+  source?:       string;
 }
 
 export interface TransactionStatusChangedPayload {
