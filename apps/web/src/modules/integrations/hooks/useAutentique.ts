@@ -1,13 +1,17 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  DisabledIntegrationError,
-  INTEGRATION_DISABLED_CODE,
-} from "@/shared/lib/disabled-integration";
-import { QUERY_KEYS } from "@/shared/lib/query-config";
+import { api } from "@/shared/lib/api-client";
+import { DisabledIntegrationError } from "@/shared/lib/disabled-integration";
 
-/** Stubs do Autentique — integração desligada (sem backend). */
-
+/**
+ * Decision Gate item 9 (GAP-15): Autentique tem backend real
+ * (`GET /integrations/status`, `POST /integrations/autentique/configure`,
+ * `POST /integrations/autentique/documents` — apps/api/.../autentique/*).
+ * Não há endpoint real de "desconectar" nem campos ricos de status
+ * (has_token/has_global_fallback/last_sync_at/last_error) — o mapeamento
+ * abaixo só preenche o que é real; o restante fica undefined de propósito
+ * (AutentiqueConfigDialog já trata esses campos como opcionais).
+ */
 export interface AutentiqueStatus {
   connected: boolean;
   status?: string;
@@ -17,100 +21,38 @@ export interface AutentiqueStatus {
   has_global_fallback?: boolean;
 }
 
-interface Signer {
-  email: string;
-  name: string;
-  action: "SIGN" | "APPROVE" | "RECOGNIZE" | "WITNESS";
-}
-
-interface CreateDocumentParams {
-  name: string;
-  content: string;
-  signers: Signer[];
-  message?: string;
-}
-
-interface AutentiqueDocument {
-  id: string;
-  name: string;
-  created_at: string;
-  signatures: Array<{
-    public_id: string;
-    name: string;
-    email: string;
-    action?: { name: string };
-    link?: { short_link: string };
-    signed?: { created_at: string };
-  }>;
-  files?: { original: string; signed: string };
-}
-
-function fail(): never {
-  throw new DisabledIntegrationError("Autentique");
+interface IntegrationsStatusResponse {
+  autentique?: { configured: boolean };
 }
 
 export function useAutentiqueStatus() {
   return useQuery<AutentiqueStatus>({
     queryKey: ["autentique", "status"] as const,
-    queryFn: async () => ({
-      connected: false,
-      status: INTEGRATION_DISABLED_CODE,
-      last_error: "Integração Autentique desativada — backend não configurado.",
-    }),
-    staleTime: Infinity,
+    queryFn: async () => {
+      const res = await api.get<IntegrationsStatusResponse>("/integrations/status");
+      return { connected: res.autentique?.configured ?? false };
+    },
+    staleTime: 30_000,
   });
 }
 
 export function useAutentiqueSaveCredentials() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (_input: { token: string }) => fail(),
+    mutationFn: async (input: { token: string }) =>
+      api.post("/integrations/autentique/configure", { apiToken: input.token }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["autentique", "status"] });
+      toast.success("Autentique conectado com sucesso!");
+    },
     onError: (err: Error) => toast.error(err.message),
   });
 }
 
+/** Sem endpoint real de desconexão — nunca fabricar sucesso. */
 export function useAutentiqueDeleteCredentials() {
   return useMutation({
-    mutationFn: async () => fail(),
+    mutationFn: async () => Promise.reject(new DisabledIntegrationError("Autentique (desconectar)")),
     onError: (err: Error) => toast.error(err.message),
   });
-}
-
-export function useAutentique() {
-  const documentsQuery = useQuery<AutentiqueDocument[]>({
-    queryKey: [...QUERY_KEYS.AUTENTIQUE_DOCUMENTS],
-    queryFn: async () => [],
-    enabled: false,
-  });
-
-  const createDocument = useMutation({
-    mutationFn: async (_params: CreateDocumentParams) => fail(),
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const getDocument = useMutation({
-    mutationFn: async (_documentId: string) => fail(),
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  return {
-    documents: documentsQuery.data ?? [],
-    isLoadingDocuments: documentsQuery.isLoading,
-    refetchDocuments: documentsQuery.refetch,
-    createDocument,
-    getDocument,
-    fileToBase64,
-    isCreating: createDocument.isPending,
-  };
 }

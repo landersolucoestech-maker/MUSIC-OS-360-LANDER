@@ -144,6 +144,10 @@ export class CreateContractDto {
   @IsOptional() @IsArray()
   signers?: unknown[];
 
+  @ApiPropertyOptional({ type: [Object], description: 'Documentos anexos (metadata real de upload R2 — name/size/type/path/url).' })
+  @IsOptional() @IsArray()
+  documentos?: unknown[];
+
   // Campo do wizard (regra 2026-07-12: 1 coluna por campo, nome exato)
   @ApiPropertyOptional()
   @IsOptional() @IsUUID()

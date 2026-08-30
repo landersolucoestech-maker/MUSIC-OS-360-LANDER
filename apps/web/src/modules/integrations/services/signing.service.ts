@@ -1,147 +1,97 @@
 /**
  * integrations/services/signing.service.ts
  *
- * Serviço de orquestração de assinatura digital.
- * Coordena: signingAdapter + emailAdapter + storageAdapter + domain events.
+ * Orquestração de assinatura digital — Decision Gate item 9 (GAP-15).
  *
- * REGRA: módulos NÃO chamam múltiplos adapters directamente.
- * Usam este serviço para operações que envolvem mais de uma integração.
+ * Autentique é o único provedor real hoje (ver Decision Gate item 13 —
+ * Clicksign/DocuSign removidos da UI). O backend real
+ * (apps/api/.../autentique/autentique.controller.ts) só suporta
+ * criar-documento + webhook — NÃO existe getDocument/listDocuments/
+ * cancelDocument/resendInvite; nunca fabricar essas capacidades.
  *
- * Uso (em hooks/mutations de contratos):
- *   import { signingService } from "@/modules/integrations/services";
- *   await signingService.sendForSigning({
- *     contratoId, title, fileKey, bucket, signers,
- *     provider: "clicksign",   // "autentique" | "clicksign" | "docusign"
- *   });
+ * Autentique envia o convite de assinatura por email diretamente aos
+ * signatários via sua própria plataforma (a mutação GraphQL createDocument
+ * já dispara isso) — por isso este serviço NÃO chama nenhum adapter de
+ * email próprio (chamaria um provider sempre indisponível e duplicaria a
+ * notificação). A confirmação de assinatura chega via webhook real, que já
+ * emite CONTRACT_SIGNED (transação provisória, tarefas, notificação
+ * in-app — ver contract-events.handler.ts) — nenhuma notificação adicional
+ * é necessária aqui.
  */
 
-import { resolveSigningAdapter } from "@/modules/integrations/adapters/signing.adapter";
-import type { SigningProviderId } from "@/modules/integrations/adapters/signing.adapter";
-import { emailAdapter }          from "@/modules/integrations/adapters/email.adapter";
-import { storageAdapter }        from "@/modules/integrations/adapters/storage.adapter";
-import type { StorageBucket }    from "@/shared/integrations/contracts/storage.contract";
-import type { SignerRole }       from "@/shared/integrations/contracts/signing.contract";
-import { emit }                  from "@/shared/domain-events";
+import { api } from "@/shared/lib/api-client";
 
-export type { SigningProviderId };
+export type SigningProviderId = "autentique" | "docusign";
+
+/**
+ * Cada provedor real expõe o MESMO contrato no backend
+ * (POST {base}/documents → { documentId }), então o roteamento é só o prefixo.
+ * Um provedor só entra aqui depois de ter adapter real — nunca antecipadamente.
+ */
+const PROVIDER_ENDPOINT: Record<SigningProviderId, string> = {
+  autentique: "/integrations/autentique/documents",
+  docusign:   "/integrations/docusign/documents",
+};
 
 export interface SendForSigningInput {
-  contratoId:     string;
-  title:          string;
-  fileKey:        string;
-  bucket:         string;
-  signers: Array<{
-    name:  string;
-    email: string;
-    role?: string;
-  }>;
-  deadline_days?: number;
-  /** Provedor de assinatura digital a usar. Default: "autentique" */
+  contratoId: string;
+  title: string;
+  /** URL pública do arquivo a assinar (contrato.arquivo_url). */
+  fileUrl: string;
+  signers: Array<{ name: string; email: string }>;
   provider?: SigningProviderId;
 }
 
 export interface SendForSigningResult {
-  documentId:  string;
-  signingUrl:  string;
-  status:      "pending";
-  provider:    SigningProviderId;
+  documentId: string;
+  provider: SigningProviderId;
+}
+
+async function fetchFileAsBase64(url: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch {
+    throw new Error(`Não foi possível baixar o arquivo do contrato em "${url}". Verifique a URL cadastrada.`);
+  }
+  if (!response.ok) {
+    throw new Error(`Falha ao baixar o arquivo do contrato (HTTP ${response.status}).`);
+  }
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+    reader.onerror = () => reject(new Error("Falha ao ler o conteúdo do arquivo."));
+    reader.readAsDataURL(blob);
+  });
 }
 
 export const signingService = {
   /**
-   * Orquestra o envio de um contrato para assinatura digital:
-   * 1. Obtém URL de download do ficheiro no storage
-   * 2. Cria documento no provider de assinatura seleccionado
-   * 3. Envia email de convite a cada signatário
-   * 4. Emite domain event contrato.sent_for_signing
+   * Orquestra o envio de um contrato para assinatura digital via Autentique:
+   * 1. Baixa o arquivo do contrato (arquivo_url) e converte para base64
+   * 2. Cria o documento no Autentique (que já notifica os signatários)
    */
   async sendForSigning(input: SendForSigningInput): Promise<SendForSigningResult> {
-    const {
-      contratoId,
-      title,
-      fileKey,
-      bucket,
-      signers,
-      deadline_days = 7,
-      provider = "autentique",
-    } = input;
+    const { contratoId, title, fileUrl, signers } = input;
 
-    const adapter = resolveSigningAdapter(provider);
-
-    if (provider !== "autentique") {
-      const connected = await adapter.verifyConnection();
-      if (!connected) {
-        throw new Error(
-          `O provedor "${provider}" não está configurado. Acesse Integrações para adicionar as credenciais.`
-        );
-      }
+    if (!fileUrl) {
+      throw new Error("Este contrato não possui um arquivo (URL) cadastrado. Adicione a URL do PDF antes de enviar para assinatura.");
+    }
+    if (signers.length === 0) {
+      throw new Error("Adicione ao menos um signatário antes de enviar para assinatura.");
     }
 
-    const fileUrl = await storageAdapter.presignedUrl({ bucket: bucket as StorageBucket, key: fileKey });
+    const provider: SigningProviderId = input.provider ?? "autentique";
+    const fileBase64 = await fetchFileAsBase64(fileUrl);
 
-    const expiresAt = new Date(Date.now() + deadline_days * 86_400_000).toISOString();
-
-    const typedSigners = signers.map(s => ({
-      name:  s.name,
-      email: s.email,
-      role:  (s.role ?? "signer") as SignerRole,
-    }));
-
-    const doc = await adapter.createDocument({
-      title,
-      document:    fileUrl,
-      signers:     typedSigners,
-      expires_at:  expiresAt,
-      contrato_id: contratoId,
+    const doc = await api.post<{ documentId: string }>(PROVIDER_ENDPOINT[provider], {
+      name: title,
+      fileBase64,
+      signers: signers.map((s) => ({ name: s.name, email: s.email })),
+      contractId: contratoId,
     });
 
-    const signingUrl = doc.signing_url ?? doc.document_url;
-
-    for (const signer of signers) {
-      await emailAdapter.send({
-        to:           { name: signer.name, email: signer.email },
-        subject:      `Assinatura digital solicitada: ${title}`,
-        template_id:  "signing-requested",
-        template_vars: {
-          signer_name:   signer.name,
-          doc_title:     title,
-          signing_url:   signingUrl,
-          deadline_days,
-          provider,
-        },
-      });
-    }
-
-    emit("contrato.sent_for_signing", {
-      contratoId,
-      signers: signers.map(s => s.email) as unknown[],
-    });
-
-    return {
-      documentId: doc.id,
-      signingUrl,
-      status:     "pending",
-      provider,
-    };
-  },
-
-  /**
-   * Cancela um documento de assinatura e notifica signatários.
-   */
-  async cancelSigning(
-    documentId:  string,
-    contratoId:  string,
-    provider: SigningProviderId = "autentique"
-  ): Promise<void> {
-    const adapter = resolveSigningAdapter(provider);
-    await adapter.cancelDocument(documentId);
-    emit("contrato.signing_cancelled", { contratoId });
-  },
-
-  /**
-   * Consulta o estado actual de um documento de assinatura.
-   */
-  async getStatus(documentId: string, provider: SigningProviderId = "autentique") {
-    return resolveSigningAdapter(provider).getDocument(documentId);
+    return { documentId: doc.documentId, provider };
   },
 };

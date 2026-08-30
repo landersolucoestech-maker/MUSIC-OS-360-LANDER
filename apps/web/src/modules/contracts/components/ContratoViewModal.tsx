@@ -67,6 +67,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
   const versoes: ContratoVersao[] = Array.isArray(contrato.versoes)
     ? (contrato.versoes as ContratoVersao[])
     : [];
+  const documentos = Array.isArray(contrato.documentos) ? contrato.documentos : [];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -131,6 +132,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                 { value: "assinatura",  label: `Assinatura${contratoSigners.length > 0 ? ` (${contratoSigners.length})` : ""}` },
                 { value: "arquivo",     label: "Arquivo" },
                 { value: "versoes",     label: `Versões${versoes.length > 0 ? ` (${versoes.length})` : ""}` },
+                { value: "documentos",  label: `Documentos${documentos.length > 0 ? ` (${documentos.length})` : ""}` },
                 { value: "lancamento",  label: "Lançamento" },
               ].map((tab) => (
                 <TabsTrigger
@@ -433,6 +435,45 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                     <History className="h-12 w-12 mb-3 text-muted-foreground/30" />
                     <p className="text-sm font-medium">Sem histórico de versões</p>
                     <p className="text-xs mt-1">As versões do documento aparecerão aqui ao editar o arquivo</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* ── Documentos Anexos (REM-02) ── */}
+              <TabsContent value="documentos" className="p-6 mt-0" data-testid="tab-content-documentos">
+                {documentos.length > 0 ? (
+                  <div className="space-y-3">
+                    {documentos.map((d, index) => (
+                      <div
+                        key={`${d.path}-${index}`}
+                        className="flex items-start gap-3 p-4 bg-muted/20 border border-border rounded-lg"
+                        data-testid={`documento-row-${index}`}
+                      >
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <FileText className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{d.name}</p>
+                          {typeof d.size === "number" && d.size > 0 && (
+                            <p className="text-xs text-muted-foreground">{(d.size / 1024).toFixed(0)} KB</p>
+                          )}
+                        </div>
+                        {(d.url ?? d.path) && (
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 shrink-0" asChild>
+                            <a href={d.url ?? d.path} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3 w-3" />
+                              Abrir
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <FileText className="h-12 w-12 mb-3 text-muted-foreground/30" />
+                    <p className="text-sm font-medium">Nenhum documento anexado</p>
+                    <p className="text-xs mt-1">Edite o contrato para anexar documentos</p>
                   </div>
                 )}
               </TabsContent>

@@ -177,6 +177,7 @@ export class ContractEventsHandler {
                     contratoId: contractId,
                     artistaId: artistId ?? null,
                     createdBy: signedBy,
+                    source: 'contract.signed',
                   },
                 });
               }

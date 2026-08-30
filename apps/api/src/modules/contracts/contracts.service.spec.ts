@@ -60,6 +60,25 @@ describe('ContractsService.create — template_id/signers/tipo default (pré-req
     expect(created(repo)['signers']).toBeUndefined();
   });
 
+  it('REM-02: persiste documentos (anexos reais do R2) quando enviado', async () => {
+    const { svc, repo } = makeService();
+    const documentos = [{ name: 'contrato.pdf', size: 1234, type: 'application/pdf', path: 'https://r2/x.pdf', url: 'https://r2/x.pdf' }];
+    await svc.create('tenant-1', 'user-1', {
+      titulo: 'Contrato X', tipo: 'gravacao', documentos,
+    } as unknown as CreateContractDto);
+
+    expect(created(repo)['documentos']).toEqual(documentos);
+  });
+
+  it('REM-02: documentos ausente persiste como array vazio (mesmo padrão de versoes)', async () => {
+    const { svc, repo } = makeService();
+    await svc.create('tenant-1', 'user-1', {
+      titulo: 'Contrato X', tipo: 'gravacao',
+    } as unknown as CreateContractDto);
+
+    expect(created(repo)['documentos']).toEqual([]);
+  });
+
   it('aplica tipo="outro" quando nem tipo nem type são enviados (fluxo do wizard sem template)', async () => {
     const { svc, repo } = makeService();
     await svc.create('tenant-1', 'user-1', {

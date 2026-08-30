@@ -18,8 +18,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Loader2, Send, CheckCircle2, AlertCircle, ExternalLink } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useSigningProviders } from "@/modules/integrations/hooks/useSigningProviders";
-import type { SigningProviderId } from "@/modules/integrations/adapters/signing.adapter";
-import { signingService } from "@/modules/integrations/services/signing.service";
+import { signingService, type SigningProviderId } from "@/modules/integrations/services/signing.service";
 import type { ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
 
 interface SendForSigningDialogProps {
@@ -31,14 +30,12 @@ interface SendForSigningDialogProps {
 
 const PROVIDER_COLORS: Record<SigningProviderId, string> = {
   autentique: "bg-blue-500/10 border-blue-500/30 text-blue-600",
-  clicksign:  "bg-emerald-500/10 border-emerald-500/30 text-emerald-700",
-  docusign:   "bg-yellow-500/10 border-yellow-500/30 text-yellow-700",
+  docusign:   "bg-amber-500/10 border-amber-500/30 text-amber-600",
 };
 
 const PROVIDER_SELECTED: Record<SigningProviderId, string> = {
   autentique: "ring-2 ring-blue-500 border-blue-500",
-  clicksign:  "ring-2 ring-emerald-500 border-emerald-500",
-  docusign:   "ring-2 ring-yellow-500 border-yellow-500",
+  docusign:   "ring-2 ring-amber-500 border-amber-500",
 };
 
 export function SendForSigningDialog({
@@ -52,29 +49,29 @@ export function SendForSigningDialog({
   const [sending, setSending] = useState(false);
 
   const signers = Array.isArray(contrato.signers) ? contrato.signers : [];
-  const canSend = selected !== null && signers.length > 0 && !sending;
+  const hasFile = Boolean(contrato.arquivo_url);
+  const canSend = selected !== null && signers.length > 0 && hasFile && !sending;
 
   async function handleSend() {
-    if (!selected || signers.length === 0) return;
+    if (!selected || signers.length === 0 || !contrato.arquivo_url) return;
     setSending(true);
     try {
       const result = await signingService.sendForSigning({
-        contratoId:    contrato.id,
-        title:         contrato.titulo,
-        fileKey:       contrato.arquivo_url ?? `contracts/${contrato.id}.pdf`,
-        bucket:        "documents",
-        signers:       signers.map((s) => ({ name: s.name, email: s.email, role: s.role })),
-        deadline_days: 14,
-        provider:      selected,
+        contratoId: contrato.id,
+        title:      contrato.titulo,
+        fileUrl:    contrato.arquivo_url,
+        signers:    signers.map((s) => ({ name: s.name, email: s.email })),
+        provider:   selected,
       });
 
+      // Autentique já envia o convite de assinatura por email diretamente aos
+      // signatários (ver signing.service.ts) — este toast só confirma o envio.
       // Nota: o vínculo local do documento (useDocuments/useSaveDocument) não
       // tem endpoint real ainda (ver contracts/hooks/useDocuments.ts) — o envio
-      // acima já é real e irreversível (e-mails reais disparados aos
-      // signatários), então o sucesso é reportado a partir dele, sem depender
-      // de uma persistência local que sempre falharia e mascararia o envio
-      // bem-sucedido como erro.
-      toast.success(`Contrato enviado via ${selected === "autentique" ? "Autentique" : selected === "clicksign" ? "Clicksign" : "DocuSign"}!`, {
+      // acima já é real e irreversível, então o sucesso é reportado a partir
+      // dele, sem depender de uma persistência local que sempre falharia e
+      // mascararia o envio bem-sucedido como erro.
+      toast.success("Contrato enviado via Autentique!", {
         description: `${signers.length} signatário(s) notificado(s) por email.`,
       });
 
@@ -125,6 +122,15 @@ export function SendForSigningDialog({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {!hasFile && (
+          <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/20 rounded-lg text-warning">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <p className="text-xs">
+              Este contrato não possui uma URL de arquivo cadastrada. Edite o contrato e informe a URL do PDF antes de enviar.
+            </p>
           </div>
         )}
 

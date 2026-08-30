@@ -151,6 +151,7 @@ export class ContractsService {
     out.autentique_doc_id = dto['autentique_doc_id'] ?? null;
     out.signing_platform  = dto['signing_platform']  ?? null;
     out.versoes       = (dto['versoes'] as unknown[] | undefined) ?? [];
+    out.documentos    = (dto['documentos'] as unknown[] | undefined) ?? [];
     // Campos do wizard (regra 2026-07-12: 1 coluna por campo, nome exato) — não são aliases.
     out.template_id   = dto['template_id'] ?? null;
     if (Array.isArray(dto['signers'])) out.signers = dto['signers'];

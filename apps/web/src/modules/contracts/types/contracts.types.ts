@@ -1,6 +1,7 @@
 import type { ArtistaRef, ClienteRef } from "@/shared/types/refs";
 import type { ContratoStatus, ContratoTipo } from "@/shared/types/enums";
 import type { ContratoSigner } from "@/modules/contracts/lib/contrato-schema";
+import type { UploadedFile } from "@/shared/components/FileUpload";
 
 export type { ContratoStatus, ContratoTipo };
 
@@ -51,6 +52,7 @@ export interface Contrato {
   signing_platform?: SigningPlatform | null;
   versoes?: ContratoVersao[];
   signers?: Array<ContratoSigner | WizardSignerRecord>;
+  documentos?: UploadedFile[];
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;

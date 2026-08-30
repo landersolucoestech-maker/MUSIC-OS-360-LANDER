@@ -42,12 +42,19 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 // ── ContractForm ─────────────────────────────────────────────────────────────
+/** REM-02: documentos anexos não fazem parte do zod schema (não precisam de
+ * validação — já foram validados no upload real ao R2) — trafegam ao lado
+ * dos campos do formulário até o payload final. */
+type ContratoFormSubmitData = ContratoFormData & { documentos: UploadedFile[] };
+
 interface ContractFormProps {
-  onSubmit: (data: ContratoFormData) => void;
+  onSubmit: (data: ContratoFormSubmitData) => void;
   onCancel?: () => void;
-  initialData?: Partial<ContratoFormData>;
+  initialData?: Partial<ContratoFormSubmitData>;
   isLoading?: boolean;
   artists?: Array<{ id: string; name: string }>;
+  /** id do contrato em edição — organiza a pasta do anexo no R2 (undefined em criação). */
+  contratoId?: string;
 }
 
 const ContractForm = ({
@@ -56,8 +63,9 @@ const ContractForm = ({
   initialData,
   isLoading = false,
   artists = [],
+  contratoId,
 }: ContractFormProps) => {
-  const [documentos, setDocumentos] = useState<UploadedFile[]>([]);
+  const [documentos, setDocumentos] = useState<UploadedFile[]>(initialData?.documentos ?? []);
   const { lancamentos } = useLancamentos();
 
   const form = useForm<ContratoFormData>({
@@ -146,13 +154,14 @@ const ContractForm = ({
   useEffect(() => {
     if (initialData) {
       form.reset({ status: "rascunho", registry_office: false, signers: [], ...initialData });
+      setDocumentos(initialData.documentos ?? []);
     }
   }, [initialData, form]);
 
-  const handleManualSubmit = () => form.handleSubmit(onSubmit)();
+  const handleManualSubmit = () => form.handleSubmit((data) => onSubmit({ ...data, documentos }))();
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={form.handleSubmit((data) => onSubmit({ ...data, documentos }))} className="space-y-6">
       {/* ── Informações Básicas ── */}
       <Card>
         <CardHeader>
@@ -420,6 +429,8 @@ const ContractForm = ({
             accept="application/pdf,image/*"
             maxSize={20}
             multiple
+            entity="contract"
+            entityId={contratoId}
             value={documentos}
             onChange={setDocumentos}
           />
@@ -553,7 +564,7 @@ const ContractForm = ({
 };
 
 // ── Mapper: ContratoWithRelations → ContratoFormData ─────────────────────────
-function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormData> {
+function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormSubmitData> {
   const status = c.status as ContratoFormData["status"] | undefined;
   const serviceType = c.tipo as ContratoFormData["service_type"] | undefined;
   return {
@@ -569,6 +580,7 @@ function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormData>
     signers:      Array.isArray(c.signers)
       ? c.signers.filter((s): s is ContratoSigner => !("obrigatorio" in s))
       : [],
+    documentos:   Array.isArray(c.documentos) ? (c.documentos as UploadedFile[]) : [],
   };
 }
 
@@ -590,13 +602,13 @@ export const ContratoFormModal = ({
 }: ContratoFormModalProps) => {
   const { addContrato, updateContrato } = useContratos();
 
-  const handleSubmit = async (data: ContratoFormData) => {
+  const handleSubmit = async (data: ContratoFormSubmitData) => {
     const {
       title, service_type, status,
       arquivo_url, notas_versao, lancamento_id,
       start_date, end_date, fixed_value,
       external_rights_percentage, advance_payment, financial_support, observations,
-      signers,
+      signers, documentos,
     } = data;
 
     const resolvedArquivoUrl = arquivo_url || (mode === "edit" && contrato ? (contrato.arquivo_url ?? null) : null);
@@ -613,6 +625,7 @@ export const ContratoFormModal = ({
       valor: fixed_value || null,
       observacoes: observations || null,
       signers: signers ?? [],
+      documentos: documentos ?? [],
     };
 
     if (mode === "edit" && contrato) {
@@ -680,6 +693,7 @@ export const ContratoFormModal = ({
             onSubmit={handleSubmit}
             onCancel={() => onOpenChange(false)}
             isLoading={addContrato.isPending || updateContrato.isPending}
+            contratoId={contrato?.id}
             initialData={
               contrato
                 ? contratoToFormData(contrato)
