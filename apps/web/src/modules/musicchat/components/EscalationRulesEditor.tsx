@@ -68,7 +68,11 @@ export function EscalationRulesEditor({ rules, onChange }: Props) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Regras de escalonamento</h3>
-          <p className="text-xs text-muted-foreground">Defina notificações por tempo sem resposta de atendente.</p>
+          <p className="text-xs text-muted-foreground">
+            Defina o tempo-limite e o destino de cada nível. Estas regras são avaliadas quando o
+            escalonamento é executado manualmente (botão "Testar escalonamento" ou rotina de
+            atendimento) — não há disparo automático por temporizador nesta versão.
+          </p>
         </div>
         <Button type="button" size="sm" className="h-8 text-xs gap-1.5" onClick={add}>
           <Plus className="h-3.5 w-3.5" />

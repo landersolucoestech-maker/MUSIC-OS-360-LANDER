@@ -3,12 +3,14 @@ import {
   Body, Param, Query,
   ParseUUIDPipe,
   HttpCode, HttpStatus,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam, ApiHeader } from '@nestjs/swagger';
 import { CurrentTenant }  from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }    from '../../core/decorators/current-user.decorator';
 import { RequireRole }    from '../../core/decorators/roles.decorator';
 import { Audit }          from '../../core/interceptors/audit.interceptor';
+import { IdempotencyInterceptor } from '../../core/interceptors/idempotency.interceptor';
 import { ConversationsService } from './conversations.service';
 import type { JwtAuth }   from '../../core/guards/auth.guard';
 import {
@@ -54,7 +56,9 @@ export class ConversationsController {
   @Post()
   @RequireRole('editor')
   @Audit('conversation.created')
+  @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: 'Criar conversa' })
+  @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne criação duplicada', required: false })
   create(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser()   user:   JwtAuth,
@@ -148,16 +152,18 @@ export class ConversationsController {
   listMessages(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('limit')  limit?:  number,
-    @Query('offset') offset?: number,
+    @Query('limit')  limit?:  string,
+    @Query('offset') offset?: string,
   ) {
-    return this.service.listMessages(tenant.id, id, limit ?? 50, offset ?? 0);
+    return this.service.listMessages(tenant.id, id, limit ? Number(limit) : 50, offset ? Number(offset) : 0);
   }
 
   @Post(':id/messages')
   @RequireRole('editor')
   @Audit('conversation.message_sent')
+  @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: 'Enviar mensagem na conversa' })
+  @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne envio duplicado (ex.: duplo clique/retry de rede)', required: false })
   addMessage(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser()   user:   JwtAuth,

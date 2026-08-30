@@ -323,8 +323,14 @@ export const MODULE_REGISTRY: Record<TenantModuleKey, ModuleDefinition> = {
     consumedBy:      ["audit", "marketing", "crm"],
     status:          "production",
     description:
-      "Central multicanal de atendimento, conversas, mensagens, triagem automatica, " +
-      "notificacoes internas e automacoes administrativas do MusicChat.",
+      "Central multicanal de atendimento: Inbox real em /chat (lista de conversas, " +
+      "timeline de mensagens, composer, realtime, RBAC, tenant isolation testada) " +
+      "sobre o backend real de conversations/messages/notes. WhatsApp é o único canal " +
+      "com webhook + envio outbound reais (2026-08-22 — corrigido: respostas do agente " +
+      "e mensagens de triagem automatica antes só ficavam gravadas no banco, nunca " +
+      "chegavam ao WhatsApp de verdade). Instagram/Facebook/TikTok/site do tenant ainda " +
+      "não têm canal de mensagens real (só métricas para os dois primeiros) — " +
+      "registrados como pendência técnica, não simulados na UI.",
   },
 };
 

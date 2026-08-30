@@ -1,6 +1,6 @@
 import {
-  Body, Controller, ForbiddenException, Get, HttpCode, HttpStatus, Headers, Logger,
-  Post, Query, Req, Res, ServiceUnavailableException,
+  BadGatewayException, Body, Controller, ForbiddenException, Get, HttpCode, HttpStatus, Headers,
+  Logger, Post, Query, Req, Res, ServiceUnavailableException,
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -74,11 +74,23 @@ export class WhatsAppWebhookController {
       return { received: true };
     }
 
+    let anyFailed = false;
     for (const entry of payload.entry ?? []) {
       for (const change of entry.changes ?? []) {
         if (change.field !== 'messages') continue; // ex.: statuses (delivery receipts) — fora do escopo desta foundation
-        await this.processMessagesChange(change.value as WhatsAppChangeValue);
+        if (await this.processMessagesChange(change.value as WhatsAppChangeValue)) {
+          anyFailed = true;
+        }
       }
+    }
+
+    // Meta só reenvia o webhook em resposta não-2xx. Um ACK 200 mesmo com falha
+    // interna significa perda silenciosa e permanente da mensagem — em vez disso,
+    // devolvemos um erro para acionar o retry nativo da Meta. A mensagem já
+    // processada com sucesso no mesmo payload não é reprocessada no reenvio
+    // (idempotência via WebhookService.ingest — só falhas voltam a PENDING).
+    if (anyFailed) {
+      throw new BadGatewayException('Falha ao processar uma ou mais mensagens — solicitando reenvio');
     }
 
     return { received: true };
@@ -118,17 +130,19 @@ export class WhatsAppWebhookController {
     }
   }
 
-  private async processMessagesChange(value: WhatsAppChangeValue): Promise<void> {
+  /** Retorna true se alguma mensagem do payload falhou ao processar (aciona retry da Meta). */
+  private async processMessagesChange(value: WhatsAppChangeValue): Promise<boolean> {
     const phoneNumberId = value.metadata?.phone_number_id;
     const messages = value.messages ?? [];
-    if (!phoneNumberId || messages.length === 0) return;
+    if (!phoneNumberId || messages.length === 0) return false;
 
     const tenantId = await this.whatsapp.findTenantByPhoneNumberId(phoneNumberId);
     if (!tenantId) {
       this.logger.warn(`[whatsapp/webhook] Nenhum tenant configurado para phone_number_id=${phoneNumberId} — evento ignorado`);
-      return;
+      return false;
     }
 
+    let anyFailed = false;
     for (const message of messages) {
       if (message.type !== 'text' || !message.text?.body) continue; // foundation: só texto por enquanto
 
@@ -140,7 +154,7 @@ export class WhatsAppWebhookController {
         payload: message as unknown as Record<string, unknown>,
       });
       if (ingestResult.isDuplicate) {
-        this.logger.log(`[whatsapp/webhook] Evento duplicado ignorado: externalId=${message.id}`);
+        this.logger.log(`[whatsapp/webhook] Evento duplicado ignorado (já processado): externalId=${message.id}`);
         continue;
       }
 
@@ -161,7 +175,9 @@ export class WhatsAppWebhookController {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.error(`[whatsapp/webhook] Falha ao processar mensagem ${message.id}: ${msg}`);
         await this.webhookSvc.markProcessed(ingestResult.eventId, 'failed', msg);
+        anyFailed = true;
       }
     }
+    return anyFailed;
   }
 }

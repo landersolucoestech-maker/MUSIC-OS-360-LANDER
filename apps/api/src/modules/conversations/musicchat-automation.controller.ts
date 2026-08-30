@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
@@ -69,6 +69,17 @@ export class MusicChatAutomationController {
     @Body() dto: SendMusicChatNotificationDto,
   ) {
     return this.service.sendNotification(tenant.id, dto);
+  }
+
+  @Post('notifications/:id/retry')
+  @RequireRole('manager')
+  @Audit('musicchat.automation.notification_retried')
+  @ApiOperation({ summary: 'Reenviar notificação WhatsApp que falhou (reenvio controlado, máx. 3 tentativas)' })
+  retryNotification(
+    @CurrentTenant() tenant: { id: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.service.retryNotification(tenant.id, id);
   }
 
   @Get('events')

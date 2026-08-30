@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import {
@@ -7,8 +7,12 @@ import {
   MusicChatAutomationEventEntity,
   MusicChatAutomationNotificationEntity,
   MusicChatAutomationSettingsEntity,
+  OrgMemberEntity,
 } from '../../database/entities';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RealtimeService } from '../../core/realtime/realtime.service';
+import { WhatsAppCloudProvider } from '../integrations/whatsapp/whatsapp-cloud.provider';
+import { WhatsAppError } from '../integrations/whatsapp/whatsapp.errors';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type {
   MusicChatEscalationRuleDto,
@@ -103,10 +107,17 @@ export class MusicChatAutomationService {
   private readonly msgRepo: Repository<ConversationMessageEntity> | null = null;
   private readonly eventRepo: Repository<MusicChatAutomationEventEntity> | null = null;
   private readonly notificationRepo: Repository<MusicChatAutomationNotificationEntity> | null = null;
+  private readonly orgMemberRepo: Repository<OrgMemberEntity> | null = null;
+
+  /** Limite simples anti-spam: no máx. N envios WhatsApp de escalonamento por tenant/minuto. */
+  private static readonly WHATSAPP_RATE_LIMIT_PER_MINUTE = 20;
+  private static readonly WHATSAPP_MAX_RETRIES = 3;
 
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly notifications: NotificationsService,
+    private readonly whatsapp: WhatsAppCloudProvider,
+    private readonly ws: RealtimeService,
   ) {
     if (ds) {
       this.settingsRepo = ds.getRepository(MusicChatAutomationSettingsEntity);
@@ -114,6 +125,7 @@ export class MusicChatAutomationService {
       this.msgRepo = ds.getRepository(ConversationMessageEntity);
       this.eventRepo = ds.getRepository(MusicChatAutomationEventEntity);
       this.notificationRepo = ds.getRepository(MusicChatAutomationNotificationEntity);
+      this.orgMemberRepo = ds.getRepository(OrgMemberEntity);
     }
   }
 
@@ -232,6 +244,10 @@ export class MusicChatAutomationService {
   }
 
   async sendNotification(tenantId: string, dto: SendMusicChatNotificationDto): Promise<{ created: boolean; data: MusicChatAutomationNotificationEntity }> {
+    // Idempotência real: UNIQUE (tenant_id, conversation_id, level) no banco
+    // (uq_musicchat_escalation_notification) garante que nunca existe mais de
+    // uma notificação por conversa+nível, mesmo sob concorrência — este
+    // findOne é só a checagem otimista para retornar cedo no caso comum.
     const existing = await this.notificationRepo!.findOne({
       where: { tenant_id: tenantId, conversation_id: dto.conversationId, level: dto.level } as any,
     });
@@ -263,10 +279,117 @@ export class MusicChatAutomationService {
         entityId: dto.conversationId,
         metadata: dto.metadata ?? {},
       });
+    } else if (dto.channel === 'whatsapp') {
+      await this.dispatchWhatsApp(tenantId, saved);
+    }
+    // 'sms': sem provedor real — permanece honestamente 'prepared' com
+    // externalDelivery: 'prepared_not_sent_in_production' (nunca fabricado).
+
+    await this.recordEvent(tenantId, dto.conversationId, 'automation.notification_created', dto.title, { channel: dto.channel, level: dto.level, status: saved.status });
+    return { created: true, data: saved };
+  }
+
+  /**
+   * Decision Gate item 14 (GAP-18): envio real de escalonamento via WhatsApp
+   * Cloud API, com controles de produção — nunca enviado fora de produção
+   * (guardado pelo próprio isConfigured: sem credenciais reais = sem envio),
+   * canal precisa estar habilitado explicitamente nas configurações do
+   * tenant (consentimento/compliance do lado do operador), destinatário
+   * precisa ter telefone cadastrado, limite anti-spam por tenant/minuto,
+   * status final honesto (sent/failed — nunca "sent" fictício), erro nunca
+   * expõe credenciais (WhatsAppError só carrega a resposta da Meta).
+   */
+  private async dispatchWhatsApp(tenantId: string, notification: MusicChatAutomationNotificationEntity): Promise<void> {
+    const fail = async (reason: string, code: string) => {
+      await this.notificationRepo!.update(
+        { id: notification.id, tenant_id: tenantId } as any,
+        {
+          status: 'failed',
+          metadata: { ...notification.metadata, externalDelivery: { sent: false, code, reason } },
+        } as any,
+      );
+      this.logger.warn(`[musicchat/whatsapp] notification=${notification.id} tenant=${tenantId} not sent: ${code} — ${reason}`);
+    };
+
+    const settings = await this.getSettings(tenantId);
+    const channels = (settings.notification_channels ?? {}) as Record<string, unknown>;
+    if (channels['whatsapp'] !== true) {
+      return fail('Canal WhatsApp não habilitado nas configurações de automação do tenant.', 'CHANNEL_DISABLED');
     }
 
-    await this.recordEvent(tenantId, dto.conversationId, 'automation.notification_created', dto.title, { channel: dto.channel, level: dto.level, status });
-    return { created: true, data: saved };
+    if (!(await this.whatsapp.isConfigured(tenantId))) {
+      return fail('WhatsApp Cloud API não configurado para este tenant.', 'PROVIDER_NOT_CONFIGURED');
+    }
+
+    const member = await this.orgMemberRepo!
+      .createQueryBuilder('m')
+      .where('m.tenant_id = :tenantId AND m.auth_user_id = :userId AND m.deleted_at IS NULL', {
+        tenantId, userId: notification.recipient_user_id,
+      })
+      .getOne();
+    if (!member?.phone) {
+      return fail('Destinatário não possui telefone cadastrado.', 'INVALID_RECIPIENT');
+    }
+
+    const oneMinuteAgo = new Date(Date.now() - 60_000);
+    const recentSends = await this.notificationRepo!
+      .createQueryBuilder('n')
+      .where("n.tenant_id = :tenantId AND n.channel = 'whatsapp' AND n.status = 'sent' AND n.created_at >= :since", {
+        tenantId, since: oneMinuteAgo,
+      })
+      .getCount();
+    if (recentSends >= MusicChatAutomationService.WHATSAPP_RATE_LIMIT_PER_MINUTE) {
+      return fail('Limite de envios WhatsApp por minuto atingido para este tenant.', 'RATE_LIMITED');
+    }
+
+    try {
+      const result = await this.whatsapp.sendTextMessage(tenantId, member.phone, notification.body ?? notification.title);
+      await this.notificationRepo!.update(
+        { id: notification.id, tenant_id: tenantId } as any,
+        {
+          status: 'sent',
+          metadata: {
+            ...notification.metadata,
+            externalDelivery: { sent: true, externalMessageId: result.externalMessageId, sentAt: new Date().toISOString() },
+          },
+        } as any,
+      );
+    } catch (err) {
+      const code = err instanceof WhatsAppError ? err.code : 'WHATSAPP_UPSTREAM_ERROR';
+      const reason = err instanceof Error ? err.message : 'Falha desconhecida ao enviar WhatsApp';
+      await fail(reason, code);
+    }
+  }
+
+  /**
+   * Retry controlado (humano, não automático) para notificações WhatsApp que
+   * falharam — limitado a WHATSAPP_MAX_RETRIES tentativas para nunca virar um
+   * loop de reenvio.
+   */
+  async retryNotification(tenantId: string, notificationId: string): Promise<MusicChatAutomationNotificationEntity> {
+    const notification = await this.notificationRepo!.findOne({
+      where: { id: notificationId, tenant_id: tenantId } as any,
+    });
+    if (!notification) throw new NotFoundException('Notificação não encontrada');
+    if (notification.channel !== 'whatsapp') {
+      throw new BadRequestException('Apenas notificações do canal WhatsApp podem ser reenviadas.');
+    }
+    if (notification.status !== 'failed') {
+      throw new BadRequestException('Apenas notificações com falha podem ser reenviadas.');
+    }
+    const retryCount = Number((notification.metadata as Record<string, unknown>)?.['retryCount'] ?? 0);
+    if (retryCount >= MusicChatAutomationService.WHATSAPP_MAX_RETRIES) {
+      throw new BadRequestException(`Limite de ${MusicChatAutomationService.WHATSAPP_MAX_RETRIES} tentativas de reenvio atingido.`);
+    }
+
+    await this.notificationRepo!.update(
+      { id: notificationId, tenant_id: tenantId } as any,
+      { status: 'prepared', metadata: { ...notification.metadata, retryCount: retryCount + 1 } } as any,
+    );
+    const refreshed = await this.notificationRepo!.findOne({ where: { id: notificationId, tenant_id: tenantId } as any });
+    await this.dispatchWhatsApp(tenantId, refreshed!);
+    await this.recordEvent(tenantId, notification.conversation_id, 'automation.notification_retried', 'Reenvio manual de notificação WhatsApp', { notificationId, attempt: retryCount + 1 });
+    return (await this.notificationRepo!.findOne({ where: { id: notificationId, tenant_id: tenantId } as any }))!;
   }
 
   async listEvents(tenantId: string, conversationId?: string) {
@@ -305,6 +428,13 @@ export class MusicChatAutomationService {
       created_by: 'musicchat-automation',
     } as Partial<ConversationEntity>));
     await this.recordEvent(tenantId, conversation.id, 'automation.conversation_created', 'Conversa criada ou localizada pela automação', { channel: dto.channel });
+
+    this.ws.sendToTenant(tenantId, 'conversation:created', {
+      conversationId: conversation.id,
+      subject:        conversation.subject,
+      channel:        conversation.channel,
+    });
+
     return conversation;
   }
 
@@ -315,7 +445,7 @@ export class MusicChatAutomationService {
   }
 
   private async addConversationMessage(tenantId: string, conversationId: string, body: string, senderType: string, senderId: string, metadata: Record<string, unknown>) {
-    const saved = await this.msgRepo!.save(this.msgRepo!.create({
+    let saved = await this.msgRepo!.save(this.msgRepo!.create({
       tenant_id: tenantId,
       conversation_id: conversationId,
       body,
@@ -324,8 +454,57 @@ export class MusicChatAutomationService {
       attachments: [],
       metadata,
     }));
+
+    // Mensagens do bot de triagem (senderType='system') precisam realmente
+    // chegar ao contact no WhatsApp real, não só ficar gravadas — sem isto,
+    // o cliente nunca via a mensagem de boas-vindas/menu no WhatsApp de
+    // verdade. 'contact' nunca é despachado (é o que o próprio cliente já
+    // enviou — ecoar de volta seria um bug).
+    if (senderType === 'system') {
+      saved = await this.dispatchOutboundIfExternal(tenantId, conversationId, saved);
+    }
+
     await this.convRepo!.update({ tenant_id: tenantId, id: conversationId } as any, { last_message_at: saved.created_at, updated_at: new Date() } as any);
+
+    this.ws.sendToTenant(tenantId, 'conversation:message', {
+      conversationId,
+      messageId:   saved.id,
+      senderId:    saved.sender_id,
+      senderType:  saved.sender_type,
+      bodyPreview: saved.body.slice(0, 100),
+      deliveryStatus: (saved.metadata as Record<string, unknown> | null)?.['delivery_status'] ?? null,
+    });
+
     return saved;
+  }
+
+  private async dispatchOutboundIfExternal(
+    tenantId: string,
+    conversationId: string,
+    message: ConversationMessageEntity,
+  ): Promise<ConversationMessageEntity> {
+    const conv = await this.findConversation(tenantId, conversationId);
+    if (conv.channel !== 'whatsapp') return message;
+
+    const to = (conv.metadata?.['phone'] as string | undefined)
+      ?? (conv.metadata?.['external_contact_id'] as string | undefined);
+    const metadataPatch: Record<string, unknown> = { ...(message.metadata ?? {}) };
+    if (!to) {
+      metadataPatch['delivery_status'] = 'failed';
+      metadataPatch['delivery_error'] = 'Telefone do contact não encontrado na conversa';
+    } else {
+      try {
+        const result = await this.whatsapp.sendTextMessage(tenantId, to, message.body);
+        metadataPatch['delivery_status'] = 'sent';
+        metadataPatch['external_message_id'] = result.externalMessageId;
+      } catch (err) {
+        metadataPatch['delivery_status'] = 'failed';
+        metadataPatch['delivery_error'] = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`dispatchOutboundIfExternal: falha ao enviar automação via WhatsApp (conversa ${conversationId}) — ${metadataPatch['delivery_error']}`);
+      }
+    }
+    await this.msgRepo!.update({ id: message.id } as any, { metadata: metadataPatch } as any);
+    return { ...message, metadata: metadataPatch };
   }
 
   private sendSystemMessage(tenantId: string, conversationId: string, body: string) {

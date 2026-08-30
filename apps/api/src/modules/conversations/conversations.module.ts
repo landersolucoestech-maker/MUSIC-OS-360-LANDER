@@ -4,9 +4,10 @@ import { MusicChatAutomationController } from './musicchat-automation.controller
 import { ConversationsService }     from './conversations.service';
 import { MusicChatAutomationService } from './musicchat-automation.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { WhatsAppModule } from '../integrations/whatsapp/whatsapp.module';
 
 @Module({
-  imports:     [NotificationsModule],
+  imports:     [NotificationsModule, WhatsAppModule],
   controllers: [ConversationsController, MusicChatAutomationController],
   providers:   [ConversationsService, MusicChatAutomationService],
   exports:     [ConversationsService, MusicChatAutomationService],

@@ -18,6 +18,7 @@ import {
 } from '../../database/entities';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { RealtimeService }              from '../../core/realtime/realtime.service';
+import { WhatsAppCloudProvider }        from '../integrations/whatsapp/whatsapp-cloud.provider';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
 import type {
   CreateConversationDto,
@@ -42,6 +43,7 @@ export class ConversationsService {
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly events: EventsService,
     private readonly ws: RealtimeService,
+    private readonly whatsapp: WhatsAppCloudProvider,
   ) {
     if (ds) {
       this.convRepo  = ds.getRepository(ConversationEntity);
@@ -80,12 +82,13 @@ export class ConversationsService {
       qb.andWhere('c.subject ILIKE :search', { search: `%${query.search}%` });
     }
 
+    const limit = Math.min(query.limit ?? 50, 200);
     qb.orderBy('c.last_message_at', 'DESC', 'NULLS LAST')
       .skip(query.offset ?? 0)
-      .take(query.limit  ?? 50);
+      .take(limit);
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
+    return { data, meta: { total, offset: query.offset ?? 0, limit } };
   }
 
   async findConversationById(tenantId: string, id: string): Promise<ConversationEntity> {
@@ -198,6 +201,7 @@ export class ConversationsService {
 
   async listMessages(tenantId: string, conversationId: string, limit = 50, offset = 0) {
     await this.findConversationById(tenantId, conversationId);
+    const boundedLimit = Math.min(limit, 200);
 
     const [data, total] = await this.msgRepo!
       .createQueryBuilder('m')
@@ -206,10 +210,10 @@ export class ConversationsService {
       })
       .orderBy('m.created_at', 'ASC')
       .skip(offset)
-      .take(limit)
+      .take(boundedLimit)
       .getManyAndCount();
 
-    return { data, meta: { total, offset, limit } };
+    return { data, meta: { total, offset, limit: boundedLimit } };
   }
 
   async addMessage(
@@ -233,7 +237,18 @@ export class ConversationsService {
       sender_type:     senderType,
       attachments:     dto.attachments ?? [],
     });
-    const saved = await this.msgRepo!.save(msg);
+    let saved = await this.msgRepo!.save(msg);
+
+    // Entrega externa real: uma resposta do agente (senderType='user') numa
+    // conversa de canal externo precisa realmente chegar ao contact, não só
+    // ficar gravada no banco — antes desta correção, addMessage() nunca
+    // despachava a nenhum provider (WhatsAppCloudProvider já injetado só era
+    // usado para notificações de escalonamento, nunca para respostas reais).
+    // Nunca lança em caso de falha de entrega — a mensagem já é um registo
+    // válido internamente; delivery_status honesto fica em metadata para a UI.
+    if (senderType === 'user') {
+      saved = await this.dispatchOutbound(tenantId, conv, saved);
+    }
 
     // Update conversation last_message_at and re-open if pending
     const statusUpdate: Record<string, unknown> = { last_message_at: saved.created_at, updated_at: new Date() };
@@ -246,9 +261,59 @@ export class ConversationsService {
       senderId:    userId,
       senderType,
       bodyPreview: dto.body.slice(0, 100),
+      deliveryStatus: (saved.metadata as Record<string, unknown> | null)?.['delivery_status'] ?? null,
     });
 
     return saved;
+  }
+
+  /**
+   * Entrega real da mensagem no canal externo da conversa. Canais sem
+   * provider real (email/telegram/instagram/facebook/tiktok/sms/custom)
+   * ficam 'internal_only' honestamente — nunca finge que foi entregue.
+   * Falha de entrega nunca lança: a mensagem já foi persistida (registo
+   * interno válido), só o delivery_status reflete a falha real.
+   */
+  private async dispatchOutbound(
+    tenantId: string,
+    conv: ConversationEntity,
+    message: ConversationMessageEntity,
+  ): Promise<ConversationMessageEntity> {
+    if (conv.channel !== 'whatsapp') {
+      return this.setDeliveryStatus(message, 'internal_only');
+    }
+
+    const to = (conv.metadata?.['phone'] as string | undefined)
+      ?? (conv.metadata?.['external_contact_id'] as string | undefined);
+    if (!to) {
+      this.logger.warn(`dispatchOutbound: conversa ${conv.id} é whatsapp mas não tem telefone em metadata — entrega pulada`);
+      return this.setDeliveryStatus(message, 'failed', 'Telefone do contact não encontrado na conversa');
+    }
+
+    try {
+      const result = await this.whatsapp.sendTextMessage(tenantId, to, message.body);
+      return this.setDeliveryStatus(message, 'sent', undefined, result.externalMessageId);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`dispatchOutbound: falha ao enviar via WhatsApp (conversa ${conv.id}) — ${reason}`);
+      return this.setDeliveryStatus(message, 'failed', reason);
+    }
+  }
+
+  private async setDeliveryStatus(
+    message: ConversationMessageEntity,
+    status: 'sent' | 'failed' | 'internal_only',
+    error?: string,
+    externalMessageId?: string,
+  ): Promise<ConversationMessageEntity> {
+    const metadata = {
+      ...(message.metadata ?? {}),
+      delivery_status: status,
+      ...(error ? { delivery_error: error } : {}),
+      ...(externalMessageId ? { external_message_id: externalMessageId } : {}),
+    };
+    await this.msgRepo!.update({ id: message.id } as any, { metadata } as any);
+    return { ...message, metadata };
   }
 
   // ── Notes ────────────────────────────────────────────────────────────────────
@@ -358,6 +423,10 @@ export class ConversationsService {
     dto: CloseConversationDto,
   ): Promise<ConversationEntity> {
     const conv = await this.findConversationById(tenantId, conversationId);
+    // Idempotência: já fechada — não sobrescrever o audit trail (closure.closed_by/closed_at)
+    // original de uma race/double-submit com os valores da chamada atual.
+    if (conv.status === 'closed') return conv;
+
     const metadata = {
       ...(conv.metadata ?? {}),
       service_status: dto.service_status ?? 'resolvida',
@@ -389,6 +458,10 @@ export class ConversationsService {
     dto: ReopenConversationDto,
   ): Promise<ConversationEntity> {
     const conv = await this.findConversationById(tenantId, conversationId);
+    // Idempotência: já aberta — não sobrescrever reopened.reopened_by/reopened_at de uma
+    // race/double-submit com os valores da chamada atual.
+    if (conv.status === 'open') return conv;
+
     const metadata = {
       ...(conv.metadata ?? {}),
       service_status: 'em_atendimento',

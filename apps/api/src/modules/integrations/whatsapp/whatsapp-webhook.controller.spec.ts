@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { createHmac } from 'crypto';
-import { ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import { BadGatewayException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { WhatsAppWebhookController } from './whatsapp-webhook.controller';
 import { WebhookService } from '../webhooks/webhook.service';
 
@@ -201,5 +201,57 @@ describe('WhatsAppWebhookController', () => {
 
     expect(ingestSpy).not.toHaveBeenCalled();
     expect(musicChat.handleInboundMessage).not.toHaveBeenCalled();
+  });
+
+  // ── Regressão: falha interna não pode virar perda silenciosa (200 sempre) ────
+
+  it('handleInboundMessage falha: NÃO retorna 200 silenciosamente — lança erro para acionar o retry da Meta', async () => {
+    const { controller, markProcessedSpy } = makeController({
+      handleInboundMessage: jest.fn().mockRejectedValue(new Error('DB indisponível')),
+    });
+    const body = messagePayloadObj();
+    const req = rawReq(body);
+    const validSig = sign(req.rawBody.toString('utf8'));
+
+    await expect(controller.receive(body, validSig, req)).rejects.toBeInstanceOf(BadGatewayException);
+    expect(markProcessedSpy).toHaveBeenCalledWith('evt-1', 'failed', 'DB indisponível');
+  });
+
+  it('payload com múltiplas mensagens, uma falha: ainda lança erro (não retorna 200 escondendo a falha parcial)', async () => {
+    const handleInboundMessage = jest.fn()
+      .mockResolvedValueOnce({ action: 'received' })
+      .mockRejectedValueOnce(new Error('falha na segunda'));
+    const ingestSpy = jest.fn()
+      .mockResolvedValueOnce({ isDuplicate: false, eventId: 'evt-1', status: 'pending' })
+      .mockResolvedValueOnce({ isDuplicate: false, eventId: 'evt-2', status: 'pending' });
+    const { controller } = makeController({ handleInboundMessage, ingest: ingestSpy });
+    const body = messagePayloadObj({
+      messages: [
+        { id: 'wamid.ONE', from: '5511999999999', timestamp: '1700000000', type: 'text', text: { body: 'Um' } },
+        { id: 'wamid.TWO', from: '5511999999999', timestamp: '1700000001', type: 'text', text: { body: 'Dois' } },
+      ],
+    });
+    const req = rawReq(body);
+    const validSig = sign(req.rawBody.toString('utf8'));
+
+    await expect(controller.receive(body, validSig, req)).rejects.toBeInstanceOf(BadGatewayException);
+    expect(handleInboundMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('reenvio de evento previamente FAILED (isDuplicate=false, status pending após retry): reprocessa em vez de pular', async () => {
+    // Reflete o comportamento real de WebhookService.ingest após o fix: um external_id
+    // conhecido cujo status anterior era FAILED volta como isDuplicate=false (retryable),
+    // não isDuplicate=true — só um evento já PROCESSED é um duplicado de verdade.
+    const { controller, musicChat, markProcessedSpy } = makeController({
+      ingest: jest.fn().mockResolvedValue({ isDuplicate: false, eventId: 'evt-1', status: 'pending' }),
+    });
+    const body = messagePayloadObj();
+    const req = rawReq(body);
+    const validSig = sign(req.rawBody.toString('utf8'));
+
+    await controller.receive(body, validSig, req);
+
+    expect(musicChat.handleInboundMessage).toHaveBeenCalledTimes(1);
+    expect(markProcessedSpy).toHaveBeenCalledWith('evt-1', 'processed');
   });
 });

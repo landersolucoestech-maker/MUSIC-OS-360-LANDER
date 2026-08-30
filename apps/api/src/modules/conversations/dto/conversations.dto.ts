@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsString, IsOptional, IsUUID, IsEnum, IsNotEmpty, MaxLength, IsArray, IsObject,
+  ArrayMaxSize, ValidateNested, IsUrl,
 } from 'class-validator';
 
 export enum ConversationStatus  { OPEN = 'open', PENDING = 'pending', CLOSED = 'closed', SPAM = 'spam' }
@@ -13,6 +15,7 @@ export enum ConversationChannel {
   FACEBOOK = 'facebook',
   TIKTOK = 'tiktok',
   SMS = 'sms',
+  DISCORD = 'discord',
   CUSTOM = 'custom',
 }
 export enum MessageSenderType  { USER = 'user', CONTACT = 'contact', SYSTEM = 'system', AI = 'ai' }
@@ -70,9 +73,38 @@ export class QueryConversationDto {
   @ApiPropertyOptional() @IsOptional() offset?: number;
 }
 
+export enum MessageAttachmentKind { AUDIO = 'audio', IMAGE = 'image', DOCUMENT = 'document' }
+
+// Mirrors the frontend's ChatAttachmentData (shared/components/ChatAttachment.tsx). Every
+// attachment reaching here already went through useUploadToR2 (presign -> PUT to R2 -> confirm),
+// so `url` is always a backend-issued publicUrl, never client-supplied storage — validating shape
+// here just stops a malformed/incomplete payload from being persisted and echoed back to other
+// participants, matching the same nested-DTO validation internal-chat already has (see
+// InternalMessageAttachmentDto in modules/internal-chat/dto/internal-chat.dto.ts).
+export class MessageAttachmentDto {
+  @ApiProperty({ enum: MessageAttachmentKind })
+  @IsEnum(MessageAttachmentKind)
+  kind: MessageAttachmentKind;
+
+  @ApiProperty()
+  @IsString() @IsNotEmpty() @MaxLength(255)
+  name: string;
+
+  @ApiProperty()
+  @IsUrl({ require_tld: false })
+  url: string;
+
+  @ApiProperty()
+  @IsString() @IsNotEmpty() @MaxLength(100)
+  mime: string;
+}
+
 export class CreateMessageDto {
   @ApiProperty()         @IsString() @IsNotEmpty() @MaxLength(50000) body: string;
-  @ApiPropertyOptional() @IsOptional() @IsArray() attachments?: unknown[];
+  @ApiPropertyOptional({ type: [MessageAttachmentDto] })
+  @IsOptional() @IsArray() @ArrayMaxSize(10)
+  @ValidateNested({ each: true }) @Type(() => MessageAttachmentDto)
+  attachments?: MessageAttachmentDto[];
 }
 
 export class CreateNoteDto {
@@ -102,16 +134,3 @@ export class ReopenConversationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) reason?: string;
 }
 
-export class CreateQuickReplyDto {
-  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(120) title: string;
-  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(5000) body: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() sector_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsArray() tags?: string[];
-}
-
-export class CreateChannelAccountDto {
-  @ApiProperty() @IsEnum(ConversationChannel) channel: ConversationChannel;
-  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(120) name: string;
-  @ApiPropertyOptional() @IsOptional() @IsObject() credentials?: Record<string, unknown>;
-  @ApiPropertyOptional() @IsOptional() @IsObject() settings?: Record<string, unknown>;
-}
