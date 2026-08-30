@@ -1,0 +1,502 @@
+[
+  {
+    "id": "13d9355e-2505-42ac-842c-07faf897582b",
+    "providerKey": "abramus",
+    "name": "ABRAMUS",
+    "categorySlug": "rights",
+    "categoryName": "Direitos Autorais",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "available",
+    "technicalState": "ready",
+    "classification": "commercial",
+    "includedInPlans": [
+      "enterprise"
+    ],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "implemented",
+    "capabilityEvidence": "integrations/abramus/abramus.service.ts",
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "9ead5d75-7fe3-4b84-935e-53e87e003bc9",
+    "providerKey": "autentique",
+    "name": "Autentique",
+    "categorySlug": "signing",
+    "categoryName": "Assinatura Digital",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "available",
+    "technicalState": "ready",
+    "classification": "commercial",
+    "includedInPlans": [
+      "professional",
+      "enterprise"
+    ],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": true,
+    "notes": null,
+    "technicalCapability": "implemented",
+    "capabilityEvidence": "integrations/autentique/autentique.service.ts",
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "5cc6bad7-e387-4519-a466-1de5b134c351",
+    "providerKey": "clicksign",
+    "name": "Clicksign",
+    "categorySlug": "signing",
+    "categoryName": "Assinatura Digital",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "awaiting_provider",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": "sem adapter em apps/api/src; useClicksign é stub desligado",
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "2e6a82bf-d61c-4eda-a67c-fd76da4903d4",
+    "providerKey": "distrokid",
+    "name": "DistroKid",
+    "categorySlug": "distribution",
+    "categoryName": "Distribuição Digital",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "planned",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": null,
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "a8d3f402-a4e9-47df-9fab-4b577c25370a",
+    "providerKey": "docusign",
+    "name": "DocuSign",
+    "categorySlug": "signing",
+    "categoryName": "Assinatura Digital",
+    "connectionKind": "oauth",
+    "requiredEnv": [
+      "DOCUSIGN_INTEGRATION_KEY",
+      "DOCUSIGN_CLIENT_SECRET"
+    ],
+    "publicationState": "beta",
+    "technicalState": "homologating",
+    "classification": "commercial",
+    "includedInPlans": [
+      "enterprise"
+    ],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "implemented",
+    "capabilityEvidence": "integrations/docusign/docusign.service.ts",
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "b50d0466-e8ae-4c83-8220-acb458b68786",
+    "providerKey": "ecad",
+    "name": "ECAD",
+    "categorySlug": "rights",
+    "categoryName": "Direitos Autorais",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "awaiting_provider",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "plans",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": "sem adapter em apps/api/src",
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "d3d42b56-e0c8-4dd7-9daa-84e63e729277",
+    "providerKey": "google_ads",
+    "name": "Google Ads",
+    "categorySlug": "marketing",
+    "categoryName": "Marketing Digital",
+    "connectionKind": "oauth",
+    "requiredEnv": [
+      "GOOGLE_ADS_CLIENT_ID",
+      "GOOGLE_ADS_CLIENT_SECRET"
+    ],
+    "publicationState": "available",
+    "technicalState": "ready",
+    "classification": "commercial",
+    "includedInPlans": [
+      "professional",
+      "enterprise"
+    ],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "implemented",
+    "capabilityEvidence": "integrations/google-ads/google-ads.service.ts",
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "fb430ec5-2097-49d6-b47a-d37c24acf6eb",
+    "providerKey": "meta_business",
+    "name": "Meta Business Suite",
+    "categorySlug": "marketing",
+    "categoryName": "Marketing Digital",
+    "connectionKind": "oauth",
+    "requiredEnv": [
+      "META_APP_ID",
+      "META_APP_SECRET"
+    ],
+    "publicationState": "available",
+    "technicalState": "ready",
+    "classification": "commercial",
+    "includedInPlans": [
+      "enterprise"
+    ],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "implemented",
+    "capabilityEvidence": "integrations.controller.ts — OAuth Meta (META_APP_ID/SECRET)",
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "6262460b-a15f-480f-9355-a58027b202d8",
+    "providerKey": "musicpro",
+    "name": "MusicPRO",
+    "categorySlug": "distribution",
+    "categoryName": "Distribuição Digital",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "planned",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": null,
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "8a1c7c3f-c43e-403a-b9f3-3e50c1fc0fb8",
+    "providerKey": "nfe",
+    "name": "NFe",
+    "categorySlug": "fiscal",
+    "categoryName": "Fiscal",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "awaiting_provider",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": "sem adapter em apps/api/src",
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "5fffd119-f678-44fa-bd05-c6a484cb4e3d",
+    "providerKey": "onerpm",
+    "name": "ONErpm",
+    "categorySlug": "distribution",
+    "categoryName": "Distribuição Digital",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "planned",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": null,
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "c40c1b9e-d0fd-4e67-a308-1af2b85a365a",
+    "providerKey": "somvibe",
+    "name": "SomVibe",
+    "categorySlug": "distribution",
+    "categoryName": "Distribuição Digital",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "planned",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": null,
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "8a938e59-2ee7-4358-addf-b5988a6727ee",
+    "providerKey": "soundon",
+    "name": "SoundOn",
+    "categorySlug": "distribution",
+    "categoryName": "Distribuição Digital",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "planned",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": null,
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "5b074fb7-7e6b-4c18-b0ab-4a669c2cec70",
+    "providerKey": "spotify_ads",
+    "name": "Spotify Ads",
+    "categorySlug": "marketing",
+    "categoryName": "Marketing Digital",
+    "connectionKind": "oauth",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "planned",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": null,
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "0c549133-7d50-4e07-8ab3-032aab76e8a4",
+    "providerKey": "symphonic",
+    "name": "Symphonic",
+    "categorySlug": "distribution",
+    "categoryName": "Distribuição Digital",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "planned",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": null,
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "573469ab-c2f0-4610-815b-31a9d99967e2",
+    "providerKey": "ubc",
+    "name": "UBC",
+    "categorySlug": "rights",
+    "categoryName": "Direitos Autorais",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "coming_soon",
+    "technicalState": "awaiting_provider",
+    "classification": "commercial",
+    "includedInPlans": [],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "none",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "not_implemented",
+    "capabilityEvidence": "sem adapter em apps/api/src; useUbc lança UBC_UNAVAILABLE",
+    "publishedWithoutCapability": false
+  },
+  {
+    "id": "d93b4ce6-1979-4965-b6b1-504460d3c1f2",
+    "providerKey": "whatsapp",
+    "name": "WhatsApp Cloud API",
+    "categorySlug": "messaging",
+    "categoryName": "Mensageria",
+    "connectionKind": "tenant_credentials",
+    "requiredEnv": [],
+    "publicationState": "available",
+    "technicalState": "ready",
+    "classification": "commercial",
+    "includedInPlans": [
+      "professional",
+      "enterprise"
+    ],
+    "viewAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "useAudience": {
+      "mode": "all",
+      "plans": [],
+      "tenantIds": []
+    },
+    "isCore": false,
+    "notes": null,
+    "technicalCapability": "implemented",
+    "capabilityEvidence": "integrations/whatsapp/whatsapp-cloud.provider.ts",
+    "publishedWithoutCapability": false
+  }
+]

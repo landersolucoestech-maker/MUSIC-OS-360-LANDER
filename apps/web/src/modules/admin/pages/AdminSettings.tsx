@@ -1,15 +1,26 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { cn } from "@/shared/lib/utils";
 import { IS_PROD } from "@/shared/lib/env";
-import { ADMIN_PLATFORM_PROVIDERS as PLATFORM_PROVIDERS, ADMIN_USERS } from "../data/admin-source";
+import {
+  useAdminIntegrations,
+  useIntegrationCategories,
+  useUpdateIntegrationGovernance,
+} from "../hooks/useAdminIntegrations";
+import type {
+  AdminIntegration,
+  AudienceMode,
+  PublicationState,
+} from "../services/admin-integrations.service";
+import { adminUsersService } from "../services/admin-users.service";
 import type { IntegrationStatus, PlatformIntegrationProvider } from "../types";
-import type { AdminRole } from "../types";
 import {
   IntegrationLogo,
   type IntegrationLogoId,
@@ -428,203 +439,246 @@ const ENV_BADGE: Record<string, string> = {
 };
 
 function TabIntegracoes() {
-  const navigate = useNavigate();
-  const [providers, setProviders] = useState<PlatformIntegrationProvider[]>(PLATFORM_PROVIDERS);
+  const { data: integrations, isLoading, isError, error, refetch } = useAdminIntegrations();
+  const { data: categories } = useIntegrationCategories();
+  const updateGovernance = useUpdateIntegrationGovernance();
 
-  function toggleProvider(p: PlatformIntegrationProvider) {
-    const next = !p.enabled;
-    setProviders((prev) => prev.map((x) => (x.id === p.id ? { ...x, enabled: next } : x)));
-    toast.success(`${p.name} ${next ? "habilitado" : "desabilitado"} na plataforma`);
+  function setPublication(row: AdminIntegration, publicationState: PublicationState) {
+    updateGovernance.mutate({ id: row.id, patch: { publicationState } });
   }
 
-  function runHealthCheck(p: PlatformIntegrationProvider) {
-    const now = new Date().toISOString();
-    setProviders((prev) => prev.map((x) => (x.id === p.id ? { ...x, lastHealthCheckAt: now } : x)));
-    toast.success(`Health check disparado para ${p.name}`, {
-      description: p.lastGlobalError ? `Último erro: ${p.lastGlobalError}` : "Sem erros reportados.",
-    });
+  function setAudience(row: AdminIntegration, field: "viewAudience" | "useAudience", mode: AudienceMode) {
+    const current = field === "viewAudience" ? row.viewAudience : row.useAudience;
+    updateGovernance.mutate({ id: row.id, patch: { [field]: { ...current, mode } } });
   }
 
-  function pendingPlatformAction(label: string, p: PlatformIntegrationProvider) {
-    // Ação de gestão de provedor global — endpoint de plataforma ainda não disponível.
-    toast.info(`${label} — ${p.name}`, {
-      description: "Configuração de provedor global será feita pela API de plataforma (pendente).",
-    });
+  function setCategory(row: AdminIntegration, categoryId: string) {
+    updateGovernance.mutate({ id: row.id, patch: { categoryId: categoryId || null } });
   }
 
-  const total     = providers.length;
-  const active    = providers.filter(p => p.status === "active").length;
-  const error     = providers.filter(p => p.status === "error").length;
-  const disabled  = providers.filter(p => !p.enabled).length;
-  const tenants   = providers.reduce((s, p) => s + (p.tenantsUsing ?? 0), 0);
-  const whFailing = providers.filter(p => p.webhookStatus === "failing").length;
-  const credPend  = providers.filter(p => p.status === "pending" || p.oauthStatus === "error").length;
-  const healthBad = providers.filter(p => !!p.lastGlobalError || p.status === "error").length;
+  const published    = integrations.filter((i) => i.publicationState === "available").length;
+  const draft        = integrations.filter((i) => i.publicationState === "hidden").length;
+  const notImplemented = integrations.filter((i) => i.technicalCapability === "not_implemented").length;
+  const contradictions = integrations.filter((i) => i.publishedWithoutCapability).length;
 
-  const byCategory = providers.reduce<Record<string, PlatformIntegrationProvider[]>>((acc, p) => {
-    (acc[p.category] = acc[p.category] ?? []).push(p);
+  const metrics = [
+    { label: "Integrações governadas", value: integrations.length, icon: Zap,          color: "text-muted-foreground", bg: "bg-muted" },
+    { label: "Publicadas",             value: published,           icon: CheckCircle2, color: "text-emerald-400",      bg: "bg-emerald-500/10" },
+    { label: "Em rascunho",            value: draft,               icon: ShieldOff,    color: "text-muted-foreground", bg: "bg-muted" },
+    { label: "Sem adapter",            value: notImplemented,      icon: AlertCircle,  color: "text-yellow-400",       bg: "bg-yellow-500/10" },
+  ];
+
+  const byCategory = integrations.reduce<Record<string, AdminIntegration[]>>((acc, i) => {
+    const key = i.categoryName ?? "Sem categoria";
+    (acc[key] = acc[key] ?? []).push(i);
     return acc;
   }, {});
 
-  const metrics = [
-    { label: "Provedores totais",   value: total,     icon: Zap,          color: "text-muted-foreground", bg: "bg-muted" },
-    { label: "Ativos",              value: active,    icon: CheckCircle2, color: "text-emerald-400",      bg: "bg-emerald-500/10" },
-    { label: "Com erro",            value: error,     icon: AlertCircle,  color: "text-red-400",          bg: "bg-red-500/10" },
-    { label: "Desabilitados",       value: disabled,  icon: ShieldOff,    color: "text-muted-foreground", bg: "bg-muted" },
-    { label: "Tenants usando",      value: tenants,   icon: Users,        color: "text-primary",          bg: "bg-primary/10" },
-    { label: "Webhooks com falha",  value: whFailing, icon: Webhook,      color: "text-yellow-400",       bg: "bg-yellow-500/10" },
-    { label: "Credenciais pendentes", value: credPend, icon: KeyRound,    color: "text-yellow-400",       bg: "bg-yellow-500/10" },
-    { label: "Health degradados",   value: healthBad, icon: Activity,     color: "text-red-400",          bg: "bg-red-500/10" },
-  ];
+  // LOADING / ERROR / EMPTY são três estados distintos. Um erro NUNCA pode ser
+  // renderizado como "não há integrações" — foi assim que uma falha de request
+  // passou por catálogo vazio enquanto o banco tinha 14 registros.
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground" data-testid="admin-integrations-loading">Carregando governança de integrações…</p>;
+  }
+
+  if (isError) {
+    const status = (error as { statusCode?: number } | null)?.statusCode;
+    return (
+      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 space-y-2" data-testid="admin-integrations-error">
+        <p className="text-sm font-medium text-destructive">
+          Não foi possível carregar a governança de integrações
+          {typeof status === "number" ? ` (HTTP ${status})` : ""}.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {(error as Error | null)?.message ?? "Erro desconhecido."} Isto NÃO significa que o
+          catálogo está vazio — verifique se a API está no ar e se a rota
+          <code className="mx-1">GET /admin/integrations</code> existe nesta build.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => void refetch()}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
+  if (integrations.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="admin-integrations-empty">
+        A API respondeu com sucesso, mas o catálogo administrativo está vazio.
+        Rode a migration de governança para popular <code>platform_integrations</code>.
+      </p>
+    );
+  }
 
   return (
-    <div className="space-y-5">
-      <p className="text-[12px] text-muted-foreground leading-relaxed">
-        Gerencie provedores globais, disponibilidade por plano, infraestrutura, health checks, limites e auditoria da plataforma SaaS.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold">Governança de integrações</h3>
+        <p className="text-sm text-muted-foreground mt-1 max-w-3xl">
+          Define o que cada cliente enxerga e pode usar. A capacidade técnica é somente leitura —
+          vem do código, não deste painel: publicar uma integração sem adapter não a faz funcionar,
+          e o backend continua bloqueando o uso.
+        </p>
+      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {metrics.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="rounded-2xl border border-border bg-card p-4">
-            <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl mb-3", bg)}>
-              <Icon className={cn("h-4 w-4", color)} />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {metrics.map((m) => (
+          <div key={m.label} className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center gap-3">
+              <div className={`rounded-md p-2 ${m.bg}`}>
+                <m.icon className={`h-4 w-4 ${m.color}`} />
+              </div>
+              <div>
+                <p className="text-xl font-semibold tabular-nums">{m.value}</p>
+                <p className="text-xs text-muted-foreground">{m.label}</p>
+              </div>
             </div>
-            <p className="text-xl font-bold text-foreground">{value}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
           </div>
         ))}
       </div>
 
-      {Object.entries(byCategory).map(([cat, items]) => (
-        <div key={cat} className="space-y-3">
-          <div className="flex items-center gap-2 pb-1 border-b border-border/50">
-            <h2 className="text-[12px] font-semibold text-muted-foreground tracking-wider">
-              {CAT_LABEL[cat] ?? cat}
-            </h2>
-          </div>
-          <div className="space-y-2">
-            {items.map((p) => {
-              const cfg = STATUS_CFG[p.status];
-              const SIcon = cfg.icon;
-              const logoId = PROVIDER_LOGO[p.provider];
-              return (
-                <div
-                  key={p.id}
-                  className="flex items-start justify-between gap-4 p-4 bg-muted/30 rounded-lg"
-                  data-testid={`platform-provider-${p.id}`}
-                >
-                  <div className="flex items-start gap-3 min-w-0">
-                    {logoId ? (
-                      <IntegrationLogo id={logoId} className="h-10 w-10 rounded-lg shrink-0" imageClassName="h-6 w-6" />
-                    ) : (
-                      <div className="h-10 w-10 rounded-lg bg-muted border border-border/50 flex items-center justify-center shrink-0">
-                        <Zap className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="min-w-0 space-y-1.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-foreground">{p.name}</p>
-                        {p.isCore && (
-                          <Badge variant="outline" className="text-[9px] border-primary/20 bg-primary/10 text-primary">Core</Badge>
-                        )}
-                        <Badge variant="outline" className={cn("text-[9px] border", ENV_BADGE[p.environment])}>
-                          {ENV_LABEL[p.environment]}
-                        </Badge>
-                        {!p.enabled && (
-                          <Badge variant="outline" className="text-[9px] border-border bg-muted text-muted-foreground gap-1">
-                            <ShieldOff className="h-2.5 w-2.5" /> Desabilitado
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{p.description}</p>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                        <span>{p.tenantsUsing} tenants</span>
-                        <span>Planos: {p.availabilityByPlan.join(", ") || "—"}</span>
-                        <span>Health: {fmtDate(p.lastHealthCheckAt)}</span>
-                        {p.webhookStatus && p.webhookStatus !== "none" && (
-                          <span>Webhook: {p.webhookStatus === "ok" ? "OK" : "Falha"}</span>
-                        )}
-                        <Badge variant="outline" className="text-[9px] border-border bg-card text-muted-foreground">
-                          {p.requiresGlobalCredentials
-                            ? "Credencial global"
-                            : p.requiresTenantCredentials
-                              ? "Credencial por tenant"
-                              : "Sem credencial"}
-                        </Badge>
-                      </div>
-                      {p.lastGlobalError && (
-                        <p className="flex items-center gap-1 text-[11px] text-red-400">
-                          <AlertCircle className="h-3 w-3 shrink-0" /> {p.lastGlobalError}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+      {contradictions > 0 && (
+        <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4">
+          <p className="text-sm font-medium text-yellow-500">
+            {contradictions} integração(ões) publicada(s) sem adapter implementado
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Clientes na audiência enxergam, mas o uso é negado pelo backend. Implemente o adapter
+            ou volte para rascunho.
+          </p>
+        </div>
+      )}
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant="outline" className={cn("text-[10px] border gap-1", cfg.bg, cfg.color)}>
-                      <SIcon className="h-3 w-3" />{cfg.label}
-                    </Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                          data-testid={`provider-actions-${p.id}`}
-                          aria-label="Ações do provedor"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-52">
-                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => navigate("/admin/audit")} data-testid={`action-logs-${p.id}`}><ScrollText className="h-3.5 w-3.5" /> Ver logs</DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => navigate("/admin/audit")} data-testid={`action-audit-${p.id}`}><FileText className="h-3.5 w-3.5" /> Ver auditoria</DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => navigate("/admin/clients")} data-testid={`action-tenants-${p.id}`}><Users className="h-3.5 w-3.5" /> Ver tenants usando</DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => runHealthCheck(p)} data-testid={`action-health-${p.id}`}><Activity className="h-3.5 w-3.5" /> Executar health check</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => pendingPlatformAction("Configurar provedor", p)} data-testid={`action-config-${p.id}`}><Settings className="h-3.5 w-3.5" /> Configurar provedor</DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => navigate("/admin/plans")} data-testid={`action-plans-${p.id}`}><Shield className="h-3.5 w-3.5" /> Configurar planos</DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => pendingPlatformAction("Configurar webhooks", p)} data-testid={`action-webhooks-${p.id}`}><Webhook className="h-3.5 w-3.5" /> Configurar webhooks</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => toggleProvider(p)} data-testid={`action-toggle-${p.id}`}>
-                          {p.enabled ? <ToggleLeft className="h-3.5 w-3.5" /> : <ToggleRight className="h-3.5 w-3.5" />}
-                          {p.enabled ? "Desabilitar provedor" : "Habilitar provedor"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+      {Object.entries(byCategory).map(([category, rows]) => (
+        <section key={category} className="space-y-3">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{category}</h4>
+          <div className="space-y-3">
+            {rows.map((row) => (
+              <div key={row.id} className="rounded-lg border border-border bg-card p-4 space-y-4" data-testid={`admin-integration-${row.providerKey}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{row.name}</span>
+                      <code className="text-xs text-muted-foreground">{row.providerKey}</code>
+                      {row.isCore && <Badge variant="info">Core</Badge>}
+                      {row.technicalCapability === "implemented"
+                        ? <Badge variant="success">Adapter implementado</Badge>
+                        : <Badge variant="warning">Sem adapter</Badge>}
+                      {row.publishedWithoutCapability && <Badge variant="danger">Publicado sem adapter</Badge>}
+                    </div>
+                    {row.capabilityEvidence && (
+                      <p className="text-xs text-muted-foreground mt-1 font-mono">{row.capabilityEvidence}</p>
+                    )}
+                    {row.requiredEnv.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Requer no ambiente: {row.requiredEnv.join(", ")}
+                      </p>
+                    )}
                   </div>
                 </div>
-              );
-            })}
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <label className="space-y-1.5 block">
+                    <span className="text-xs text-muted-foreground">Publicação</span>
+                    <select
+                      className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+                      value={row.publicationState}
+                      disabled={updateGovernance.isPending}
+                      onChange={(e) => setPublication(row, e.target.value as PublicationState)}
+                      data-testid={`publication-${row.providerKey}`}
+                    >
+                      <option value="hidden">Oculta</option>
+                      <option value="coming_soon">Em breve</option>
+                      <option value="beta">Beta</option>
+                      <option value="available">Disponível</option>
+                      <option value="temporarily_unavailable">Temporariamente indisponível</option>
+                    </select>
+                  </label>
+
+                  <label className="space-y-1.5 block">
+                    <span className="text-xs text-muted-foreground">Quem enxerga (VIEW)</span>
+                    <select
+                      className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+                      value={row.viewAudience.mode}
+                      disabled={updateGovernance.isPending}
+                      onChange={(e) => setAudience(row, "viewAudience", e.target.value as AudienceMode)}
+                      data-testid={`view-audience-${row.providerKey}`}
+                    >
+                      <option value="none">Ninguém</option>
+                      <option value="all">Todos os clientes</option>
+                      <option value="plans">Por plano</option>
+                      <option value="tenants">Clientes específicos</option>
+                    </select>
+                  </label>
+
+                  <label className="space-y-1.5 block">
+                    <span className="text-xs text-muted-foreground">Quem usa (USE)</span>
+                    <select
+                      className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+                      value={row.useAudience.mode}
+                      disabled={updateGovernance.isPending}
+                      onChange={(e) => setAudience(row, "useAudience", e.target.value as AudienceMode)}
+                      data-testid={`use-audience-${row.providerKey}`}
+                    >
+                      <option value="none">Ninguém</option>
+                      <option value="all">Todos os clientes</option>
+                      <option value="plans">Por plano</option>
+                      <option value="tenants">Clientes específicos</option>
+                    </select>
+                  </label>
+
+                  <label className="space-y-1.5 block">
+                    <span className="text-xs text-muted-foreground">Categoria</span>
+                    <select
+                      className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+                      value={categories.find((c) => c.name === row.categoryName)?.id ?? ""}
+                      disabled={updateGovernance.isPending}
+                      onChange={(e) => setCategory(row, e.target.value)}
+                    >
+                      <option value="">Sem categoria</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   );
 }
 
-const ROLE_STYLE: Record<AdminRole, string> = {
+// Estilo de badge por slug de papel — best-effort, não é uma lista exaustiva:
+// qualquer slug não mapeado aqui ainda exibe seu role_name real, só sem cor especial.
+const ROLE_STYLE: Record<string, string> = {
   super_admin: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  tenant_owner: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  owner:       "text-amber-400 bg-amber-500/10 border-amber-500/20",
   admin:       "text-primary bg-primary/10 border-primary/20",
-  operator:    "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
-  support:     "text-primary bg-primary/10 border-primary/30",
-  finance:     "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  manager:     "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+  financial:   "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  accounting:  "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
   viewer:      "text-muted-foreground bg-muted border-border",
 };
-const ROLE_LABEL: Record<AdminRole, string> = {
-  super_admin: "Super Admin", admin: "Admin",
-  operator: "Operador", support: "Suporte",
-  finance: "Financeiro", viewer: "Viewer",
-};
+const DEFAULT_ROLE_STYLE = "text-muted-foreground bg-muted border-border";
 
 function TabUsuarios() {
   const [search, setSearch] = useState("");
-  const filtered = ADMIN_USERS.filter((u) => {
+  const usersQuery = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: () => adminUsersService.list(),
+  });
+  const users = usersQuery.data ?? [];
+
+  const filtered = users.filter((u) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.tenant_name.toLowerCase().includes(q);
   });
-  const active  = ADMIN_USERS.filter(u => u.status === "active").length;
-  const blocked = ADMIN_USERS.filter(u => u.status === "blocked").length;
-  const mfa     = ADMIN_USERS.filter(u => u.mfa_enabled).length;
+  const active  = users.filter(u => u.status === "active").length;
+  const blocked = users.filter(u => u.status === "blocked").length;
+  const mfa     = users.filter(u => u.mfa_enabled).length;
 
   return (
     <div className="space-y-5">
@@ -633,7 +687,7 @@ function TabUsuarios() {
           { label: "Usuários Ativos", value: active,                  color: "text-emerald-400", bg: "bg-emerald-500/10", icon: Users     },
           { label: "Bloqueados",      value: blocked,                 color: "text-red-400",     bg: "bg-red-500/10",     icon: ShieldOff },
           { label: "Com MFA",         value: mfa,                     color: "text-primary",    bg: "bg-primary/10",    icon: Shield    },
-          { label: "Total",           value: ADMIN_USERS.length, color: "text-muted-foreground",    bg: "bg-muted",        icon: Users     },
+          { label: "Total",           value: users.length, color: "text-muted-foreground",    bg: "bg-muted",        icon: Users     },
         ].map(({ label, value, color, bg, icon: Icon }) => (
           <div key={label} className="rounded-2xl border border-border bg-card p-4">
             <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl mb-3", bg)}>
@@ -663,6 +717,11 @@ function TabUsuarios() {
           description="Acompanhe usuários, tenants, papéis, MFA e sessões ativas"
           className="p-4"
         />
+        {usersQuery.isLoading ? (
+          <div className="py-10 text-center text-[13px] text-muted-foreground">Carregando...</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-10 text-center text-[13px] text-muted-foreground">Nenhum usuário encontrado.</div>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
@@ -682,25 +741,29 @@ function TabUsuarios() {
                   </TableCell>
                   <TableCell className="py-3.5 text-[12px] text-muted-foreground">{u.tenant_name}</TableCell>
                   <TableCell className="py-3.5">
-                    <Badge variant="outline" className={cn("text-[10px] border", ROLE_STYLE[u.role])}>
-                      {ROLE_LABEL[u.role]}
+                    <Badge variant="outline" className={cn("text-[10px] border", ROLE_STYLE[u.role_slug] ?? DEFAULT_ROLE_STYLE)}>
+                      {u.role_name}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-3.5">
-                    {u.mfa_enabled
-                      ? <Shield className="h-3.5 w-3.5 text-emerald-400" />
-                      : <ShieldOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                    {u.mfa_enabled === null
+                      ? <span className="text-[11px] text-muted-foreground">Indisponível</span>
+                      : u.mfa_enabled
+                        ? <Shield className="h-3.5 w-3.5 text-emerald-400" />
+                        : <ShieldOff className="h-3.5 w-3.5 text-muted-foreground" />}
                   </TableCell>
                   <TableCell className="py-3.5">
                     <span className={cn("text-[12px] font-medium capitalize", statusColor)}>
-                      {u.status === "active" ? "Ativo" : u.status === "blocked" ? "Bloqueado" : "Inativo"}
+                      {u.status === "active" ? "Ativo" : "Bloqueado"}
                     </span>
                   </TableCell>
-                  <TableCell className="py-3.5 text-[12px] text-muted-foreground">{u.sessions_count}</TableCell>
+                  <TableCell className="py-3.5 text-[12px] text-muted-foreground">Indisponível</TableCell>
                   <TableCell className="py-3.5">
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      {new Date(u.last_login).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                      {u.last_login
+                        ? new Date(u.last_login).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+                        : "Indisponível"}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -708,6 +771,7 @@ function TabUsuarios() {
             })}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

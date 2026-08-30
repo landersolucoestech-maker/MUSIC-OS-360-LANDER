@@ -80,6 +80,80 @@ describe('BillingPlansService', () => {
     });
   });
 
+  describe('listPublic (Decision Gate item 1 — rota pública da Landing)', () => {
+    function mockPlansQuery(rows: Record<string, unknown>[]) {
+      const qb = {
+        orderBy: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(rows),
+      };
+      repo.createQueryBuilder.mockReturnValue(qb);
+      return qb;
+    }
+
+    it('nunca retorna campos administrativos internos (allow-list estrita)', async () => {
+      mockPlansQuery([
+        {
+          id: 'plan-1',
+          slug: 'pro',
+          name: 'Pro',
+          description: 'Plano profissional',
+          amount: 29900,
+          currency: 'brl',
+          interval: 'month',
+          features: ['Recurso A', 'Recurso B'],
+          stripe_product_id: 'prod_secret',
+          stripe_price_id: 'price_secret',
+          limits: { artists: 50 },
+          active: true,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ]);
+
+      const result = await service.listPublic();
+
+      expect(result).toEqual([
+        {
+          slug: 'pro',
+          name: 'Pro',
+          description: 'Plano profissional',
+          amount: 29900,
+          currency: 'brl',
+          interval: 'month',
+          features: ['Recurso A', 'Recurso B'],
+        },
+      ]);
+      const keys = Object.keys(result[0]!);
+      expect(keys).not.toContain('id');
+      expect(keys).not.toContain('stripe_product_id');
+      expect(keys).not.toContain('stripe_price_id');
+      expect(keys).not.toContain('limits');
+      expect(keys).not.toContain('active');
+      expect(keys).not.toContain('created_at');
+      expect(keys).not.toContain('updated_at');
+    });
+
+    it('só considera planos ativos (list() já filtra active=true por padrão)', async () => {
+      const qb = mockPlansQuery([]);
+      await service.listPublic();
+      expect(qb.where).toHaveBeenCalledWith('p.active = true');
+    });
+
+    it('normaliza features legado (objeto {labels}) para array, igual list()', async () => {
+      mockPlansQuery([
+        {
+          id: 'plan-1', slug: 'legacy', name: 'Legacy', description: null,
+          amount: 9900, currency: 'brl', interval: 'month',
+          features: { labels: ['X', 'Y'] },
+        },
+      ]);
+
+      const result = await service.listPublic();
+      expect(result[0]!.features).toEqual(['X', 'Y']);
+    });
+  });
+
   describe('update', () => {
     const existing = {
       id: 'plan-1', slug: 'pro', name: 'Pro', description: null,

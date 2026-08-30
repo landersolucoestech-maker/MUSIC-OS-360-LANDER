@@ -42,3 +42,22 @@ export class CreatePlanDto {
 }
 
 export class UpdatePlanDto extends PartialType(CreatePlanDto) {}
+
+/**
+ * Decision Gate item 1 (product-completion audit): shape exposed by the
+ * public, unauthenticated `/billing/plans/public` endpoint consumed by the
+ * marketing Landing page. Deliberately excludes `id`, `stripe_product_id`,
+ * `stripe_price_id`, `limits`, `created_at`/`updated_at` — no internal
+ * billing/administrative data ever leaves this route. Allow-list, not a
+ * deny-list, on purpose: a new column added to BillingPlanEntity later never
+ * becomes publicly exposed by accident.
+ */
+export class PublicPlanDto {
+  @ApiProperty() slug: string;
+  @ApiProperty() name: string;
+  @ApiPropertyOptional() description: string | null;
+  @ApiProperty({ description: 'Valor em centavos' }) amount: number;
+  @ApiProperty() currency: string;
+  @ApiProperty({ enum: ['month', 'year'] }) interval: string;
+  @ApiProperty({ type: 'array', items: { type: 'string' } }) features: unknown[];
+}

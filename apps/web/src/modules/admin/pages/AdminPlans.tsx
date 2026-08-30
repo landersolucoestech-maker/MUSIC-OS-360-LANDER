@@ -12,6 +12,11 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { adminPlansService } from "../services/admin-plans.service";
+import {
+  useCommercialIntegrations,
+  usePlanIntegrations,
+  useSavePlanIntegrations,
+} from "../hooks/useAdminIntegrations";
 import type { AdminPlan } from "../types";
 import {
   Tag, Users, HardDrive, DollarSign, Check,
@@ -51,6 +56,19 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
     plan ? { ...plan } : { id: `plan-${Date.now()}`, ...EMPTY_PLAN }
   );
   const [newFeature, setNewFeature] = useState("");
+
+  // Entitlements do plano — persistidos separadamente do plano em si
+  // (billing_plans.integrations), via o endpoint administrativo dedicado.
+  const { data: commercialIntegrations, isLoading: loadingIntegrations } = useCommercialIntegrations();
+  const { data: persistedIntegrations } = usePlanIntegrations(plan?.tier);
+  const saveIntegrations = useSavePlanIntegrations();
+  const [selectedIntegrations, setSelectedIntegrations] = useState<string[]>([]);
+  const [integrationsTouched, setIntegrationsTouched] = useState(false);
+
+  // Reabrir o plano deve trazer exatamente o que está persistido.
+  useEffect(() => {
+    if (!integrationsTouched) setSelectedIntegrations(persistedIntegrations);
+  }, [persistedIntegrations, integrationsTouched]);
 
   function field(key: keyof AdminPlan, value: string | number) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -188,6 +206,55 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
             </p>
           </div>
 
+          {/* Integrações incluídas — entitlements do plano.
+              Lista DINÂMICA vinda do backend (integrações comerciais). Internas
+              (Soundcharts/ACRCloud/Resend) e billing (Stripe) nunca aparecem:
+              o backend não as classifica como comerciais e ainda rejeita no save. */}
+          <div className="space-y-2">
+            <Label className="text-[11px] text-muted-foreground tracking-wider">
+              Recursos e Integrações incluídos
+            </Label>
+            {loadingIntegrations ? (
+              <p className="text-[11px] text-muted-foreground italic" data-testid="plan-integrations-loading">
+                Carregando integrações comerciais…
+              </p>
+            ) : commercialIntegrations.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground italic" data-testid="plan-integrations-empty">
+                Nenhuma integração comercial cadastrada.
+              </p>
+            ) : (
+              <div className="space-y-1 max-h-40 overflow-y-auto pr-1" data-testid="plan-integrations-list">
+                {commercialIntegrations.map((it) => {
+                  const checked = selectedIntegrations.includes(it.providerKey);
+                  return (
+                    <label
+                      key={it.providerKey}
+                      className="flex items-center gap-2 text-[12px] text-muted-foreground cursor-pointer"
+                      data-testid={`plan-integration-${it.providerKey}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setIntegrationsTouched(true);
+                          setSelectedIntegrations((prev) =>
+                            e.target.checked
+                              ? [...prev, it.providerKey]
+                              : prev.filter((s) => s !== it.providerKey),
+                          );
+                        }}
+                      />
+                      <span className="flex-1">{it.name}</span>
+                      {it.technicalCapability !== "implemented" && (
+                        <span className="text-[10px] text-yellow-500">sem adapter</span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Features */}
           <div className="space-y-2">
             <Label className="text-[11px] text-muted-foreground  tracking-wider">Funcionalidades</Label>
@@ -243,7 +310,15 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
           <Button
             size="sm"
             className="text-xs gap-1.5"
-            onClick={() => onSave(form)}
+            onClick={() => {
+              // Entitlements vivem em billing_plans.integrations e são salvos
+              // pelo endpoint dedicado — só para planos já existentes (um plano
+              // novo ainda não tem slug persistido para associar).
+              if (plan?.tier && integrationsTouched) {
+                saveIntegrations.mutate({ planSlug: plan.tier, integrations: selectedIntegrations });
+              }
+              onSave(form);
+            }}
             data-testid="btn-save-plan"
           >
             <Save className="h-3.5 w-3.5" />

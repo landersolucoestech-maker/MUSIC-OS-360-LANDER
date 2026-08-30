@@ -51,15 +51,29 @@ export class WebhookService {
       return { isDuplicate: false, eventId: 'no-db', status: WebhookEventStatus.PENDING };
     }
 
-    // Idempotency: if external_id is known, return duplicate
+    // Idempotency: if external_id is known AND already successfully processed, it's a true
+    // duplicate. A PENDING/FAILED row for the same external_id is not a duplicate — it's the
+    // same event legitimately being retried (matches this class's own "replay protection via
+    // status check" doc comment above, which the previous existence-only check didn't actually
+    // implement). Reuse the same row's id/retry_count rather than creating a second row.
     if (params.externalId) {
       try {
         const existing = await this.repo.findOne({ where: { external_id: params.externalId } });
         if (existing) {
-          this.logger.warn(
-            `[webhook] Duplicate event ignored: provider=${params.provider} externalId=${params.externalId} status=${existing.status}`,
+          if (existing.status === WebhookEventStatus.PROCESSED) {
+            this.logger.warn(
+              `[webhook] Duplicate event ignored: provider=${params.provider} externalId=${params.externalId} status=${existing.status}`,
+            );
+            return { isDuplicate: true, eventId: existing.id, status: existing.status as WebhookEventStatus };
+          }
+          this.logger.log(
+            `[webhook] Retrying previously ${existing.status} event: provider=${params.provider} externalId=${params.externalId}`,
           );
-          return { isDuplicate: true, eventId: existing.id, status: existing.status as WebhookEventStatus };
+          await this.repo.update(
+            { id: existing.id } as any,
+            { status: WebhookEventStatus.PENDING, retry_count: (existing.retry_count ?? 0) + 1 } as any,
+          );
+          return { isDuplicate: false, eventId: existing.id, status: WebhookEventStatus.PENDING };
         }
       } catch (err) {
         this.logger.error(`[webhook] Idempotency check failed: ${String(err)}`);
@@ -121,6 +135,11 @@ export class WebhookService {
   /**
    * HMAC-SHA256 signature validation — provider-agnostic.
    * Both sides must produce the same digest from the raw body + secret.
+   *
+   * `encoding` cobre a diferença real entre provedores: a maioria envia o digest
+   * em hex (default), mas o DocuSign Connect envia em base64 no header
+   * X-DocuSign-Signature-1 (ver docusign/connect-node-listener-aws). A comparação
+   * continua sendo timing-safe sobre os bytes decodificados nos dois casos.
    */
   validateHmacSignature(params: {
     rawBody:   string;
@@ -128,13 +147,15 @@ export class WebhookService {
     received:  string;
     algorithm?: 'sha256' | 'sha1';
     prefix?:   string;
+    encoding?: 'hex' | 'base64';
   }): boolean {
     const algo     = params.algorithm ?? 'sha256';
-    const expected = createHmac(algo, params.secret).update(params.rawBody, 'utf8').digest('hex');
+    const encoding = params.encoding ?? 'hex';
+    const expected = createHmac(algo, params.secret).update(params.rawBody, 'utf8').digest(encoding);
     const received = params.prefix ? params.received.replace(params.prefix, '') : params.received;
     try {
-      const left  = Buffer.from(expected, 'hex');
-      const right = Buffer.from(received, 'hex');
+      const left  = Buffer.from(expected, encoding);
+      const right = Buffer.from(received, encoding);
       if (left.length !== right.length) return false;
       return timingSafeEqual(left, right);
     } catch {

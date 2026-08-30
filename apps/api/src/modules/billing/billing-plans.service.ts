@@ -86,6 +86,27 @@ export class BillingPlansService {
     return plans.map((p) => this.normalize(p));
   }
 
+  /**
+   * Decision Gate item 1: público, sem autenticação — consumido pela Landing.
+   * Allow-list estrita de campos, nunca retorna a entidade bruta (que carrega
+   * stripe_product_id/stripe_price_id/limits — dados administrativos internos).
+   */
+  async listPublic(): Promise<Array<{
+    slug: string; name: string; description: string | null;
+    amount: number; currency: string; interval: string; features: unknown[];
+  }>> {
+    const plans = await this.list();
+    return plans.map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      description: p.description,
+      amount: p.amount,
+      currency: p.currency,
+      interval: p.interval,
+      features: p.features,
+    }));
+  }
+
   async get(id: string): Promise<BillingPlanEntity> {
     const plan = await this.repo.findOne({ where: { id } });
     if (!plan) throw new NotFoundException('Plano não encontrado');

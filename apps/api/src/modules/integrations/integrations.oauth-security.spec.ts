@@ -37,6 +37,7 @@ describe('IntegrationsController OAuth token boundary', () => {
       noop as never,
       noop as never,
       noop as never,
+      noop as never,
       integrationBase as never,
       config as never,
       cache as never,

@@ -12,7 +12,7 @@
  */
 import type {
   AdminKPIs, RevenueDataPoint, AdminPlan, AdminTenant,
-  AdminSubscription, AdminUser, AdminSecurityEvent,
+  AdminSubscription, AdminSecurityEvent,
   AdminNotification, AdminIntegration, AdminSystemMetric,
   PlatformIntegrationProvider,
 } from "../types";
@@ -32,7 +32,7 @@ export const ADMIN_REVENUE: RevenueDataPoint[] = [];
 export const ADMIN_PLANS: AdminPlan[]          = [];
 export const ADMIN_TENANTS: AdminTenant[]      = [];
 export const ADMIN_SUBSCRIPTIONS: AdminSubscription[] = [];
-export const ADMIN_USERS: AdminUser[]          = [];
+// ADMIN_USERS removido — Usuários usa backend real via useAdminUsers() (GET /admin/users).
 export const ADMIN_SECURITY_EVENTS: AdminSecurityEvent[] = [];
 export const ADMIN_NOTIFICATIONS: AdminNotification[] = [];
 export const ADMIN_INTEGRATIONS: AdminIntegration[] = [];

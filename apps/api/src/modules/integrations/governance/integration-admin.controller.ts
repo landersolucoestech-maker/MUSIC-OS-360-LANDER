@@ -1,0 +1,86 @@
+/**
+ * governance/integration-admin.controller.ts
+ *
+ * Portal Administrador → Configurações → Integrações.
+ *
+ * Escrita restrita a super_admin (mesmo padrão de admin/users). Toda alteração é
+ * auditada: mudar audiência de uma integração altera o que os clientes podem
+ * usar, então precisa de rastro.
+ */
+
+import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { RequireRole } from '../../../core/decorators/roles.decorator';
+import { Audit } from '../../../core/interceptors/audit.interceptor';
+import { IntegrationAdminService } from './integration-admin.service';
+import { UpdatePlatformIntegrationDto, SetPlanIntegrationsDto } from '../dto/integration-governance.dto';
+
+@ApiTags('AdminIntegrations')
+@ApiBearerAuth()
+@Controller('admin/integrations')
+export class IntegrationAdminController {
+  constructor(private readonly admin: IntegrationAdminService) {}
+
+  @Get('categories')
+  @RequireRole('super_admin')
+  @ApiOperation({ summary: 'Categorias de integração (governança)' })
+  listCategories() {
+    return this.admin.listCategories();
+  }
+
+  @Get()
+  @RequireRole('super_admin')
+  @ApiOperation({
+    summary: 'Integrações governadas, com estado técnico derivado do código',
+  })
+  list() {
+    return this.admin.list();
+  }
+
+  /**
+   * Entitlements de integração por plano — persistidos em
+   * billing_plans.features.integrations. Fonte de verdade única: a edição vive
+   * aqui/Admin Plans, e a tela de integração só EXIBE includedInPlans.
+   */
+  @Get('plans/:planSlug')
+  @RequireRole('super_admin')
+  @ApiOperation({ summary: 'Integrações comerciais incluídas no plano' })
+  getPlanIntegrations(@Param('planSlug') planSlug: string) {
+    return this.admin.getPlanIntegrations(planSlug);
+  }
+
+  @Put('plans/:planSlug')
+  @RequireRole('super_admin')
+  @Audit('admin.plan_integrations_updated')
+  @ApiOperation({
+    summary: 'Define as integrações comerciais incluídas no plano',
+    description:
+      'Slugs internos/billing/inexistentes são rejeitados — entitlement comercial ' +
+      'não pode ser concedido a infraestrutura interna.',
+  })
+  setPlanIntegrations(
+    @Param('planSlug') planSlug: string,
+    @Body() dto: SetPlanIntegrationsDto,
+  ) {
+    return this.admin.setPlanIntegrations(planSlug, dto.integrations ?? []);
+  }
+
+  @Patch(':id')
+  @RequireRole('super_admin')
+  @Audit('admin.integration_governance_updated')
+  @ApiOperation({
+    summary: 'Atualiza governança (categoria, publicação, audiência VIEW/USE)',
+    description:
+      'Não altera capacidade técnica (é código) nem conexão do tenant (é credencial do cliente).',
+  })
+  update(@Param('id') id: string, @Body() dto: UpdatePlatformIntegrationDto) {
+    return this.admin.update(id, {
+      categoryId:       dto.categoryId,
+      publicationState: dto.publicationState,
+      technicalState:   dto.technicalState,
+      viewAudience:     dto.viewAudience,
+      useAudience:      dto.useAudience,
+      notes:            dto.notes,
+    });
+  }
+}

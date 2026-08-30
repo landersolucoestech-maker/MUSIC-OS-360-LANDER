@@ -193,6 +193,26 @@ export class IntegrationBaseService {
     } as any);
   }
 
+  /**
+   * Faz merge de metadados não-sensíveis na conexão OAuth (nunca tokens — esses
+   * vivem encriptados nas colunas próprias). Usado para cachear dados que só o
+   * provedor sabe informar depois do consentimento, ex.: account_id/base_uri do
+   * DocuSign, que vêm de /oauth/userinfo e não do token endpoint.
+   */
+  async saveOAuthMetadata(
+    tenantId: string, userId: string, provider: string, patch: Record<string, unknown>,
+  ): Promise<void> {
+    const conn = await this.oauthRepo!
+      .createQueryBuilder('o')
+      .where('o.tenant_id = :tenantId AND o.user_id = :userId AND o.provider = :provider', { tenantId, userId, provider })
+      .getOne();
+    if (!conn) return;
+    await this.oauthRepo!.update({ id: conn.id } as any, {
+      metadata:   { ...conn.metadata, ...patch },
+      updated_at: new Date(),
+    } as any);
+  }
+
   // ── Signed OAuth state ───────────────────────────────────────────────────────
 
   private static readonly STATE_TTL_MS = 10 * 60 * 1_000;

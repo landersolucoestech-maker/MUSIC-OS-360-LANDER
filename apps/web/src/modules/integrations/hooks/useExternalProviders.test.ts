@@ -1,0 +1,103 @@
+import { describe, expect, it } from "vitest";
+import {
+  ExternalProviderStatus,
+  IntegrationClassification,
+  IntegrationPublicationState,
+  IntegrationTechnicalState,
+  IntegrationReasonCode,
+} from "@music-os-360/types";
+import {
+  INTEGRATION_PRESENTATION,
+  findProviderState,
+  canOfferConnection,
+  type ClientIntegration,
+} from "./useExternalProviders";
+
+/**
+ * Catálogo comercial do tenant: o frontend ramifica pelo enum resolvido no
+ * backend, nunca por texto humano. Estes testes travam o contrato de UX.
+ */
+
+function integration(over: Partial<ClientIntegration> = {}): ClientIntegration {
+  return {
+    slug: "docusign", name: "DocuSign", category: "signing",
+    classification: IntegrationClassification.COMMERCIAL,
+    publicationState: IntegrationPublicationState.AVAILABLE,
+    technicalState: IntegrationTechnicalState.READY,
+    connectionKind: "oauth",
+    entitled: true, canConnect: true, canUse: false,
+    connectionState: ExternalProviderStatus.AVAILABLE_NOT_CONNECTED,
+    reasonCode: IntegrationReasonCode.NOT_CONNECTED,
+    eligiblePlans: [],
+    ...over,
+  };
+}
+
+describe("Catálogo comercial do tenant — contrato de estados", () => {
+  it("tem apresentação para TODOS os reason codes (nenhum cai em render vazio)", () => {
+    for (const code of Object.values(IntegrationReasonCode)) {
+      const p = INTEGRATION_PRESENTATION[code];
+      expect(p, `sem apresentação para ${code}`).toBeDefined();
+      expect(p.label.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("PLAN_NOT_INCLUDED e COMING_SOON são estados DIFERENTES", () => {
+    const locked = INTEGRATION_PRESENTATION[IntegrationReasonCode.PLAN_NOT_INCLUDED];
+    const soon = INTEGRATION_PRESENTATION[IntegrationReasonCode.COMING_SOON];
+
+    expect(locked.label).not.toBe(soon.label);
+    // Bloqueio por plano é uma venda: oferece upgrade. "Em breve" não oferece nada.
+    expect(locked.action).toBe("upgrade");
+    expect(soon.action).toBe("none");
+  });
+
+  it("NOT_CONNECTED (entitled) oferece conectar; CONNECTED oferece gerir", () => {
+    expect(INTEGRATION_PRESENTATION[IntegrationReasonCode.NOT_CONNECTED].action).toBe("connect");
+    expect(INTEGRATION_PRESENTATION[IntegrationReasonCode.CONNECTED].action).toBe("manage");
+  });
+
+  it("REQUIRES_REAUTH e PROVIDER_ERROR não são 'não conectado'", () => {
+    const reauth = INTEGRATION_PRESENTATION[IntegrationReasonCode.REQUIRES_REAUTH];
+    const err = INTEGRATION_PRESENTATION[IntegrationReasonCode.PROVIDER_ERROR];
+    const notConn = INTEGRATION_PRESENTATION[IntegrationReasonCode.NOT_CONNECTED];
+
+    expect(new Set([reauth.label, err.label, notConn.label]).size).toBe(3);
+    expect(err.tone).toBe("danger");
+    expect(reauth.action).toBe("reconnect");
+  });
+
+  it("COMING_SOON nunca oferece conexão, mesmo entitled", () => {
+    const soon = integration({
+      entitled: true, canConnect: false,
+      publicationState: IntegrationPublicationState.COMING_SOON,
+      technicalState: IntegrationTechnicalState.PLANNED,
+      reasonCode: IntegrationReasonCode.COMING_SOON,
+    });
+    expect(canOfferConnection(soon)).toBe(false);
+  });
+
+  it("sem entitlement nunca oferece conexão (mas continua visível)", () => {
+    const locked = integration({
+      entitled: false, canConnect: false,
+      reasonCode: IntegrationReasonCode.PLAN_NOT_INCLUDED,
+      eligiblePlans: ["professional"],
+    });
+    expect(canOfferConnection(locked)).toBe(false);
+    expect(locked.eligiblePlans).toEqual(["professional"]);
+  });
+
+  it("platform_credentials nunca oferece botão de conectar ao cliente", () => {
+    const p = integration({ connectionKind: "platform_credentials", canConnect: true });
+    expect(canOfferConnection(p)).toBe(false);
+  });
+
+  it("findProviderState devolve undefined para o que o backend não resolveu", () => {
+    const list = [integration()];
+    expect(findProviderState(list, "docusign")?.slug).toBe("docusign");
+    // Internos nunca chegam ao catálogo do cliente.
+    for (const internal of ["soundcharts", "acrcloud", "resend", "stripe"]) {
+      expect(findProviderState(list, internal)).toBeUndefined();
+    }
+  });
+});

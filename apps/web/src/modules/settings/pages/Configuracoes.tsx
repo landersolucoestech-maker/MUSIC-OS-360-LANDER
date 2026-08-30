@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
@@ -9,7 +10,7 @@ import { Label } from "@/shared/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { Switch } from "@/shared/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Badge } from "@/shared/ui/badge";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { Separator } from "@/shared/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { toast } from "sonner";
@@ -38,30 +39,74 @@ import { Textarea } from "@/shared/ui/textarea";
 import { Progress } from "@/shared/ui/progress";
 import { useMarketingOAuth, type MarketingPlatformId } from "@/modules/integrations/hooks/useMarketingOAuth";
 import { MarketingOAuthDialog } from "@/modules/integrations/components/MarketingOAuthDialog";
-import { getAccessToken } from "@/shared/lib/api-client";
-import { API_BASE_URL } from "@/shared/lib/env";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
 import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDialog";
 import { useEcadStatus } from "@/modules/integrations/hooks/useEcad";
 import { AutentiqueConfigDialog } from "@/modules/integrations/components/AutentiqueConfigDialog";
 import { useAutentiqueStatus } from "@/modules/integrations/hooks/useAutentique";
-import { ClicksignConfigDialog } from "@/modules/integrations/components/ClicksignConfigDialog";
-import { useClicksignStatus } from "@/modules/integrations/hooks/useClicksign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
-import { SpotifyConfigDialog } from "@/modules/integrations/components/SpotifyConfigDialog";
-import { useSpotifyStatus } from "@/modules/integrations/hooks/useSpotify";
-import { YouTubeConfigDialog } from "@/modules/integrations/components/YouTubeConfigDialog";
-import { useYouTubeStatus } from "@/modules/integrations/hooks/useYouTube";
-import { DeezerConfigDialog } from "@/modules/integrations/components/DeezerConfigDialog";
-import { useDeezerStatus } from "@/modules/integrations/hooks/useDeezer";
-import { SoundCloudConfigDialog } from "@/modules/integrations/components/SoundCloudConfigDialog";
-import { useSoundCloudStatus } from "@/modules/integrations/hooks/useSoundCloud";
-import { AppleMusicConfigDialog } from "@/modules/integrations/components/AppleMusicConfigDialog";
-import { useAppleMusicStatus } from "@/modules/integrations/hooks/useAppleMusic";
+import { ExternalProviderStatus, IntegrationReasonCode } from "@music-os-360/types";
+import {
+  useExternalProviders,
+  findProviderState,
+  INTEGRATION_PRESENTATION,
+  type ClientIntegration,
+} from "@/modules/integrations/hooks/useExternalProviders";
+
+/**
+ * Provedores sob governança administrativa (platform_integrations). Para estes,
+ * o backend decide a visibilidade; os demais cards desta página (portais de
+ * distribuição, captação de leads) não são provedores governados e permanecem
+ * com o sinal local.
+ */
+const GOVERNED_PROVIDER_KEYS = new Set([
+  "autentique", "docusign", "clicksign", "abramus", "ubc", "ecad", "nfe",
+  "acrcloud", "soundcharts", "google_ads", "meta_business", "stripe",
+  "resend", "whatsapp",
+]);
+
+/** Item do catálogo único de Integrações — mesma forma para provedores
+ *  configuráveis (autentique, ecad, ...) e distribuidoras (apenas `portalUrl`,
+ *  sempre acesso externo, nunca adapter/Connect). */
+interface IntegrationCatalogItem {
+  id: string;
+  name: string;
+  logoId?: IntegrationLogoId;
+  icon?: React.ComponentType<{ className?: string }>;
+  iconClassName?: string;
+  iconBackgroundClassName?: string;
+  // Estado de máquina vindo da governança do backend (ExternalProviderStatus).
+  // Nunca ramificar por texto humano — o rótulo vem de
+  // EXTERNAL_PROVIDER_PRESENTATION, que é derivado deste enum.
+  status: ExternalProviderStatus;
+  description: string;
+  category: string;
+  configurable?: boolean;
+  notices?: IntegrationNotice[];
+  /** Presente somente para distribuidoras: conexão é sempre via link externo,
+   *  nunca OAuth/credenciais — não há adapter, não há "Connect" funcional. */
+  portalUrl?: string;
+}
+
+/** Mesmo mapeamento de ClientIntegrationCard — badge de reasonCode (governança/plano),
+ *  usado nas linhas do catálogo único para os itens governados/resolvidos pelo backend. */
+const REASON_TONE_VARIANT: Record<string, BadgeVariant> = {
+  success: "success",
+  neutral: "neutral",
+  warning: "warning",
+  danger: "danger",
+  info: "info",
+};
+// Seção "Streaming" (Spotify/YouTube Music/Deezer/SoundCloud/Apple Music) removida em
+// 2026-08-23: essas métricas de catálogo por plataforma vêm hoje do Soundcharts, através
+// de artists/platform-profiles/providers/* — manter cards de configuração individuais aqui
+// duplicava a mesma capacidade analítica em duas superfícies. Os serviços de backend
+// (incluindo o OAuth real do Spotify) e seus endpoints continuam existindo e NÃO foram
+// removidos: só a exposição configurável redundante saiu daqui.
 import {
   IntegrationStatusBadges,
   type IntegrationNotice,
@@ -198,91 +243,21 @@ export default function Configuracoes() {
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
-  const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
-  const [spotifyConfigOpen, setSpotifyConfigOpen] = useState(false);
-  const [youtubeConfigOpen, setYoutubeConfigOpen] = useState(false);
-  const [deezerConfigOpen, setDeezerConfigOpen] = useState(false);
-  const [soundcloudConfigOpen, setSoundcloudConfigOpen] = useState(false);
-  const [appleMusicConfigOpen, setAppleMusicConfigOpen] = useState(false);
-  const [externalOAuthConnections, setExternalOAuthConnections] = useState<
-    Partial<Record<"docusign", boolean>>
-  >(() => {
-    try {
-      return JSON.parse(sessionStorage.getItem("musicos360_external_oauth_connections") ?? "{}");
-    } catch {
-      return {};
-    }
-  });
 
+  const navigate = useNavigate();
+  const { data: externalProviders } = useExternalProviders();
   const { data: abramusStatus } = useAbramusStatus();
   const { data: ecadStatus } = useEcadStatus();
   const { data: autentiqueStatus } = useAutentiqueStatus();
-  const { data: clicksignStatus } = useClicksignStatus();
   const { data: ubcStatus } = useUbcStatus();
-  const { data: spotifyStatus } = useSpotifyStatus();
-  const { data: youtubeStatus } = useYouTubeStatus();
-  const { data: deezerStatus } = useDeezerStatus();
-  const { data: soundcloudStatus } = useSoundCloudStatus();
-  const { data: appleMusicStatus } = useAppleMusicStatus();
   const {
     isConnected: isMarketingConnected,
     connect: connectMarketing,
     disconnect: disconnectMarketing,
   } = useMarketingOAuth();
   const { data: nfeStatus } = useNfeStatus();
-
-  useEffect(() => {
-    const handleExternalOAuth = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      if (event.data?.type !== "musicos360_oauth_success") return;
-      const platform = event.data?.platform as string;
-      if (platform !== "docusign") return;
-      if (!event.data?.access_token) return;
-
-      setExternalOAuthConnections((current) => {
-        const next = { ...current, [platform]: true };
-        sessionStorage.setItem("musicos360_external_oauth_connections", JSON.stringify(next));
-        return next;
-      });
-      toast.success("DocuSign conectado com sucesso.");
-    };
-
-    window.addEventListener("message", handleExternalOAuth);
-    return () => window.removeEventListener("message", handleExternalOAuth);
-  }, []);
-
-  const openExternalOAuth = async (platform: "docusign") => {
-    const popup = window.open(
-      "about:blank",
-      `musicos360_oauth_${platform}`,
-      "width=520,height=700,toolbar=no,menubar=no,scrollbars=yes,resizable=yes",
-    );
-    if (!popup) {
-      toast.error("Permita popups neste site para iniciar a autorização.");
-      return;
-    }
-
-    try {
-      const accessToken = getAccessToken();
-      const response = await fetch(`${API_BASE_URL}/api/v1/integrations/oauth/init`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({ platform }),
-      });
-      if (!response.ok) throw new Error("Não foi possível iniciar a autorização.");
-      const { exchange_token } = await response.json() as { exchange_token: string };
-      sessionStorage.setItem(`musicos360_oauth_nonce_${platform}`, exchange_token);
-      popup.location.href = `/oauth/${platform}?nonce=${encodeURIComponent(exchange_token)}`;
-    } catch (error) {
-      popup.close();
-      toast.error(error instanceof Error ? error.message : "Falha ao iniciar OAuth.");
-    }
-  };
 
   // Estados para aba de Usuários
   const [usuarioFormModal, setUsuarioFormModal] = useState<{ open: boolean; mode: "create" | "edit"; usuario?: Usuario }>({ open: false, mode: "create" });
@@ -460,53 +435,58 @@ export default function Configuracoes() {
     );
   };
 
-  const integracoes: Array<{
-    id: string;
-    name: string;
-    logoId?: IntegrationLogoId;
-    icon?: React.ComponentType<{ className?: string }>;
-    iconClassName?: string;
-    iconBackgroundClassName?: string;
-    status: "conectado" | "desconectado";
-    description: string;
-    category: string;
-    configurable?: boolean;
-    notices?: IntegrationNotice[];
-  }> = [
+  /**
+   * Estado de um card de integração.
+   *
+   * Provedores sob governança externa (GET /integrations/providers) usam o
+   * estado resolvido pelo BACKEND — que distingue DEPENDENCY_NOT_MET,
+   * REQUIRES_REAUTH e PROVIDER_ERROR, coisas que um booleano `connected` não
+   * consegue representar.
+   *
+   * `fallbackConnected` cobre apenas as entradas que NÃO são provedores
+   * externos governados (portais de distribuição, captação de leads): elas
+   * continuam com o sinal local, normalizado para o mesmo enum para que o
+   * render tenha um único contrato.
+   */
+  const providerStatus = (id: string, fallbackConnected?: boolean): ExternalProviderStatus => {
+    const governed = findProviderState(externalProviders, id);
+    if (governed) return governed.connectionState;
+    return fallbackConnected
+      ? ExternalProviderStatus.CONNECTED
+      : ExternalProviderStatus.AVAILABLE_NOT_CONNECTED;
+  };
+
+  /**
+   * Governança do backend: se o provedor é governado e NÃO foi resolvido para
+   * este cliente, ele não aparece. O endpoint já filtra por canView; isto evita
+   * renderizar um card órfão caso a lista local cite um provedor não liberado.
+   */
+  const isGovernedButHidden = (id: string): boolean =>
+    externalProviders.length > 0
+    && GOVERNED_PROVIDER_KEYS.has(id)
+    && !findProviderState(externalProviders, id);
+
+  const integracoes: IntegrationCatalogItem[] = [
     // ── Assinatura Digital ────────────────────────────────────────────────────
     {
       id: "autentique",
       name: "Autentique",
       logoId: "autentique",
-      status: autentiqueStatus?.connected ? "conectado" : "desconectado",
+      status: providerStatus("autentique", autentiqueStatus?.connected),
       description: "Assinatura eletrônica brasileira — envio e acompanhamento de contratos",
       category: "Assinatura Digital",
       configurable: true,
     },
-    {
-      id: "clicksign",
-      name: "Clicksign",
-      logoId: "clicksign",
-      status: clicksignStatus?.connected ? "conectado" : "desconectado",
-      description: "Plataforma brasileira de assinatura eletrônica com validade jurídica",
-      category: "Assinatura Digital",
-      configurable: true,
-    },
-    {
-      id: "docusign",
-      name: "DocuSign",
-      logoId: "docusign",
-      status: externalOAuthConnections.docusign ? "conectado" : "desconectado",
-      description: "Líder mundial em assinatura digital e gestão de acordos",
-      category: "Assinatura Digital",
-      configurable: true,
-    },
+    // Clicksign e DocuSign removidos das opções de produção (Decision Gate
+    // item 13): nenhum dos dois é uma integração de assinatura real hoje —
+    // ver useSigningProviders.ts. Arquitetura de providers preservada para
+    // quando isso mudar.
     // ── Direitos Autorais ─────────────────────────────────────────────────────
     {
       id: "ecad",
       name: "ECAD",
       logoId: "ecad",
-      status: ecadStatus?.connected ? "conectado" : "desconectado",
+      status: providerStatus("ecad", ecadStatus?.connected),
       description: "Arrecadação de execução pública · Conciliação com catálogo local",
       category: "Direitos Autorais",
       configurable: true,
@@ -515,7 +495,7 @@ export default function Configuracoes() {
       id: "abramus",
       name: "ABRAMUS",
       logoId: "abramus",
-      status: abramusStatus?.connected ? "conectado" : "desconectado",
+      status: providerStatus("abramus", abramusStatus?.connected),
       description: "Registro e conciliação de obras e fonogramas junto à ABRAMUS.",
       category: "Direitos Autorais",
       configurable: true,
@@ -524,52 +504,16 @@ export default function Configuracoes() {
       id: "ubc",
       name: "UBC",
       logoId: "ubc",
-      status: ubcStatus?.connected ? "conectado" : "desconectado",
+      status: providerStatus("ubc", ubcStatus?.connected),
       description: "União Brasileira de Compositores — registro de obras e ISWC",
       category: "Direitos Autorais",
       configurable: true,
     },
-    // ── Streaming — métricas de catálogo por plataforma ────────────────────────
-    {
-      id: "spotify",
-      name: "Spotify",
-      status: spotifyStatus?.connected ? "conectado" : "desconectado",
-      description: "Dados de streams, ouvintes mensais e desempenho de catálogo",
-      category: "Streaming",
-      configurable: true,
-    },
-    {
-      id: "youtube",
-      name: "YouTube Music",
-      status: youtubeStatus?.connected ? "conectado" : "desconectado",
-      description: "Métricas de visualizações, receita e crescimento de canal",
-      category: "Streaming",
-      configurable: true,
-    },
-    {
-      id: "deezer",
-      name: "Deezer",
-      status: deezerStatus?.connected ? "conectado" : "desconectado",
-      description: "Relatórios de streams e royalties da plataforma Deezer",
-      category: "Streaming",
-      configurable: true,
-    },
-    {
-      id: "soundcloud",
-      name: "SoundCloud",
-      status: soundcloudStatus?.connected ? "conectado" : "desconectado",
-      description: "Estatísticas de reprodução e engajamento no SoundCloud",
-      category: "Streaming",
-      configurable: true,
-    },
-    {
-      id: "apple-music",
-      name: "Apple Music",
-      status: appleMusicStatus?.connected ? "conectado" : "desconectado",
-      description: "Dados de streams e relatórios do Apple Music for Artists",
-      category: "Streaming",
-      configurable: true,
-    },
+    // ── Streaming ─────────────────────────────────────────────────────────────
+    // Removida em 2026-08-23. Métricas de catálogo por plataforma (Spotify, YouTube,
+    // Deezer, SoundCloud, Apple Music) chegam pelo Soundcharts, normalizadas em
+    // artists/platform-profiles/providers/* — não há mais integração analítica
+    // individual a configurar aqui. O backend de cada plataforma continua existindo.
     // ── Marketing Digital — contas corporativas (métricas + tráfego pago) ──────
     // Todas as plataformas coexistem num único ecossistema operacional.
     // Plataformas de ARTISTAS são automáticas via links do cadastro de cada artista.
@@ -578,7 +522,7 @@ export default function Configuracoes() {
       id: "meta_business",
       name: "Meta Business Suite",
       logoId: "meta_business",
-      status: isMarketingConnected("meta_business") ? "conectado" : "desconectado",
+      status: providerStatus("meta_business", isMarketingConnected("meta_business")),
       description: "Facebook, Instagram e Meta Ads — mensagens, métricas, publicações, campanhas e resultados da empresa",
       category: "Marketing Digital",
       configurable: true,
@@ -587,7 +531,7 @@ export default function Configuracoes() {
       id: "tiktok_business",
       name: "TikTok Business",
       logoId: "tiktok_business",
-      status: isMarketingConnected("tiktok_business") ? "conectado" : "desconectado",
+      status: providerStatus("tiktok_business", isMarketingConnected("tiktok_business")),
       description: "TikTok for Business e TikTok Ads — mensagens, seguidores, conteúdos, métricas e campanhas",
       category: "Marketing Digital",
       configurable: true,
@@ -596,7 +540,7 @@ export default function Configuracoes() {
       id: "google_business",
       name: "Google & YouTube",
       logoId: "google_business",
-      status: isMarketingConnected("google_business") ? "conectado" : "desconectado",
+      status: providerStatus("google_business", isMarketingConnected("google_business")),
       description: "Google Analytics, Search Console, Google Ads e YouTube — tráfego, anúncios, SEO e desempenho de vídeos",
       category: "Marketing Digital",
       configurable: true,
@@ -606,7 +550,7 @@ export default function Configuracoes() {
       id: "spotify_ads",
       name: "Spotify Ad Studio",
       logoId: "spotify_ads",
-      status: isMarketingConnected("spotify_ads") ? "conectado" : "desconectado",
+      status: providerStatus("spotify_ads", isMarketingConnected("spotify_ads")),
       description: "Spotify Ads — ouvintes, streams, seguidores e campanhas",
       category: "Marketing Digital",
       configurable: true,
@@ -616,7 +560,7 @@ export default function Configuracoes() {
       id: "nfe",
       name: "NF-e / Nota Fiscal",
       logoId: "nfe",
-      status: nfeStatus?.connected ? "conectado" : "desconectado",
+      status: providerStatus("nfe", nfeStatus?.connected),
       description: "Emissão de NF-e com certificado digital e credenciais SEFAZ da sua empresa",
       category: "Fiscal",
       configurable: true,
@@ -629,7 +573,7 @@ export default function Configuracoes() {
       icon: Globe2,
       iconClassName: "text-cyan-600",
       iconBackgroundClassName: "bg-cyan-500/10",
-      status: "desconectado" as const,
+      status: ExternalProviderStatus.AVAILABLE_NOT_CONNECTED,
       description: "Captação de leads via Pixel, Webhooks e formulários integrados ao CRM",
       category: "Captação de Leads",
       configurable: true,
@@ -651,6 +595,26 @@ export default function Configuracoes() {
     { id: "somvibe", name: "SomVibe", logoId: "somvibe", description: "Distribuição digital com foco no mercado brasileiro", portalUrl: "https://somvibe.com.br/" },
   ];
 
+  /**
+   * Catálogo único (Parte de consolidação): distribuidoras nunca tiveram
+   * governança de plano/backend — sempre acesso externo direto, sem adapter —
+   * então entram no mesmo catálogo com logos sob a categoria "Distribuição
+   * Digital" em vez de permanecer num segundo Card visualmente separado.
+   * status é um placeholder nunca lido: a linha ramifica por `portalUrl`.
+   */
+  const catalogItems: IntegrationCatalogItem[] = [
+    ...integracoes,
+    ...DISTRIBUTORS.map((dist) => ({
+      id: dist.id,
+      name: dist.name,
+      logoId: dist.logoId,
+      status: ExternalProviderStatus.AVAILABLE_NOT_CONNECTED,
+      description: dist.description,
+      category: "Distribuição Digital",
+      portalUrl: dist.portalUrl,
+    })),
+  ];
+
   // IDs das plataformas corporativas de Marketing Digital (OAuth inline, sem modal separado)
   // Inclui TODAS as contas da empresa — métricas + tráfego pago.
   // Artistas funcionam automaticamente via links do cadastro: NÃO estão aqui.
@@ -664,18 +628,11 @@ export default function Configuracoes() {
   // Handlers para plataformas que abrem um ConfigDialog dedicado
   const integrationConfigHandlers: Record<string, () => void> = {
     autentique:    () => setAutentiqueConfigOpen(true),
-    clicksign:     () => setClicksignConfigOpen(true),
-    docusign:      () => void openExternalOAuth("docusign"),
     ecad:          () => setEcadConfigOpen(true),
     abramus:       () => setAbramusConfigOpen(true),
     ubc:           () => setUbcConfigOpen(true),
     website_leads: () => setWebsiteLeadOpen(true),
     nfe:           () => setNfeConfigOpen(true),
-    spotify:       () => setSpotifyConfigOpen(true),
-    youtube:       () => setYoutubeConfigOpen(true),
-    deezer:        () => setDeezerConfigOpen(true),
-    soundcloud:    () => setSoundcloudConfigOpen(true),
-    "apple-music": () => setAppleMusicConfigOpen(true),
   };
 
   const handleSaveProfile = () => {
@@ -1383,16 +1340,26 @@ export default function Configuracoes() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Catálogo único: cada integração aparece exatamente uma vez, com logo.
+                    Para itens governados pelo backend (publicação + capacidade técnica +
+                    entitlement do plano + conexão), a linha usa a apresentação por
+                    reasonCode (badge/ação/bloqueio de plano) em vez do texto local — a
+                    integração de plano superior aparece BLOQUEADA, nunca escondida.
+                    Internos/billing não chegam aqui — o resolver os exclui por
+                    classificação, nunca um filtro de frontend. Distribuidoras (sempre
+                    acesso externo, sem adapter) entram como categoria própria abaixo. */}
                 {[
                   { key: "Assinatura Digital",   icon: <FileText className="h-4 w-4" /> },
                   { key: "Direitos Autorais",     icon: <Shield className="h-4 w-4" /> },
-                  { key: "Streaming",             icon: <Music className="h-4 w-4" /> },
                   { key: "Monitoramento Musical", icon: <Music className="h-4 w-4" /> },
                   { key: "Marketing Digital",     icon: <Zap className="h-4 w-4" /> },
                   { key: "Fiscal",                icon: <DollarSign className="h-4 w-4" /> },
                   { key: "Captação de Leads",     icon: <Users className="h-4 w-4" /> },
+                  { key: "Distribuição Digital",  icon: <Package className="h-4 w-4" /> },
                 ].map(({ key: category, icon: catIcon }) => {
-                  const items = integracoes.filter((i) => i.category === category);
+                  const items = catalogItems.filter(
+                    (i) => i.category === category && !isGovernedButHidden(i.id),
+                  );
                   if (items.length === 0) return null;
                   return (
                     <div key={category} className="space-y-3">
@@ -1404,13 +1371,52 @@ export default function Configuracoes() {
                         </p>
                       </div>
 
-                      {/* Linhas — mesmo padrão visual de Distribuidoras */}
+                      {/* Linhas do catálogo único — logo + governança/plano quando o backend
+                          resolve o provedor, texto local nos demais casos. */}
                       {items.map((integracao) => {
+                        if (integracao.portalUrl) {
+                          // Distribuidora: sempre acesso externo, nunca adapter/Connect.
+                          return (
+                            <div
+                              key={integracao.id}
+                              className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
+                              data-testid={`integration-row-${integracao.id}`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <IntegrationLogo id={integracao.logoId!} imageClassName="h-11 w-11" />
+                                <div>
+                                  <p className="font-medium">{integracao.name}</p>
+                                  <p className="text-sm text-muted-foreground leading-snug">{integracao.description}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 shrink-0 ml-4">
+                                <Badge variant="secondary">Acesso externo</Badge>
+                                <Button variant="outline" size="sm" asChild data-testid={`button-integration-${integracao.id}`}>
+                                  <a href={integracao.portalUrl} target="_blank" rel="noopener noreferrer">
+                                    Abrir portal oficial
+                                    <ExternalLink className="h-3 w-3 ml-2" />
+                                  </a>
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        }
+
                         const FallbackIcon = integracao.icon;
                         const isMarketingPlatform = MARKETING_PLATFORM_IDS.has(integracao.id);
                         const isConnecting = connectingPlatform === integracao.id;
                         const handler = integrationConfigHandlers[integracao.id];
                         const isConfigurable = Boolean(handler);
+                        // Governança do backend (publicação + capacidade técnica + entitlement
+                        // do plano + conexão) para este slug, se ele for um provedor governado
+                        // resolvido para este tenant — ver useExternalProviders.ts.
+                        const governed: ClientIntegration | undefined = findProviderState(externalProviders, integracao.id);
+                        const presentation = governed ? INTEGRATION_PRESENTATION[governed.reasonCode] : null;
+                        const lockedByPlan = governed?.reasonCode === IntegrationReasonCode.PLAN_NOT_INCLUDED;
+                        // Nenhuma ação (Connect/Configure) quando o backend não autoriza —
+                        // "Coming soon"/"ainda não operacional"/etc. nunca oferecem botão
+                        // funcional, mesmo que exista handler local ou fluxo de OAuth.
+                        const noAction = Boolean(presentation) && presentation!.action === "none";
                         return (
                           <div
                             key={integracao.id}
@@ -1431,23 +1437,53 @@ export default function Configuracoes() {
                               <div>
                                 <p className="font-medium">{integracao.name}</p>
                                 <p className="text-sm text-muted-foreground leading-snug">{integracao.description}</p>
+                                {lockedByPlan && governed && (
+                                  <p className="mt-1 text-xs text-muted-foreground" data-testid={`integration-row-${integracao.id}-locked`}>
+                                    {governed.eligiblePlans.length > 0 ? (
+                                      <>Disponível {governed.eligiblePlans.length > 1 ? "nos planos" : "no plano"}:{" "}
+                                        <span className="font-medium text-foreground">{governed.eligiblePlans.join(", ")}</span></>
+                                    ) : (
+                                      "Nenhum plano ativo inclui esta integração no momento."
+                                    )}
+                                  </p>
+                                )}
                               </div>
                             </div>
 
                             {/* Direita: badge + botão */}
                             <div className="flex items-center gap-3 shrink-0 ml-4">
-                              <IntegrationStatusBadges
-                                status={integracao.status}
-                                notices={integracao.notices}
-                                testIdPrefix={`badge-integration-${integracao.id}`}
-                              />
-                              {isMarketingPlatform ? (
+                              {presentation ? (
+                                <Badge
+                                  variant={REASON_TONE_VARIANT[presentation.tone] ?? "neutral"}
+                                  data-testid={`badge-integration-${integracao.id}-status`}
+                                >
+                                  {presentation.label}
+                                </Badge>
+                              ) : (
+                                <IntegrationStatusBadges
+                                  status={integracao.status}
+                                  notices={integracao.notices}
+                                  testIdPrefix={`badge-integration-${integracao.id}`}
+                                />
+                              )}
+                              {lockedByPlan ? (
+                                governed && governed.eligiblePlans.length > 0 ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate("/configuracoes/billing")}
+                                    data-testid={`button-integration-${integracao.id}`}
+                                  >
+                                    Ver planos
+                                  </Button>
+                                ) : null
+                              ) : noAction ? null : isMarketingPlatform ? (
                                 isConnecting ? (
                                   <Button variant="outline" size="sm" disabled data-testid={`button-integration-${integracao.id}`}>
                                     <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                                     Conectando...
                                   </Button>
-                                ) : integracao.status === "conectado" ? (
+                                ) : integracao.status === ExternalProviderStatus.CONNECTED ? (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -1481,7 +1517,7 @@ export default function Configuracoes() {
                                   data-testid={`button-integration-${integracao.id}`}
                                 >
                                   {isConfigurable
-                                    ? integracao.status === "conectado"
+                                    ? integracao.status === ExternalProviderStatus.CONNECTED
                                       ? "Gerenciar"
                                       : "Configurar"
                                     : "Em breve"}
@@ -1504,51 +1540,6 @@ export default function Configuracoes() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Distribuidoras */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Distribuidoras
-                </CardTitle>
-                <CardDescription>Conecte sua conta nas distribuidoras para enviar lançamentos diretamente pela plataforma</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {DISTRIBUTORS.map((dist) => (
-                    <div
-                      key={dist.id}
-                      className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
-                      data-testid={`distributor-row-${dist.id}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <IntegrationLogo id={dist.logoId} imageClassName="h-11 w-11" />
-                        <div>
-                          <p className="font-medium">{dist.name}</p>
-                          <p className="text-sm text-muted-foreground">{dist.description}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="secondary">
-                          Acesso externo
-                        </Badge>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                          data-testid={`button-dist-connect-${dist.id}`}
-                        >
-                          <a href={dist.portalUrl} target="_blank" rel="noopener noreferrer">
-                            Abrir portal oficial
-                            <ExternalLink className="h-3 w-3 ml-2" />
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                ))}
-              </CardContent>
-            </Card>
-
 
             {/* Dialog — Website / Captação de Leads (snippet de código, sem OAuth) */}
             <Dialog open={websiteLeadOpen} onOpenChange={setWebsiteLeadOpen}>
@@ -1623,33 +1614,9 @@ export default function Configuracoes() {
               open={autentiqueConfigOpen}
               onOpenChange={setAutentiqueConfigOpen}
             />
-            <ClicksignConfigDialog
-              open={clicksignConfigOpen}
-              onOpenChange={setClicksignConfigOpen}
-            />
             <UbcConfigDialog
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
-            />
-            <SpotifyConfigDialog
-              open={spotifyConfigOpen}
-              onOpenChange={setSpotifyConfigOpen}
-            />
-            <YouTubeConfigDialog
-              open={youtubeConfigOpen}
-              onOpenChange={setYoutubeConfigOpen}
-            />
-            <DeezerConfigDialog
-              open={deezerConfigOpen}
-              onOpenChange={setDeezerConfigOpen}
-            />
-            <SoundCloudConfigDialog
-              open={soundcloudConfigOpen}
-              onOpenChange={setSoundcloudConfigOpen}
-            />
-            <AppleMusicConfigDialog
-              open={appleMusicConfigOpen}
-              onOpenChange={setAppleMusicConfigOpen}
             />
             {oauthDialogPlatform && (
               <MarketingOAuthDialog

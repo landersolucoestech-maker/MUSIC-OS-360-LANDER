@@ -41,6 +41,15 @@ export class BillingController {
   ) {}
 
   // ── Gestão de Planos (fonte primária = banco/admin; Stripe é sincronizado) ──
+
+  // Rota pública ANTES de plans/:id — do contrário ':id' capturaria 'public'.
+  @Get('plans/public')
+  @Public()
+  @ApiOperation({ summary: 'Listar planos ativos publicamente (Landing) — sem autenticação' })
+  listPublicPlans() {
+    return this.plans.listPublic();
+  }
+
   @Get('plans')
   @RequireRole('admin')
   @ApiOperation({ summary: 'Listar planos (admin+)' })

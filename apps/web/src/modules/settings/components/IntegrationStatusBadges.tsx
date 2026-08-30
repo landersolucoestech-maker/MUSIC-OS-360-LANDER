@@ -4,8 +4,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/ui/tooltip";
+import { ExternalProviderStatus } from "@music-os-360/types";
 
-export type IntegrationConnectionStatus = "conectado" | "desconectado";
+
+/**
+ * O badge passou a renderizar o enum de governança (ExternalProviderStatus) em
+ * vez do par "conectado"/"desconectado". Motivo: aquele booleano não conseguia
+ * distinguir "indisponível na plataforma", "precisa reautenticar" e "erro no
+ * provedor" — os três apareciam como "Desconectado", o que escondia do
+ * utilizador qual era a ação necessária.
+ */
+export type IntegrationConnectionStatus = ExternalProviderStatus;
 
 export type IntegrationNoticeVariant = "warning" | "info" | "destructive";
 
@@ -26,6 +35,16 @@ const noticeBadgeVariant: Record<IntegrationNoticeVariant, BadgeVariant> = {
   warning: "warning",
   info: "info",
   destructive: "danger",
+};
+
+/** Tom da apresentação → variante do design system. */
+/** Rótulo/tom por estado de CONEXÃO do tenant (dimensão separada da política). */
+const CONNECTION_PRESENTATION: Record<ExternalProviderStatus, { label: string; variant: BadgeVariant }> = {
+  [ExternalProviderStatus.CONNECTED]:               { label: 'Conectado',            variant: 'success' },
+  [ExternalProviderStatus.AVAILABLE_NOT_CONNECTED]: { label: 'Não conectado',        variant: 'neutral' },
+  [ExternalProviderStatus.REQUIRES_REAUTH]:         { label: 'Reconexão necessária', variant: 'warning' },
+  [ExternalProviderStatus.PROVIDER_ERROR]:          { label: 'Erro no provedor',     variant: 'danger'  },
+  [ExternalProviderStatus.DEPENDENCY_NOT_MET]:      { label: 'Indisponível',         variant: 'neutral' },
 };
 
 export function IntegrationStatusBadges({
@@ -71,12 +90,13 @@ export function IntegrationStatusBadges({
         );
       })}
       <Badge
-        variant={status === "conectado" ? "success" : "neutral"}
+        variant={CONNECTION_PRESENTATION[status].variant}
         data-testid={
           testIdPrefix ? `${testIdPrefix}-status` : undefined
         }
+        data-status={status}
       >
-        {status === "conectado" ? "Conectado" : "Desconectado"}
+        {CONNECTION_PRESENTATION[status].label}
       </Badge>
     </div>
   );

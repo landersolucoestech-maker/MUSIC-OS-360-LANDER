@@ -22,6 +22,7 @@ import { GoogleAdsService }   from './google-ads/google-ads.service';
 import { AbramusService }     from './abramus/abramus.service';
 import { WhatsAppCloudProvider } from './whatsapp/whatsapp-cloud.provider';
 import { IntegrationBaseService } from './integration-base.service';
+import { IntegrationPolicyService } from './governance/integration-policy.service';
 import {
   ConfigureAutentiqueDto,
   SendForSignatureDto,
@@ -66,6 +67,7 @@ export class IntegrationsController {
     private readonly integrationBase: IntegrationBaseService,
     private readonly config:      ConfigService,
     private readonly cache:       CacheService,
+    private readonly integrationPolicy: IntegrationPolicyService,
   ) {}
 
   // ─── OAuth init (authenticated) ────────────────────────────────────────────
@@ -398,6 +400,53 @@ export class IntegrationsController {
       throw new BadRequestException(`Plataforma OAuth não suportada: ${platform}`);
     }
     return platform;
+  }
+
+  // ─── Governança de provedores externos ─────────────────────────────────────
+
+  @Get('providers')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Integrações resolvidas para este cliente (governança + capacidade + audiência + conexão)',
+    description:
+      'Resolvido pelo backend a partir da governança persistida (platform_integrations), da ' +
+      'capacidade técnica derivada do código e da conexão do tenant. Só retorna o que o ' +
+      'cliente pode ENXERGAR (canView) — o que ele pode USAR vem em canUse e é enforced no ' +
+      'backend pelo IntegrationUsageGuard, não apenas escondido na UI.',
+  })
+  async listExternalProviders(@Request() req: any) {
+    const resolved = await this.integrationPolicy.resolveAll({
+      tenantId: req.tenant?.id ?? req.tenantId,
+      userId:   req.auth?.userId ?? req.userId,
+      // tenants.plan é a coluna real (TenantPlan). plan_slug/planSlug NÃO existem —
+      // lê-los fazia mode:'plans' negar para todos, em silêncio.
+      planSlug: req.tenant?.plan ?? null,
+      tenantFeatures: (req.tenant?.features as Record<string, unknown> | undefined) ?? null,
+    });
+
+    // canDiscover, não canUse: uma integração de plano superior CONTINUA
+    // visível (bloqueada + upgrade). Esconder seria perder a venda e mentir
+    // sobre o catálogo. Internos/billing já saem por classificação.
+    const visible = resolved.filter((r) => r.canDiscover);
+
+    // Upgrade hint descoberto por consulta — nenhum nome de plano em código.
+    return Promise.all(visible.map(async (r) => ({
+      slug:             r.providerKey,
+      name:             r.name,
+      category:         r.category,
+      classification:   r.classification,
+      publicationState: r.publicationState,
+      technicalState:   r.technicalState,
+      connectionKind:   r.connectionKind,
+      entitled:         r.entitled,
+      canConnect:       r.canConnect,
+      canUse:           r.canUse,
+      connectionState:  r.connectionStatus,
+      reasonCode:       r.reasonCode,
+      eligiblePlans:    r.entitled ? [] : await this.integrationPolicy.plansIncluding(r.providerKey),
+      // Deliberadamente NÃO expostos ao cliente: notes administrativos,
+      // required_env, capabilityEvidence, audiências e internals de policy.
+    })));
   }
 
   // ─── Status geral ──────────────────────────────────────────────────────────
