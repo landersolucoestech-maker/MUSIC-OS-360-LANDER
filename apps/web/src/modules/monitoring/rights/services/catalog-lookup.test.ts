@@ -3,8 +3,6 @@ import {
   buildIsrcIndex,
   computeEcadMatchRate,
   findOrphanIsrcs,
-  getCatalogObras,
-  getIsrcIndex,
   type CatalogObra,
 } from "./catalog-lookup";
 
@@ -141,21 +139,5 @@ describe("findOrphanIsrcs", () => {
   it("returns empty array for empty ISRC list", () => {
     const index = new Map();
     expect(findOrphanIsrcs([], index)).toEqual([]);
-  });
-});
-
-describe("getCatalogObras (fonte real ausente)", () => {
-  it("retorna vazio — catálogo local só existirá via backend real (nunca dados fictícios)", () => {
-    const obras = getCatalogObras();
-    expect(Array.isArray(obras)).toBe(true);
-    expect(obras).toEqual([]);
-  });
-});
-
-describe("getIsrcIndex (fonte real ausente)", () => {
-  it("retorna Map vazio quando não há catálogo", () => {
-    const index = getIsrcIndex();
-    expect(index instanceof Map).toBe(true);
-    expect(index.size).toBe(0);
   });
 });

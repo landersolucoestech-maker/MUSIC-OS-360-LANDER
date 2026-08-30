@@ -6,8 +6,8 @@
  * auth OAuth2 client_credentials confirmada contra a documentação oficial
  * antes de qualquer chamada).
  *
- * NÃO conectado ainda a ArtistPlatformProfile/artist-external-profile-sync —
- * client isolado e testável por conta própria (Soundcharts 03).
+ * Conectado a ArtistPlatformProfile/artist-external-profile-sync — os 7
+ * providers em artists/platform-profiles/providers/* delegam a este client.
  *
  * Credenciais: SOUNDCHARTS_CLIENT_ID/SOUNDCHARTS_CLIENT_SECRET são globais
  * (uma conta Soundcharts para todo o Music OS 360, não por tenant) — por

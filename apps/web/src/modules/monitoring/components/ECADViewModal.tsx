@@ -6,123 +6,98 @@ import {
 } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { EcadIcon } from "@/shared/ui/brand-icons";
-import { CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle, AlertTriangle, Clock, FileText } from "lucide-react";
+import type { EcadReport, CatalogObraRef } from "@/modules/monitoring/rights/types";
+import { formatRightsDate } from "@/modules/monitoring/rights/utils/date-format";
+
+export interface EcadReportRow extends EcadReport {
+  obra?: CatalogObraRef;
+}
 
 interface ECADViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  periodo?: any;
+  relatorio?: EcadReportRow | null;
 }
 
-// Detalhes ECAD - será preenchido via backend
-const detalhesEcad: { id: number; obra: string; isrc: string; execucoes: number; valorEcad: string; status: string }[] = [];
+const fmtBRL = (n: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
-export function ECADViewModal({ open, onOpenChange, periodo }: ECADViewModalProps) {
-  if (!periodo) return null;
+const STATUS_LABEL: Record<string, string> = {
+  pendente: "Pendente", importado: "Importado", concluido: "Concluído", erro: "Erro",
+};
+
+export function ECADViewModal({ open, onOpenChange, relatorio }: ECADViewModalProps) {
+  if (!relatorio) return null;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Conciliado":
-        return <Badge variant="success"><CheckCircle className="h-3 w-3 mr-1" />{status}</Badge>;
-      case "Pendente":
-        return <Badge variant="warning"><Clock className="h-3 w-3 mr-1" />{status}</Badge>;
-      case "Divergência":
-        return <Badge variant="danger"><AlertTriangle className="h-3 w-3 mr-1" />{status}</Badge>;
+      case "concluido":
+        return <Badge variant="success"><CheckCircle className="h-3 w-3 mr-1" />{STATUS_LABEL[status]}</Badge>;
+      case "importado":
+        return <Badge variant="info"><Clock className="h-3 w-3 mr-1" />{STATUS_LABEL[status]}</Badge>;
+      case "erro":
+        return <Badge variant="danger"><AlertTriangle className="h-3 w-3 mr-1" />{STATUS_LABEL[status]}</Badge>;
       default:
-        return <Badge variant="neutral">{status}</Badge>;
+        return <Badge variant="warning"><Clock className="h-3 w-3 mr-1" />{STATUS_LABEL[status] ?? status}</Badge>;
     }
   };
 
+  const valor = Number(relatorio.valor_liquido ?? relatorio.valor_bruto ?? 0);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl bg-card border-border">
+      <DialogContent className="max-w-2xl bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <EcadIcon className="h-5 w-5" />
-            Detalhes da Conciliação ECAD
+            Relatório ECAD — {relatorio.periodo}
           </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="max-h-[70vh]">
           <div className="space-y-6 pr-4">
-            {/* Período e Status */}
-            <div>
-              <h2 className="text-xl font-bold text-foreground">Período: {periodo.periodo}</h2>
-              <p className="text-muted-foreground">Relatório de conciliação ECAD</p>
-            </div>
-
-            {/* Badges */}
             <div className="flex gap-2">
-              <Badge variant="warning">
-                {periodo.status}
-              </Badge>
+              {getStatusBadge(relatorio.status)}
+              <Badge variant="outline" className="capitalize">{relatorio.tipo.replace(/_/g, " ")}</Badge>
             </div>
 
-            {/* Grid de Estatísticas */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-muted/30 rounded-lg text-center">
-                <p className="text-2xl font-bold text-foreground">{periodo.registros}</p>
-                <p className="text-sm text-muted-foreground">Registros</p>
+                <p className="text-lg font-bold text-foreground">{fmtBRL(Number(relatorio.valor_bruto ?? 0))}</p>
+                <p className="text-sm text-muted-foreground">Valor Bruto</p>
               </div>
               <div className="p-4 bg-muted/30 rounded-lg text-center">
-                <p className="text-2xl font-bold text-success">{periodo.matches}</p>
-                <p className="text-sm text-muted-foreground">Matches</p>
+                <p className="text-lg font-bold text-success">{fmtBRL(valor)}</p>
+                <p className="text-sm text-muted-foreground">Valor Líquido</p>
               </div>
-              <div className="p-4 bg-muted/30 rounded-lg text-center">
-                <p className="text-2xl font-bold text-destructive">{periodo.divergencias}</p>
-                <p className="text-sm text-muted-foreground">Divergências</p>
+            </div>
+
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="px-4 py-3 border-b border-border">
+                <p className="text-sm font-semibold text-foreground">Obra vinculada</p>
               </div>
-              <div className="p-4 bg-muted/30 rounded-lg text-center">
-                <p className="text-2xl font-bold text-foreground">
-                  {periodo.registros > 0 ? ((periodo.matches / periodo.registros) * 100).toFixed(0) : 0}%
+              {relatorio.obra ? (
+                <div className="p-4 text-sm space-y-1">
+                  <p className="font-medium text-foreground">{relatorio.obra.titulo}</p>
+                  <p className="text-muted-foreground">{relatorio.obra.compositor || "—"} · {relatorio.obra.editora || "—"}</p>
+                  <p className="text-xs text-muted-foreground">Cód. ECAD: {relatorio.obra.cod_ecad || "—"}</p>
+                </div>
+              ) : (
+                <p className="p-4 text-sm text-muted-foreground">
+                  {relatorio.obra_id ? `Obra ${relatorio.obra_id} não encontrada no catálogo.` : "Nenhuma obra vinculada a este relatório."}
                 </p>
-                <p className="text-sm text-muted-foreground">Taxa de Match</p>
-              </div>
+              )}
             </div>
 
-            {/* Tabela de Detalhes */}
-            <div>
-              <div className="rounded-lg border border-border overflow-hidden">
-                <ListSectionHeader
-                  title="Detalhes das Execuções"
-                  count={detalhesEcad.length}
-                  description="Acompanhe obras, ISRCs, execuções, valores ECAD e status"
-                  className="px-4 pt-4"
-                />
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead className="text-foreground">Obra</TableHead>
-                      <TableHead className="text-foreground">ISRC</TableHead>
-                      <TableHead className="text-foreground">Execuções</TableHead>
-                      <TableHead className="text-foreground">Valor ECAD</TableHead>
-                      <TableHead className="text-foreground">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {detalhesEcad.length > 0 ? (
-                      detalhesEcad.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium text-foreground">{item.obra}</TableCell>
-                          <TableCell className="font-sans text-sm text-foreground">{item.isrc}</TableCell>
-                          <TableCell className="text-foreground">{item.execucoes}</TableCell>
-                          <TableCell className="text-foreground">{item.valorEcad}</TableCell>
-                          <TableCell>{getStatusBadge(item.status)}</TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          Nenhum detalhe de execução disponível
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+              <span>Criado em {formatRightsDate(relatorio.created_at)}</span>
+              {relatorio.arquivo_url && (
+                <a href={relatorio.arquivo_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                  <FileText className="h-3.5 w-3.5" />Ver arquivo original
+                </a>
+              )}
             </div>
           </div>
         </ScrollArea>

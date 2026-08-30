@@ -1,94 +1,93 @@
 // @ts-nocheck
-// Component tests for ExecucaoDetailModal (Rights Monitoring — Task #604).
+// Component tests for ExecucaoDetailModal (rebuilt for real content_detections
+// data — Decision Gate item 11).
 //
 // Covers:
-//  1. When obra_catalog is present: renders compositor, cod_ecad (green), no orphan warning
-//  2. When obra_catalog is absent: renders red "Obra não encontrada no catálogo" warning,
-//     shows the orphan ISRC in a <code> tag, no catalog info rows
-//  3. ExecutionStatus badge labels and Match ECAD indicator text
+//  1. When obra is present: renders compositor, cod_ecad (green), no orphan warning
+//  2. When obra is absent: renders red "Obra não encontrada no catálogo" warning
+//  3. DetectionStatus badge labels and Match ECAD indicator text
 
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { ExecucaoDetailModal } from "@/modules/monitoring/rights/components/ExecucaoDetailModal";
-import type { RightsExecution } from "@/modules/monitoring/rights/types";
+import type { DetectionRow } from "@/modules/monitoring/rights/components/ExecucoesTable";
 
-const BASE_EXEC: RightsExecution = {
-  id: "re-001",
-  obra_titulo: "Noite de Luz",
-  artista: "Vitória Lunar",
-  isrc: "BRMSC2500001",
-  origem: "Rádio Globo FM",
-  tipo_execucao: "radio_fm",
-  data_hora: "2026-05-08T14:32:00",
-  match_ecad: true,
-  valor_estimado: 18.5,
-  status: "confirmado",
-  obra_catalog: {
+const BASE_EXEC: DetectionRow = {
+  id: "det-001",
+  obra_id: "obra-001",
+  artista_id: null,
+  plataforma: "YouTube",
+  titulo_detectado: "Noite de Luz",
+  url: "https://youtube.com/x",
+  score: "0.92",
+  status: "concluido",
+  tipo: "uso_nao_autorizado",
+  detectado_em: "2026-05-08T14:32:00",
+  metadata: {},
+  created_at: "2026-05-08T14:32:00",
+  updated_at: "2026-05-08T14:32:00",
+  obra: {
+    id: "obra-001",
+    titulo: "Noite de Luz",
     compositor: "Vitória Carvalho",
     compositores: "Vitória Carvalho, Lucas Mendes",
-    co_compositores: "Lucas Mendes",
     editora: "MusicOS Publishing",
-    detentores: "MusicOS Publishing",
+    isrc: "BRMSC2500001",
     iswc: "T-123.456.789-0",
     cod_ecad: "ECAD-0001-VL",
     cod_entidade: "ABR-001-2025",
     genero: "Pop",
     duracao: "3:42",
-    catalog_id: "obra-001",
-    catalog_status: "registrado",
+    status: "registrado",
   },
 };
 
-const ORPHAN_EXEC: RightsExecution = {
-  id: "re-011",
-  obra_titulo: "Track Desconhecida",
-  artista: "Artista Desconhecido",
-  isrc: "BRMSC2599998",
-  origem: "Web Rádio Hits Brasil",
-  tipo_execucao: "web_radio",
-  data_hora: "2026-05-02T11:20:00",
-  match_ecad: false,
-  valor_estimado: 3.5,
-  status: "nao_reportado",
-  obra_catalog: undefined,
+const ORPHAN_EXEC: DetectionRow = {
+  id: "det-011",
+  obra_id: null,
+  artista_id: null,
+  plataforma: "TikTok",
+  titulo_detectado: "Track Desconhecida",
+  url: null,
+  score: null,
+  status: "pendente",
+  tipo: "uso_nao_autorizado",
+  detectado_em: "2026-05-02T11:20:00",
+  metadata: {},
+  created_at: "2026-05-02T11:20:00",
+  updated_at: "2026-05-02T11:20:00",
+  obra: undefined,
 };
 
-function renderModal(exec: RightsExecution | null, open = true) {
+function renderModal(exec: DetectionRow | null, open = true) {
   return render(
     <ExecucaoDetailModal exec={exec} open={open} onOpenChange={() => {}} />,
   );
 }
 
 describe("<ExecucaoDetailModal /> — with catalog data", () => {
-  it("renders dialog title and artist from exec props", () => {
+  it("renders dialog title and plataforma from exec props", () => {
     renderModal(BASE_EXEC);
     expect(screen.getByRole("heading", { name: /Noite de Luz/i })).toBeInTheDocument();
-    expect(screen.getByText("Vitória Lunar")).toBeInTheDocument();
+    expect(screen.getAllByText("YouTube").length).toBeGreaterThan(0);
   });
 
-  it("shows ISRC, origem and tipo in the Dados da Execução section", () => {
+  it("shows '✓ Obra vinculada com cód. ECAD' when obra has cod_ecad", () => {
     renderModal(BASE_EXEC);
-    expect(screen.getByText("BRMSC2500001")).toBeInTheDocument();
-    expect(screen.getByText("Rádio Globo FM")).toBeInTheDocument();
-    expect(screen.getByText("Rádio FM")).toBeInTheDocument();
+    expect(screen.getByText(/Obra vinculada com cód\. ECAD/i)).toBeInTheDocument();
   });
 
-  it("shows '✓ Obra encontrada no ECAD' when match_ecad is true", () => {
-    renderModal(BASE_EXEC);
-    expect(screen.getByText(/Obra encontrada no ECAD/i)).toBeInTheDocument();
-  });
-
-  it("shows compositor(es) from obra_catalog", () => {
+  it("shows compositor(es) from obra", () => {
     renderModal(BASE_EXEC);
     expect(screen.getByText("Vitória Carvalho, Lucas Mendes")).toBeInTheDocument();
   });
 
-  it("shows ECAD identifier from obra_catalog", () => {
+  it("shows ECAD identifier from obra", () => {
     renderModal(BASE_EXEC);
     expect(screen.getByText("ECAD-0001-VL")).toBeInTheDocument();
   });
 
-  it("shows ISWC from obra_catalog when present", () => {
+  it("shows ISWC from obra when present", () => {
     renderModal(BASE_EXEC);
     expect(screen.getByText("T-123.456.789-0")).toBeInTheDocument();
   });
@@ -100,7 +99,7 @@ describe("<ExecucaoDetailModal /> — with catalog data", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows publisher/editora from obra_catalog", () => {
+  it("shows publisher/editora from obra", () => {
     renderModal(BASE_EXEC);
     expect(screen.getAllByText("MusicOS Publishing").length).toBeGreaterThan(0);
   });
@@ -111,8 +110,8 @@ describe("<ExecucaoDetailModal /> — with catalog data", () => {
   });
 });
 
-describe("<ExecucaoDetailModal /> — orphan execution (no obra_catalog)", () => {
-  it("renders dialog title from exec.obra_titulo", () => {
+describe("<ExecucaoDetailModal /> — orphan detection (no obra)", () => {
+  it("renders dialog title from titulo_detectado", () => {
     renderModal(ORPHAN_EXEC);
     expect(screen.getByRole("heading", { name: /Track Desconhecida/i })).toBeInTheDocument();
   });
@@ -124,30 +123,25 @@ describe("<ExecucaoDetailModal /> — orphan execution (no obra_catalog)", () =>
     ).toBeInTheDocument();
   });
 
-  it("shows the orphan ISRC in the alert body", () => {
-    renderModal(ORPHAN_EXEC);
-    const alert = screen.getByText(/Nenhuma obra com ISRC/i).closest("div");
-    expect(within(alert!).getByText("BRMSC2599998")).toBeInTheDocument();
-  });
-
   it("does NOT render catalog data rows (Compositor, Editora)", () => {
     renderModal(ORPHAN_EXEC);
     expect(screen.queryByText(/Compositor\(es\)/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Publisher / Editora")).not.toBeInTheDocument();
   });
 
-  it("shows '✗ Sem correspondência no ECAD' when match_ecad is false", () => {
+  it("shows '✗ Sem correspondência no catálogo/ECAD' when there is no obra", () => {
     renderModal(ORPHAN_EXEC);
-    expect(screen.getByText(/Sem correspondência no ECAD/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sem correspondência no catálogo\/ECAD/i)).toBeInTheDocument();
   });
 });
 
 describe("<ExecucaoDetailModal /> — status badge variants", () => {
   it.each([
-    ["confirmado" as const, "Confirmado"],
+    ["concluido" as const, "Concluído"],
+    ["em_andamento" as const, "Em Andamento"],
     ["pendente" as const, "Pendente"],
-    ["divergencia" as const, "Divergência"],
-    ["nao_reportado" as const, "Não Reportado"],
+    ["rejeitado" as const, "Rejeitado"],
+    ["arquivado" as const, "Arquivado"],
   ])("renders badge label '%s' for status '%s'", (status, label) => {
     renderModal({ ...BASE_EXEC, status });
     expect(screen.getByText(label)).toBeInTheDocument();
@@ -163,7 +157,7 @@ describe("<ExecucaoDetailModal /> — edge cases", () => {
   it("does not render ISWC row when iswc is null", () => {
     renderModal({
       ...BASE_EXEC,
-      obra_catalog: { ...BASE_EXEC.obra_catalog!, iswc: null },
+      obra: { ...BASE_EXEC.obra!, iswc: null },
     });
     expect(screen.queryByText("ISWC")).not.toBeInTheDocument();
   });
@@ -171,9 +165,8 @@ describe("<ExecucaoDetailModal /> — edge cases", () => {
   it("shows 'Não cadastrado' warning when cod_ecad is null in catalog", () => {
     renderModal({
       ...BASE_EXEC,
-      obra_catalog: { ...BASE_EXEC.obra_catalog!, cod_ecad: null },
+      obra: { ...BASE_EXEC.obra!, cod_ecad: null },
     });
     expect(screen.getByText(/Não cadastrado/i)).toBeInTheDocument();
   });
 });
-

@@ -832,7 +832,18 @@ export function ArtistaVisao360Modal({
             </TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="flex-1 min-h-0">
+          {/* Scroll owner do modal. Usa overflow nativo em vez de ScrollArea:
+              o Viewport do Radix depende de height:100%, que NÃO resolve contra um
+              pai dimensionado por flex-grow — media 1467px dentro de um Root de 681px,
+              logo scrollHeight === clientHeight e o scroll nunca acontecia. Um container
+              de overflow nativo é dimensionado pelo próprio flex e rola de facto. */}
+          <div
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
+            data-testid="visao360-scroll"
+            tabIndex={0}
+            role="region"
+            aria-label="Conteúdo da Visão 360"
+          >
             {/* Visão Geral */}
             <TabsContent value="visao-geral" className="p-6 space-y-6 mt-0">
               {/* KPIs executivos */}
@@ -2985,7 +2996,7 @@ export function ArtistaVisao360Modal({
                 </CardContent>
               </Card>
             </TabsContent>
-          </ScrollArea>
+          </div>
         </Tabs>
 
         {/* Modal de Nova/Editar Meta */}

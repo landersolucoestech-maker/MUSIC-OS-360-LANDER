@@ -4,6 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { SiApplemusic, SiSoundcloud, SiInstagram, SiTiktok, SiSpotify, SiYoutube } from "react-icons/si";
 import { DeezerIcon } from "@/shared/ui/deezer-icon";
 import { Button } from "@/shared/ui/button";
+import { primaryMetricFor } from "@/modules/artist/metrics/platform-metric-capabilities";
 import {
   useArtistPlatformProfiles,
   useSyncArtistPlatformProfile,
@@ -163,6 +164,15 @@ export function ArtistaPlatformMetrics({
   const tiktokSnapshot = snapshots.find((profile) => profile.platform === "tiktok") ?? null;
   const appleMusicSnapshot = snapshots.find((profile) => profile.platform === "apple-music") ?? null;
 
+  // Métrica principal por plataforma, resolvida via registro de capacidades
+  // (metrics/platform-metric-capabilities.ts) em vez de campo hardcoded.
+  const instagramMetric = primaryMetricFor("instagram", instagramSnapshot);
+  const tiktokMetric = primaryMetricFor("tiktok", tiktokSnapshot);
+  const spotifyMetric = primaryMetricFor("spotify", spotifySnapshot);
+  const youtubeMetric = primaryMetricFor("youtube", youtubeSnapshot);
+  const deezerMetric = primaryMetricFor("deezer", deezerSnapshot);
+  const soundcloudMetric = primaryMetricFor("soundcloud", soundcloudSnapshot);
+
   const spotifyProfileInput = (spotifyUrl ?? "").trim();
   const youtubeProfileInput = (youtubeUrl ?? "").trim();
   const deezerProfileInput = (deezerUrl ?? "").trim();
@@ -301,10 +311,10 @@ export function ArtistaPlatformMetrics({
             `metric-instagram-${artistaId}`,
             hasInstagramProfileInput,
             instagramSnapshot,
-            instagramSnapshot?.followers != null ? (
+            instagramMetric?.value != null ? (
               <>
                 <p className="text-sm font-bold text-foreground" data-testid={`metric-instagram-${artistaId}`}>
-                  {formatCount(instagramSnapshot.followers)}
+                  {formatCount(instagramMetric.value)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">Seguidores</p>
               </>
@@ -314,7 +324,7 @@ export function ArtistaPlatformMetrics({
                   Indisponível
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  Seguidores · sem conta vinculada na Soundcharts
+                  Seguidores · perfil não localizado na fonte
                 </p>
               </>
             ),
@@ -334,10 +344,10 @@ export function ArtistaPlatformMetrics({
             `metric-tiktok-${artistaId}`,
             hasTikTokProfileInput,
             tiktokSnapshot,
-            tiktokSnapshot?.followers != null ? (
+            tiktokMetric?.value != null ? (
               <>
                 <p className="text-sm font-bold text-foreground" data-testid={`metric-tiktok-${artistaId}`}>
-                  {formatCount(tiktokSnapshot.followers)}
+                  {formatCount(tiktokMetric.value)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">Seguidores</p>
               </>
@@ -347,7 +357,7 @@ export function ArtistaPlatformMetrics({
                   Indisponível
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  Seguidores · sem conta vinculada na Soundcharts
+                  Seguidores · perfil não localizado na fonte
                 </p>
               </>
             ),
@@ -365,10 +375,10 @@ export function ArtistaPlatformMetrics({
             `metric-spotify-${artistaId}`,
             hasSpotifyProfileInput,
             spotifySnapshot,
-            spotifySnapshot?.monthly_listeners != null ? (
+            spotifyMetric?.value != null ? (
               <>
                 <p className="text-sm font-bold text-foreground" data-testid={`metric-spotify-${artistaId}`}>
-                  {formatCount(spotifySnapshot.monthly_listeners)}
+                  {formatCount(spotifyMetric.value)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">Ouvintes</p>
               </>
@@ -400,7 +410,7 @@ export function ArtistaPlatformMetrics({
             youtubeSnapshot,
             <>
               <p className="text-sm font-bold text-foreground" data-testid={`metric-youtube-${artistaId}`}>
-                {formatCount(youtubeSnapshot?.subscribers)}
+                {formatCount(youtubeMetric?.value)}
               </p>
               <p className="text-[10px] text-muted-foreground">
                 Inscritos · {formatCount(youtubeSnapshot?.total_views)} views
@@ -422,7 +432,7 @@ export function ArtistaPlatformMetrics({
             deezerSnapshot,
             <>
               <p className="text-sm font-bold text-foreground" data-testid={`metric-deezer-${artistaId}`}>
-                {formatCount(deezerSnapshot?.followers)}
+                {formatCount(deezerMetric?.value)}
               </p>
               <p className="text-[10px] text-muted-foreground">Fãs</p>
             </>,
@@ -450,7 +460,7 @@ export function ArtistaPlatformMetrics({
                 Indisponível
               </p>
               <p className="text-[10px] text-muted-foreground">
-                Ouvintes · Apple Music não fornece este dado
+                Apple Music não fornece métrica de audiência
               </p>
             </>,
           )}
@@ -469,7 +479,7 @@ export function ArtistaPlatformMetrics({
             soundcloudSnapshot,
             <>
               <p className="text-sm font-bold text-foreground" data-testid={`metric-soundcloud-${artistaId}`}>
-                {formatCount(soundcloudSnapshot?.followers)}
+                {formatCount(soundcloudMetric?.value)}
               </p>
               <p className="text-[10px] text-muted-foreground">Seguidores</p>
             </>,

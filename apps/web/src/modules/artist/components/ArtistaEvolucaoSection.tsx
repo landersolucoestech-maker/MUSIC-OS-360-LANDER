@@ -86,7 +86,7 @@ function aggregateVerdict(platforms: PlatformInput[]): {
     return {
       direction: "flat",
       message:
-        "Ainda não há histórico suficiente para mostrar tendência. Os dados são coletados diariamente — volte em alguns dias.",
+        "Ainda não há histórico suficiente para mostrar tendência — a sincronização é manual e ainda não retém histórico entre execuções.",
       totalDelta: null,
       avgPercent: null,
       trackedCount: 0,
@@ -288,15 +288,19 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
                   className={cn("text-xl font-bold", verdictStyle.className)}
                   data-testid="text-evolucao-status"
                 >
-                  {verdict.direction === "up"
+                  {verdict.trackedCount === 0
+                    ? "Sem histórico"
+                    : verdict.direction === "up"
                     ? "Em crescimento"
                     : verdict.direction === "down"
                     ? "Em queda"
                     : "Estável"}
                 </h3>
-                <span className="text-sm text-muted-foreground">
-                  últimos 30 dias
-                </span>
+                {verdict.trackedCount > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    últimos 30 dias
+                  </span>
+                )}
               </div>
               <p
                 className="text-sm text-muted-foreground mt-1"
@@ -456,9 +460,11 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Os snapshots são gravados automaticamente uma vez por dia (06:15–06:25
-        UTC). Plataformas sem perfil vinculado ou recém-cadastradas aparecem
-        como "sem histórico ainda".
+        Cada plataforma reflete o valor mais recente sincronizado — a sincronização
+        é manual, feita pelo botão "Sincronizar agora" em cada card. Ainda não
+        há retenção de histórico entre sincronizações, então esta seção não
+        pode mostrar tendência real hoje. Plataformas sem perfil vinculado
+        aparecem como "sem histórico ainda".
       </p>
     </div>
   );

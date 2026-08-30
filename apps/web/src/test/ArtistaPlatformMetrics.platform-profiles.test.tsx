@@ -677,7 +677,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     expect(screen.getByText("Soundcharts: rate limit")).toBeInTheDocument();
   });
 
-  it("Instagram/TikTok success sem conta vinculada (followers=null): Indisponivel, nao Erro", async () => {
+  it("Instagram/TikTok success com perfil nao localizado (followers=null): Indisponivel, nao Erro", async () => {
     vi.mocked(api.get).mockResolvedValueOnce([
       baseSnapshot({ platform: "instagram", followers: null }),
       baseSnapshot({ platform: "tiktok", followers: null }),

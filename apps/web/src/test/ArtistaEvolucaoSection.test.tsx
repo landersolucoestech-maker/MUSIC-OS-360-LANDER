@@ -109,7 +109,7 @@ describe("<ArtistaEvolucaoSection />", () => {
 
     expect(screen.getByTestId("section-evolucao")).toBeInTheDocument();
     expect(screen.getByTestId("text-evolucao-status")).toHaveTextContent(
-      /estável/i,
+      /sem histórico/i,
     );
     expect(screen.getByTestId("text-evolucao-mensagem")).toHaveTextContent(
       /ainda não há histórico suficiente/i,
@@ -136,7 +136,7 @@ describe("<ArtistaEvolucaoSection />", () => {
     renderWithProviders(<ArtistaEvolucaoSection artista={fullArtista} />);
 
     expect(screen.getByTestId("text-evolucao-status")).toHaveTextContent(
-      /estável/i,
+      /sem histórico/i,
     );
     expect(screen.getByTestId("text-evolucao-mensagem")).toHaveTextContent(
       /ainda não há histórico suficiente/i,

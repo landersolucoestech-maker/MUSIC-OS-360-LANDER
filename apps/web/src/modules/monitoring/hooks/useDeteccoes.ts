@@ -1,20 +1,14 @@
-import type { Tables, TablesInsert, TablesUpdate } from "@/shared/types/database";
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { ContentDetection } from "@/modules/monitoring/rights/types";
 
-export type Deteccao = Tables<"deteccoes">;
-export type DeteccaoInsert = Omit<TablesInsert<"deteccoes">, "user_id">;
-export type DeteccaoUpdate = TablesUpdate<"deteccoes">;
-
-export type DeteccaoWithRelations = Deteccao & {
-  obras?: Tables<"obras"> | null;
-};
+export type Deteccao = ContentDetection;
 
 export function useDeteccoes() {
-  const result = useDataQuery<DeteccaoWithRelations>({
+  const result = useDataQuery<Deteccao>({
     queryKey: [...QUERY_KEYS.DETECCOES],
     table: "deteccoes",
-    select: "*, obras(*)",
+    orderBy: { column: "detectado_em", ascending: false },
   }, {
     create: { success: "Detecção registrada com sucesso!", error: "Erro ao registrar detecção" },
     update: { success: "Detecção atualizada com sucesso!", error: "Erro ao atualizar detecção" },
@@ -25,6 +19,7 @@ export function useDeteccoes() {
     deteccoes: result.data,
     isLoading: result.isLoading,
     error: result.error,
+    refetch: result.refetch,
     addDeteccao: result.create,
     updateDeteccao: result.update,
     deleteDeteccao: result.delete,

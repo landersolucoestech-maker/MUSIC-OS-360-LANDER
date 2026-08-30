@@ -49,12 +49,30 @@ export class TikTokArtistProfileProvider implements ArtistPlatformProvider {
 
     let followers: number | null = null;
     let observedAt = new Date();
+    let resolvedUuid = uuid;
+    let resolution: 'canonical' | 'own_handle' = 'canonical';
+    let ownHandleAttempted = false;
     try {
       const metric = await this.soundcharts.getTikTokFollowers(uuid);
       followers = metric.value;
       observedAt = metric.observedAt;
     } catch (err) {
       if (!(err instanceof SoundchartsNotFoundError)) throw err;
+      // Canônico (spotify/youtube/deezer/soundcloud) resolveu um artista, mas ele não tem
+      // TikTok indexado nesse UUID — tenta resolver pelo handle do próprio TikTok antes de
+      // desistir: um handle explícito informado pelo usuário nunca pode ser ignorado só
+      // porque o artista também tem spotify_url (bug reportado).
+      ownHandleAttempted = true;
+      try {
+        const ownUuid = await this.soundcharts.resolveArtistByPlatform('tiktok', username);
+        const metric = await this.soundcharts.getTikTokFollowers(ownUuid);
+        followers = metric.value;
+        observedAt = metric.observedAt;
+        resolvedUuid = ownUuid;
+        resolution = 'own_handle';
+      } catch (ownErr) {
+        if (!(ownErr instanceof SoundchartsNotFoundError)) throw ownErr;
+      }
     }
 
     return {
@@ -75,7 +93,12 @@ export class TikTokArtistProfileProvider implements ArtistPlatformProvider {
       total_videos: null,
       total_tracks: null,
       total_albums: null,
-      raw_payload: { soundcharts_uuid: uuid, observed_at: observedAt.toISOString() },
+      raw_payload: {
+        soundcharts_uuid: resolvedUuid,
+        observed_at: observedAt.toISOString(),
+        resolution,
+        own_handle_attempted: ownHandleAttempted,
+      },
       sync_status: 'success',
       last_synced_at: new Date(),
       last_error: null,

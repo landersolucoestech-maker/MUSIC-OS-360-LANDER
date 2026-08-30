@@ -4,8 +4,6 @@
  * NÃO implementados ainda — somente interfaces e stubs.
  */
 
-import type { RightsExecution, BroadcastDetection } from "../types";
-
 // ─── ACRCloud ────────────────────────────────────────────────────────────────
 export interface ACRCloudConfig {
   host: string;
@@ -29,7 +27,7 @@ export const acrCloudAdapter = {
     throw new Error("ACRCloud integration not yet enabled. Configure VITE_ACRCLOUD_KEY to activate.");
   },
 
-  toRightsExecution(_result: ACRCloudResult, _origem: string): Partial<RightsExecution> {
+  toRightsExecution(_result: ACRCloudResult, _origem: string): Record<string, unknown> {
     throw new Error("ACRCloud integration not yet enabled.");
   },
 };
@@ -58,7 +56,7 @@ export const bmatAdapter = {
     throw new Error("BMAT integration not yet enabled. Configure VITE_BMAT_API_KEY to activate.");
   },
 
-  toBroadcastDetection(_event: BmatBroadcastEvent): Partial<BroadcastDetection> {
+  toBroadcastDetection(_event: BmatBroadcastEvent): Record<string, unknown> {
     throw new Error("BMAT integration not yet enabled.");
   },
 };
