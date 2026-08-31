@@ -1,5 +1,10 @@
 import { SoundchartsService } from '../../integrations/soundcharts/soundcharts.service';
-import { buildCanonicalCandidates, resolveCanonicalUuidForProvider } from './soundcharts-canonical-candidates.util';
+import {
+  buildCanonicalCandidates,
+  checkRegisteredHandleAgainstRegistry,
+  evaluateCrossPlatformEvidence,
+  resolveCanonicalUuidForProvider,
+} from './soundcharts-canonical-candidates.util';
 
 const URLS = {
   spotifyUrl: 'https://open.spotify.com/artist/6qqNVTkY8uBg9cP3Jd7DAH',
@@ -25,6 +30,141 @@ describe('buildCanonicalCandidates', () => {
       { platform: 'deezer', externalId: null },
       { platform: 'soundcloud', externalId: null },
     ]);
+  });
+});
+
+describe('evaluateCrossPlatformEvidence (Fase 1.3 — puramente diagnóstico, nunca bloqueia)', () => {
+  it('1) CROSS_PLATFORM_UNKNOWN quando nenhuma outra âncora está cadastrada — nada a comparar', async () => {
+    const soundcharts = { resolveCanonicalArtistUuid: jest.fn() } as unknown as SoundchartsService;
+
+    const result = await evaluateCrossPlatformEvidence(soundcharts, {}, 'soundcloud', 'own-uuid');
+
+    expect(result).toEqual({ status: 'CROSS_PLATFORM_UNKNOWN', independentUuid: null, registryIdentifier: null });
+    expect(soundcharts.resolveCanonicalArtistUuid).not.toHaveBeenCalled();
+  });
+
+  it('2) CROSS_PLATFORM_CONSISTENT quando o UUID independente BATE com o UUID resolvido pelo próprio handle', async () => {
+    const soundcharts = {
+      resolveCanonicalArtistUuid: jest.fn().mockResolvedValue('same-uuid'),
+    } as unknown as SoundchartsService;
+
+    const result = await evaluateCrossPlatformEvidence(soundcharts, URLS, 'soundcloud', 'same-uuid');
+
+    expect(result).toEqual({ status: 'CROSS_PLATFORM_CONSISTENT', independentUuid: 'same-uuid', registryIdentifier: null });
+  });
+
+  it('3) CROSS_PLATFORM_DIVERGENT quando o UUID independente DIVERGE do UUID resolvido pelo próprio handle — sem registry disponível', async () => {
+    const soundcharts = {
+      resolveCanonicalArtistUuid: jest.fn().mockResolvedValue('canonical-uuid-artist-a'),
+      getArtistIdentifiers: jest.fn().mockRejectedValue(new Error('não encontrado')),
+    } as unknown as SoundchartsService;
+
+    const result = await evaluateCrossPlatformEvidence(soundcharts, URLS, 'soundcloud', 'own-resolved-uuid');
+
+    expect(result).toEqual({ status: 'CROSS_PLATFORM_DIVERGENT', independentUuid: 'canonical-uuid-artist-a', registryIdentifier: null });
+  });
+
+  it('3b) em divergência, busca no registry do canônico o identifier desta plataforma como evidência (achado real: SoundCloud "deejaystay" cadastrado vs. "djstay-sc" no registry do canônico — diagnóstico, nunca aplicado)', async () => {
+    const soundcharts = {
+      resolveCanonicalArtistUuid: jest.fn().mockResolvedValue('canonical-uuid-artist-a'),
+      getArtistIdentifiers: jest.fn().mockResolvedValue({
+        raw: {},
+        identifiers: [
+          { platform: 'spotify', identifier: 'abc123' },
+          { platform: 'soundcloud', identifier: 'djstay-sc' },
+        ],
+      }),
+    } as unknown as SoundchartsService;
+
+    const result = await evaluateCrossPlatformEvidence(soundcharts, URLS, 'soundcloud', 'own-resolved-uuid');
+
+    expect(result).toEqual({ status: 'CROSS_PLATFORM_DIVERGENT', independentUuid: 'canonical-uuid-artist-a', registryIdentifier: 'djstay-sc' });
+    expect(soundcharts.getArtistIdentifiers).toHaveBeenCalledWith('canonical-uuid-artist-a');
+  });
+
+  it('4) CROSS_PLATFORM_UNKNOWN quando as outras âncoras existem mas nenhuma resolve na Soundcharts', async () => {
+    const soundcharts = {
+      resolveCanonicalArtistUuid: jest.fn().mockRejectedValue(new Error('não encontrado')),
+    } as unknown as SoundchartsService;
+
+    const result = await evaluateCrossPlatformEvidence(soundcharts, URLS, 'soundcloud', 'own-uuid');
+
+    expect(result).toEqual({ status: 'CROSS_PLATFORM_UNKNOWN', independentUuid: null, registryIdentifier: null });
+  });
+
+  it('5) nunca inclui a própria plataforma sendo verificada nos candidatos independentes (evita tautologia)', async () => {
+    const resolveCanonicalArtistUuid = jest.fn().mockResolvedValue('x');
+    const soundcharts = { resolveCanonicalArtistUuid } as unknown as SoundchartsService;
+
+    await evaluateCrossPlatformEvidence(soundcharts, URLS, 'soundcloud', 'x');
+
+    const candidates = resolveCanonicalArtistUuid.mock.calls[0][0] as Array<{ platform: string }>;
+    expect(candidates.some((c) => c.platform === 'soundcloud')).toBe(false);
+    expect(candidates.map((c) => c.platform)).toEqual(['spotify', 'youtube', 'deezer']);
+  });
+});
+
+describe('checkRegisteredHandleAgainstRegistry (Fase 1.3 — evidência secundária de fallback)', () => {
+  it('CONFIRMED quando o registry do canônico lista exatamente o handle cadastrado', async () => {
+    const soundcharts = {
+      getArtistIdentifiers: jest.fn().mockResolvedValue({
+        raw: {},
+        identifiers: [{ platform: 'instagram', identifier: 'djstayofc' }],
+      }),
+    } as unknown as SoundchartsService;
+
+    const status = await checkRegisteredHandleAgainstRegistry(soundcharts, 'canonical-uuid', 'instagram', 'djstayofc');
+
+    expect(status).toBe('CONFIRMED');
+  });
+
+  it('comparação é case-insensitive', async () => {
+    const soundcharts = {
+      getArtistIdentifiers: jest.fn().mockResolvedValue({
+        raw: {},
+        identifiers: [{ platform: 'instagram', identifier: 'DjStayOfc' }],
+      }),
+    } as unknown as SoundchartsService;
+
+    const status = await checkRegisteredHandleAgainstRegistry(soundcharts, 'canonical-uuid', 'instagram', 'djstayofc');
+
+    expect(status).toBe('CONFIRMED');
+  });
+
+  it('MISMATCH quando o registry lista um identifier DIFERENTE do cadastrado', async () => {
+    const soundcharts = {
+      getArtistIdentifiers: jest.fn().mockResolvedValue({
+        raw: {},
+        identifiers: [{ platform: 'instagram', identifier: 'outra-conta-qualquer' }],
+      }),
+    } as unknown as SoundchartsService;
+
+    const status = await checkRegisteredHandleAgainstRegistry(soundcharts, 'canonical-uuid', 'instagram', 'djstayofc');
+
+    expect(status).toBe('MISMATCH');
+  });
+
+  it('INSUFFICIENT_EVIDENCE quando o registry não lista essa plataforma — ausência de dado nunca vira CONFIRMED', async () => {
+    const soundcharts = {
+      getArtistIdentifiers: jest.fn().mockResolvedValue({
+        raw: {},
+        identifiers: [{ platform: 'spotify', identifier: 'abc123' }],
+      }),
+    } as unknown as SoundchartsService;
+
+    const status = await checkRegisteredHandleAgainstRegistry(soundcharts, 'canonical-uuid', 'instagram', 'djstayofc');
+
+    expect(status).toBe('INSUFFICIENT_EVIDENCE');
+  });
+
+  it('INSUFFICIENT_EVIDENCE quando a consulta ao registry falha — indisponibilidade nunca vira CONFIRMED', async () => {
+    const soundcharts = {
+      getArtistIdentifiers: jest.fn().mockRejectedValue(new Error('timeout')),
+    } as unknown as SoundchartsService;
+
+    const status = await checkRegisteredHandleAgainstRegistry(soundcharts, 'canonical-uuid', 'instagram', 'djstayofc');
+
+    expect(status).toBe('INSUFFICIENT_EVIDENCE');
   });
 });
 

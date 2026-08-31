@@ -44,7 +44,7 @@ describe('Fonte única Soundcharts por card de métrica do artista', () => {
     expect(snapshot.followers).toBeNull();
   });
 
-  it('Instagram: followers vem de getInstagramFollowers, uuid resolvido pela cadeia canônica (nunca só pelo handle)', async () => {
+  it('Instagram: followers vem de getInstagramFollowers, uuid resolvido pelo handle CADASTRADO (primário, Fase 1.3 — cadeia canônica nem é consultada quando o handle resolve sozinho)', async () => {
     const getInstagramFollowers = jest.fn().mockResolvedValue(metric(124_221_841));
     const soundcharts = fakeSoundcharts({ getInstagramFollowers });
     const provider = new InstagramArtistProfileProvider(soundcharts);
@@ -57,18 +57,13 @@ describe('Fonte única Soundcharts por card de métrica do artista', () => {
       canonicalUrls: { spotifyUrl: 'https://open.spotify.com/artist/6qqNVTkY8uBg9cP3Jd7DAH' },
     });
 
-    expect(soundcharts.resolveCanonicalArtistUuid).toHaveBeenCalledWith([
-      { platform: 'spotify', externalId: '6qqNVTkY8uBg9cP3Jd7DAH' },
-      { platform: 'youtube', externalId: null },
-      { platform: 'deezer', externalId: null },
-      { platform: 'soundcloud', externalId: null },
-      { platform: 'instagram', externalId: 'billieeilish' },
-    ]);
+    expect(soundcharts.resolveArtistByPlatform).toHaveBeenCalledWith('instagram', 'billieeilish');
+    expect(soundcharts.resolveCanonicalArtistUuid).not.toHaveBeenCalled();
     expect(getInstagramFollowers).toHaveBeenCalledWith('sc-uuid-1');
     expect(snapshot.followers).toBe(124_221_841);
   });
 
-  it('TikTok: followers vem de getTikTokFollowers, uuid resolvido pela cadeia canônica (nunca só pelo handle)', async () => {
+  it('TikTok: followers vem de getTikTokFollowers, uuid resolvido pelo handle CADASTRADO (primário, Fase 1.3 — cadeia canônica nem é consultada quando o handle resolve sozinho)', async () => {
     const getTikTokFollowers = jest.fn().mockResolvedValue(metric(75_000_000));
     const soundcharts = fakeSoundcharts({ getTikTokFollowers });
     const provider = new TikTokArtistProfileProvider(soundcharts);
@@ -81,13 +76,8 @@ describe('Fonte única Soundcharts por card de métrica do artista', () => {
       canonicalUrls: { spotifyUrl: 'https://open.spotify.com/artist/6qqNVTkY8uBg9cP3Jd7DAH' },
     });
 
-    expect(soundcharts.resolveCanonicalArtistUuid).toHaveBeenCalledWith([
-      { platform: 'spotify', externalId: '6qqNVTkY8uBg9cP3Jd7DAH' },
-      { platform: 'youtube', externalId: null },
-      { platform: 'deezer', externalId: null },
-      { platform: 'soundcloud', externalId: null },
-      { platform: 'tiktok', externalId: 'billieeilish' },
-    ]);
+    expect(soundcharts.resolveArtistByPlatform).toHaveBeenCalledWith('tiktok', 'billieeilish');
+    expect(soundcharts.resolveCanonicalArtistUuid).not.toHaveBeenCalled();
     expect(getTikTokFollowers).toHaveBeenCalledWith('sc-uuid-1');
     expect(snapshot.followers).toBe(75_000_000);
   });

@@ -6,6 +6,8 @@ import type {
   SocialPlatformProfileSnapshot,
 } from '../social-platform-sync.types';
 import { SoundchartsService } from '../../../integrations/soundcharts/soundcharts.service';
+import { primaryIdentityProvenance, soundchartsProvenance } from '../soundcharts-provenance.util';
+import { evaluateCrossPlatformEvidence } from '../soundcharts-canonical-candidates.util';
 
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3';
 
@@ -45,6 +47,11 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
     if (!channelId) throw new Error('Canal do YouTube não encontrado para o link informado');
 
     const uuid = await this.soundcharts.resolveArtistByPlatform('youtube', channelId);
+
+    // Fase 1.3: resolução exata by-platform do channelId cadastrado já é a
+    // prova de identidade primária. Divergência cross-platform é diagnóstico.
+    const crossPlatform = await evaluateCrossPlatformEvidence(this.soundcharts, input.canonicalUrls, 'youtube', uuid);
+
     const subscribers = await this.soundcharts.getYouTubeSubscribers(uuid);
     const statistics = await this.fetchChannelStatistics(channelId, apiKey);
 
@@ -66,7 +73,25 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
       total_videos: statistics?.videoCount ?? null,
       total_tracks: null,
       total_albums: null,
-      raw_payload: { soundcharts_uuid: uuid, observed_at: subscribers.observedAt.toISOString() },
+      raw_payload: {
+        soundcharts_uuid: uuid,
+        observed_at: subscribers.observedAt.toISOString(),
+        ...primaryIdentityProvenance(crossPlatform),
+        // subscribers vem da Soundcharts; total_views/total_videos vêm de uma
+        // fonte DIFERENTE (YouTube Data API) — provenance de cada uma
+        // rastreada separadamente, nunca fundida como se fosse uma fonte só.
+        subscribers_provenance: soundchartsProvenance('youtube', subscribers),
+        views_videos_provenance: statistics ? {
+          source_provider: 'youtube_data_api',
+          source_platform: 'youtube',
+          source_endpoint: `${YOUTUBE_API}/channels?part=statistics&id=${channelId}`,
+          source_field: 'items[0].statistics.{viewCount,videoCount}',
+          fetched_at: new Date().toISOString(),
+          normalized_at: new Date().toISOString(),
+          raw_value: { viewCount: statistics.viewCount, videoCount: statistics.videoCount },
+          normalized_value: { total_views: statistics.viewCount, total_videos: statistics.videoCount },
+        } : null,
+      },
       sync_status: 'success',
       last_synced_at: new Date(),
       last_error: null,

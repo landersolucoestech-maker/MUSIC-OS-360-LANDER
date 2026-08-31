@@ -86,3 +86,103 @@ export async function resolveCanonicalUuidForProvider(
   }
   return soundcharts.resolveCanonicalArtistUuid(candidates);
 }
+
+export type RegistryMatchStatus = 'CONFIRMED' | 'INSUFFICIENT_EVIDENCE' | 'MISMATCH';
+
+/**
+ * Checa o registry de identifiers da Soundcharts de um UUID canônico contra
+ * o handle REGISTRADO desta plataforma — usado como evidência SECUNDÁRIA por
+ * Instagram/TikTok/Apple Music (não são âncoras canônicas) quando a resolução
+ * PRIMÁRIA pelo próprio handle não indexou standalone (ver providers: a
+ * tentativa pelo handle cadastrado é sempre a primeira, esta função só entra
+ * como fallback — Fase 1.3, corrige inversão conceitual da Fase 1.2, onde
+ * isso era consultado antes de sequer tentar o handle próprio).
+ *
+ * Três estados em vez de booleano (Fase 1.3): ausência de evidência
+ * (registry indisponível ou sem entrada para a plataforma) NÃO é a mesma
+ * coisa que confirmação — é rotulada distintamente para nunca ser
+ * confundida com uma resolução exata comprovada.
+ */
+export async function checkRegisteredHandleAgainstRegistry(
+  soundcharts: SoundchartsService,
+  uuid: string,
+  ownPlatform: string,
+  registeredHandle: string,
+): Promise<RegistryMatchStatus> {
+  let identifiers: Array<{ platform: string; identifier: string }>;
+  try {
+    ({ identifiers } = await soundcharts.getArtistIdentifiers(uuid));
+  } catch {
+    return 'INSUFFICIENT_EVIDENCE';
+  }
+  const registered = identifiers.find((i) => i.platform === ownPlatform);
+  if (!registered) return 'INSUFFICIENT_EVIDENCE';
+  return registered.identifier.toLowerCase() === registeredHandle.toLowerCase() ? 'CONFIRMED' : 'MISMATCH';
+}
+
+export type CrossPlatformStatus = 'CROSS_PLATFORM_CONSISTENT' | 'CROSS_PLATFORM_DIVERGENT' | 'CROSS_PLATFORM_UNKNOWN';
+
+export interface CrossPlatformEvidence {
+  status: CrossPlatformStatus;
+  /** UUID resolvido independentemente pelas outras âncoras; null quando não
+   * havia dado suficiente para comparar. */
+  independentUuid: string | null;
+  /**
+   * Quando DIVERGENT, o identifier que a Soundcharts REGISTRA para esta
+   * plataforma no artista canônico independente (via getArtistIdentifiers),
+   * se houver (achado real: SoundCloud "deejaystay" cadastrado resolve para
+   * uma entidade Soundcharts diferente da que Spotify/YouTube/Deezer
+   * resolvem — confirmado via forense Fase 1.3 como fragmentação de
+   * catalogação da própria Soundcharts, NÃO um erro de cadastro: o registry
+   * da PRÓPRIA entidade "deejaystay" confirma "deejaystay" como seu
+   * SoundCloud, e a métrica real dessa entidade bateu com o valor esperado).
+   * Puramente diagnóstico — nunca aplicado automaticamente, nunca bloqueia.
+   */
+  registryIdentifier: string | null;
+}
+
+/**
+ * Compara o UUID resolvido pelo PRÓPRIO handle de uma plataforma âncora
+ * (spotify/youtube/deezer/soundcloud) — já resolvido por lookup EXATO do
+ * identifier cadastrado, portanto já é a prova de identidade primária —
+ * contra o UUID resolvido independentemente pelas OUTRAS 3 âncoras.
+ *
+ * Fase 1.3: essa comparação é PURAMENTE DIAGNÓSTICA. Uma divergência aqui
+ * significa apenas que a Soundcharts modela esse artista em mais de uma
+ * entidade interna (fragmentação de catalogação, comum quando uma conta foi
+ * importada de fonte diferente e nunca passou por merge manual) — NUNCA que
+ * o link cadastrado pelo artista esteja errado. A resolução exata pelo
+ * identifier cadastrado já é, por construção do endpoint by-platform da
+ * Soundcharts, a prova de que aquela conta pertence a essa entidade. Este
+ * resultado NUNCA deve gatear persistência de métrica (ver providers).
+ */
+export async function evaluateCrossPlatformEvidence(
+  soundcharts: SoundchartsService,
+  canonicalUrls: CanonicalArtistUrls | undefined,
+  ownPlatform: string,
+  ownResolvedUuid: string,
+): Promise<CrossPlatformEvidence> {
+  const independentCandidates = buildCanonicalCandidates(canonicalUrls ?? {}).filter(
+    (c) => c.platform !== ownPlatform && c.externalId,
+  );
+  if (independentCandidates.length === 0) {
+    return { status: 'CROSS_PLATFORM_UNKNOWN', independentUuid: null, registryIdentifier: null };
+  }
+  let independentUuid: string;
+  try {
+    independentUuid = await soundcharts.resolveCanonicalArtistUuid(independentCandidates);
+  } catch {
+    return { status: 'CROSS_PLATFORM_UNKNOWN', independentUuid: null, registryIdentifier: null };
+  }
+  if (independentUuid === ownResolvedUuid) {
+    return { status: 'CROSS_PLATFORM_CONSISTENT', independentUuid, registryIdentifier: null };
+  }
+  let registryIdentifier: string | null = null;
+  try {
+    const { identifiers } = await soundcharts.getArtistIdentifiers(independentUuid);
+    registryIdentifier = identifiers.find((i) => i.platform === ownPlatform)?.identifier ?? null;
+  } catch {
+    registryIdentifier = null;
+  }
+  return { status: 'CROSS_PLATFORM_DIVERGENT', independentUuid, registryIdentifier };
+}

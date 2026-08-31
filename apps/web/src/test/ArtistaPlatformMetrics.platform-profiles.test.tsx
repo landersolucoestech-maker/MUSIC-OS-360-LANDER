@@ -543,6 +543,60 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     expect(api.post).not.toHaveBeenCalled();
   });
 
+  // REGRESSAO (bug reportado "Link do Apple Music inválido" para uma URL
+  // corretamente cadastrada): a URL SEM locale (/us/, /br/...) é a própria
+  // forma que este normalizador produz e sempre produziu — tem que ser aceita
+  // pelo clique real em "Sincronizar agora", não só pela função isolada.
+  it("Apple Music: link sem locale (https://music.apple.com/artist/ID) e aceito pelo sync real", async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
+    vi.mocked(api.post).mockResolvedValue({
+      artist_id: "artist-1",
+      enqueued: [{ platform: "apple-music", job_id: "job-6" }],
+      skipped: [],
+    });
+
+    renderMetrics({ appleMusicUrl: "https://music.apple.com/artist/1543163588" });
+
+    fireEvent.click(await screen.findByTestId("button-sync-apple-music-artist-1"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/artists/artist-1/platform-profiles/apple-music/sync", {
+        profileUrl: "https://music.apple.com/artist/1543163588",
+        source: "profile_url",
+      });
+    });
+  });
+
+  it("Apple Music: link com locale (https://music.apple.com/us/artist/ID) e aceito pelo sync real", async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
+    vi.mocked(api.post).mockResolvedValue({
+      artist_id: "artist-1",
+      enqueued: [{ platform: "apple-music", job_id: "job-7" }],
+      skipped: [],
+    });
+
+    renderMetrics({ appleMusicUrl: "https://music.apple.com/us/artist/1543163588" });
+
+    fireEvent.click(await screen.findByTestId("button-sync-apple-music-artist-1"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/artists/artist-1/platform-profiles/apple-music/sync", {
+        profileUrl: "https://music.apple.com/artist/1543163588",
+        source: "profile_url",
+      });
+    });
+  });
+
+  it("Apple Music: link invalido bloqueia sync sem chamar endpoint", async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
+
+    renderMetrics({ appleMusicUrl: "https://fake-apple.com/us/artist/1543163588" });
+
+    fireEvent.click(await screen.findByTestId("button-sync-apple-music-artist-1"));
+
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
   it("Deezer sincroniza pelo PERFIL PUBLICO do artista (URL), sem exigir OAuth/credencial de organizacao", async () => {
     vi.mocked(api.get).mockResolvedValue([]);
     vi.mocked(api.post).mockResolvedValue({

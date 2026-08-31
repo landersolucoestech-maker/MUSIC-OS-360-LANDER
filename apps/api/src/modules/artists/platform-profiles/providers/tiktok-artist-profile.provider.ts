@@ -6,16 +6,25 @@ import type {
 } from '../social-platform-sync.types';
 import { SoundchartsService } from '../../../integrations/soundcharts/soundcharts.service';
 import { SoundchartsNotFoundError } from '../../../integrations/soundcharts/soundcharts.errors';
-import { resolveCanonicalUuidForProvider } from '../soundcharts-canonical-candidates.util';
+import { checkRegisteredHandleAgainstRegistry, resolveCanonicalUuidForProvider } from '../soundcharts-canonical-candidates.util';
+import { isDevMockSocialMetricsEnabled, mockFollowersFor } from '../dev-social-metrics-mock';
+import { soundchartsNotIndexedProvenance, soundchartsProvenance } from '../soundcharts-provenance.util';
 
 /**
  * Métrica pública do ARTISTA via Soundcharts /audience/tiktok — nunca a
  * conexão OAuth de Marketing/MusicChat (IntegrationsModule TikTokService,
  * uma integração tenant-scoped completamente separada) (Soundcharts 05).
  *
- * UUID resolvido via cadeia canônica spotify→youtube→deezer→soundcloud
- * (canonicalUrls), com o próprio handle do TikTok só como último recurso —
- * o handle raramente está indexado sozinho na Soundcharts (Soundcharts 06).
+ * Fase 1.3 — PRIMÁRIO: resolução exata by-platform do handle CADASTRADO
+ * (mesma prova de identidade que spotify/youtube/deezer/soundcloud já usam).
+ * Só cai para o UUID canônico (spotify→youtube→deezer→soundcloud) quando o
+ * handle não está indexado standalone na Soundcharts — comum para
+ * Instagram/TikTok — e mesmo assim só usa esse dado como SECUNDÁRIO, exigindo
+ * confirmação no registry de identifiers do canônico (`checkRegisteredHandleAgainstRegistry`)
+ * antes de rotular como identidade verificada; sem confirmação, o dado ainda
+ * é usado (evita zerar audiência real por lacuna de registry) mas rotulado
+ * `INSUFFICIENT_EVIDENCE`, nunca `VERIFIED_EXACT` (corrige inversão conceitual
+ * da Fase 1.2, onde o canônico era tentado antes do handle próprio).
  *
  * "Nenhuma conta social vinculada" (404) é uma resposta VÁLIDA da Soundcharts
  * — nem todo artista tem TikTok indexado lá (confirmado: Dj Stay 404 em
@@ -42,36 +51,79 @@ export class TikTokArtistProfileProvider implements ArtistPlatformProvider {
       );
     }
 
-    const username = input.externalId ?? this.extractUsername(input.externalUrl ?? '');
+    // extractUsername normaliza tanto handle bruto (com/sem @) quanto URL completa —
+    // sempre passa pela mesma normalização, venha o valor de external_id ou external_url,
+    // para nunca deixar um "@" ou variação de formatação vazar para a resolução exata.
+    const username = this.extractUsername(input.externalId ?? input.externalUrl ?? '');
     if (!username) throw new Error('TikTok username ausente ou inválido');
-
-    const uuid = await resolveCanonicalUuidForProvider(this.soundcharts, input.canonicalUrls, 'tiktok', username);
 
     let followers: number | null = null;
     let observedAt = new Date();
-    let resolvedUuid = uuid;
-    let resolution: 'canonical' | 'own_handle' = 'canonical';
-    let ownHandleAttempted = false;
+    let resolvedUuid: string | null = null;
+    let resolution: 'own_handle' | 'canonical' = 'own_handle';
+    let primaryIdentityStatus: 'VERIFIED_EXACT' | 'INSUFFICIENT_EVIDENCE' | 'PROFILE_NOT_FOUND' = 'PROFILE_NOT_FOUND';
+    let source: 'soundcharts' | 'dev_mock' = 'soundcharts';
+    let provenance: ReturnType<typeof soundchartsProvenance> | ReturnType<typeof soundchartsNotIndexedProvenance> | { source_provider: 'dev_mock'; source_platform: 'tiktok'; note: string };
+    const attemptedEndpoints: string[] = [];
+
+    // PRIMÁRIO: resolução exata pelo handle cadastrado.
+    attemptedEndpoints.push(`/api/v2.9/artist/by-platform/tiktok/${username}`);
+    let ownUuid: string | null = null;
     try {
-      const metric = await this.soundcharts.getTikTokFollowers(uuid);
-      followers = metric.value;
-      observedAt = metric.observedAt;
+      ownUuid = await this.soundcharts.resolveArtistByPlatform('tiktok', username);
     } catch (err) {
       if (!(err instanceof SoundchartsNotFoundError)) throw err;
-      // Canônico (spotify/youtube/deezer/soundcloud) resolveu um artista, mas ele não tem
-      // TikTok indexado nesse UUID — tenta resolver pelo handle do próprio TikTok antes de
-      // desistir: um handle explícito informado pelo usuário nunca pode ser ignorado só
-      // porque o artista também tem spotify_url (bug reportado).
-      ownHandleAttempted = true;
-      try {
-        const ownUuid = await this.soundcharts.resolveArtistByPlatform('tiktok', username);
-        const metric = await this.soundcharts.getTikTokFollowers(ownUuid);
-        followers = metric.value;
-        observedAt = metric.observedAt;
-        resolvedUuid = ownUuid;
-        resolution = 'own_handle';
-      } catch (ownErr) {
-        if (!(ownErr instanceof SoundchartsNotFoundError)) throw ownErr;
+    }
+
+    if (ownUuid) {
+      const metric = await this.soundcharts.getTikTokFollowers(ownUuid);
+      followers = metric.value;
+      observedAt = metric.observedAt;
+      resolvedUuid = ownUuid;
+      resolution = 'own_handle';
+      primaryIdentityStatus = 'VERIFIED_EXACT';
+      provenance = soundchartsProvenance('tiktok', metric);
+    } else {
+      // SECUNDÁRIO: handle não indexado standalone — tenta o UUID canônico
+      // (spotify/youtube/deezer/soundcloud), confirmando no registry antes de
+      // rotular como verificado.
+      const canonicalUuid = await resolveCanonicalUuidForProvider(this.soundcharts, input.canonicalUrls, 'tiktok', username);
+      const registryStatus = await checkRegisteredHandleAgainstRegistry(this.soundcharts, canonicalUuid, 'tiktok', username);
+
+      let canonicalMetric: Awaited<ReturnType<typeof this.soundcharts.getTikTokFollowers>> | null = null;
+      if (registryStatus !== 'MISMATCH') {
+        attemptedEndpoints.push(`/api/v2/artist/${canonicalUuid}/audience/tiktok`);
+        try {
+          canonicalMetric = await this.soundcharts.getTikTokFollowers(canonicalUuid);
+        } catch (err) {
+          if (!(err instanceof SoundchartsNotFoundError)) throw err;
+        }
+      }
+
+      if (canonicalMetric) {
+        followers = canonicalMetric.value;
+        observedAt = canonicalMetric.observedAt;
+        resolvedUuid = canonicalUuid;
+        resolution = 'canonical';
+        primaryIdentityStatus = registryStatus === 'CONFIRMED' ? 'VERIFIED_EXACT' : 'INSUFFICIENT_EVIDENCE';
+        provenance = soundchartsProvenance('tiktok', canonicalMetric);
+      } else {
+        resolvedUuid = canonicalUuid;
+        primaryIdentityStatus = 'PROFILE_NOT_FOUND';
+        // Real "nenhuma conta social vinculada" — em dev/local com USE_MOCK=true,
+        // usa o fallback de demonstração (nunca em produção/staging, ver
+        // dev-social-metrics-mock.ts).
+        if (isDevMockSocialMetricsEnabled()) {
+          followers = mockFollowersFor(input.artistId, 'tiktok');
+          source = 'dev_mock';
+          provenance = {
+            source_provider: 'dev_mock',
+            source_platform: 'tiktok',
+            note: 'Soundcharts confirmou conta não indexada (SOURCE_ACCOUNT_NOT_INDEXED); valor gerado deterministicamente para demonstração local, nunca em staging/production.',
+          };
+        } else {
+          provenance = soundchartsNotIndexedProvenance('tiktok', attemptedEndpoints);
+        }
       }
     }
 
@@ -97,7 +149,9 @@ export class TikTokArtistProfileProvider implements ArtistPlatformProvider {
         soundcharts_uuid: resolvedUuid,
         observed_at: observedAt.toISOString(),
         resolution,
-        own_handle_attempted: ownHandleAttempted,
+        primary_identity_status: primaryIdentityStatus,
+        source,
+        ...provenance,
       },
       sync_status: 'success',
       last_synced_at: new Date(),

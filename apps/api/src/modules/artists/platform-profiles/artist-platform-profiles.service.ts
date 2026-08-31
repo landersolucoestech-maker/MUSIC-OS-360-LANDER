@@ -83,6 +83,17 @@ export class ArtistPlatformProfilesService {
     return (await this.findByArtistAndPlatform(input.tenantId, input.artistId, input.platform))!;
   }
 
+  /**
+   * Persiste o snapshot devolvido por um provider que NÃO lançou exceção —
+   * o que inclui tanto sync_status='success' (caminho normal) quanto
+   * sync_status='failed' com raw_payload de diagnóstico (ex.: identity_status:
+   * 'IDENTITY_MISMATCH' em soundcharts-canonical-candidates.util.ts), quando o
+   * provider detecta um problema mas não quer lançar (para preservar
+   * raw_payload/last_error específicos). NUNCA sobrescreve sync_status/last_error
+   * do snapshot — respeitar exatamente o que o provider decidiu é o que torna
+   * IDENTITY_MISMATCH visível no banco em vez de mascarado como 'success'
+   * (Métricas Fase 1).
+   */
   async upsertSuccess(snapshot: SocialPlatformProfileSnapshot): Promise<SocialPlatformProfileSnapshot> {
     const repo = this.requireRepo();
     const now = new Date();
@@ -92,8 +103,6 @@ export class ArtistPlatformProfilesService {
       .into(ArtistPlatformProfileEntity)
       .values({
         ...snapshot,
-        sync_status: 'success',
-        last_error: null,
         last_synced_at: now,
         updated_at: now,
       } as never)

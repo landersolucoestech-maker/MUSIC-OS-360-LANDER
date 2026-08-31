@@ -8,6 +8,7 @@ import type { ArtistEntity } from '../../../database/entities';
 import { ArtistPlatformProfilesService } from './artist-platform-profiles.service';
 import type { ArtistPlatformSyncJobPayload, SocialPlatform } from './social-platform-sync.types';
 import { isSocialPlatform } from './social-platform-sync.types';
+import { extractAppleMusicId } from './apple-music-url.util';
 
 @Injectable()
 export class ArtistExternalProfileSyncService {
@@ -211,7 +212,7 @@ export class ArtistExternalProfileSyncService {
       }
 
       if (input.platform === 'apple-music') {
-        const externalId = this.extractAppleMusicId(rawUrl);
+        const externalId = extractAppleMusicId(rawUrl);
         if (!externalId) throw new BadRequestException('Link do Apple Music inválido: informe a URL do artista no Apple Music');
         return {
           externalId,
@@ -267,7 +268,7 @@ export class ArtistExternalProfileSyncService {
       };
     }
     if (input.platform === 'apple-music') {
-      const externalId = this.extractAppleMusicId(cachedProfileUrl);
+      const externalId = extractAppleMusicId(cachedProfileUrl);
       return {
         externalId,
         externalUrl: externalId ? `https://music.apple.com/artist/${externalId}` : cachedProfileUrl,
@@ -314,13 +315,6 @@ export class ArtistExternalProfileSyncService {
     const trimmed = value.trim().replace(/^@/, '');
     if (/^[A-Za-z0-9._]{1,24}$/.test(trimmed)) return trimmed;
     const match = value.trim().match(/^https?:\/\/(?:www\.)?tiktok\.com\/@([A-Za-z0-9._]{1,24})\/?(?:[?#].*)?$/i);
-    return match?.[1] ?? null;
-  }
-
-  private extractAppleMusicId(value: string): string | null {
-    const trimmed = value.trim();
-    if (/^\d+$/.test(trimmed)) return trimmed;
-    const match = trimmed.match(/^https?:\/\/(?:www\.|music\.)?apple\.com\/[a-z]{2}\/artist\/(?:[^/?#]+\/)?(\d+)(?:[/?#].*)?$/i);
     return match?.[1] ?? null;
   }
 

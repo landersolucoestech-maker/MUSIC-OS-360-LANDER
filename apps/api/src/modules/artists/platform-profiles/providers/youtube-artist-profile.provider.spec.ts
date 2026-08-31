@@ -93,6 +93,35 @@ describe('YouTubeArtistProfileProvider.resolve', () => {
     expect(snapshot.total_videos).toBeNull();
     expect(snapshot.sync_status).toBe('success');
   });
+
+  it('14) FASE 1.3 — UUID do próprio handle DIVERGE do canônico (Spotify/Deezer): resolução exata pelo channelId cadastrado ainda é aceita; divergência vira só diagnóstico', async () => {
+    const soundcharts = {
+      resolveArtistByPlatform: jest.fn().mockResolvedValue('youtube-own-uuid'),
+      resolveCanonicalArtistUuid: jest.fn().mockResolvedValue('canonical-uuid'),
+      getArtistIdentifiers: jest.fn().mockResolvedValue({ raw: {}, identifiers: [] }),
+      getYouTubeSubscribers: jest.fn().mockResolvedValue({ value: 555555, observedAt: new Date(), source: 'soundcharts' }),
+      isConfigured: jest.fn().mockReturnValue(true),
+    } as unknown as SoundchartsService;
+    const provider = new YouTubeArtistProfileProvider(configWithKey(), soundcharts);
+    fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(channelStatisticsResponse('1000', '10'));
+
+    const snapshot = await provider.resolve({
+      tenantId: 't1',
+      artistId: 'a1',
+      externalId: channelId,
+      externalUrl: null,
+      canonicalUrls: {
+        spotifyUrl: 'https://open.spotify.com/artist/6qqNVTkY8uBg9cP3Jd7DAH',
+        deezerUrl: 'https://www.deezer.com/artist/9635624',
+      },
+    });
+
+    expect(soundcharts.getYouTubeSubscribers).toHaveBeenCalledWith('youtube-own-uuid');
+    expect(snapshot.subscribers).toBe(555555);
+    expect(snapshot.sync_status).toBe('success');
+    expect(snapshot.raw_payload.primary_identity_status).toBe('VERIFIED_EXACT');
+    expect(snapshot.raw_payload.cross_platform_status).toBe('CROSS_PLATFORM_DIVERGENT');
+  });
 });
 
 describe('YouTubeArtistProfileProvider.parseRef', () => {

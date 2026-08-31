@@ -100,7 +100,14 @@ describe('SoundchartsService', () => {
 
       const result = await service.getSpotifyMonthlyListeners('uuid-1');
 
-      expect(result).toEqual({ value: 100_900_923, observedAt: new Date('2026-08-18'), source: 'soundcharts' });
+      expect(result).toEqual({
+        value: 100_900_923,
+        observedAt: new Date('2026-08-18'),
+        source: 'soundcharts',
+        // Provenance (auditoria 2026-08-31): endpoint/campo exatos de origem.
+        endpoint: '/api/v2/artist/uuid-1/streaming/spotify/listening',
+        field: 'items[].value',
+      });
       const dataCall = fetchMock.mock.calls.find(([url]) => url !== TOKEN_URL);
       expect(dataCall![0]).toContain('/streaming/spotify/listening');
       expect(dataCall![0]).not.toContain('/audience/spotify');
@@ -193,6 +200,63 @@ describe('SoundchartsService', () => {
     it('retorna NOT_SUPPORTED sem chamar a rede — nunca inventa um valor', () => {
       expect(service.getAppleMusicSupport()).toBe('NOT_SUPPORTED');
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getArtistIdentifiers (Métricas Fase 1.1 — evidência de identidade)', () => {
+    it('retorna a lista completa de identifiers de todas as plataformas conhecidas pela Soundcharts para um UUID', async () => {
+      fetchMock
+        .mockResolvedValueOnce(tokenResponse())
+        .mockResolvedValueOnce(jsonResponse(200, {
+          related: { uuid: 'uuid-1', slug: 'dj-stay', name: 'DJ Stay' },
+          items: [
+            { platformName: 'Spotify', platformCode: 'spotify', identifier: 'abc123', url: 'https://open.spotify.com/artist/abc123', default: true, verified: true },
+            { platformName: 'Soundcloud', platformCode: 'soundcloud', identifier: 'djstay-sc', url: 'https://soundcloud.com/djstay-sc', default: true, verified: false },
+          ],
+        }));
+
+      const result = await service.getArtistIdentifiers('uuid-1');
+
+      expect(result.identifiers).toEqual([
+        { platform: 'spotify', identifier: 'abc123' },
+        { platform: 'soundcloud', identifier: 'djstay-sc' },
+      ]);
+    });
+
+    it('404 (UUID sem identifiers) retorna lista vazia, nunca lança', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse(404, { errors: [] }));
+
+      const result = await service.getArtistIdentifiers('uuid-sem-identifiers');
+
+      expect(result.identifiers).toEqual([]);
+    });
+  });
+
+  describe('searchArtists (Métricas Fase 1.1 — evidência auxiliar, nunca prova identidade sozinha)', () => {
+    it('retorna uuid+nome de cada resultado da busca', async () => {
+      fetchMock
+        .mockResolvedValueOnce(tokenResponse())
+        .mockResolvedValueOnce(jsonResponse(200, {
+          items: [
+            { uuid: 'uuid-a', name: 'DJ Stay' },
+            { uuid: 'uuid-b', name: 'Dj Stay' },
+          ],
+        }));
+
+      const result = await service.searchArtists('Dj Stay');
+
+      expect(result.results).toEqual([
+        { uuid: 'uuid-a', name: 'DJ Stay' },
+        { uuid: 'uuid-b', name: 'Dj Stay' },
+      ]);
+    });
+
+    it('sem resultados retorna lista vazia', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse(200, { items: [] }));
+
+      const result = await service.searchArtists('artista-inexistente-xyz');
+
+      expect(result.results).toEqual([]);
     });
   });
 });

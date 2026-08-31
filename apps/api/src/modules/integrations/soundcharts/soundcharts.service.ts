@@ -133,6 +133,50 @@ export class SoundchartsService {
     throw new SoundchartsApiError(`Soundcharts respondeu HTTP ${status} em ${context}`, status);
   }
 
+  /**
+   * Registro completo de identifiers externos que a Soundcharts já associou
+   * a um UUID — usado para investigação de identidade (Métricas Fase 1.1):
+   * permite ver TODAS as plataformas conhecidas pela Soundcharts para este
+   * artista, não só a que está sendo resolvida no momento. Nunca usado para
+   * resolver UUID automaticamente — é evidência para decisão de identidade,
+   * não um resolver por si só.
+   */
+  async getArtistIdentifiers(uuid: string): Promise<{ raw: unknown; identifiers: Array<{ platform: string; identifier: string }> }> {
+    const id = assertSafePathSegment(uuid, 'uuid');
+    const { status, body } = await this.apiGet(`/api/v2/artist/${id}/identifiers`);
+    if (status === 404) return { raw: body, identifiers: [] };
+    if (status !== 200) this.throwForStatus(status, `getArtistIdentifiers(${id})`);
+    const items =
+      (body as { items?: Array<{ platformCode?: string; identifier?: string }> } | null)?.items ??
+      (Array.isArray(body) ? (body as Array<{ platformCode?: string; identifier?: string }>) : []);
+    return {
+      raw: body,
+      identifiers: items
+        .filter((i): i is { platformCode: string; identifier: string } => !!i?.platformCode && !!i?.identifier)
+        .map((i) => ({ platform: i.platformCode, identifier: i.identifier })),
+    };
+  }
+
+  /**
+   * Busca artistas por nome/query — evidência auxiliar para investigação de
+   * identidade (nunca prova identidade sozinha: nome igual não é MATCH).
+   */
+  async searchArtists(query: string): Promise<{ raw: unknown; results: Array<{ uuid: string; name: string }> }> {
+    const q = encodeURIComponent(query);
+    const { status, body } = await this.apiGet(`/api/v2/artist/search/${q}`);
+    if (status === 404) return { raw: body, results: [] };
+    if (status !== 200) this.throwForStatus(status, `searchArtists(${query})`);
+    const items =
+      (body as { items?: Array<{ uuid?: string; name?: string }> } | null)?.items ??
+      (Array.isArray(body) ? (body as Array<{ uuid?: string; name?: string }>) : []);
+    return {
+      raw: body,
+      results: items
+        .filter((i): i is { uuid: string; name: string } => !!i?.uuid && !!i?.name)
+        .map((i) => ({ uuid: i.uuid, name: i.name })),
+    };
+  }
+
   /** Item com a data mais recente — nunca assume a ordem do array (endpoints diferentes ordenam diferente). */
   private pickLatest(items: unknown): SeriesItem | null {
     if (!Array.isArray(items) || items.length === 0) return null;
@@ -211,7 +255,8 @@ export class SoundchartsService {
    */
   async getSpotifyMonthlyListeners(uuid: string): Promise<SoundchartsMetric> {
     const id = assertSafePathSegment(uuid, 'uuid');
-    const { status, body } = await this.apiGet(`/api/v2/artist/${id}/streaming/spotify/listening`);
+    const endpoint = `/api/v2/artist/${id}/streaming/spotify/listening`;
+    const { status, body } = await this.apiGet(endpoint);
     if (status !== 200) this.throwForStatus(status, 'getSpotifyMonthlyListeners');
 
     const items = (body as { items?: unknown } | null)?.items;
@@ -219,12 +264,19 @@ export class SoundchartsService {
     if (!latest || typeof latest.value !== 'number') {
       throw new SoundchartsApiError('Soundcharts: série de monthly listeners vazia/sem value', status);
     }
-    return { value: latest.value, observedAt: latest.date ? new Date(latest.date) : new Date(), source: 'soundcharts' };
+    return {
+      value: latest.value,
+      observedAt: latest.date ? new Date(latest.date) : new Date(),
+      source: 'soundcharts',
+      endpoint,
+      field: 'items[].value',
+    };
   }
 
   private async getAudienceFollowerCount(uuid: string, platform: string, methodName: string): Promise<SoundchartsMetric> {
     const id = assertSafePathSegment(uuid, 'uuid');
-    const { status, body } = await this.apiGet(`/api/v2/artist/${id}/audience/${platform}`);
+    const endpoint = `/api/v2/artist/${id}/audience/${platform}`;
+    const { status, body } = await this.apiGet(endpoint);
     if (status !== 200) this.throwForStatus(status, methodName);
 
     const items = (body as { items?: unknown } | null)?.items;
@@ -232,7 +284,13 @@ export class SoundchartsService {
     if (!latest || typeof latest.followerCount !== 'number') {
       throw new SoundchartsApiError(`Soundcharts: followerCount ausente em ${methodName}`, status);
     }
-    return { value: latest.followerCount, observedAt: latest.date ? new Date(latest.date) : new Date(), source: 'soundcharts' };
+    return {
+      value: latest.followerCount,
+      observedAt: latest.date ? new Date(latest.date) : new Date(),
+      source: 'soundcharts',
+      endpoint,
+      field: 'items[].followerCount',
+    };
   }
 
   async getInstagramFollowers(uuid: string): Promise<SoundchartsMetric> {
@@ -289,7 +347,8 @@ export class SoundchartsService {
 
   async getAppleMusicPlaylistCount(uuid: string): Promise<SoundchartsMetric> {
     const id = assertSafePathSegment(uuid, 'uuid');
-    const { status, body } = await this.apiGet(`/api/v2/artist/${id}/playlist/reach/apple-music`);
+    const endpoint = `/api/v2/artist/${id}/playlist/reach/apple-music`;
+    const { status, body } = await this.apiGet(endpoint);
     if (status !== 200) this.throwForStatus(status, 'getAppleMusicPlaylistCount');
 
     const items = (body as { items?: unknown } | null)?.items;
@@ -297,6 +356,12 @@ export class SoundchartsService {
     if (!latest || typeof latest.playlistCount !== 'number') {
       throw new SoundchartsNotFoundError(`Soundcharts: nenhum playlist reach registrado em getAppleMusicPlaylistCount`, status);
     }
-    return { value: latest.playlistCount, observedAt: latest.date ? new Date(latest.date) : new Date(), source: 'soundcharts' };
+    return {
+      value: latest.playlistCount,
+      observedAt: latest.date ? new Date(latest.date) : new Date(),
+      source: 'soundcharts',
+      endpoint,
+      field: 'items[].playlistCount',
+    };
   }
 }

@@ -6,6 +6,8 @@ import type {
 } from '../social-platform-sync.types';
 import { parseSpotifyArtistId } from '../../../integrations/spotify/spotify-url.util';
 import { SoundchartsService } from '../../../integrations/soundcharts/soundcharts.service';
+import { primaryIdentityProvenance, soundchartsProvenance } from '../soundcharts-provenance.util';
+import { evaluateCrossPlatformEvidence } from '../soundcharts-canonical-candidates.util';
 
 /**
  * Fonte única do card "Ouvintes": Soundcharts /streaming/spotify/listening —
@@ -34,6 +36,12 @@ export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
     if (!artistId) throw new Error('Spotify artist id ausente ou inválido');
 
     const uuid = await this.soundcharts.resolveArtistByPlatform('spotify', artistId);
+
+    // Fase 1.3: resolução exata by-platform do artistId cadastrado já é a
+    // prova de identidade primária. Divergência cross-platform vs
+    // YouTube/Deezer/SoundCloud é só diagnóstico — nunca bloqueia.
+    const crossPlatform = await evaluateCrossPlatformEvidence(this.soundcharts, input.canonicalUrls, 'spotify', uuid);
+
     const listeners = await this.soundcharts.getSpotifyMonthlyListeners(uuid);
 
     return {
@@ -54,7 +62,12 @@ export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
       total_videos: null,
       total_tracks: null,
       total_albums: null,
-      raw_payload: { soundcharts_uuid: uuid, observed_at: listeners.observedAt.toISOString() },
+      raw_payload: {
+        soundcharts_uuid: uuid,
+        observed_at: listeners.observedAt.toISOString(),
+        ...primaryIdentityProvenance(crossPlatform),
+        ...soundchartsProvenance('spotify', listeners),
+      },
       sync_status: 'success',
       last_synced_at: new Date(),
       last_error: null,

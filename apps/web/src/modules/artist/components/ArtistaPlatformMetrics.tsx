@@ -86,12 +86,32 @@ function normalizeTikTokProfileUrl(input: string | null | undefined): string | n
   return match?.[1] ? `https://www.tiktok.com/@${match[1]}` : null;
 }
 
+// Contrato canônico Apple Music (Métricas Fase 1 — corrige bug reportado
+// "Link do Apple Music inválido" para uma URL corretamente cadastrada):
+// o segmento de locale de 2 letras (/us/, /br/...) É OPCIONAL — a Apple Music
+// aceita URLs com e sem ele, e este normalizador sempre produzia a forma SEM
+// locale, enquanto o extractor espelhado no backend
+// (artist-external-profile-sync.service.ts extractAppleMusicId) exigia o
+// locale como obrigatório. Os dois regexes têm que aceitar exatamente o
+// mesmo conjunto de URLs — se um mudar, o outro precisa mudar junto.
+const APPLE_MUSIC_URL_PATTERN = /^https?:\/\/(?:www\.|music\.)?apple\.com\/(?:[a-z]{2}\/)?artist\/(?:[^/?#]+\/)?(\d+)(?:[/?#].*)?$/i;
+
 function normalizeAppleMusicProfileUrl(input: string | null | undefined): string | null {
   const value = (input ?? "").trim();
   if (!value) return null;
   if (/^\d+$/.test(value)) return `https://music.apple.com/artist/${value}`;
-  const match = value.match(/^https?:\/\/(?:www\.|music\.)?apple\.com\/[a-z]{2}\/artist\/(?:[^/?#]+\/)?(\d+)(?:[/?#].*)?$/i);
+  const match = value.match(APPLE_MUSIC_URL_PATTERN);
   return match?.[1] ? `https://music.apple.com/artist/${match[1]}` : null;
+}
+
+/**
+ * `true` quando o snapshot veio do fallback de demonstração de dev/local
+ * (dev-social-metrics-mock.ts no backend), nunca de produção — usado só
+ * para rotular o valor como "dados de demonstração" e nunca confundi-lo
+ * com métrica real da Soundcharts.
+ */
+function isDevMockSnapshot(snapshot: ArtistPlatformProfileSnapshot | null): boolean {
+  return snapshot?.raw_payload?.["source"] === "dev_mock";
 }
 
 /**
@@ -316,7 +336,9 @@ export function ArtistaPlatformMetrics({
                 <p className="text-sm font-bold text-foreground" data-testid={`metric-instagram-${artistaId}`}>
                   {formatCount(instagramMetric.value)}
                 </p>
-                <p className="text-[10px] text-muted-foreground">Seguidores</p>
+                <p className="text-[10px] text-muted-foreground" data-testid={`metric-instagram-source-${artistaId}`}>
+                  Seguidores{isDevMockSnapshot(instagramSnapshot) ? " · dados de demonstração (dev)" : ""}
+                </p>
               </>
             ) : (
               <>
@@ -349,7 +371,9 @@ export function ArtistaPlatformMetrics({
                 <p className="text-sm font-bold text-foreground" data-testid={`metric-tiktok-${artistaId}`}>
                   {formatCount(tiktokMetric.value)}
                 </p>
-                <p className="text-[10px] text-muted-foreground">Seguidores</p>
+                <p className="text-[10px] text-muted-foreground" data-testid={`metric-tiktok-source-${artistaId}`}>
+                  Seguidores{isDevMockSnapshot(tiktokSnapshot) ? " · dados de demonstração (dev)" : ""}
+                </p>
               </>
             ) : (
               <>

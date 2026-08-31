@@ -5,6 +5,8 @@ import type {
   SocialPlatformProfileSnapshot,
 } from '../social-platform-sync.types';
 import { SoundchartsService } from '../../../integrations/soundcharts/soundcharts.service';
+import { primaryIdentityProvenance, soundchartsProvenance } from '../soundcharts-provenance.util';
+import { evaluateCrossPlatformEvidence } from '../soundcharts-canonical-candidates.util';
 
 /**
  * Fonte única do card de seguidores do SoundCloud: Soundcharts
@@ -34,6 +36,18 @@ export class SoundCloudArtistProfileProvider implements ArtistPlatformProvider {
     if (!slug) throw new Error('SoundCloud profile slug ausente ou inválido');
 
     const uuid = await this.soundcharts.resolveArtistByPlatform('soundcloud', slug);
+
+    // Fase 1.3: a resolução exata by-platform do slug CADASTRADO já é a prova
+    // de identidade primária (o endpoint da Soundcharts resolve exatamente
+    // esse identifier ou retorna 404 — nunca "outro" identifier). Divergência
+    // do UUID resolvido por outras âncoras (Spotify/YouTube/Deezer) é só
+    // fragmentação de catalogação da Soundcharts — nunca bloqueia a métrica
+    // da conta que o artista efetivamente cadastrou (achado real: SoundCloud
+    // "deejaystay" e a entidade "canônica" via Spotify são duas entidades
+    // Soundcharts distintas para o mesmo artista; a métrica de "deejaystay" é
+    // válida mesmo assim).
+    const crossPlatform = await evaluateCrossPlatformEvidence(this.soundcharts, input.canonicalUrls, 'soundcloud', uuid);
+
     const followers = await this.soundcharts.getSoundCloudFollowers(uuid);
 
     return {
@@ -54,7 +68,12 @@ export class SoundCloudArtistProfileProvider implements ArtistPlatformProvider {
       total_videos: null,
       total_tracks: null,
       total_albums: null,
-      raw_payload: { soundcharts_uuid: uuid, observed_at: followers.observedAt.toISOString() },
+      raw_payload: {
+        soundcharts_uuid: uuid,
+        observed_at: followers.observedAt.toISOString(),
+        ...primaryIdentityProvenance(crossPlatform),
+        ...soundchartsProvenance('soundcloud', followers),
+      },
       sync_status: 'success',
       last_synced_at: new Date(),
       last_error: null,
