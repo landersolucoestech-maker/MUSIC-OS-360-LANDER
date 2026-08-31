@@ -100,6 +100,10 @@ export default function AdminDashboard() {
   const tenants = tenantsQuery.data ?? [];
   const subscriptions = subscriptionsQuery.data ?? [];
   const recentTenants = tenants.slice(0, 5);
+  // Falha real de query (endpoint fora do ar) é diferente de "0 tenants
+  // reais" — sem isto, um erro de rede silenciosamente renderizava R$0/0
+  // como se fossem KPIs reais, indistinguível de uma plataforma vazia.
+  const kpisUnavailable = tenantsQuery.isError || subscriptionsQuery.isError;
   const unresolvedEvents: unknown[] = [];
   const unreadNotifs: Array<{ id: string; severity: string; title: string; message: string; action_url?: string }> = [];
 
@@ -157,7 +161,56 @@ export default function AdminDashboard() {
     }));
   }, [tenants]);
 
-  const KPI_CARDS: AdminKpiCardProps[] = [
+  const KPI_CARDS: AdminKpiCardProps[] = kpisUnavailable ? [
+    {
+      label: "MRR",
+      value: "Indisponível",
+      description: "Falha ao carregar assinaturas — tente novamente",
+      icon: DollarSign,
+      accent: "destructive",
+      href: "/admin/subscriptions",
+    },
+    {
+      label: "Clientes Ativos",
+      value: "Indisponível",
+      description: "Falha ao carregar tenants — tente novamente",
+      icon: Building2,
+      accent: "destructive",
+      href: "/admin/clients",
+    },
+    {
+      label: "Usuarios Cadastrados",
+      value: "Indisponível",
+      description: "Falha ao carregar tenants — tente novamente",
+      icon: Users,
+      accent: "destructive",
+      href: "/admin/clients",
+    },
+    {
+      label: "Churn Rate",
+      value: "Indisponível",
+      description: "Falha ao carregar tenants — tente novamente",
+      icon: TrendingDown,
+      accent: "destructive",
+      href: "/admin/clients",
+    },
+    {
+      label: "Assinaturas Ativas",
+      value: "Indisponível",
+      description: "Falha ao carregar assinaturas — tente novamente",
+      icon: CreditCard,
+      accent: "destructive",
+      href: "/admin/subscriptions",
+    },
+    {
+      label: "Tenants em Atencao",
+      value: "Indisponível",
+      description: "Falha ao carregar tenants — tente novamente",
+      icon: AlertCircle,
+      accent: "destructive",
+      href: "/admin/clients",
+    },
+  ] : [
     {
       label: "MRR",
       value: fmtBRL(kpis.mrr),

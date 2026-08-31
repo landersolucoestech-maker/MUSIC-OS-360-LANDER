@@ -15,12 +15,7 @@ import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { formatCategoryLabel } from "@/shared/lib/category-labels";
 import { FeatureGate } from '@/shared/components/FeatureGate';
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-function sum(arr: any[], field: string) {
-  return arr.reduce((s, t) => s + (t[field] ?? 0), 0);
-}
+import { toNumber, sum } from "./contabilidade-calc";
 
 const CATEGORIA_LABELS: Record<string, string> = {
   "recebimentos externos de direitos": "Recebimentos externos de direitos",
@@ -229,27 +224,30 @@ export default function Contabilidade() {
 
   const receitasPorCategoria = useMemo(() => {
     const map: Record<string, number> = {};
-    receitas.forEach((t: any) => { const c = t.categoria ?? "outras"; map[c] = (map[c] ?? 0) + (t.valor ?? 0); });
+    receitas.forEach((t: any) => { const c = t.categoria ?? "outras"; map[c] = (map[c] ?? 0) + toNumber(t.valor); });
     return Object.entries(map).map(([categoria, valor]) => ({ categoria, valor })).sort((a, b) => b.valor - a.valor);
   }, [receitas]);
 
   const despesasPorCategoria = useMemo(() => {
     const map: Record<string, number> = {};
-    despesas.forEach((t: any) => { const c = t.categoria ?? "outras"; map[c] = (map[c] ?? 0) + (t.valor ?? 0); });
+    despesas.forEach((t: any) => { const c = t.categoria ?? "outras"; map[c] = (map[c] ?? 0) + toNumber(t.valor); });
     return Object.entries(map).map(([categoria, valor]) => ({ categoria, valor })).sort((a, b) => b.valor - a.valor);
   }, [despesas]);
 
   // ── P&L por Projeto (cada transação = 1 projeto) ──────────────────────────
   const plPorProjeto = useMemo(() =>
     filteredTransacoes
-      .map((t: any) => ({
-        id: t.id,
-        nome: t.descricao ?? "—",
-        categoria: t.categoria ?? "—",
-        receita: t.tipo === "receita" ? (t.valor ?? 0) : 0,
-        despesa: t.tipo === "despesa" ? (t.valor ?? 0) : 0,
-        resultado: t.tipo === "receita" ? (t.valor ?? 0) : -(t.valor ?? 0),
-      }))
+      .map((t: any) => {
+        const valor = toNumber(t.valor);
+        return {
+          id: t.id,
+          nome: t.descricao ?? "—",
+          categoria: t.categoria ?? "—",
+          receita: t.tipo === "receita" ? valor : 0,
+          despesa: t.tipo === "despesa" ? valor : 0,
+          resultado: t.tipo === "receita" ? valor : -valor,
+        };
+      })
       .sort((a, b) => b.resultado - a.resultado),
   [filteredTransacoes]);
 
@@ -269,8 +267,8 @@ export default function Contabilidade() {
         totalRec: 0,
         totalDes: 0,
       };
-      if (t.tipo === "receita") entry.totalRec += t.valor ?? 0;
-      else if (t.tipo === "despesa") entry.totalDes += t.valor ?? 0;
+      if (t.tipo === "receita") entry.totalRec += toNumber(t.valor);
+      else if (t.tipo === "despesa") entry.totalDes += toNumber(t.valor);
       porArtista.set(artistaId, entry);
     }
     return Array.from(porArtista.values())

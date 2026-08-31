@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { fetchAllPages } from "@/shared/lib/exportAll";
 import { endOfWeek, endOfMonth, endOfYear, startOfDay, endOfDay, format, startOfMonth, startOfWeek, startOfYear, subWeeks, addWeeks, addMonths, subMonths, addYears, subYears } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent } from "@/shared/ui/card";
 import { MetricCard } from "@/shared/components/MetricCard";
@@ -346,15 +347,15 @@ export default function Agenda() {
     if (viewMode === "semana") {
       const start = startOfWeek(currentDate, { weekStartsOn: 1 });
       const end = endOfWeek(currentDate, { weekStartsOn: 1 });
-      return `${format(start, "d")} — ${format(end, "d 'de' MMMM, yyyy")}`;
+      return `${format(start, "d", { locale: ptBR })} — ${format(end, "d 'de' MMMM, yyyy", { locale: ptBR })}`;
     }
     if (viewMode === "mes") {
-      return format(currentDate, "MMMM 'de' yyyy");
+      return format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
     }
     if (viewMode === "ano") {
-      return format(currentDate, "yyyy");
+      return format(currentDate, "yyyy", { locale: ptBR });
     }
-    return format(currentDate, "d 'de' MMMM yyyy");
+    return format(currentDate, "d 'de' MMMM yyyy", { locale: ptBR });
   }, [currentDate, viewMode]);
 
   const goToToday = () => setCurrentDate(new Date());

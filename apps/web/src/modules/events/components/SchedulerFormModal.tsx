@@ -359,7 +359,11 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
       });
       setErrors(newErrors);
       const details = result.error.errors.map((e) => ({ path: e.path, message: e.message }));
-      console.error("SchedulerFormModal validation errors:", details, { formData, normalizedFormData, evento });
+      // Validação client-side esperada (usuário deixou campo obrigatório em
+      // branco) — já comunicada via toast + FieldError inline abaixo.
+      // console.error poluiria o monitoramento de erros (Sentry captura
+      // console.error) com um evento que não é uma falha de runtime.
+      console.warn("SchedulerFormModal validation errors:", details, { formData, normalizedFormData, evento });
       const firstError = result.error.errors[0];
       const firstField = firstError?.path[0] ? String(firstError.path[0]) : "";
       const firstLabel = validationFieldLabels[firstField] ?? firstField;

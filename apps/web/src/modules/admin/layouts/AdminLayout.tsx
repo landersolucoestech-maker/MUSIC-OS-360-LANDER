@@ -8,7 +8,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { ADMIN_NOTIFICATIONS, ADMIN_DATA_IS_MOCK } from "../data/admin-source";
+import { ADMIN_NOTIFICATIONS } from "../data/admin-source";
 import {
   LayoutDashboard, Building2, Tag, Receipt,
   ScrollText, Bell, HeadphonesIcon,
@@ -201,23 +201,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-
-        {/* Production unavailable banner: nenhum dado real está disponível
-            no Painel Admin ainda — exibe aviso transparente em vez de KPIs falsos. */}
-        {!ADMIN_DATA_IS_MOCK && (
-          <div className="bg-yellow-500/10 border-b border-yellow-500/30 px-6 py-3 flex items-center gap-3">
-            <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-semibold text-yellow-300">
-                Admin analytics indisponível
-              </p>
-              <p className="text-[11px] text-yellow-200/70 mt-0.5">
-                Endpoints administrativos ainda não foram implementados.
-                Dados de plataforma (MRR, ARR, tenants, planos) não estão sendo exibidos para evitar informação fictícia.
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
