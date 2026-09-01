@@ -1,0 +1,374 @@
+import { ArtistMetricSnapshotsService } from './artist-metric-snapshots.service';
+import { METRIC_KEYS } from './metric-keys';
+import type { SocialPlatformProfileSnapshot } from './social-platform-sync.types';
+
+/**
+ * Fake repo com store em memória que reproduz o comportamento real que a
+ * lógica depende: UNIQUE (tenant_id, artist_id, platform, metric,
+ * observed_at) com ON CONFLICT DO NOTHING (orIgnore), e leitura filtrada
+ * por tenant/artist/platform/metric/from/to. Não é um mock raso — a
+ * deduplicação e o isolamento por tenant precisam ser reais para as
+ * asserções de idempotência e de segurança fazerem sentido.
+ */
+function buildFakeRepo() {
+  const store: any[] = [];
+  let idSeq = 0;
+
+  const keyOf = (r: { tenant_id: string; artist_id: string; platform: string; metric: string; observed_at: Date }) =>
+    `${r.tenant_id}|${r.artist_id}|${r.platform}|${r.metric}|${r.observed_at.toISOString()}`;
+
+  const predicateFor = (params: Record<string, unknown>) => {
+    const [key] = Object.keys(params);
+    const val = params[key];
+    switch (key) {
+      case 'tenantId':
+        return (r: any) => r.tenant_id === val;
+      case 'artistId':
+        return (r: any) => r.artist_id === val;
+      case 'platform':
+        return (r: any) => r.platform === val;
+      case 'metric':
+        return (r: any) => r.metric === val;
+      case 'from':
+        return (r: any) => r.observed_at.getTime() >= (val as Date).getTime();
+      case 'to':
+        return (r: any) => r.observed_at.getTime() <= (val as Date).getTime();
+      default:
+        return () => true;
+    }
+  };
+
+  const repo = {
+    createQueryBuilder: () => {
+      let insertRows: any[] = [];
+      const predicates: Array<(r: any) => boolean> = [];
+      const qb: any = {
+        insert: () => qb,
+        into: () => qb,
+        values: (rows: any[]) => {
+          insertRows = rows;
+          return qb;
+        },
+        orIgnore: () => qb,
+        execute: async () => {
+          const identifiers = insertRows.map((row) => {
+            const k = keyOf(row);
+            if (store.some((s) => keyOf(s) === k)) return {};
+            idSeq += 1;
+            store.push({ ...row, id: `id-${idSeq}` });
+            return { id: `id-${idSeq}` };
+          });
+          return { identifiers };
+        },
+        where: (_expr: string, params: Record<string, unknown>) => {
+          predicates.push(predicateFor(params));
+          return qb;
+        },
+        andWhere: (_expr: string, params: Record<string, unknown>) => {
+          predicates.push(predicateFor(params));
+          return qb;
+        },
+        orderBy: () => qb,
+        getMany: async () =>
+          store
+            .filter((r) => predicates.every((p) => p(r)))
+            .sort((a, b) => a.observed_at.getTime() - b.observed_at.getTime()),
+      };
+      return qb;
+    },
+    __store: store,
+  };
+  return repo;
+}
+
+function buildService(repo: ReturnType<typeof buildFakeRepo>) {
+  return new ArtistMetricSnapshotsService({ getRepository: () => repo } as never);
+}
+
+function baseSnapshot(overrides: Partial<SocialPlatformProfileSnapshot> & { raw_payload?: Record<string, unknown> }): SocialPlatformProfileSnapshot {
+  return {
+    tenant_id: 't1',
+    artist_id: 'a1',
+    platform: 'spotify',
+    external_id: 'ext',
+    external_url: 'https://open.spotify.com/artist/ext',
+    display_name: null,
+    username: 'handle',
+    profile_url: 'https://open.spotify.com/artist/ext',
+    image_url: null,
+    followers: null,
+    subscribers: null,
+    monthly_listeners: null,
+    popularity: null,
+    total_views: null,
+    total_videos: null,
+    total_tracks: null,
+    total_albums: null,
+    raw_payload: {},
+    sync_status: 'success',
+    last_synced_at: null,
+    last_error: null,
+    ...overrides,
+  } as SocialPlatformProfileSnapshot;
+}
+
+describe('ArtistMetricSnapshotsService', () => {
+  it('1. primeiro snapshot: grava um ponto histórico real', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    const snapshot = baseSnapshot({
+      monthly_listeners: 1000,
+      raw_payload: { observed_at: '2026-08-01T00:00:00.000Z', soundcharts_uuid: 'uuid-1' },
+    });
+
+    const result = await service.recordFromProfileSnapshot(snapshot);
+
+    expect(result).toEqual({ inserted: 1, skipped: 0 });
+    expect(repo.__store).toHaveLength(1);
+    expect(repo.__store[0].metric).toBe(METRIC_KEYS.SPOTIFY_MONTHLY_LISTENERS);
+    expect(repo.__store[0].value).toBe(1000);
+  });
+
+  it('2. segundo snapshot (data diferente): acumula, não substitui o primeiro', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 1000, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+    const result = await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 1100, raw_payload: { observed_at: '2026-08-02T00:00:00.000Z' } }),
+    );
+
+    expect(result).toEqual({ inserted: 1, skipped: 0 });
+    expect(repo.__store).toHaveLength(2);
+    expect(repo.__store.map((r) => r.value)).toEqual([1000, 1100]);
+  });
+
+  it('3. observed_at duplicado entre dois syncs distintos: o segundo é descartado (unicidade lógica)', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 1000, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+    const result = await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 1000, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+
+    expect(result).toEqual({ inserted: 0, skipped: 1 });
+    expect(repo.__store).toHaveLength(1);
+  });
+
+  it('4. mesmo valor em timestamps diferentes: ambos gravados (chave é observed_at, não valor)', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 500, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+    const result = await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 500, raw_payload: { observed_at: '2026-08-02T00:00:00.000Z' } }),
+    );
+
+    expect(result).toEqual({ inserted: 1, skipped: 0 });
+    expect(repo.__store).toHaveLength(2);
+    expect(repo.__store.every((r) => r.value === 500)).toBe(true);
+  });
+
+  it('5. zero real: valor 0 é gravado como ponto legítimo, não descartado', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    const result = await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 0, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+
+    expect(result).toEqual({ inserted: 1, skipped: 0 });
+    expect(repo.__store).toHaveLength(1);
+    expect(repo.__store[0].value).toBe(0);
+  });
+
+  it('6. métrica null/indisponível: nenhum ponto é fabricado', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    const result = await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: null, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+
+    expect(result).toEqual({ inserted: 0, skipped: 0 });
+    expect(repo.__store).toHaveLength(0);
+  });
+
+  it('7. erro de provider (sync_status=failed): nada é gravado no histórico', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    const result = await service.recordFromProfileSnapshot(
+      baseSnapshot({
+        sync_status: 'failed',
+        last_error: 'Spotify API respondeu 429',
+        monthly_listeners: null,
+        raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' },
+      }),
+    );
+
+    expect(result).toEqual({ inserted: 0, skipped: 0 });
+    expect(repo.__store).toHaveLength(0);
+  });
+
+  it('8. perfil não encontrado (PROFILE_NOT_FOUND): nada é gravado no histórico', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    const result = await service.recordFromProfileSnapshot(
+      baseSnapshot({
+        sync_status: 'failed',
+        last_error: 'PROFILE_NOT_FOUND',
+        monthly_listeners: null,
+        raw_payload: { identity_status: 'PROFILE_NOT_FOUND', observed_at: '2026-08-01T00:00:00.000Z' },
+      }),
+    );
+
+    expect(result).toEqual({ inserted: 0, skipped: 0 });
+    expect(repo.__store).toHaveLength(0);
+  });
+
+  it('9. dois artistas: isolamento — histórico de um nunca aparece no outro', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ artist_id: 'artist-a', monthly_listeners: 100, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ artist_id: 'artist-b', monthly_listeners: 200, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+
+    const historyA = await service.history({ tenantId: 't1', artistId: 'artist-a', platform: 'spotify', metric: METRIC_KEYS.SPOTIFY_MONTHLY_LISTENERS });
+    expect(historyA).toEqual([{ value: 100, observedAt: new Date('2026-08-01T00:00:00.000Z') }]);
+  });
+
+  it('10. dois tenants: isolamento — tenant A nunca vê snapshots do tenant B', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ tenant_id: 'tenant-a', monthly_listeners: 100, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ tenant_id: 'tenant-b', monthly_listeners: 999, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+
+    const historyTenantA = await service.history({ tenantId: 'tenant-a', artistId: 'a1', platform: 'spotify', metric: METRIC_KEYS.SPOTIFY_MONTHLY_LISTENERS });
+    expect(historyTenantA).toEqual([{ value: 100, observedAt: new Date('2026-08-01T00:00:00.000Z') }]);
+  });
+
+  it('11. duas plataformas: gravadas de forma independente para o mesmo artista', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ platform: 'spotify', monthly_listeners: 100, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ platform: 'deezer', followers: 200, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+
+    expect(repo.__store).toHaveLength(2);
+    const platforms = repo.__store.map((r) => r.platform).sort();
+    expect(platforms).toEqual(['deezer', 'spotify']);
+  });
+
+  it('12. duas métricas do mesmo sync (YouTube subscribers vs views): séries independentes', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({
+        platform: 'youtube',
+        subscribers: 5000,
+        total_views: '1000000',
+        total_videos: 42,
+        raw_payload: {
+          subscribers_provenance: {
+            metric_series: [
+              { value: 4000, observed_at: '2026-07-01T00:00:00.000Z' },
+              { value: 5000, observed_at: '2026-08-01T00:00:00.000Z' },
+            ],
+          },
+          views_videos_provenance: { fetched_at: '2026-08-01T00:00:00.000Z' },
+        },
+      }),
+    );
+
+    const subs = await service.history({ tenantId: 't1', artistId: 'a1', platform: 'youtube', metric: METRIC_KEYS.YOUTUBE_SUBSCRIBERS });
+    const views = await service.history({ tenantId: 't1', artistId: 'a1', platform: 'youtube', metric: METRIC_KEYS.YOUTUBE_VIEWS });
+
+    expect(subs).toHaveLength(2);
+    expect(views).toEqual([{ value: 1_000_000, observedAt: new Date('2026-08-01T00:00:00.000Z') }]);
+  });
+
+  it('13. troca do link cadastrado entre dois syncs: ambos os pontos preservados com sua própria proveniência', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ username: 'handle-antigo', monthly_listeners: 100, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ username: 'handle-novo', monthly_listeners: 150, raw_payload: { observed_at: '2026-08-02T00:00:00.000Z' } }),
+    );
+
+    expect(repo.__store).toHaveLength(2);
+    expect(repo.__store.map((r) => r.registered_identifier)).toEqual(['handle-antigo', 'handle-novo']);
+  });
+
+  it('14. troca da entidade Soundcharts resolvida entre dois syncs: nenhum merge silencioso — cada ponto guarda seu próprio provider_entity_id', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 100, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z', soundcharts_uuid: 'uuid-antigo' } }),
+    );
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 150, raw_payload: { observed_at: '2026-08-02T00:00:00.000Z', soundcharts_uuid: 'uuid-novo' } }),
+    );
+
+    expect(repo.__store.map((r) => r.provider_entity_id)).toEqual(['uuid-antigo', 'uuid-novo']);
+  });
+
+  it('15. retry idempotente: reenviar o mesmo snapshot não duplica nenhum ponto', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    const snapshot = baseSnapshot({ monthly_listeners: 100, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } });
+
+    const first = await service.recordFromProfileSnapshot(snapshot);
+    const retry = await service.recordFromProfileSnapshot(snapshot);
+
+    expect(first).toEqual({ inserted: 1, skipped: 0 });
+    expect(retry).toEqual({ inserted: 0, skipped: 1 });
+    expect(repo.__store).toHaveLength(1);
+  });
+
+  it('dev_mock nunca entra no histórico, mesmo com sync_status=success', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    const result = await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 100, raw_payload: { source: 'dev_mock', observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+
+    expect(result).toEqual({ inserted: 0, skipped: 0 });
+    expect(repo.__store).toHaveLength(0);
+  });
+
+  it('growth() usa computeGrowth sobre o histórico real filtrado por tenant/artista/plataforma/métrica', async () => {
+    const repo = buildFakeRepo();
+    const service = buildService(repo);
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 1000, raw_payload: { observed_at: '2026-07-01T00:00:00.000Z' } }),
+    );
+    await service.recordFromProfileSnapshot(
+      baseSnapshot({ monthly_listeners: 1100, raw_payload: { observed_at: '2026-08-01T00:00:00.000Z' } }),
+    );
+
+    const result = await service.growth({
+      tenantId: 't1',
+      artistId: 'a1',
+      platform: 'spotify',
+      metric: METRIC_KEYS.SPOTIFY_MONTHLY_LISTENERS,
+      periodDays: 30,
+      asOf: new Date('2026-08-01T00:00:00.000Z'),
+    });
+
+    expect(result.status).toBe('OK');
+  });
+});

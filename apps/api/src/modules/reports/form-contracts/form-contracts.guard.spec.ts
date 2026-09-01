@@ -220,6 +220,17 @@ describe('form-contracts — guarda permanente formulário ↔ contrato ↔ impo
     expect(offenders).toEqual([]);
   });
 
+  it('grupo "Dados Bancários" de artists exporta consecutivo, na ordem visual do formulário (regressão: agência não pode voltar a ficar solta em Equipe e negócios)', () => {
+    const keys = REPORT_FORM_CONTRACTS.artists.fields.map((f) => f.key);
+    const bankGroup = ['banco', 'agencia', 'conta', 'chave_pix', 'titular_conta'];
+    const indices = bankGroup.map((key) => keys.indexOf(key));
+    expect(indices).toEqual(indices.slice().sort((a, b) => a - b));
+    for (const [i, key] of bankGroup.entries()) {
+      expect(indices[i]).toBeGreaterThanOrEqual(0);
+      if (i > 0) expect(indices[i]).toBe(indices[i - 1] + 1);
+    }
+  });
+
   it('identityColumn é coluna direta importável ou o contrato é export-only', () => {
     for (const contract of Object.values(REPORT_FORM_CONTRACTS)) {
       const exportOnly = contract.fields.every((f) => f.importable === false);

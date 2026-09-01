@@ -107,6 +107,8 @@ describe('SoundchartsService', () => {
         // Provenance (auditoria 2026-08-31): endpoint/campo exatos de origem.
         endpoint: '/api/v2/artist/uuid-1/streaming/spotify/listening',
         field: 'items[].value',
+        // Fase 2: série completa (mesmo payload) para backfill de histórico.
+        series: [{ value: 100_900_923, observedAt: new Date('2026-08-18') }],
       });
       const dataCall = fetchMock.mock.calls.find(([url]) => url !== TOKEN_URL);
       expect(dataCall![0]).toContain('/streaming/spotify/listening');
@@ -134,7 +136,6 @@ describe('SoundchartsService', () => {
     const cases: Array<[string, () => Promise<{ value: number }>]> = [
       ['instagram', () => service.getInstagramFollowers('uuid-1')],
       ['tiktok', () => service.getTikTokFollowers('uuid-1')],
-      ['youtube', () => service.getYouTubeSubscribers('uuid-1')],
       ['deezer', () => service.getDeezerFans('uuid-1')],
       ['soundcloud', () => service.getSoundCloudFollowers('uuid-1')],
     ];
@@ -151,6 +152,49 @@ describe('SoundchartsService', () => {
     });
   });
 
+  describe('getYouTubeAudience — SOUNDCHARTS ONLY (auditoria 2026-08-31)', () => {
+    it('extrai subscribers/videos/views de UMA ÚNICA chamada a /audience/youtube, nunca da YouTube Data API', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(
+        jsonResponse(200, {
+          items: [
+            { date: '2026-08-01', followerCount: 15_400, postCount: 279, viewCount: 1_128_413 },
+            { date: '2026-08-31', followerCount: 15_300, postCount: 277, viewCount: 1_221_926 },
+          ],
+        }),
+      );
+
+      const { subscribers, videos, views } = await service.getYouTubeAudience('uuid-1');
+
+      expect(subscribers.value).toBe(15_300);
+      expect(videos!.value).toBe(277);
+      expect(views!.value).toBe(1_221_926);
+      expect(subscribers.source).toBe('soundcharts');
+      expect(videos!.source).toBe('soundcharts');
+      expect(views!.source).toBe('soundcharts');
+
+      // Exatamente 2 chamadas de rede no total (token + 1 dado) — nunca uma
+      // segunda chamada de dados (que seria a YouTube Data API).
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const dataCalls = fetchMock.mock.calls.filter(([url]) => url !== TOKEN_URL);
+      expect(dataCalls).toHaveLength(1);
+      expect(dataCalls[0][0]).toContain('/audience/youtube');
+      expect(String(dataCalls[0][0])).not.toContain('googleapis.com');
+    });
+
+    it('postCount/viewCount ausentes no payload real viram null — nunca um valor inventado ou buscado em outra API', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(
+        jsonResponse(200, { items: [{ date: '2026-08-31', followerCount: 100 }] }),
+      );
+
+      const { subscribers, videos, views } = await service.getYouTubeAudience('uuid-1');
+
+      expect(subscribers.value).toBe(100);
+      expect(videos).toBeNull();
+      expect(views).toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('erros HTTP', () => {
     it('404: lança SoundchartsNotFoundError', async () => {
       fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse(404, { errors: [{ message: 'not found' }] }));
@@ -160,6 +204,56 @@ describe('SoundchartsService', () => {
     it('429: lança SoundchartsRateLimitError', async () => {
       fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse(429, { errors: [{ message: 'rate limited' }] }));
       await expect(service.getInstagramFollowers('uuid-1')).rejects.toBeInstanceOf(SoundchartsRateLimitError);
+    });
+  });
+
+  describe('getRelatedArtists (Fase 3.1 — descoberta de coorte de mercado)', () => {
+    it('extrai items/total do payload real, filtra entradas sem uuid/name', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(
+        jsonResponse(200, {
+          items: [
+            { uuid: 'u1', name: 'Artist One' },
+            { uuid: 'u2', name: 'Artist Two' },
+            { name: 'sem uuid, deve ser descartado' },
+          ],
+          page: { offset: 0, limit: 100, total: 2 },
+        }),
+      );
+      const result = await service.getRelatedArtists('uuid-1');
+      expect(result.items).toEqual([{ uuid: 'u1', name: 'Artist One' }, { uuid: 'u2', name: 'Artist Two' }]);
+      expect(result.total).toBe(2);
+      const dataCall = fetchMock.mock.calls.find(([url]) => url !== TOKEN_URL);
+      expect(dataCall![0]).toContain('/related?offset=0&limit=100');
+    });
+
+    it('404: retorna lista vazia (artista sem relacionados é uma resposta válida, não erro)', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse(404, { errors: [] }));
+      const result = await service.getRelatedArtists('uuid-1');
+      expect(result).toEqual({ items: [], total: 0 });
+    });
+
+    it('respeita offset/limit passados', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse(200, { items: [], page: { total: 0 } }));
+      await service.getRelatedArtists('uuid-1', 20, 50);
+      const dataCall = fetchMock.mock.calls.find(([url]) => url !== TOKEN_URL);
+      expect(dataCall![0]).toContain('/related?offset=20&limit=50');
+    });
+  });
+
+  describe('getArtistCountryCode (Fase 3.1)', () => {
+    it('extrai countryCode real quando presente', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse(200, { object: { countryCode: 'BR' }, errors: [] }));
+      expect(await service.getArtistCountryCode('uuid-1')).toBe('BR');
+    });
+
+    it('countryCode vazio (Soundcharts não sabe): null, nunca país inventado', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse(200, { object: { countryCode: '' }, errors: [] }));
+      expect(await service.getArtistCountryCode('uuid-1')).toBeNull();
+    });
+
+    it('404: null, sem lançar', async () => {
+      fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse(404, { errors: [] }));
+      expect(await service.getArtistCountryCode('uuid-1')).toBeNull();
     });
   });
 

@@ -23,13 +23,18 @@ import { AIJobsProcessor }          from './processors/ai-jobs.processor';
 import { ExternalDataProcessor }    from './processors/external-data.processor';
 import { MarketingPublishingProcessor } from './processors/marketing-publishing.processor';
 import { ArtistPlatformSyncProcessor } from './processors/artist-platform-sync.processor';
+import { MarketBenchmarkRefreshProcessor } from './processors/market-benchmark-refresh.processor';
 
 import { EmailQueueService }         from './services/email-queue.service';
 import { NotificationsQueueService } from './services/notifications-queue.service';
 import { AIJobsQueueService }        from './services/ai-jobs-queue.service';
 import { WorkflowQueueService }      from './services/workflow-queue.service';
 import { MarketingPublishingQueueService } from './services/marketing-publishing-queue.service';
+import { MarketBenchmarkRefreshQueueService } from './services/market-benchmark-refresh-queue.service';
 import { ArtistPlatformProfilesService } from '../modules/artists/platform-profiles/artist-platform-profiles.service';
+import { ArtistMetricSnapshotsService } from '../modules/artists/platform-profiles/artist-metric-snapshots.service';
+import { MarketBenchmarkService } from '../modules/artists/platform-profiles/analytics/market-benchmark.service';
+import { MarketReferenceCacheService } from '../modules/artists/platform-profiles/analytics/market-reference-cache.service';
 import { SpotifyArtistProfileProvider } from '../modules/artists/platform-profiles/providers/spotify-artist-profile.provider';
 import { YouTubeArtistProfileProvider } from '../modules/artists/platform-profiles/providers/youtube-artist-profile.provider';
 import { DeezerArtistProfileProvider } from '../modules/artists/platform-profiles/providers/deezer-artist-profile.provider';
@@ -166,18 +171,20 @@ const ALL_QUEUES = [
   QUEUE_NAMES.STREAMING_SYNC,
   QUEUE_NAMES.MARKETING_PUBLISHING,
   QUEUE_NAMES.ARTIST_PLATFORM_SYNC,
+  QUEUE_NAMES.ANALYTICS_REFRESH,
 ];
 
 @Global()
 @Module({})
 export class QueueModule {
   private static noOpModule(): DynamicModule {
+    const services = [EmailQueueService, NotificationsQueueService, AIJobsQueueService, WorkflowQueueService, MarketingPublishingQueueService, MarketBenchmarkRefreshQueueService];
     return {
       global:    true,
       module:    QueueModule,
       imports:   [],
-      providers: [EmailQueueService, NotificationsQueueService, AIJobsQueueService, WorkflowQueueService, MarketingPublishingQueueService],
-      exports:   [EmailQueueService, NotificationsQueueService, AIJobsQueueService, WorkflowQueueService, MarketingPublishingQueueService],
+      providers: services,
+      exports:   services,
     };
   }
 
@@ -247,14 +254,24 @@ export class QueueModule {
         AIJobsQueueService,
         WorkflowQueueService,
         MarketingPublishingQueueService,
+        MarketBenchmarkRefreshQueueService,
         EmailProcessor,
         NotificationsProcessor,
         AIJobsProcessor,
         ExternalDataProcessor,
         MarketingPublishingProcessor,
         ArtistPlatformSyncProcessor,
+        MarketBenchmarkRefreshProcessor,
         WorkerErrorThrottlerService,
         ArtistPlatformProfilesService,
+        // Fase 3.2 fix: dependência real de ArtistPlatformProfilesService
+        // (desde a Fase 2) nunca tinha sido registada neste módulo —
+        // resolução de DI real deste módulo quebraria no boot da app
+        // (nenhum teste existente sobe o QueueModule real com DI completo
+        // para pegar isso; achado ao adicionar o novo processor).
+        ArtistMetricSnapshotsService,
+        MarketBenchmarkService,
+        MarketReferenceCacheService,
         SoundchartsService,
         SpotifyArtistProfileProvider,
         YouTubeArtistProfileProvider,
@@ -271,6 +288,7 @@ export class QueueModule {
         AIJobsQueueService,
         WorkflowQueueService,
         MarketingPublishingQueueService,
+        MarketBenchmarkRefreshQueueService,
       ],
     };
   }

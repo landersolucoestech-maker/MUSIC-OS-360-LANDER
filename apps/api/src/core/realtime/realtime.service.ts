@@ -35,6 +35,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { TenantEntity } from '../../database/entities';
+import { tenantAls } from '../../database/tenant-als';
 
 @Injectable()
 export class RealtimeService implements OnModuleDestroy {
@@ -66,13 +67,28 @@ export class RealtimeService implements OnModuleDestroy {
     }
   }
 
-  /** Resolve tenants.id -> tenants.org_id (o identificador real do tópico RLS/frontend). */
+  /**
+   * Resolve tenants.id -> tenants.org_id (o identificador real do tópico RLS/frontend).
+   *
+   * broadcastToTenant() dispara isto fire-and-forget (nunca aguardado pelo
+   * caller) — se o caller estiver dentro de RequestTenantContextInterceptor /
+   * DatabaseContextService.runInTenantContext (DATABASE_SESSION_CONTEXT_ENABLED=true),
+   * o QueryRunner request-scoped pode já ter sido liberado (finally do
+   * runInTenantContext) antes desta query assíncrona terminar, lançando
+   * QueryRunnerAlreadyReleasedError. RealtimeService usa service_role e
+   * bypassa RLS — nunca precisou do contexto de tenant/ALS para esta consulta.
+   * `tenantAls.exit()` garante que o Proxy de DATA_SOURCE (tenant-als.ts) NUNCA
+   * veja um store ativo aqui, então esta query sempre usa uma conexão própria
+   * do pool, independente do ciclo de vida de qualquer QueryRunner de request.
+   */
   private async resolveOrgId(tenantId: string): Promise<string | null> {
     const cached = this.orgIdCache.get(tenantId);
     if (cached) return cached;
     if (!this.tenantRepo) return null;
 
-    const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } as any, select: ['org_id'] as any });
+    const tenant = await tenantAls.exit(() =>
+      this.tenantRepo!.findOne({ where: { id: tenantId } as any, select: ['org_id'] as any }),
+    );
     if (!tenant) {
       this.logger.warn(`RealtimeService: tenant ${tenantId} não encontrado — broadcast pulado`);
       return null;

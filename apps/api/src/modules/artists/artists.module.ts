@@ -5,6 +5,7 @@ import { ArtistEventsHandler }  from './handlers/artist-events.handler';
 import { ArtistWorkflowHandler } from './handlers/artist-workflow.handler';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { ArtistPlatformProfilesService } from './platform-profiles/artist-platform-profiles.service';
+import { ArtistMetricSnapshotsService } from './platform-profiles/artist-metric-snapshots.service';
 import { ArtistExternalProfileSyncService } from './platform-profiles/artist-external-profile-sync.service';
 import { SpotifyArtistProfileProvider } from './platform-profiles/providers/spotify-artist-profile.provider';
 import { YouTubeArtistProfileProvider } from './platform-profiles/providers/youtube-artist-profile.provider';
@@ -14,6 +15,9 @@ import { InstagramArtistProfileProvider } from './platform-profiles/providers/in
 import { TikTokArtistProfileProvider } from './platform-profiles/providers/tiktok-artist-profile.provider';
 import { AppleMusicArtistProfileProvider } from './platform-profiles/providers/apple-music-artist-profile.provider';
 import { SoundchartsService } from '../integrations/soundcharts/soundcharts.service';
+import { CareerStageService } from './platform-profiles/analytics/career-stage.service';
+import { MarketBenchmarkService } from './platform-profiles/analytics/market-benchmark.service';
+import { MarketReferenceCacheService } from './platform-profiles/analytics/market-reference-cache.service';
 
 @Module({
   imports:     [ActivityLogsModule],
@@ -23,6 +27,7 @@ import { SoundchartsService } from '../integrations/soundcharts/soundcharts.serv
     ArtistEventsHandler,
     ArtistWorkflowHandler,
     ArtistPlatformProfilesService,
+    ArtistMetricSnapshotsService,
     ArtistExternalProfileSyncService,
     SoundchartsService,
     SpotifyArtistProfileProvider,
@@ -32,7 +37,10 @@ import { SoundchartsService } from '../integrations/soundcharts/soundcharts.serv
     InstagramArtistProfileProvider,
     TikTokArtistProfileProvider,
     AppleMusicArtistProfileProvider,
+    CareerStageService,
+    MarketBenchmarkService,
+    MarketReferenceCacheService,
   ],
-  exports:     [ArtistsService, ArtistPlatformProfilesService, ArtistExternalProfileSyncService],
+  exports:     [ArtistsService, ArtistPlatformProfilesService, ArtistMetricSnapshotsService, ArtistExternalProfileSyncService],
 })
 export class ArtistsModule {}

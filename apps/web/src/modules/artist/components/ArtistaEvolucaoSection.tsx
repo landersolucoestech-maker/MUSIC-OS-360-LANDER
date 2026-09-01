@@ -15,9 +15,8 @@ import {
   computeEvolutionSummary,
   type EvolutionSummary,
   type TrendDirection,
-  type MetricEvolutionPoint,
 } from "@/modules/artist/components/ArtistaEvolutionCard";
-import { useQuery } from "@tanstack/react-query";
+import { useArtistPlatformEvolution } from "@/modules/artist/hooks/useArtistPlatformEvolution";
 
 interface ArtistaEvolucaoSectionProps {
   artista: any;
@@ -86,7 +85,7 @@ function aggregateVerdict(platforms: PlatformInput[]): {
     return {
       direction: "flat",
       message:
-        "Ainda não há histórico suficiente para mostrar tendência — a sincronização é manual e ainda não retém histórico entre execuções.",
+        "Ainda não há histórico suficiente para mostrar tendência — são necessárias ao menos 2 sincronizações com dado real em datas diferentes.",
       totalDelta: null,
       avgPercent: null,
       trackedCount: 0,
@@ -133,14 +132,6 @@ function aggregateVerdict(platforms: PlatformInput[]): {
   };
 }
 
-function useStubEvolution(artistaId: string | null | undefined, key: string) {
-  return useQuery<MetricEvolutionPoint[]>({
-    queryKey: [key, "evolution", artistaId ?? ""] as const,
-    enabled: false,
-    queryFn: async () => [],
-  });
-}
-
 export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps) {
   const artistaId: string | null = artista?.id ?? null;
   const spotifyUrl: string | null = artista?.spotify_url ?? null;
@@ -151,13 +142,13 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
   const instagramHandle: string | null = artista?.instagram ?? null;
   const tiktokHandle: string | null = artista?.tiktok ?? null;
 
-  const spotifyQ = useStubEvolution(artistaId, "spotify");
-  const youtubeQ = useStubEvolution(artistaId, "youtube");
-  const deezerQ = useStubEvolution(artistaId, "deezer");
-  const soundcloudQ = useStubEvolution(artistaId, "soundcloud");
-  const appleMusicQ = useStubEvolution(artistaId, "apple_music");
-  const instagramQ = useStubEvolution(artistaId, "instagram");
-  const tiktokQ = useStubEvolution(artistaId, "tiktok");
+  const spotifyQ = useArtistPlatformEvolution(artistaId, "spotify");
+  const youtubeQ = useArtistPlatformEvolution(artistaId, "youtube");
+  const deezerQ = useArtistPlatformEvolution(artistaId, "deezer");
+  const soundcloudQ = useArtistPlatformEvolution(artistaId, "soundcloud");
+  const appleMusicQ = useArtistPlatformEvolution(artistaId, "apple-music");
+  const instagramQ = useArtistPlatformEvolution(artistaId, "instagram");
+  const tiktokQ = useArtistPlatformEvolution(artistaId, "tiktok");
 
   const spotifySummary = useMemo(
     () => computeEvolutionSummary(spotifyQ.data, "followers"),
@@ -460,11 +451,12 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Cada plataforma reflete o valor mais recente sincronizado — a sincronização
-        é manual, feita pelo botão "Sincronizar agora" em cada card. Ainda não
-        há retenção de histórico entre sincronizações, então esta seção não
-        pode mostrar tendência real hoje. Plataformas sem perfil vinculado
-        aparecem como "sem histórico ainda".
+        Cada plataforma reflete o histórico real das sincronizações — a sincronização
+        é manual, feita pelo botão "Sincronizar agora" em cada card, e cada uma
+        soma um novo ponto ao histórico. A tendência só aparece a partir de 2
+        sincronizações com dado real em datas diferentes. Plataformas sem
+        perfil vinculado ou sem métrica de audiência na fonte atual (Apple
+        Music) aparecem como "sem histórico ainda".
       </p>
     </div>
   );

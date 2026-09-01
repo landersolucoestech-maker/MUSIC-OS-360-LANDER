@@ -82,16 +82,16 @@ describe('Fonte única Soundcharts por card de métrica do artista', () => {
     expect(snapshot.followers).toBe(75_000_000);
   });
 
-  it('YouTube: subscribers vem exclusivamente de getYouTubeSubscribers — a YouTube Data API nunca sobrescreve esse valor', async () => {
-    const getYouTubeSubscribers = jest.fn().mockResolvedValue(metric(58_500_000));
-    const soundcharts = fakeSoundcharts({ getYouTubeSubscribers });
+  it('YouTube: subscribers/total_views/total_videos vêm TODOS de getYouTubeAudience (Soundcharts) — a YouTube Data API nunca é chamada para métrica (auditoria 2026-08-31, regra SOUNDCHARTS ONLY)', async () => {
+    const getYouTubeAudience = jest.fn().mockResolvedValue({
+      subscribers: { value: 58_500_000, observedAt: new Date('2026-08-18T00:00:00Z'), source: 'soundcharts', endpoint: '/audience/youtube', field: 'items[].followerCount' },
+      videos: { value: 42, observedAt: new Date('2026-08-18T00:00:00Z'), source: 'soundcharts', endpoint: '/audience/youtube', field: 'items[].postCount' },
+      views: { value: 999_999_999, observedAt: new Date('2026-08-18T00:00:00Z'), source: 'soundcharts', endpoint: '/audience/youtube', field: 'items[].viewCount' },
+    });
+    const soundcharts = fakeSoundcharts({ getYouTubeAudience });
     const config = { get: jest.fn().mockReturnValue('fake-youtube-key') } as unknown as ConfigService;
     const provider = new YouTubeArtistProfileProvider(config, soundcharts);
-    // Estatísticas (views/videos) vêm da YouTube Data API (Métricas 09 fase 2) — nunca subscriberCount.
-    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ items: [{ statistics: { viewCount: '999999999', videoCount: '42', subscriberCount: '1' } }] }),
-    } as Response);
+    const fetchSpy = jest.spyOn(global, 'fetch');
 
     const snapshot = await provider.resolve({
       tenantId: 'tenant-1',
@@ -100,10 +100,11 @@ describe('Fonte única Soundcharts por card de métrica do artista', () => {
       externalUrl: null,
     });
 
-    expect(fetchSpy).toHaveBeenCalledTimes(1); // 1 chamada: só para estatísticas (id já é UC…, sem resolução de canal)
+    // id já é UC… (sem resolução por handle) e a métrica não usa YouTube Data API: zero chamadas de rede fora da Soundcharts.
+    expect(fetchSpy).not.toHaveBeenCalled();
     expect(soundcharts.resolveArtistByPlatform).toHaveBeenCalledWith('youtube', 'UCiGm_E4ZwYSHV3bcW1pnSeQ');
-    expect(getYouTubeSubscribers).toHaveBeenCalledWith('sc-uuid-1');
-    expect(snapshot.subscribers).toBe(58_500_000); // Soundcharts, nunca o subscriberCount=1 da Data API
+    expect(getYouTubeAudience).toHaveBeenCalledWith('sc-uuid-1');
+    expect(snapshot.subscribers).toBe(58_500_000);
     expect(snapshot.total_views).toBe('999999999');
     expect(snapshot.total_videos).toBe(42);
     fetchSpy.mockRestore();

@@ -14,6 +14,7 @@ export const QUEUE_NAMES = {
   STREAMING_SYNC:     'streaming-sync',
   MARKETING_PUBLISHING: 'marketing-publishing',
   ARTIST_PLATFORM_SYNC: 'artist-platform-sync',
+  ANALYTICS_REFRESH:   'analytics-refresh',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -68,3 +69,12 @@ export const ARTIST_PLATFORM_PROFILE_JOB_NAMES = {
 
 export type ArtistPlatformProfileJobName =
   (typeof ARTIST_PLATFORM_PROFILE_JOB_NAMES)[keyof typeof ARTIST_PLATFORM_PROFILE_JOB_NAMES];
+
+// Fase 3.2 — refresh em background da coorte externa do Market Benchmark
+// (item 4: nenhuma chamada pesada à Soundcharts dentro do request HTTP).
+export const ANALYTICS_REFRESH_JOB_NAMES = {
+  MARKET_BENCHMARK_REFRESH: 'market-benchmark-refresh',
+} as const;
+
+export type AnalyticsRefreshJobName =
+  (typeof ANALYTICS_REFRESH_JOB_NAMES)[keyof typeof ANALYTICS_REFRESH_JOB_NAMES];

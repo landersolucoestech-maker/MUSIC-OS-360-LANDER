@@ -14,4 +14,14 @@ export interface SoundchartsMetric {
   endpoint: string;
   /** Campo exato do corpo de resposta de onde `value` foi lido (provenance). */
   field: string;
+  /**
+   * Fase 2 — série completa de pontos datados que o mesmo endpoint já
+   * devolveu (a Soundcharts responde ~15 pontos históricos por chamada de
+   * audience/streaming/playlist; antes descartados por pickLatest). Aditivo
+   * e opcional: nenhum consumidor existente lê este campo, então preenchê-lo
+   * não muda `.value`/`.observedAt`/`.source`/`.endpoint`/`.field` para
+   * nenhum provider — usado só pelo snapshot store para backfill real sem
+   * chamada extra à API.
+   */
+  series?: Array<{ value: number; observedAt: Date }>;
 }

@@ -167,6 +167,9 @@ import { CreateInternalChat20260828000001 } from './20260828000001_CreateInterna
 import { RlsPoliciesInternalChat20260828000002 } from './20260828000002_RlsPoliciesInternalChat';
 import { ForceRlsInternalChat20260828000003 } from './20260828000003_ForceRlsInternalChat';
 import { FixInternalChatTableOwnership20260829000001 } from './20260829000001_FixInternalChatTableOwnership';
+import { CreateArtistMetricSnapshots20260831000001 } from './20260831000001_CreateArtistMetricSnapshots';
+import { CreateAnalyticsSnapshots20260831000002 } from './20260831000002_CreateAnalyticsSnapshots';
+import { CreateMarketReferenceMetrics20260831000003 } from './20260831000003_CreateMarketReferenceMetrics';
 import { FixDefaultPrivilegesCreatorRole20260803000002 } from './20260803000002_FixDefaultPrivilegesCreatorRole';
 import { CreateContractServiceTypes20260803000003 } from './20260803000003_CreateContractServiceTypes';
 import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicensePercentage';
@@ -350,4 +353,7 @@ export const ALL_MIGRATIONS = [
   RlsPoliciesInternalChat20260828000002,
   ForceRlsInternalChat20260828000003,
   FixInternalChatTableOwnership20260829000001,
+  CreateArtistMetricSnapshots20260831000001,
+  CreateAnalyticsSnapshots20260831000002,
+  CreateMarketReferenceMetrics20260831000003,
 ] as const;

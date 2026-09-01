@@ -559,6 +559,126 @@ export class ArtistPlatformProfileEntity {
   artist: Relation<ArtistEntity>;
 }
 
+/**
+ * Fase 2 — série histórica append-only por (artista, plataforma, métrica,
+ * observed_at). `artist_platform_profiles` acima continua sendo a projeção
+ * current-state; esta tabela é a verdade temporal que a alimenta. Nunca
+ * UPDATE/DELETE pelo app (grants em 20260831000001_CreateArtistMetricSnapshots) —
+ * a unicidade abaixo é a chave de idempotência de um mesmo ponto observado.
+ */
+@Entity('artist_metric_snapshots')
+@Index(['tenant_id'])
+@Index(['observed_at'])
+@Index(['tenant_id', 'artist_id', 'platform', 'metric', 'observed_at'], { unique: true })
+export class ArtistMetricSnapshotEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) artist_id: string;
+  @Column({ type: 'varchar', length: 50 }) platform: string;
+  @Column({ type: 'varchar', length: 100 }) metric: string;
+  @Column({ type: 'numeric' }) value: string;
+  @Column({ type: 'varchar', length: 20, default: 'count' }) unit: string;
+  @Column({ type: 'varchar', length: 50, default: 'soundcharts' }) source_provider: string;
+  @Column({ type: 'text', nullable: true }) registered_identifier: string | null;
+  @Column({ type: 'text', nullable: true }) provider_entity_id: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) primary_identity_status: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) cross_platform_status: string | null;
+  @Column({ type: 'timestamptz' }) observed_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) fetched_at: Date | null;
+  @Column({ type: 'timestamptz' }) recorded_at: Date;
+  @Column({ type: 'smallint', default: 1 }) normalizer_version: number;
+  @Column({ type: 'jsonb', default: {} }) raw_payload: Record<string, unknown>;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+
+  @ManyToOne(() => ArtistEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'artist_id' })
+  artist: Relation<ArtistEntity>;
+}
+
+/**
+ * Fase 3 — resultado append-only do Career Stage Engine. Cada cálculo grava
+ * uma linha nova (nunca UPDATE/DELETE pelo app — grants em
+ * 20260831000002_CreateAnalyticsSnapshots); engine_version muda sem apagar
+ * resultados anteriores.
+ */
+@Entity('career_stage_snapshots')
+@Index(['tenant_id', 'artist_id'])
+@Index(['calculated_at'])
+export class CareerStageSnapshotEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) artist_id: string;
+  @Column({ type: 'varchar', length: 20 }) engine_version: string;
+  @Column({ type: 'varchar', length: 30 }) status: string;
+  @Column({ type: 'numeric', precision: 3, scale: 1, nullable: true }) score: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) classification: string | null;
+  @Column({ type: 'smallint', nullable: true }) confidence: number | null;
+  @Column({ type: 'numeric', precision: 4, scale: 3, nullable: true }) coverage: string | null;
+  @Column({ type: 'jsonb', default: [] }) dimensions: unknown[];
+  @Column({ type: 'jsonb', default: [] }) positive_factors: unknown[];
+  @Column({ type: 'jsonb', default: [] }) bottlenecks: unknown[];
+  @Column({ type: 'jsonb', default: [] }) input_provenance: unknown[];
+  @Column({ type: 'timestamptz' }) calculated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+
+  @ManyToOne(() => ArtistEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'artist_id' })
+  artist: Relation<ArtistEntity>;
+}
+
+/**
+ * Fase 3 — resultado append-only do Market Benchmark Engine. Mesmo padrão
+ * append-only de CareerStageSnapshotEntity.
+ */
+@Entity('market_benchmark_snapshots')
+@Index(['tenant_id', 'artist_id'])
+@Index(['calculated_at'])
+export class MarketBenchmarkSnapshotEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) artist_id: string;
+  @Column({ type: 'varchar', length: 20 }) engine_version: string;
+  @Column({ type: 'varchar', length: 30 }) status: string;
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true }) score: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) label: string | null;
+  @Column({ type: 'jsonb', default: {} }) cohort_definition: Record<string, unknown>;
+  @Column({ type: 'smallint', default: 0 }) sample_size: number;
+  @Column({ type: 'smallint', nullable: true }) fallback_level: number | null;
+  @Column({ type: 'jsonb', default: [] }) metrics: unknown[];
+  @Column({ type: 'timestamptz' }) calculated_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+
+  @ManyToOne(() => ArtistEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'artist_id' })
+  artist: Relation<ArtistEntity>;
+}
+
+/**
+ * Fase 3.1 — cache técnico de métricas de artistas EXTERNOS (candidatos de
+ * mercado descobertos via Soundcharts /related), deliberadamente SEM
+ * tenant_id/RLS — não é dado de propriedade de nenhum tenant, é referência
+ * pública compartilhada (ver 20260831000003_CreateMarketReferenceMetrics).
+ * Nunca exposta diretamente por endpoint tenant-scoped.
+ */
+@Entity('market_reference_metrics')
+@Index(['candidate_uuid'])
+@Index(['fetched_at'])
+@Index(['candidate_uuid', 'metric'], { unique: true })
+export class MarketReferenceMetricEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'text' }) candidate_uuid: string;
+  @Column({ type: 'text', nullable: true }) candidate_name: string | null;
+  @Column({ type: 'varchar', length: 2, nullable: true }) candidate_country_code: string | null;
+  @Column({ type: 'varchar', length: 100 }) metric: string;
+  @Column({ type: 'numeric', nullable: true }) value: string | null;
+  @Column({ type: 'varchar', length: 20, default: 'count' }) unit: string;
+  @Column({ type: 'timestamptz', nullable: true }) observed_at: Date | null;
+  @Column({ type: 'timestamptz' }) fetched_at: Date;
+  @Column({ type: 'varchar', length: 50, default: 'soundcharts' }) source_provider: string;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+}
+
 // ─── Works (obras) ────────────────────────────────────────────────────────────
 @Entity('works')
 @Index(['tenant_id'])
@@ -3405,6 +3525,10 @@ export const ALL_ENTITIES = [
   BillingPlanEntity,
   ArtistEntity,
   ArtistPlatformProfileEntity,
+  ArtistMetricSnapshotEntity,
+  CareerStageSnapshotEntity,
+  MarketBenchmarkSnapshotEntity,
+  MarketReferenceMetricEntity,
   WorkEntity,
   WorkParticipantEntity,
   PhonogramEntity,

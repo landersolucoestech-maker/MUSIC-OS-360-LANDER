@@ -23,6 +23,10 @@ function buildRepo(qb: ReturnType<typeof buildQb>) {
   };
 }
 
+function buildNoopSnapshots() {
+  return { recordFromProfileSnapshot: jest.fn().mockResolvedValue({ inserted: 0, skipped: 0 }) } as never;
+}
+
 function baseSnapshot(overrides: Partial<SocialPlatformProfileSnapshot>): SocialPlatformProfileSnapshot {
   return {
     tenant_id: 't1',
@@ -64,7 +68,7 @@ describe('ArtistPlatformProfilesService.upsertSuccess', () => {
   it('persiste sync_status=success/last_error=null quando o snapshot é um sucesso normal', async () => {
     const qb = buildQb();
     const repo = buildRepo(qb);
-    const service = new ArtistPlatformProfilesService({ getRepository: () => repo } as never);
+    const service = new ArtistPlatformProfilesService({ getRepository: () => repo } as never, buildNoopSnapshots());
 
     const snapshot = baseSnapshot({ followers: 777, sync_status: 'success', last_error: null });
     await service.upsertSuccess(snapshot);
@@ -78,7 +82,7 @@ describe('ArtistPlatformProfilesService.upsertSuccess', () => {
   it('NUNCA sobrescreve sync_status=failed/last_error de um snapshot IDENTITY_MISMATCH — persiste exatamente o que o provider decidiu', async () => {
     const qb = buildQb();
     const repo = buildRepo(qb);
-    const service = new ArtistPlatformProfilesService({ getRepository: () => repo } as never);
+    const service = new ArtistPlatformProfilesService({ getRepository: () => repo } as never, buildNoopSnapshots());
 
     const snapshot = baseSnapshot({
       followers: null,

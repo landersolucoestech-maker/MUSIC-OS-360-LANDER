@@ -56,6 +56,8 @@ interface SeriesItem {
   value?: number;
   followerCount?: number;
   playlistCount?: number;
+  postCount?: number;
+  viewCount?: number;
 }
 
 @Injectable()
@@ -158,6 +160,42 @@ export class SoundchartsService {
   }
 
   /**
+   * Artistas relacionados/similares segundo o algoritmo de similaridade da
+   * própria Soundcharts (Fase 3.1 — descoberta de candidatos de mercado real
+   * para o Market Benchmark). Confirmado ao vivo (DJ Stay, 2026-08-31):
+   * `/related` devolve `{items:[{uuid,slug,name,appUrl,imageUrl}], page:{offset,limit,next,previous,total}}` —
+   * paginado (offset/limit), sem genre/country no item (precisa de
+   * getArtistProfile(uuid) à parte para isso). É "candidate discovery", não
+   * uma coorte estatisticamente validada por si só — o chamador (Market
+   * Benchmark) decide os critérios de inclusão.
+   */
+  async getRelatedArtists(uuid: string, offset = 0, limit = 100): Promise<{ items: Array<{ uuid: string; name: string }>; total: number }> {
+    const id = assertSafePathSegment(uuid, 'uuid');
+    const { status, body } = await this.apiGet(`/api/v2/artist/${id}/related?offset=${offset}&limit=${limit}`);
+    if (status === 404) return { items: [], total: 0 };
+    if (status !== 200) this.throwForStatus(status, 'getRelatedArtists');
+    const parsed = body as { items?: Array<{ uuid?: string; name?: string }>; page?: { total?: number } } | null;
+    const items = (parsed?.items ?? [])
+      .filter((i): i is { uuid: string; name: string } => !!i?.uuid && !!i?.name)
+      .map((i) => ({ uuid: i.uuid, name: i.name }));
+    return { items, total: parsed?.page?.total ?? items.length };
+  }
+
+  /**
+   * Perfil raso de um artista por UUID (Fase 3.1) — usado só para
+   * `countryCode` na filtragem de coorte de mercado. Confirmado ao vivo:
+   * `GET /api/v2/artist/{uuid}` devolve `countryCode` (string, pode ser vazia
+   * quando a Soundcharts não tem essa informação — nunca inventar país).
+   */
+  async getArtistCountryCode(uuid: string): Promise<string | null> {
+    const id = assertSafePathSegment(uuid, 'uuid');
+    const { status, body } = await this.apiGet(`/api/v2/artist/${id}`);
+    if (status !== 200) return null;
+    const countryCode = (body as { object?: { countryCode?: string } } | null)?.object?.countryCode;
+    return typeof countryCode === 'string' && countryCode.length > 0 ? countryCode : null;
+  }
+
+  /**
    * Busca artistas por nome/query — evidência auxiliar para investigação de
    * identidade (nunca prova identidade sozinha: nome igual não é MATCH).
    */
@@ -190,6 +228,24 @@ export class SoundchartsService {
       }
     }
     return latest;
+  }
+
+  /**
+   * Fase 2 — extrai a série datada COMPLETA de `items` (mesmo payload que
+   * `pickLatest` já recebe) para o campo pedido, ordenada por `observedAt`
+   * crescente. Pontos sem data válida ou sem o campo numérico são
+   * descartados silenciosamente (não é erro — só não vira ponto de série).
+   */
+  private extractSeries(items: unknown, field: 'followerCount' | 'value' | 'playlistCount' | 'postCount' | 'viewCount'): Array<{ value: number; observedAt: Date }> {
+    if (!Array.isArray(items)) return [];
+    const out: Array<{ value: number; observedAt: Date }> = [];
+    for (const raw of items as SeriesItem[]) {
+      const value = raw?.[field];
+      const t = raw?.date ? new Date(raw.date) : null;
+      if (typeof value === 'number' && t && !Number.isNaN(t.getTime())) out.push({ value, observedAt: t });
+    }
+    out.sort((a, b) => a.observedAt.getTime() - b.observedAt.getTime());
+    return out;
   }
 
   // ── Resolução de artista ─────────────────────────────────────────────
@@ -270,6 +326,7 @@ export class SoundchartsService {
       source: 'soundcharts',
       endpoint,
       field: 'items[].value',
+      series: this.extractSeries(items, 'value'),
     };
   }
 
@@ -290,6 +347,7 @@ export class SoundchartsService {
       source: 'soundcharts',
       endpoint,
       field: 'items[].followerCount',
+      series: this.extractSeries(items, 'followerCount'),
     };
   }
 
@@ -301,8 +359,54 @@ export class SoundchartsService {
     return this.getAudienceFollowerCount(uuid, 'tiktok', 'getTikTokFollowers');
   }
 
-  async getYouTubeSubscribers(uuid: string): Promise<SoundchartsMetric> {
-    return this.getAudienceFollowerCount(uuid, 'youtube', 'getYouTubeSubscribers');
+  /**
+   * YouTube — auditoria 2026-08-31 (regra "SOUNDCHARTS ONLY" para métricas de
+   * plataforma): o MESMO /audience/youtube que já devolve followerCount
+   * (subscribers) também devolve, por item da série, postCount e viewCount —
+   * confirmado com chamada real contra a API (DJ Stay, uuid
+   * 11e81bc0-69a1-279e-9fb0-a0369fe50396: postCount=277, viewCount=1.221.926
+   * em 2026-08-31). Isso substitui a YouTube Data API
+   * (channels?part=statistics) como fonte de total_views/total_videos, que
+   * violava a regra de que métricas de plataforma vêm exclusivamente da
+   * Soundcharts — e faz isso com UMA chamada só (nunca duas), a mesma que já
+   * era feita para subscribers. postCount/viewCount ausentes no payload real
+   * (conta sem esse dado) viram `null`, nunca um valor inventado.
+   */
+  async getYouTubeAudience(uuid: string): Promise<{
+    subscribers: SoundchartsMetric;
+    videos: SoundchartsMetric | null;
+    views: SoundchartsMetric | null;
+  }> {
+    const id = assertSafePathSegment(uuid, 'uuid');
+    const endpoint = `/api/v2/artist/${id}/audience/youtube`;
+    const { status, body } = await this.apiGet(endpoint);
+    if (status !== 200) this.throwForStatus(status, 'getYouTubeAudience');
+
+    const items = (body as { items?: unknown } | null)?.items;
+    const latest = this.pickLatest(items);
+    if (!latest || typeof latest.followerCount !== 'number') {
+      throw new SoundchartsApiError('Soundcharts: followerCount ausente em getYouTubeAudience', status);
+    }
+    const observedAt = latest.date ? new Date(latest.date) : new Date();
+
+    const subscribers: SoundchartsMetric = {
+      value: latest.followerCount,
+      observedAt,
+      source: 'soundcharts',
+      endpoint,
+      field: 'items[].followerCount',
+      series: this.extractSeries(items, 'followerCount'),
+    };
+    const videos: SoundchartsMetric | null =
+      typeof latest.postCount === 'number'
+        ? { value: latest.postCount, observedAt, source: 'soundcharts', endpoint, field: 'items[].postCount', series: this.extractSeries(items, 'postCount') }
+        : null;
+    const views: SoundchartsMetric | null =
+      typeof latest.viewCount === 'number'
+        ? { value: latest.viewCount, observedAt, source: 'soundcharts', endpoint, field: 'items[].viewCount', series: this.extractSeries(items, 'viewCount') }
+        : null;
+
+    return { subscribers, videos, views };
   }
 
   async getDeezerFans(uuid: string): Promise<SoundchartsMetric> {
@@ -362,6 +466,7 @@ export class SoundchartsService {
       source: 'soundcharts',
       endpoint,
       field: 'items[].playlistCount',
+      series: this.extractSeries(items, 'playlistCount'),
     };
   }
 }

@@ -16,6 +16,7 @@ jest.mock('@supabase/supabase-js', () => {
 });
 
 import { RealtimeService } from './realtime.service';
+import { tenantAls } from '../../database/tenant-als';
 
 function channelMock() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -105,5 +106,53 @@ describe('RealtimeService — canonical tenant topic (tenants.id -> org_id)', ()
 
     expect(channelMock()).toHaveBeenCalledWith('user:user-abc', expect.anything());
     expect(channelMock()).not.toHaveBeenCalledWith('tenant:org-for-user', expect.anything());
+  });
+});
+
+/**
+ * Regressão (Métricas Fase 1.1 — P1 investigado): sendToTenant/notifyDataChanged
+ * são fire-and-forget — se chamados de dentro de
+ * RequestTenantContextInterceptor/DatabaseContextService.runInTenantContext
+ * (DATABASE_SESSION_CONTEXT_ENABLED=true), o QueryRunner request-scoped pode já
+ * ter sido liberado (finally do runInTenantContext) antes da query assíncrona de
+ * resolveOrgId terminar, lançando QueryRunnerAlreadyReleasedError — RealtimeService
+ * usa service_role e nunca precisou do contexto de tenant/ALS para esta consulta.
+ * Simula exatamente isso: um repo cujo findOne lança se visto de dentro de um
+ * ALS store ativo (como aconteceria com o manager de um QueryRunner já liberado).
+ */
+describe('RealtimeService — não depende do EntityManager/QueryRunner request-scoped do ALS (Métricas Fase 1.1)', () => {
+  it('resolveOrgId nunca vê o ALS store ativo — nunca lança mesmo chamado de dentro de um contexto de tenant', async () => {
+    const config = {
+      get: jest.fn((key: string) => {
+        if (key === 'SUPABASE_URL') return 'https://example.supabase.co';
+        if (key === 'SUPABASE_SERVICE_ROLE_KEY') return 'service-role-key';
+        return undefined;
+      }),
+    } as unknown as ConfigService;
+
+    const findOne = jest.fn(async () => {
+      // Simula o manager de um QueryRunner request-scoped já liberado: se o
+      // Proxy de DATA_SOURCE ainda enxergar um ALS store ativo aqui, é sinal de
+      // que a query rotearia para esse manager — exatamente o bug.
+      if (tenantAls.getStore()) {
+        throw new Error('QueryRunnerAlreadyReleasedError (simulado): manager request-scoped já liberado');
+      }
+      return { org_id: 'org-safe' };
+    });
+    const tenantRepo = { findOne };
+    const ds = { getRepository: jest.fn(() => tenantRepo) } as unknown as DataSource;
+    const service = new RealtimeService(config, ds);
+
+    // Simula estar dentro de runInTenantContext (interceptor/job) no momento em
+    // que o broadcast fire-and-forget é disparado.
+    const fakeManager = {} as never;
+    await tenantAls.run({ manager: fakeManager }, async () => {
+      service.sendToTenant('tenant-1', 'conversation:message', { hello: 'world' });
+    });
+    await flush();
+
+    expect(findOne).toHaveBeenCalledTimes(1);
+    expect(findOne).not.toThrow;
+    expect(channelMock()).toHaveBeenCalledWith('tenant:org-safe', expect.anything());
   });
 });

@@ -106,14 +106,18 @@ const ARTISTS_CONTRACT: ReportFormContract = {
     col('produtor_executivo'), col('agencia_booking'), col('label_parceira'),
     col('contrato_id'),
     // Equipe e negócios (metadata)
-    meta('agencia'), meta('empresario_id'), meta('empresario_nome'),
+    meta('empresario_id'), meta('empresario_nome'),
     meta('empresario_email'), meta('empresario_telefone'),
     meta('gravadora_id'), meta('gravadora_nome'), meta('gravadora_email'),
     meta('gravadora_telefone'), meta('gravadora_responsavel_id'),
     meta('gravadora_responsavel_nome'), meta('gravadora_responsavel_email'),
     meta('gravadora_responsavel_telefone'),
-    // Dados bancários (metadata)
-    meta('banco'), meta('conta'), meta('chave_pix'), meta('titular_conta'),
+    // Dados bancários (metadata) — "agencia" aqui é a agência bancária do
+    // formulário (Dados Bancários: Banco/Agência/Conta/Chave Pix/Titular),
+    // não a agência de booking (col('agencia_booking') acima, campo distinto).
+    // Estava incorretamente listada em "Equipe e negócios" (mesma key JSON,
+    // categoria errada) — corrigido para casar com a ordem visual do form.
+    meta('banco'), meta('agencia'), meta('conta'), meta('chave_pix'), meta('titular_conta'),
     // Distribuição (metadata; arrays serializados em JSON reversível)
     meta('distribuidoras_selecionadas'), meta('distribuidoras_gerais'),
     meta('distribuidoras_emails'), meta('distribuidoras_empresa_selecionadas'),

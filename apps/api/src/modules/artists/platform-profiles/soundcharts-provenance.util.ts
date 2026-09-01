@@ -20,6 +20,13 @@ export interface SoundchartsProvenance {
   normalized_at: string;
   raw_value: number;
   normalized_value: number;
+  /**
+   * Fase 2 — série datada completa (ISO) do mesmo endpoint, quando a
+   * Soundcharts a devolveu (ver SoundchartsMetric.series). Consumida pelo
+   * snapshot store para backfill de histórico real sem chamada extra à API;
+   * nenhum consumidor de current-state lê este campo.
+   */
+  metric_series: Array<{ value: number; observed_at: string }>;
 }
 
 /** Provenance para uma métrica efetivamente obtida da Soundcharts. */
@@ -34,6 +41,7 @@ export function soundchartsProvenance(platform: SocialPlatform, metric: Soundcha
     normalized_at: normalizedAt,
     raw_value: metric.value,
     normalized_value: metric.value,
+    metric_series: (metric.series ?? []).map((p) => ({ value: p.value, observed_at: p.observedAt.toISOString() })),
   };
 }
 
@@ -56,6 +64,7 @@ export function soundchartsNotIndexedProvenance(
     normalized_at: now,
     raw_value: null,
     normalized_value: null,
+    metric_series: [],
   };
 }
 

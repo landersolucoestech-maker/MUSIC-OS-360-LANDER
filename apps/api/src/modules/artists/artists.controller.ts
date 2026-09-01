@@ -18,8 +18,13 @@ import { CreateArtistDto }  from './dto/create-artist.dto';
 import { UpdateArtistDto }  from './dto/update-artist.dto';
 import { QueryArtistDto }   from './dto/query-artist.dto';
 import { ArtistPlatformProfilesService } from './platform-profiles/artist-platform-profiles.service';
+import { ArtistMetricSnapshotsService } from './platform-profiles/artist-metric-snapshots.service';
 import { ArtistExternalProfileSyncService } from './platform-profiles/artist-external-profile-sync.service';
 import { isSocialPlatform } from './platform-profiles/social-platform-sync.types';
+import { isMetricKey, type MetricKey } from './platform-profiles/metric-keys';
+import { computeGrowth, STANDARD_GROWTH_PERIODS_DAYS } from './platform-profiles/metric-growth.util';
+import { CareerStageService } from './platform-profiles/analytics/career-stage.service';
+import { MarketBenchmarkService } from './platform-profiles/analytics/market-benchmark.service';
 
 @ApiTags('Artists')
 @ApiBearerAuth()
@@ -28,7 +33,10 @@ export class ArtistsController {
   constructor(
     private readonly service: ArtistsService,
     private readonly platformProfiles: ArtistPlatformProfilesService,
+    private readonly metricSnapshots: ArtistMetricSnapshotsService,
     private readonly platformSync: ArtistExternalProfileSyncService,
+    private readonly careerStage: CareerStageService,
+    private readonly marketBenchmark: MarketBenchmarkService,
   ) {}
 
   @Get()
@@ -83,6 +91,76 @@ export class ArtistsController {
     if (!isSocialPlatform(platform)) throw new BadRequestException('Plataforma inválida para sync de perfil do artista');
     await this.service.findById(tenant.id, id);
     return this.platformProfiles.findByArtistAndPlatform(tenant.id, id, platform);
+  }
+
+  @Get(':id/platform-profiles/:platform/history')
+  @RequireRole('viewer')
+  @RequirePermission('artist:read')
+  @ApiOperation({ summary: 'Histórico real de uma métrica de plataforma (Fase 2 — Time-Series Foundation)' })
+  async getPlatformMetricHistory(
+    @CurrentTenant() tenant: { id: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('platform') platform: string,
+    @Query('metric') metric: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    if (!isSocialPlatform(platform)) throw new BadRequestException('Plataforma inválida');
+    if (!metric || !isMetricKey(metric)) throw new BadRequestException('Métrica inválida ou ausente — ver registry em metric-keys.ts');
+    await this.service.findById(tenant.id, id);
+
+    const toDate = to ? new Date(to) : new Date();
+    if (Number.isNaN(toDate.getTime())) throw new BadRequestException('Parâmetro "to" inválido');
+    let fromDate: Date;
+    if (from) {
+      fromDate = new Date(from);
+      if (Number.isNaN(fromDate.getTime())) throw new BadRequestException('Parâmetro "from" inválido');
+    } else {
+      // Sem range explícito: janela larga o bastante para cobrir o maior
+      // período padrão (365d) + tolerância de computeGrowth.
+      fromDate = new Date(toDate.getTime() - 400 * 24 * 60 * 60 * 1000);
+    }
+
+    const points = await this.metricSnapshots.history({
+      tenantId: tenant.id, artistId: id, platform, metric: metric as MetricKey, from: fromDate, to: toDate,
+    });
+
+    const growth = from || to
+      ? null
+      : Object.fromEntries(
+          STANDARD_GROWTH_PERIODS_DAYS.map((days) => [`${days}d`, computeGrowth(points, days, toDate)]),
+        );
+
+    return {
+      metric,
+      platform,
+      points: points.map((p) => ({ value: p.value, observed_at: p.observedAt.toISOString() })),
+      growth,
+    };
+  }
+
+  @Get(':id/career-stage')
+  @RequireRole('viewer')
+  @RequirePermission('artist:read')
+  @ApiOperation({ summary: 'Estágio da Carreira (Fase 3) — calculado sobre métricas Soundcharts já ingeridas, nunca ao vivo' })
+  async getCareerStage(
+    @CurrentTenant() tenant: { id: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.service.findById(tenant.id, id);
+    return this.careerStage.calculate(tenant.id, id);
+  }
+
+  @Get(':id/market-benchmark')
+  @RequireRole('viewer')
+  @RequirePermission('artist:read')
+  @ApiOperation({ summary: 'Benchmark de Mercado (Fase 3.2) — leitura rápida; refresh de coorte externa roda em background, nunca no request' })
+  async getMarketBenchmark(
+    @CurrentTenant() tenant: { id: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.service.findById(tenant.id, id);
+    return this.marketBenchmark.getStatus(tenant.id, id);
   }
 
   @Post(':id/platform-profiles/:platform/sync')

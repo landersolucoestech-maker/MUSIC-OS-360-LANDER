@@ -33,7 +33,10 @@ import * as request from 'supertest';
 import { ArtistsController } from './artists.controller';
 import { ArtistsService } from './artists.service';
 import { ArtistPlatformProfilesService } from './platform-profiles/artist-platform-profiles.service';
+import { ArtistMetricSnapshotsService } from './platform-profiles/artist-metric-snapshots.service';
 import { ArtistExternalProfileSyncService } from './platform-profiles/artist-external-profile-sync.service';
+import { CareerStageService } from './platform-profiles/analytics/career-stage.service';
+import { MarketBenchmarkService } from './platform-profiles/analytics/market-benchmark.service';
 import { JwtAuthGuard } from '../../core/guards/auth.guard';
 import { RbacErrorLogService } from '../../core/rbac/rbac-error-log.service';
 import { TenantGuard } from '../../core/guards/tenant.guard';
@@ -101,7 +104,10 @@ describe('Cross-tenant IDOR — GET /artists/:id via HTTP real', () => {
         Reflector,
         { provide: ArtistsService, useValue: fakeArtistsService },
         { provide: ArtistPlatformProfilesService, useValue: {} },
+        { provide: ArtistMetricSnapshotsService, useValue: {} },
         { provide: ArtistExternalProfileSyncService, useValue: {} },
+        { provide: CareerStageService, useValue: {} },
+        { provide: MarketBenchmarkService, useValue: {} },
         {
           provide: ConfigService,
           useValue: {

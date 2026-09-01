@@ -12,12 +12,18 @@ import { evaluateCrossPlatformEvidence } from '../soundcharts-canonical-candidat
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3';
 
 /**
- * subscribers: EXCLUSIVAMENTE Soundcharts /audience/youtube (Soundcharts 05).
- * total_views/total_videos: EXCLUSIVAMENTE YouTube Data API channels.statistics —
- * a Soundcharts não tem equivalente. A YouTube Data API é usada tanto para
- * RESOLUÇÃO de canal (handle/URL → UC…) quanto para essas duas estatísticas;
- * nunca para subscriberCount, que nunca sobrescreve o valor da Soundcharts
- * (Métricas 09 fase 2 — corrige regressão que zerou views/videos).
+ * REGRA "SOUNDCHARTS ONLY" (auditoria 2026-08-31): subscribers, total_views
+ * e total_videos vêm TODOS de uma única chamada a Soundcharts
+ * /audience/youtube (SoundchartsService.getYouTubeAudience) — confirmado
+ * contra a API real que o mesmo item da série traz followerCount, postCount
+ * e viewCount juntos. A YouTube Data API deixou de ser usada para métricas
+ * (a antiga chamada a channels?part=statistics foi removida); ela continua
+ * existindo aqui SOMENTE para RESOLUÇÃO DE IDENTIDADE — transformar o link
+ * cadastrado (handle/@handle/URL customizada) no channelId exato (UC…) que a
+ * Soundcharts exige para resolver a conta. Nenhuma chamada feita por
+ * `resolveChannelId`/`parseRef` lê `part=statistics` nem qualquer campo de
+ * métrica — é puramente id lookup, o mesmo tipo de normalização de URL que
+ * cada provider já faz para seu próprio link cadastrado.
  */
 @Injectable()
 export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
@@ -52,8 +58,8 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
     // prova de identidade primária. Divergência cross-platform é diagnóstico.
     const crossPlatform = await evaluateCrossPlatformEvidence(this.soundcharts, input.canonicalUrls, 'youtube', uuid);
 
-    const subscribers = await this.soundcharts.getYouTubeSubscribers(uuid);
-    const statistics = await this.fetchChannelStatistics(channelId, apiKey);
+    const audience = await this.soundcharts.getYouTubeAudience(uuid);
+    const { subscribers, videos, views } = audience;
 
     return {
       tenant_id: input.tenantId,
@@ -69,67 +75,33 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
       subscribers: subscribers.value,
       monthly_listeners: null,
       popularity: null,
-      total_views: statistics?.viewCount ?? null,
-      total_videos: statistics?.videoCount ?? null,
+      total_views: views ? String(views.value) : null,
+      total_videos: videos ? videos.value : null,
       total_tracks: null,
       total_albums: null,
       raw_payload: {
         soundcharts_uuid: uuid,
         observed_at: subscribers.observedAt.toISOString(),
         ...primaryIdentityProvenance(crossPlatform),
-        // subscribers vem da Soundcharts; total_views/total_videos vêm de uma
-        // fonte DIFERENTE (YouTube Data API) — provenance de cada uma
-        // rastreada separadamente, nunca fundida como se fosse uma fonte só.
+        // subscribers/views/videos vêm TODOS da mesma chamada Soundcharts
+        // /audience/youtube — nenhuma métrica deste card usa YouTube Data
+        // API (auditoria 2026-08-31, regra "SOUNDCHARTS ONLY").
         subscribers_provenance: soundchartsProvenance('youtube', subscribers),
-        views_videos_provenance: statistics ? {
-          source_provider: 'youtube_data_api',
+        views_videos_provenance: {
+          source_provider: 'soundcharts',
           source_platform: 'youtube',
-          source_endpoint: `${YOUTUBE_API}/channels?part=statistics&id=${channelId}`,
-          source_field: 'items[0].statistics.{viewCount,videoCount}',
-          fetched_at: new Date().toISOString(),
+          source_endpoint: views?.endpoint ?? videos?.endpoint ?? subscribers.endpoint,
+          source_field: 'items[].{postCount,viewCount}',
+          fetched_at: subscribers.observedAt.toISOString(),
           normalized_at: new Date().toISOString(),
-          raw_value: { viewCount: statistics.viewCount, videoCount: statistics.videoCount },
-          normalized_value: { total_views: statistics.viewCount, total_videos: statistics.videoCount },
-        } : null,
+          raw_value: { viewCount: views?.value ?? null, postCount: videos?.value ?? null },
+          normalized_value: { total_views: views?.value ?? null, total_videos: videos?.value ?? null },
+        },
       },
       sync_status: 'success',
       last_synced_at: new Date(),
       last_error: null,
     };
-  }
-
-  /**
-   * total_views/total_videos via YouTube Data API — best-effort: se a API
-   * falhar (quota, rede, etc.) retorna null para os dois campos SEM lançar,
-   * porque isso não pode derrubar subscribers já obtido via Soundcharts.
-   */
-  private async fetchChannelStatistics(
-    channelId: string,
-    apiKey: string,
-  ): Promise<{ viewCount: string | null; videoCount: number | null } | null> {
-    try {
-      const res = await fetch(
-        `${YOUTUBE_API}/channels?part=statistics&id=${encodeURIComponent(channelId)}&key=${apiKey}`,
-      );
-      if (!res.ok) {
-        this.logger.warn(await this.describeYouTubeError(res, `buscar estatísticas do canal "${channelId}"`));
-        return null;
-      }
-      const data = (await res.json()) as {
-        items?: Array<{ statistics?: { viewCount?: string; videoCount?: string } }>;
-      };
-      const statistics = data.items?.[0]?.statistics;
-      if (!statistics) return null;
-      return {
-        viewCount: statistics.viewCount ?? null,
-        videoCount: this.toNumber(statistics.videoCount),
-      };
-    } catch (err) {
-      this.logger.warn(
-        `Falha ao buscar estatísticas do canal "${channelId}": ${err instanceof Error ? err.message : String(err)}`,
-      );
-      return null;
-    }
   }
 
   /**
@@ -208,11 +180,5 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
       reason = [apiReason, apiMessage].filter(Boolean).join(' — ');
     } catch { /* corpo não-JSON: mantém só o status */ }
     return `YouTube API respondeu ${res.status} ao ${action}${reason ? `: ${reason}` : ''}`;
-  }
-
-  private toNumber(value: string | number | null | undefined): number | null {
-    if (value === null || value === undefined) return null;
-    const num = typeof value === 'number' ? value : Number(value);
-    return Number.isFinite(num) ? num : null;
   }
 }

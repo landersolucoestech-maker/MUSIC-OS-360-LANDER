@@ -59,6 +59,7 @@ import {
   Link2,
 } from "lucide-react";
 import { ArtistaEvolucaoSection } from "@/modules/artist/components/ArtistaEvolucaoSection";
+import { PositioningCard } from "@/modules/artist/components/PositioningCard";
 import { ArtistaPlatformMetrics } from "@/modules/artist/components/ArtistaPlatformMetrics";
 
 const formatDateDMY = (d?: string | null): string => {
@@ -73,35 +74,6 @@ const formatDateDMY = (d?: string | null): string => {
   }
   return d;
 };
-
-const estagiosCarreira = [
-  { nivel: 1, nome: "Iniciante", descricao: "Começando a carreira musical" },
-  { nivel: 2, nome: "Emergente", descricao: "Construindo uma base de fãs" },
-  {
-    nivel: 3,
-    nome: "Em Desenvolvimento",
-    descricao: "Ganhando tração no mercado",
-  },
-  {
-    nivel: 4,
-    nome: "Promissor",
-    descricao: "Potencial reconhecido pela indústria",
-  },
-  {
-    nivel: 5,
-    nome: "Estabelecido",
-    descricao: "Presença consolidada no mercado",
-  },
-  {
-    nivel: 6,
-    nome: "Sustentável",
-    descricao: "Receita recorrente e base de fãs leal",
-  },
-  { nivel: 7, nome: "Influente", descricao: "Referência no gênero musical" },
-  { nivel: 8, nome: "Dominante", descricao: "Liderança no mercado nacional" },
-  { nivel: 9, nome: "Elite", descricao: "Top do mercado brasileiro" },
-  { nivel: 10, nome: "Lendário", descricao: "Ícone da música brasileira" },
-];
 
 // imports movidos para cá após remoção de CircularProgress
 import { formatCurrency, getCurrencyToneClass, getMonetarySemanticClass } from "@/shared/lib/format-utils";
@@ -943,95 +915,11 @@ export function ArtistaVisao360Modal({
                 </Card>
               </div>
 
-              {/* Estágio da Carreira + Benchmark */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Estágio da Carreira */}
-                <Card className="bg-muted/30">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <TrendingUp className="h-5 w-5 text-teal-500" />
-                      <h3 className="font-semibold">Estágio da Carreira</h3>
-                    </div>
-                    {artista.estagio_carreira ? (
-                      <>
-                        <div className="flex items-start gap-4 mb-4">
-                          <div className="relative">
-                            <div className="h-14 w-14 rounded-full bg-teal-500/20 border-4 border-teal-500 flex items-center justify-center">
-                              <span className="text-xl font-bold text-teal-400">
-                                {artista.estagio_carreira}
-                              </span>
-                            </div>
-                            <span className="absolute -top-1 -right-1 text-[9px] bg-teal-500 text-foreground px-1.5 py-0.5 rounded-full">
-                              de 10
-                            </span>
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-lg font-bold text-teal-400">
-                              {
-                                estagiosCarreira[artista.estagio_carreira - 1]
-                                  ?.nome
-                              }
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {
-                                estagiosCarreira[artista.estagio_carreira - 1]
-                                  ?.descricao
-                              }
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                            <div
-                              key={n}
-                              className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-medium ${
-                                n < artista.estagio_carreira
-                                  ? "bg-teal-500 text-foreground"
-                                  : n === artista.estagio_carreira
-                                    ? "bg-teal-500 text-foreground ring-2 ring-teal-400 ring-offset-1 ring-offset-background"
-                                    : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              {n}
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
-                        <TrendingUp className="h-10 w-10 text-muted-foreground/30" />
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Estágio não definido
-                        </p>
-                        <p className="text-xs text-muted-foreground/70">
-                          Edite o perfil do artista e defina o estágio da
-                          carreira (1–10).
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Benchmark de Mercado */}
-                <Card className="bg-muted/30">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Award className="h-5 w-5 text-warning" />
-                      <h3 className="font-semibold">Benchmark de Mercado</h3>
-                    </div>
-                    <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
-                      <BarChart3 className="h-10 w-10 text-muted-foreground/30" />
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Sem dados de mercado
-                      </p>
-                      <p className="text-xs text-muted-foreground/70">
-                        Conecte uma fonte de análise de mercado para visualizar
-                        o benchmark comparativo.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              {/* Posicionamento da Carreira (Fase 3.2 Parte IV — consolida
+                  Career Stage + Market Benchmark em um único diagnóstico;
+                  ambos calculados no backend a partir de métricas
+                  Soundcharts já ingeridas) */}
+              <PositioningCard artistaId={artista.id} />
 
               {/* Métricas */}
               <div className="grid grid-cols-5 gap-4">

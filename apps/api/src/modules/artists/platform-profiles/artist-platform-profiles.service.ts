@@ -1,15 +1,20 @@
-import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { ArtistPlatformProfileEntity } from '../../../database/entities';
 import type { SocialPlatform, SocialPlatformProfileSnapshot } from './social-platform-sync.types';
 import { toSocialPlatformSnapshot } from './social-platform-sync.types';
+import { ArtistMetricSnapshotsService } from './artist-metric-snapshots.service';
 
 @Injectable()
 export class ArtistPlatformProfilesService {
+  private readonly logger = new Logger(ArtistPlatformProfilesService.name);
   private readonly repo: Repository<ArtistPlatformProfileEntity> | null = null;
 
-  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+  constructor(
+    @Inject(DATA_SOURCE) ds: DataSource | null,
+    private readonly snapshots: ArtistMetricSnapshotsService,
+  ) {
     if (ds) this.repo = ds.getRepository(ArtistPlatformProfileEntity);
   }
 
@@ -131,6 +136,19 @@ export class ArtistPlatformProfilesService {
         ['tenant_id', 'artist_id', 'platform'],
       )
       .execute();
+
+    // Fase 2 — grava a série histórica real a partir do MESMO snapshot já
+    // validado pelo provider (nunca uma segunda chamada à Soundcharts).
+    // Nunca deve derrubar a atualização de current-state acima: uma falha
+    // aqui é logada, não propagada — histórico é aditivo, current-state é
+    // a garantia principal desta chamada.
+    try {
+      await this.snapshots.recordFromProfileSnapshot(snapshot);
+    } catch (err) {
+      this.logger.error(
+        `[metric-snapshot] falha ao gravar histórico (current-state OK) tenant=${snapshot.tenant_id} artist=${snapshot.artist_id} platform=${snapshot.platform}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
 
     return (await this.findByArtistAndPlatform(snapshot.tenant_id, snapshot.artist_id, snapshot.platform))!;
   }

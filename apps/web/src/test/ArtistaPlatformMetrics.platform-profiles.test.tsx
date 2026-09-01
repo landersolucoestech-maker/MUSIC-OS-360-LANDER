@@ -677,7 +677,14 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
       () => expect(screen.getByTestId("metric-spotify-artist-1")).toHaveTextContent("12.345"),
       { timeout: 4000, interval: 100 },
     );
-    expect(api.get).toHaveBeenCalledTimes(2);
+    // Escopado ao endpoint de platform-profiles: o card de sucesso com
+    // monthly_listeners agora também dispara GrowthBadge (histórico Fase 2),
+    // que chama api.get para /platform-profiles/spotify/history — uma
+    // chamada real e esperada, não uma regressão no poll de pending→success.
+    const platformProfilesCalls = vi
+      .mocked(api.get)
+      .mock.calls.filter(([path]) => path === "/artists/artist-1/platform-profiles");
+    expect(platformProfilesCalls).toHaveLength(2);
   });
 
   it("Instagram success: followers=123456 renderiza 123.456 via formatCount", async () => {
