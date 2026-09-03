@@ -47,21 +47,38 @@ describe('Separação de domínio: métricas do artista NUNCA dependem de OAuth 
     // Assinatura do construtor é a superfície real de dependências — se algum dia
     // alguém tentar resolver métrica de artista via conexão OAuth da organização,
     // este teste quebra porque um novo parâmetro apareceria aqui.
-    expect(ArtistExternalProfileSyncService.length).toBe(3);
+    expect(ArtistExternalProfileSyncService.length).toBe(4);
   });
 });
 
 describe('ArtistExternalProfileSyncService', () => {
-  it('enfileira sync manual de Spotify com pending tenant-scoped', async () => {
+  it('sync manual de Spotify resolve direto (sem BullMQ) via SpotifyArtistProfileProvider', async () => {
     const artists = {
       findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null }),
     };
     const profiles = {
       hasRecentPending: jest.fn().mockResolvedValue(false),
       upsertPending: jest.fn().mockResolvedValue({}),
+      upsertSuccess: jest.fn().mockResolvedValue({}),
+      markFailed: jest.fn(),
     };
-    const queue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
-    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+    const spotifyProvider = {
+      resolve: jest.fn().mockResolvedValue({
+        tenant_id: 'tenant-1',
+        artist_id: 'artist-1',
+        platform: 'spotify',
+        external_id: SPOTIFY_ID,
+        monthly_listeners: 54321,
+        sync_status: 'success',
+      }),
+    };
+    const queue = { add: jest.fn() };
+    const service = new ArtistExternalProfileSyncService(
+      artists as never,
+      profiles as never,
+      spotifyProvider as never,
+      queue as never,
+    );
 
     const result = await service.enqueueManualSync({
       tenantId: 'tenant-1',
@@ -78,15 +95,16 @@ describe('ArtistExternalProfileSyncService', () => {
       externalId: SPOTIFY_ID,
       externalUrl: `https://open.spotify.com/artist/${SPOTIFY_ID}`,
     }));
-    expect(queue.add).toHaveBeenCalledWith(
-      ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
-      expect.objectContaining({ tenant_id: 'tenant-1', artist_id: 'artist-1', platform: 'spotify' }),
-      expect.objectContaining({ attempts: 3, jobId: expect.stringContaining('tenant-1__artist-1__spotify__manual__') }),
-    );
-    // BullMQ proíbe ':' em jobId customizado — regressão do 500 "Custom Id cannot contain :".
-    const jobId = (queue.add.mock.calls[0][2] as { jobId: string }).jobId;
-    expect(jobId).not.toContain(':');
-    expect(result.enqueued).toEqual([{ platform: 'spotify', job_id: 'job-1' }]);
+    expect(spotifyProvider.resolve).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      artistId: 'artist-1',
+      externalId: SPOTIFY_ID,
+      externalUrl: `https://open.spotify.com/artist/${SPOTIFY_ID}`,
+    }));
+    expect(profiles.upsertSuccess).toHaveBeenCalledWith(expect.objectContaining({ monthly_listeners: 54321 }));
+    // Spotify resolve é síncrono no request — nunca passa pelo BullMQ.
+    expect(queue.add).not.toHaveBeenCalled();
+    expect(result.enqueued).toEqual([{ platform: 'spotify', job_id: expect.stringContaining('direct-') }]);
   });
 
   it('enfileira sync manual de YouTube', async () => {
@@ -98,7 +116,12 @@ describe('ArtistExternalProfileSyncService', () => {
       upsertPending: jest.fn().mockResolvedValue({}),
     };
     const queue = { add: jest.fn().mockResolvedValue({ id: 'job-2' }) };
-    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+    const service = new ArtistExternalProfileSyncService(
+      artists as never,
+      profiles as never,
+      { resolve: jest.fn() } as never,
+      queue as never,
+    );
 
     const result = await service.enqueueManualSync({
       tenantId: 'tenant-1',
@@ -129,7 +152,12 @@ describe('ArtistExternalProfileSyncService', () => {
       upsertPending: jest.fn().mockResolvedValue({}),
     };
     const queue = { add: jest.fn().mockResolvedValue({ id: 'job-3' }) };
-    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+    const service = new ArtistExternalProfileSyncService(
+      artists as never,
+      profiles as never,
+      { resolve: jest.fn() } as never,
+      queue as never,
+    );
 
     const result = await service.enqueueManualSync({
       tenantId: 'tenant-1',
@@ -160,7 +188,12 @@ describe('ArtistExternalProfileSyncService', () => {
       upsertPending: jest.fn().mockResolvedValue({}),
     };
     const queue = { add: jest.fn().mockResolvedValue({ id: 'job-4' }) };
-    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+    const service = new ArtistExternalProfileSyncService(
+      artists as never,
+      profiles as never,
+      { resolve: jest.fn() } as never,
+      queue as never,
+    );
 
     const result = await service.enqueueManualSync({
       tenantId: 'tenant-1',
@@ -191,7 +224,12 @@ describe('ArtistExternalProfileSyncService', () => {
       upsertPending: jest.fn().mockResolvedValue({}),
     };
     const queue = { add: jest.fn().mockResolvedValue({ id: 'job-5' }) };
-    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+    const service = new ArtistExternalProfileSyncService(
+      artists as never,
+      profiles as never,
+      { resolve: jest.fn() } as never,
+      queue as never,
+    );
 
     const result = await service.enqueueManualSync({
       tenantId: 'tenant-1',
@@ -222,7 +260,12 @@ describe('ArtistExternalProfileSyncService', () => {
       upsertPending: jest.fn().mockResolvedValue({}),
     };
     const queue = { add: jest.fn().mockResolvedValue({ id: 'job-6' }) };
-    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+    const service = new ArtistExternalProfileSyncService(
+      artists as never,
+      profiles as never,
+      { resolve: jest.fn() } as never,
+      queue as never,
+    );
 
     const result = await service.enqueueManualSync({
       tenantId: 'tenant-1',
@@ -258,7 +301,12 @@ describe('ArtistExternalProfileSyncService', () => {
       upsertPending: jest.fn().mockResolvedValue({}),
     };
     const queue = { add: jest.fn().mockResolvedValue({ id: 'job-7' }) };
-    const service = new ArtistExternalProfileSyncService(artists as never, profiles as never, queue as never);
+    const service = new ArtistExternalProfileSyncService(
+      artists as never,
+      profiles as never,
+      { resolve: jest.fn() } as never,
+      queue as never,
+    );
 
     const result = await service.enqueueManualSync({
       tenantId: 'tenant-1',
@@ -282,6 +330,7 @@ describe('ArtistExternalProfileSyncService', () => {
     const service = new ArtistExternalProfileSyncService(
       artists as never,
       { hasRecentPending: jest.fn(), upsertPending: jest.fn() } as never,
+      { resolve: jest.fn() } as never,
       { add: jest.fn() } as never,
     );
 
@@ -300,7 +349,7 @@ describe('ArtistExternalProfileSyncService', () => {
   });
 
   it('rejeita plataforma fora do conjunto suportado', async () => {
-    const service = new ArtistExternalProfileSyncService({} as never, {} as never, null);
+    const service = new ArtistExternalProfileSyncService({} as never, {} as never, {} as never, null);
     await expect(service.enqueueManualSync({
       tenantId: 'tenant-1',
       artistId: 'artist-1',
@@ -316,6 +365,7 @@ describe('ArtistExternalProfileSyncService', () => {
     const service = new ArtistExternalProfileSyncService(
       artists as never,
       { hasRecentPending: jest.fn(), upsertPending: jest.fn() } as never,
+      { resolve: jest.fn() } as never,
       { add: jest.fn() } as never,
     );
 
