@@ -23,6 +23,7 @@ import {
 } from '../../database/entities';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { PLAN_FEATURES } from './billing.service';
+import { NOTIFICATION_JOB_NAMES } from '../../queues/queue.constants';
 
 const DUNNING_REMINDER_DAYS     = 4;
 const DUNNING_SOFT_SUSPEND_DAYS = 8;
@@ -121,25 +122,24 @@ export class DunningService implements OnApplicationBootstrap {
       .where('id = :orgId', { orgId })
       .execute();
 
-    this.ws.sendToTenant(tenantId, 'billing:suspended', {
-      org_id: orgId,
-      message: 'Conta suspensa por inadimplência. Regularize o pagamento para reactivar o acesso.',
-    });
+    const message = 'Conta suspensa por inadimplência. Regularize o pagamento para reactivar o acesso.';
+    this.ws.sendToTenant(tenantId, 'billing:suspended', { org_id: orgId, message });
 
-    await this.enqueueEmail(tenantId, 'billing.hard_suspend', { orgId, tenantId });
+    await this.enqueueNotification(tenantId, 'billing.hard_suspend', message, { orgId, tenantId });
   }
 
   private async softSuspendWarning(orgId: string, tenantId: string, days: number): Promise<void> {
     this.logger.warn(`Dunning SOFT SUSPEND WARNING: org=${orgId} day=${days}`);
 
+    const message = `Conta será suspensa em ${DUNNING_HARD_SUSPEND_DAYS - days} dia(s). Actualize o pagamento.`;
     this.ws.sendToTenant(tenantId, 'billing:payment_warning', {
       org_id:  orgId,
       days_overdue: days,
       days_until_suspension: DUNNING_HARD_SUSPEND_DAYS - days,
-      message: `Conta será suspensa em ${DUNNING_HARD_SUSPEND_DAYS - days} dia(s). Actualize o pagamento.`,
+      message,
     });
 
-    await this.enqueueEmail(tenantId, 'billing.soft_suspend_warning', {
+    await this.enqueueNotification(tenantId, 'billing.soft_suspend_warning', message, {
       orgId, tenantId, daysPastDue: days,
       daysUntilSuspension: DUNNING_HARD_SUSPEND_DAYS - days,
     });
@@ -148,13 +148,10 @@ export class DunningService implements OnApplicationBootstrap {
   private async sendReminder(orgId: string, tenantId: string, days: number): Promise<void> {
     this.logger.log(`Dunning REMINDER: org=${orgId} day=${days}`);
 
-    this.ws.sendToTenant(tenantId, 'billing:payment_reminder', {
-      org_id:  orgId,
-      days_overdue: days,
-      message: `Pagamento em atraso há ${days} dia(s). Actualize o método de pagamento.`,
-    });
+    const message = `Pagamento em atraso há ${days} dia(s). Actualize o método de pagamento.`;
+    this.ws.sendToTenant(tenantId, 'billing:payment_reminder', { org_id: orgId, days_overdue: days, message });
 
-    await this.enqueueEmail(tenantId, 'billing.payment_reminder', { orgId, tenantId, daysPastDue: days });
+    await this.enqueueNotification(tenantId, 'billing.payment_reminder', message, { orgId, tenantId, daysPastDue: days });
   }
 
   private async resolveTenantId(orgId: string): Promise<string | null> {
@@ -167,12 +164,38 @@ export class DunningService implements OnApplicationBootstrap {
     }
   }
 
-  private async enqueueEmail(tenantId: string, template: string, data: Record<string, unknown>): Promise<void> {
+  /**
+   * Was named enqueueEmail and added a job literally named 'email' with a
+   * {tenantId, template, data} payload — but NotificationsProcessor's
+   * switch only handles NOTIFICATION_JOB_NAMES ('send'/'broadcast-tenant')
+   * and expects a {tenantId, title, body, type} shape (NotificationPayload).
+   * Neither the job name nor the payload matched anything the processor
+   * reads, so every dunning email (reminder, soft-suspend warning,
+   * hard-suspend notice) was silently dropped at the `default:` branch —
+   * added to the queue, logged as enqueued, never actually delivered.
+   *
+   * There's no separate email-template pipeline for these three messages
+   * (EMAIL_JOB_NAMES has no dunning-related entry either) — the queue that
+   * actually implements persistence + delivery for a tenant-facing message
+   * is `notifications` (`NotificationsProcessor.handleSend`: persists to
+   * the notifications table AND pushes via WebSocket). Sending a real
+   * NOTIFICATION_JOB_NAMES.SEND job here means the message actually reaches
+   * the processor this queue has, durably (survives even if the ephemeral
+   * `ws.sendToTenant` call above it was missed because the user was
+   * offline at that exact moment).
+   */
+  private async enqueueNotification(
+    tenantId: string, type: string, title: string, metadata: Record<string, unknown>,
+  ): Promise<void> {
     if (!this.notifQueue) return;
     try {
-      await this.notifQueue.add('email', { tenantId, template, data }, { attempts: 3 });
+      await this.notifQueue.add(
+        NOTIFICATION_JOB_NAMES.SEND,
+        { tenantId, title, type, metadata },
+        { attempts: 3 },
+      );
     } catch (err) {
-      this.logger.warn(`Dunning: enqueue email ${template} falhou: ${String(err)}`);
+      this.logger.warn(`Dunning: enqueue notification ${type} falhou: ${String(err)}`);
     }
   }
 }
