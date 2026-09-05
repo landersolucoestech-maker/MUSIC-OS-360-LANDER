@@ -17,7 +17,10 @@ export function useProjetos(enabled = true, artistaId?: string) {
     table: "projetos",
     select: "*, artistas(*), obras(id, titulo, status)",
     enabled,
-    filters: artistaId ? { artista_id: artistaId } : undefined,
+    // QueryProjectDto só aceita "artistId" (Task H alinhou DTO/service nesse nome) —
+    // "artista_id" era rejeitado pelo whitelist do ValidationPipe (400), quebrando
+    // a aba Projetos do modal Visão 360° do artista.
+    filters: artistaId ? { artistId: artistaId } : undefined,
   }, {
     create: { success: "Projeto criado com sucesso!", error: "Erro ao criar projeto" },
     update: { success: "Projeto atualizado com sucesso!", error: "Erro ao atualizar projeto" },

@@ -10,7 +10,8 @@ export const projectsService = {
     return storage.list("projetos", { filters: { status } });
   },
   async listByArtist(artistId: string) {
-    return storage.list("projetos", { filters: { artista_id: artistId } });
+    // QueryProjectDto só aceita "artistId" — ver useProjetos.ts.
+    return storage.list("projetos", { filters: { artistId } });
   },
 };
 

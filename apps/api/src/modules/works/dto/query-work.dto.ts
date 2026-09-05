@@ -1,5 +1,4 @@
-import { IsOptional, IsString, IsInt, IsUUID, IsIn } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsUUID, IsIn } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -8,11 +7,6 @@ export class QueryWorkDto extends PaginationDto {
   @IsOptional()
   @IsString()
   status?: string;
-
-  @ApiPropertyOptional({ example: 'MPB' })
-  @IsOptional()
-  @IsString()
-  genre?: string;
 
   @ApiPropertyOptional({ example: 'MPB', description: 'Filtro server-side pelo gênero (coluna genero).' })
   @IsOptional()
@@ -33,12 +27,6 @@ export class QueryWorkDto extends PaginationDto {
   @IsOptional()
   @IsIn(['com-ecad', 'sem-ecad'])
   ecad?: string;
-
-  @ApiPropertyOptional({ example: 2024 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  year?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

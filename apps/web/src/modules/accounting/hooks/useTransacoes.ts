@@ -21,8 +21,11 @@ export function useTransacoes(enabled = true, artistaId?: string) {
     select: "*, clientes(*), artistas(*)",
     orderBy: { column: "data", ascending: false },
     enabled,
-    // Backend de transactions usa "artistId" (camelCase) — ver query-transaction.dto.ts.
-    filters: artistaId ? { artistId: artistaId } : undefined,
+    // QueryTransactionDto: "artistId" é alias legado NUNCA lido pelo service (só existe
+    // para não quebrar 400 em callers antigos) — o campo real é "artista_id". Enviar
+    // "artistId" fazia esse filtro ser silenciosamente ignorado (200 com todas as
+    // transações do tenant, não só as do artista) na aba Financeiro do Visão 360°.
+    filters: artistaId ? { artista_id: artistaId } : undefined,
     onMutationSuccess: {
       onCreate: (t) =>
         emit(DomainEvents.TRANSACTION_CREATED, {

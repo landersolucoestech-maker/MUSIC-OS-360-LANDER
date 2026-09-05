@@ -46,12 +46,10 @@ export class UpdateEventDto extends PartialType(CreateEventDto) {
 
 export class QueryEventDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
 
-  // Nomes efetivamente lidos por EventsService.list() (tipo/artista_id PT,
-  // já usados antes desta migração; type/artistId acima nunca foram lidos
-  // pelo service — mantidos só por compatibilidade, sem uso real).
+  // Nomes efetivamente lidos por EventsService.list(). "type"/"artistId" (aliases
+  // em inglês) existiam aqui sem nenhum caller real e sem leitura no service —
+  // removidos (eram um filtro 200-mas-silenciosamente-ignorado à espera de acontecer).
   @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() artista_id?: string;
   @ApiPropertyOptional({ type: String, format: 'date-time' }) @IsOptional() @IsDateString() dateFrom?: string;
