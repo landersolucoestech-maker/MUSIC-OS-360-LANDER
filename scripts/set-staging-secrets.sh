@@ -35,7 +35,7 @@ SECRETS=(
 PROD_MARKERS=(
   "iundcoubyaiwzqyytvdr"      # ref do projeto Supabase de PRODUÇÃO
   # "api.seudominio.com"      # <- adicione o domínio da API de produção
-  # "vercel-prod-hook-host"   # <- adicione o host do deploy hook de produção
+  # "prod-deploy-hook-host"   # <- adicione o host do deploy hook de produção
 )
 
 fail() { echo "❌ $*" >&2; exit 1; }
