@@ -65,4 +65,33 @@ describe('ExportQueryBuilderService — query segura entity-driven', () => {
     const q = svc.build(DEF, base(), 't', { softDeleteColumn: 'deleted_at' });
     expect(q.sql).toContain('"deleted_at" IS NULL');
   });
+
+  // Regressão: seleção de colunas nunca pode determinar a ordem — apenas QUAIS
+  // colunas entram. A ORDEM vem sempre de def.exportableColumns (config canônica).
+  describe('ordem das colunas selecionadas — seleção filtra, nunca ordena', () => {
+    it('subconjunto enviado na ordem canônica preserva a ordem canônica', () => {
+      const q = svc.build(DEF, base({ columns: ['nome_artistico', 'status'] }), 't');
+      expect(q.columns).toEqual(['nome_artistico', 'status']);
+    });
+
+    it('subconjunto enviado FORA da ordem canônica é reordenado pela config canônica', () => {
+      // Canônico: nome_artistico, email, status. Chamador envia status antes de nome_artistico.
+      const q = svc.build(DEF, base({ columns: ['status', 'nome_artistico'] }), 't');
+      expect(q.columns).toEqual(['nome_artistico', 'status']);
+      expect(q.sql).toContain('SELECT "nome_artistico", "status" FROM "artists"');
+    });
+
+    it('ordem dos cliques não interfere: duas seleções do mesmo conjunto em ordens diferentes produzem a mesma saída', () => {
+      const q1 = svc.build(DEF, base({ columns: ['email', 'nome_artistico'] }), 't');
+      const q2 = svc.build(DEF, base({ columns: ['nome_artistico', 'email'] }), 't');
+      expect(q1.columns).toEqual(['nome_artistico', 'email']);
+      expect(q2.columns).toEqual(['nome_artistico', 'email']);
+      expect(q1.columns).toEqual(q2.columns);
+    });
+
+    it('sem seleção (export completo) usa exportableColumns na ordem declarada', () => {
+      const q = svc.build(DEF, base(), 't');
+      expect(q.columns).toEqual(['nome_artistico', 'email', 'status']);
+    });
+  });
 });

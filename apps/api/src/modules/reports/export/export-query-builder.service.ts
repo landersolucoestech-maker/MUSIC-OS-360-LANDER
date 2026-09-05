@@ -37,17 +37,23 @@ export class ExportQueryBuilderService {
   ): BuiltExportQuery {
     if (!tenantId) throw new ForbiddenException('Tenant não identificado para exportação');
 
-    const requested = params.columns?.length ? params.columns : def.exportableColumns;
-    for (const column of requested) {
-      if (def.sensitiveColumns.includes(column)) {
-        throw new BadRequestException(`Coluna sensível não pode ser exportada: ${column}`);
-      }
-      if (!def.exportableColumns.includes(column)) {
-        throw new BadRequestException(`Coluna não exportável: ${column}`);
+    // Seleção = QUAIS colunas; ordem canônica (def.exportableColumns) = EM QUAL ordem.
+    // Nunca usar a ordem em que o chamador enviou `columns` — sempre filtrar a
+    // configuração canônica pelos identificadores selecionados, preservando a ordem dela.
+    if (params.columns?.length) {
+      for (const column of params.columns) {
+        if (def.sensitiveColumns.includes(column)) {
+          throw new BadRequestException(`Coluna sensível não pode ser exportada: ${column}`);
+        }
+        if (!def.exportableColumns.includes(column)) {
+          throw new BadRequestException(`Coluna não exportável: ${column}`);
+        }
       }
     }
 
-    const columns = [...requested];
+    const columns = params.columns?.length
+      ? def.exportableColumns.filter((column) => params.columns!.includes(column))
+      : [...def.exportableColumns];
     const contract = getReportFormContract(def.tableName);
     const encryptedFields = contract ? contractEncryptedFields(contract) : {};
     const metadataFields = contract ? contractMetadataFields(contract) : {};

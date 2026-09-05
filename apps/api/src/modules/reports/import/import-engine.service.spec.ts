@@ -92,6 +92,48 @@ describe('ImportEngineService — XLSX de aba única', () => {
     expect(rows[0]).toHaveLength(DEF.importableColumns.length);
   });
 
+  it('template gera headers na ordem canônica de def.importableColumns (não Object.keys, não alfabética)', async () => {
+    const result = await makeEngine().buildTemplate('artists', 't');
+    const wb = XLSX.read(result.body, { type: 'buffer' });
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets.Artistas!, { header: 1 });
+    expect(rows[0]).toEqual(['Nome artístico', 'E-mail', 'Situação', 'Categoria']);
+  });
+
+  it('mapeia por HEADER, não por posição física: colunas fora de ordem resolvem para a mesma key canônica', async () => {
+    // Ordem física do arquivo é a inversa da ordem canônica do contrato — o
+    // mapper resolve por rótulo/nome, nunca por índice de coluna.
+    const result = await makeEngine().validateFile(
+      'artists',
+      workbook('Artistas', [
+        ['Categoria', 'Situação', 'E-mail', 'Nome artístico'],
+        ['solo', 'ativo', 'joao@x.com', 'João'],
+      ]),
+      't',
+    );
+    expect(result.rows[0].data).toEqual({
+      categoria: 'solo', status: 'ativo', email: 'joao@x.com', nome_artistico: 'João',
+    });
+  });
+
+  it('exportação e importação concordam: template exportado é aceito de volta pelo importador sem colunas desconhecidas', async () => {
+    const engine = makeEngine();
+    const template = await engine.buildTemplate('artists', 't');
+    const wb = XLSX.read(template.body, { type: 'buffer' });
+    const templateRows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets.Artistas!, { header: 1 });
+
+    const result = await engine.validateFile(
+      'artists',
+      workbook('Artistas', templateRows as unknown[][]),
+      't',
+    );
+    expect(result.unknownColumns).toEqual([]);
+    expect(result.rows[0].data).toEqual(expect.objectContaining({
+      nome_artistico: expect.any(String),
+      email: expect.any(String),
+      categoria: expect.any(String),
+    }));
+  });
+
   it('mantém guardas de tenant, entidade e suporte de importação', async () => {
     const file = workbook('Artistas', [['Nome artístico', 'Categoria'], ['A', 'solo']]);
     await expect(makeEngine().validateFile('artists', file, undefined)).rejects.toBeInstanceOf(ForbiddenException);

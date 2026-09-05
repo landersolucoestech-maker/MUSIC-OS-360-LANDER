@@ -109,8 +109,11 @@ export class ExportEngineService {
       try {
         const rows = await this.resolveComputedReport(entity, tenantId);
         assertExportSize(entity, rows.length);
+        // Seleção = QUAIS colunas; ordem canônica (definition.exportableColumns) = EM
+        // QUAL ordem. Filtrar a config canônica pela seleção, não o inverso — nunca
+        // deixar a ordem de `params.columns` (ordem do chamador) vazar para o XLSX.
         const columns = params.columns?.length
-          ? params.columns.filter((column) => definition.exportableColumns.includes(column))
+          ? definition.exportableColumns.filter((column) => params.columns!.includes(column))
           : definition.exportableColumns;
         const result = this.serialize(entity, sheetName, params.format, columns, rows);
         this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: rows.length, status: 'success' });

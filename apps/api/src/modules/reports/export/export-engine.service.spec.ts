@@ -11,6 +11,7 @@ import { ExportFormatService } from './export-format.service';
 import { EntityCategory } from '../entity-metadata.types';
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
 import { EXPORT_DETECTION_LIMIT } from './export.types';
+import { ACCOUNTING_SUMMARY_TABLE_NAME } from '../report-module-registry';
 
 const ARTISTS_DEF: ReportEntityDefinition = {
   entityName: 'ArtistEntity', tableName: 'artists', category: EntityCategory.REPORTABLE,
@@ -92,6 +93,45 @@ describe('ExportEngineService', () => {
     await expect(makeEngine({ reportable: false }).engine.export('artists', params(), 't', 'u')).rejects.toBeInstanceOf(UnprocessableEntityException);
     await expect(makeEngine({ definition: { ...ARTISTS_DEF, supportsExport: false } }).engine.export('artists', params(), 't', 'u')).rejects.toBeInstanceOf(BadRequestException);
     await expect(makeEngine().engine.export('artists', params(), undefined, 'u')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  // Regressão: ordem final do XLSX = ordem canônica (definition.exportableColumns)
+  // filtrada pela seleção — nunca a ordem em que o chamador enviou `columns`.
+  it('seleção fora da ordem canônica é reordenada pela config canônica (headers e valores seguem a mesma sequência)', async () => {
+    const query = jest.fn().mockResolvedValue([{ nome_artistico: 'A', status: 'ativo' }]);
+    const { engine } = makeEngine({ query });
+    // Canônico: nome_artistico, email, status. Chamador seleciona status antes de nome_artistico.
+    const result = await engine.export('artists', params({ columns: ['status', 'nome_artistico'] }), 'tenant-1', 'user-1');
+    const workbook = XLSX.read(result.body as Buffer, { type: 'buffer' });
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+    expect(rows[0]).toEqual(['Nome artístico', 'Situação']);
+    expect(rows[1]).toEqual(['A', 'ativo']);
+  });
+});
+
+describe('ExportEngineService — relatório computado (Contabilidade): ordem canônica também se aplica', () => {
+  const ACCOUNTING_DEF: ReportEntityDefinition = {
+    entityName: 'AccountingSummary', tableName: ACCOUNTING_SUMMARY_TABLE_NAME, category: EntityCategory.REPORTABLE,
+    identityColumn: 'artista', displayColumn: 'artista', dateColumn: 'created_at',
+    exportableColumns: ['artista', 'receitas', 'despesas', 'resultado', 'margem'],
+    importableColumns: [], filterableColumns: [], sortableColumns: [], searchableColumns: [],
+    sensitiveColumns: [], requiredImportColumns: ['artista'], supportsExport: true, supportsImport: false,
+  };
+
+  it('seleção fora de ordem no relatório computado também é reordenada pela config canônica', async () => {
+    const query = jest.fn().mockResolvedValue([{ artista: 'Artista X', receitas: '1000', despesas: '400' }]);
+    const { engine } = makeEngine({
+      tableName: ACCOUNTING_SUMMARY_TABLE_NAME, label: 'Contabilidade', definition: ACCOUNTING_DEF, query,
+    });
+    // Canônico: artista, receitas, despesas, resultado, margem. Chamador seleciona fora de ordem.
+    const result = await engine.export(
+      ACCOUNTING_SUMMARY_TABLE_NAME,
+      params({ columns: ['margem', 'artista', 'receitas'] }),
+      'tenant-1', 'user-1',
+    );
+    const workbook = XLSX.read(result.body as Buffer, { type: 'buffer' });
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+    expect(rows[0]).toEqual(['Artista', 'Receitas', 'Margem (%)']);
   });
 });
 
