@@ -23,7 +23,7 @@ export class CreateShareDto {
   // ── Campos do formulário (chaves EXATAS do SharePendenteFormModal) ───────────
   // Regra de produto 2026-07-12: cada campo do form tem a sua coluna física.
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) share_type?: string;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) percentual?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Max(100) @Type(() => Number) percentual?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() acordo_notas?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() acordo_url?: string;

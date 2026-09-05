@@ -3,6 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ShareEntity } from '../../database/entities';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
+import { assertSplitBudgetNotExceeded } from './share-split-invariant.util';
 import type { CreateShareDto, UpdateShareDto, QueryShareDto } from './dto/shares.dto';
 
 @Injectable()
@@ -95,6 +96,50 @@ export class SharesService {
     return out;
   }
 
+  /**
+   * Sum of registry-eligible (share_type IS NULL, non-deleted) shares'
+   * percentual for the same work/phonogram — same eligibility predicate
+   * WorkRegistryValidationService uses (REGISTRY_ELIGIBLE_SHARE_SQL), so
+   * this never diverges from what the final "must equal 100%"
+   * registry-submission check considers.
+   */
+  private async sumEligiblePercentual(
+    tenantId: string, obraId: string | null, fonogramaId: string | null, excludeId?: string,
+  ): Promise<number> {
+    if (!obraId && !fonogramaId) return 0;
+    const qb = this.repo!
+      .createQueryBuilder('s')
+      .select('COALESCE(SUM(s.percentual), 0)', 'sum')
+      .where('s.tenant_id = :tenantId', { tenantId })
+      .andWhere('s.deleted_at IS NULL')
+      .andWhere('s.share_type IS NULL');
+    if (obraId)      qb.andWhere('s.obra_id = :obraId', { obraId });
+    if (fonogramaId) qb.andWhere('s.fonograma_id = :fonogramaId', { fonogramaId });
+    if (excludeId)   qb.andWhere('s.id != :excludeId', { excludeId });
+    const row = await qb.getRawOne<{ sum: string }>();
+    return Number(row?.sum ?? 0);
+  }
+
+  /**
+   * Only registry-eligible shares (share_type IS NULL) are gated — financial/
+   * pending shares (share_type set) are a distinct concept (Fase 5 / C6) and
+   * were never part of the "splits must not exceed 100%" invariant.
+   */
+  private async assertSplitBudget(
+    tenantId: string, cols: Record<string, unknown>, excludeId?: string,
+  ): Promise<void> {
+    const isEligible = cols['share_type'] === undefined || cols['share_type'] === null;
+    if (!isEligible || cols['percentual'] == null) return;
+
+    const obraId      = (cols['obra_id'] as string | undefined) ?? null;
+    const fonogramaId = (cols['fonograma_id'] as string | undefined) ?? null;
+    if (!obraId && !fonogramaId) return;
+
+    const percentual = Number(cols['percentual']);
+    const existingSum = await this.sumEligiblePercentual(tenantId, obraId, fonogramaId, excludeId);
+    assertSplitBudgetNotExceeded(existingSum, percentual, obraId ? `obra ${obraId}` : `fonograma ${fonogramaId}`);
+  }
+
   async create(tenantId: string, dto: CreateShareDto): Promise<ShareEntity> {
     // titular_nome/percentual (campos de titularidade — usados na submissão
     // ABRAMUS/ECAD) só recebem valor quando o chamador envia holderName/
@@ -102,17 +147,27 @@ export class SharesService {
     // artista_externo/pagador/destinatario (campos do share financeiro —
     // conceito distinto, ver Fase 5 / C6) nem preenchidos com default artificial.
     const cols = this.toColumns(dto);
+    await this.assertSplitBudget(tenantId, cols);
     const entity = this.repo!.create({ tenant_id: tenantId, ...cols } as any);
     return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, id: string, dto: UpdateShareDto): Promise<ShareEntity> {
-    await this.findById(tenantId, id);
+    const current = await this.findById(tenantId, id);
+    const cols = this.toColumns(dto);
+    // Merge with the current row so an update that omits obra_id/fonograma_id/
+    // share_type (unchanged) still validates against the right scope.
+    await this.assertSplitBudget(tenantId, {
+      share_type:   cols['share_type']   !== undefined ? cols['share_type']   : current.share_type,
+      obra_id:      cols['obra_id']      !== undefined ? cols['obra_id']      : current.obra_id,
+      fonograma_id: cols['fonograma_id'] !== undefined ? cols['fonograma_id'] : current.fonograma_id,
+      percentual:   cols['percentual']   !== undefined ? cols['percentual']   : current.percentual,
+    }, id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await casUpdate(
       this.repo!,
       { id, tenant_id: tenantId } as any,
-      { ...this.toColumns(dto), updated_at: new Date() } as any,
+      { ...cols, updated_at: new Date() } as any,
       dto.expectedUpdatedAt,
       'Esta participação (share) foi alterada por outro usuário desde que você a carregou. Recarregue e tente novamente.',
     );
