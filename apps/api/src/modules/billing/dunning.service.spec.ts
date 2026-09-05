@@ -40,13 +40,15 @@ describe('DunningService — notification dispatch (P1, job-name/payload contrac
       update: jest.fn().mockReturnThis(), set: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(), execute: jest.fn(async () => ({ affected: 1 })),
     };
-    return {
-      getRepository: jest.fn((entity: unknown) => {
-        if (entity === BillingSubscriptionEntity) return { createQueryBuilder: jest.fn(() => subsQb) };
-        if (entity === TenantEntity) return { createQueryBuilder: jest.fn(() => tenantQb) };
-        return { createQueryBuilder: jest.fn(() => updateQb) };
-      }),
-    };
+    const getRepository = jest.fn((entity: unknown) => {
+      if (entity === BillingSubscriptionEntity) return { createQueryBuilder: jest.fn(() => subsQb) };
+      if (entity === TenantEntity) return { createQueryBuilder: jest.fn(() => tenantQb) };
+      return { createQueryBuilder: jest.fn(() => updateQb) };
+    });
+    // No dbContext provided in these tests → DunningService falls back to
+    // work(this.ds!.manager) — real TypeORM's ds.manager is itself an
+    // EntityManager with getRepository, so this mock mirrors that shape.
+    return { getRepository, manager: { getRepository } };
   }
 
   it('reminder (day 5): enqueues NOTIFICATION_JOB_NAMES.SEND with a NotificationPayload-shaped job — not "email"/{template,data}', async () => {
@@ -108,6 +110,61 @@ describe('DunningService — notification dispatch (P1, job-name/payload contrac
     expect(notifQueue.add).toHaveBeenCalledWith(
       NOTIFICATION_JOB_NAMES.SEND,
       expect.objectContaining({ tenantId: 'tenant-1', type: 'billing.hard_suspend' }),
+      { attempts: 3 },
+    );
+  });
+
+  it('P1 (RLS-blind fix): hard-suspend writes go through runInTenantContext with the resolved tenantId', async () => {
+    const ds = makeDs(makeSub(20));
+    const ws = { sendToTenant: jest.fn() };
+    const notifQueue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
+    const dbContext = {
+      runInTenantContext: jest.fn(async (ctx: unknown, work: (m: unknown) => Promise<unknown>) => {
+        expect(ctx).toEqual({ tenantId: 'tenant-1', orgId: null, role: null });
+        return work(ds.manager);
+      }),
+    };
+    const service = new DunningService(ds as never, ws as never, notifQueue as never, dbContext as never);
+
+    await service.runDunningCycle();
+
+    expect(dbContext.runInTenantContext).toHaveBeenCalledTimes(1);
+  });
+
+  it('P1 (per-tenant isolation): one sub throwing does not abort the cycle for the others', async () => {
+    const badSub = { id: 'sub-bad', org_id: 'org-bad', status: 'past_due', updated_at: new Date().toISOString() };
+    const goodSub = makeSub(5);
+    const subsQb = { where: jest.fn().mockReturnThis(), getMany: jest.fn(async () => [badSub, goodSub]) };
+    const tenantQbGood = {
+      select: jest.fn().mockReturnThis(), where: jest.fn().mockReturnThis(),
+      getOne: jest.fn(async () => ({ id: 'tenant-1' })),
+    };
+    // resolveTenantId's own try/catch normally swallows a throw and returns
+    // null (skipping that sub) — the FIRST tenant lookup (org-bad) throws to
+    // exercise that path; the SECOND (the good sub) must still succeed.
+    let call = 0;
+    const ds2 = {
+      manager: {},
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === BillingSubscriptionEntity) return { createQueryBuilder: jest.fn(() => subsQb) };
+        if (entity === TenantEntity) {
+          call += 1;
+          if (call === 1) throw new Error('boom for org-bad');
+          return { createQueryBuilder: jest.fn(() => tenantQbGood) };
+        }
+        return {};
+      }),
+    };
+    const ws = { sendToTenant: jest.fn() };
+    const notifQueue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
+    const service = new DunningService(ds2 as never, ws as never, notifQueue as never);
+
+    await service.runDunningCycle();
+
+    // The good sub still got its reminder despite the bad one throwing first.
+    expect(notifQueue.add).toHaveBeenCalledWith(
+      NOTIFICATION_JOB_NAMES.SEND,
+      expect.objectContaining({ tenantId: 'tenant-1', type: 'billing.payment_reminder' }),
       { attempts: 3 },
     );
   });

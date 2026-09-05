@@ -14,8 +14,9 @@
 import { Injectable, Logger, OnApplicationBootstrap, Inject, Optional } from '@nestjs/common';
 import { InjectQueue }   from '@nestjs/bullmq';
 import type { Queue }    from 'bullmq';
-import { DataSource }    from 'typeorm';
-import { DATA_SOURCE }   from '../../database/database.module';
+import { DataSource, EntityManager } from 'typeorm';
+import { DATA_SOURCE, ADMIN_DATA_SOURCE } from '../../database/database.module';
+import { DatabaseContextService } from '../../database/database-context.service';
 import {
   BillingSubscriptionEntity,
   TenantEntity,
@@ -41,6 +42,8 @@ export class DunningService implements OnApplicationBootstrap {
     @Optional() @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
     private readonly ws: RealtimeService,
     @Optional() @InjectQueue('notifications') private readonly notifQueue: Queue | null,
+    @Optional() private readonly dbContext?: DatabaseContextService,
+    @Inject(ADMIN_DATA_SOURCE) @Optional() private readonly adminDs?: DataSource | null,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -63,14 +66,25 @@ export class DunningService implements OnApplicationBootstrap {
 
     const now = new Date();
     try {
-      const pastDueSubs = await this.ds
+      // Cross-tenant enumeration via the admin (owner) connection, same
+      // pattern as ContractExpiryScheduler/InvoiceOverdueScheduler — sees
+      // every tenant's past_due subs even when the app connects via a
+      // NOBYPASSRLS role.
+      const enumDs = this.adminDs ?? this.ds;
+      const pastDueSubs = await enumDs
         .getRepository(BillingSubscriptionEntity)
         .createQueryBuilder('s')
         .where('s.status = :status', { status: 'past_due' })
         .getMany();
 
       for (const sub of pastDueSubs) {
-        await this.processDunningSub(sub as unknown as Record<string, unknown>, now);
+        try {
+          await this.processDunningSub(sub as unknown as Record<string, unknown>, now);
+        } catch (err) {
+          // Isolate the failure — one tenant must not abort the whole cycle
+          // for every other past-due tenant still waiting in this run.
+          this.logger.warn(`Dunning: sub ${String((sub as unknown as Record<string, unknown>)['id'])} falhou — ${String(err)}`);
+        }
       }
 
       if (pastDueSubs.length > 0) {
@@ -90,7 +104,7 @@ export class DunningService implements OnApplicationBootstrap {
     if (!tenantId) return;
 
     if (daysPastDue >= DUNNING_HARD_SUSPEND_DAYS) {
-      await this.hardSuspend(sub, orgId, tenantId);
+      await this.runInTenantContext(tenantId, (manager) => this.hardSuspend(manager, sub, orgId, tenantId));
     } else if (daysPastDue >= DUNNING_SOFT_SUSPEND_DAYS) {
       await this.softSuspendWarning(orgId, tenantId, daysPastDue);
     } else if (daysPastDue >= DUNNING_REMINDER_DAYS) {
@@ -98,24 +112,40 @@ export class DunningService implements OnApplicationBootstrap {
     }
   }
 
-  private async hardSuspend(sub: Record<string, unknown>, orgId: string, tenantId: string): Promise<void> {
+  /**
+   * billing_subscriptions/tenants/organizations are all FORCE RLS (migration
+   * 20260522000002_ForceRLSFailClosed.ts). With DATABASE_SESSION_CONTEXT_ENABLED
+   * =true (required in production) and the NOBYPASSRLS app role, hardSuspend's
+   * writes need the tenant session GUC runInTenantContext sets — a raw
+   * this.ds!.getRepository() call (the previous shape) would otherwise
+   * silently affect zero rows and report success.
+   */
+  private runInTenantContext<T>(tenantId: string, work: (manager: EntityManager) => Promise<T>): Promise<T> {
+    return this.dbContext
+      ? this.dbContext.runInTenantContext({ tenantId, orgId: null, role: null }, work)
+      : work(this.ds!.manager);
+  }
+
+  private async hardSuspend(
+    manager: EntityManager, sub: Record<string, unknown>, orgId: string, tenantId: string,
+  ): Promise<void> {
     this.logger.warn(`Dunning HARD SUSPEND: org=${orgId} tenant=${tenantId}`);
 
-    await this.ds!.getRepository(BillingSubscriptionEntity)
+    await manager.getRepository(BillingSubscriptionEntity)
       .createQueryBuilder()
       .update()
       .set({ status: 'suspended', updated_at: new Date() } as any)
       .where('id = :id', { id: sub['id'] })
       .execute();
 
-    await this.ds!.getRepository(TenantEntity)
+    await manager.getRepository(TenantEntity)
       .createQueryBuilder()
       .update()
       .set({ plan: 'starter', features: PLAN_FEATURES.starter, active: false, updated_at: new Date() } as any)
       .where('org_id = :orgId', { orgId })
       .execute();
 
-    await this.ds!.getRepository(OrganizationEntity)
+    await manager.getRepository(OrganizationEntity)
       .createQueryBuilder()
       .update()
       .set({ plan: 'starter', billing_status: 'suspended', updated_at: new Date() } as any)
@@ -156,7 +186,7 @@ export class DunningService implements OnApplicationBootstrap {
 
   private async resolveTenantId(orgId: string): Promise<string | null> {
     try {
-      const tenant = await this.ds!.getRepository(TenantEntity)
+      const tenant = await (this.adminDs ?? this.ds!).getRepository(TenantEntity)
         .createQueryBuilder('t').select('t.id').where('t.org_id = :orgId', { orgId }).getOne();
       return tenant?.id ?? null;
     } catch {

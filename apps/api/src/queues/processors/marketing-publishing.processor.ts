@@ -1,8 +1,9 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.tokens';
+import { DatabaseContextService } from '../../database/database-context.service';
 import { MarketingContentPostEntity } from '../../database/entities';
 import { MARKETING_PUBLISHING_JOB_NAMES, QUEUE_NAMES } from '../queue.constants';
 import type { PublishContentJobPayload } from '../services/marketing-publishing-queue.service';
@@ -12,21 +13,42 @@ import type { PublishContentJobPayload } from '../services/marketing-publishing-
 export class MarketingPublishingProcessor extends WorkerHost {
   private readonly logger = new Logger(MarketingPublishingProcessor.name);
 
-  constructor(@Inject(DATA_SOURCE) private readonly ds: DataSource | null) {
+  constructor(
+    @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
+    @Optional() private readonly dbContext?: DatabaseContextService,
+  ) {
     super();
   }
 
   async process(job: Job<PublishContentJobPayload>): Promise<void> {
     if (job.name !== MARKETING_PUBLISHING_JOB_NAMES.PUBLISH_CONTENT) return;
     if (!this.ds) throw new Error('Database unavailable');
+    // Fail-closed: an async job without a tenant must NOT touch tenant-scoped data.
+    if (!job.data.tenantId) throw new Error('[marketing-publishing] job sem tenantId — abortado (fail-closed)');
 
-    const repo = this.ds.getRepository(MarketingContentPostEntity);
+    const work = (manager: EntityManager) => this.processContent(manager, job.data);
+    await (this.dbContext
+      ? this.dbContext.runInTenantContext({ tenantId: job.data.tenantId, orgId: null, role: null }, work)
+      : work(this.ds.manager));
+  }
+
+  /**
+   * `marketing_content_posts` has FORCE ROW LEVEL SECURITY (migration
+   * 20260620000005_ForceRLSOperationalTables.ts). With
+   * DATABASE_SESSION_CONTEXT_ENABLED=true (required in production) and the
+   * app connecting via the NOBYPASSRLS role, a raw this.ds.getRepository()
+   * call here — unlike every sibling processor already fixed for this exact
+   * bug (see MarketBenchmarkRefreshProcessor's own comment) — would silently
+   * find zero rows and report success without ever publishing anything.
+   */
+  private async processContent(manager: EntityManager, data: PublishContentJobPayload): Promise<void> {
+    const repo = manager.getRepository(MarketingContentPostEntity);
     const row = await repo.findOne({
-      where: { id: job.data.contentId, tenant_id: job.data.tenantId, deleted_at: null } as never,
+      where: { id: data.contentId, tenant_id: data.tenantId, deleted_at: null } as never,
     });
 
     if (!row) {
-      this.logger.warn(`[marketing-publishing] content not found id=${job.data.contentId}`);
+      this.logger.warn(`[marketing-publishing] content not found id=${data.contentId}`);
       return;
     }
     if (row.status !== 'agendado' || row.publication_status === 'published') return;
