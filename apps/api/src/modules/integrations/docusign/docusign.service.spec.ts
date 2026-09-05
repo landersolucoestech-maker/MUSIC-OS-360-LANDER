@@ -8,10 +8,20 @@ import { WebhookService } from '../webhooks/webhook.service';
 
 const SECRET = 'docusign-webhook-secret-with-enough-length';
 
-function buildHarness(overrides: { contract?: Record<string, unknown> | null } = {}) {
+function buildHarness(overrides: {
+  contract?: Record<string, unknown> | null;
+  tenantActive?: boolean;
+} = {}) {
   const contract = overrides.contract === undefined
     ? { id: 'contract-a', tenant_id: 'tenant-a', titulo: 'Contrato A', artista_id: 'artist-a' }
     : overrides.contract;
+  const tenantResolver = {
+    resolveTenant: jest.fn(async () => (
+      overrides.tenantActive === false
+        ? { id: 'tenant-a', active: false }
+        : { id: 'tenant-a', active: true }
+    )),
+  };
 
   const updateQb = {
     update: jest.fn().mockReturnThis(),
@@ -65,9 +75,10 @@ function buildHarness(overrides: { contract?: Record<string, unknown> | null } =
     webhookSvc,
     dbContext as never,
     adminDataSource as never,
+    tenantResolver as never,
   );
 
-  return { service, adminQb, contextualContractRepo, updateQb, dbContext, events, webhookSvc };
+  return { service, adminQb, contextualContractRepo, updateQb, dbContext, events, webhookSvc, tenantResolver };
 }
 
 function signedBody(payload: unknown): { raw: string; signature: string } {
@@ -159,5 +170,46 @@ describe('DocuSignService.handleWebhook', () => {
 
     await expect(service.handleWebhook(completedPayload, raw, signature)).resolves.toEqual({ received: true });
     expect(adminQb.getOne).not.toHaveBeenCalled();
+  });
+
+  describe('P0-3: tenant desativado', () => {
+    it('assinatura válida + tenant inativo: NÃO assina o contrato (webhook é @Public, TenantGuard nunca roda)', async () => {
+      const { service, dbContext, events, tenantResolver, webhookSvc } =
+        buildHarness({ tenantActive: false });
+      const { raw, signature } = signedBody(completedPayload);
+
+      await expect(service.handleWebhook(completedPayload, raw, signature)).resolves.toEqual({ received: true });
+
+      expect(tenantResolver.resolveTenant).toHaveBeenCalledWith('tenant-a');
+      expect(dbContext.runInTenantContext).not.toHaveBeenCalled();
+      expect(events.emitTyped).not.toHaveBeenCalled();
+      // Failure is recorded (not silently dropped) so it's visible in ops, but never retried automatically.
+      expect(webhookSvc.markProcessed).toHaveBeenCalledWith('webhook-a', 'failed', expect.any(String));
+    });
+
+    it('tenant desconhecido (resolveTenant retorna null): mesma proteção, mesmo caminho fail-closed', async () => {
+      const { service, dbContext, tenantResolver } = buildHarness();
+      tenantResolver.resolveTenant.mockResolvedValueOnce(null as never);
+      const { raw, signature } = signedBody(completedPayload);
+
+      await expect(service.handleWebhook(completedPayload, raw, signature)).resolves.toEqual({ received: true });
+      expect(dbContext.runInTenantContext).not.toHaveBeenCalled();
+    });
+
+    it('assinatura válida + tenant ativo: assina normalmente (regressão — não quebrou o caminho feliz)', async () => {
+      const { service, dbContext, events } = buildHarness({ tenantActive: true });
+      const { raw, signature } = signedBody(completedPayload);
+
+      await service.handleWebhook(completedPayload, raw, signature);
+
+      expect(dbContext.runInTenantContext).toHaveBeenCalledWith(
+        { tenantId: 'tenant-a', orgId: null, role: null },
+        expect.any(Function),
+      );
+      expect(events.emitTyped).toHaveBeenCalledWith(
+        DOMAIN_EVENTS.CONTRACT_SIGNED,
+        expect.objectContaining({ tenantId: 'tenant-a' }),
+      );
+    });
   });
 });

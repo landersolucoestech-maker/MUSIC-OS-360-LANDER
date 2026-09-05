@@ -14,7 +14,7 @@
 
 import {
   Injectable, Logger, Inject, Optional,
-  UnauthorizedException, ServiceUnavailableException,
+  UnauthorizedException, ServiceUnavailableException, ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager, Repository } from 'typeorm';
@@ -26,6 +26,7 @@ import { EventsService, DOMAIN_EVENTS } from '../../../core/events/events.servic
 import { ActivityLogsService } from '../../activity-logs/activity-logs.service';
 import { WebhookService } from '../webhooks/webhook.service';
 import { IntegrationStatus } from '@music-os-360/types';
+import { TenantBootstrapResolver } from '../../../database/tenant-bootstrap.resolver';
 
 const AUTENTIQUE_API    = 'https://api.autentique.com.br/v2';
 const FETCH_TIMEOUT_MS  = 15_000;
@@ -46,6 +47,7 @@ export class AutentiqueService {
     @Optional() private readonly webhookSvc: WebhookService,
     @Optional() private readonly dbContext?: DatabaseContextService,
     @Inject(ADMIN_DATA_SOURCE) @Optional() adminDataSource?: DataSource | null,
+    @Optional() private readonly tenantResolver?: TenantBootstrapResolver,
   ) {
     if (ds) {
       this.integRepo    = ds.getRepository(IntegrationEntity);
@@ -61,6 +63,24 @@ export class AutentiqueService {
   private assertRepos(): void {
     if (!this.integRepo || !this.contractRepo) {
       throw new ServiceUnavailableException('Autentique persistence unavailable');
+    }
+  }
+
+  /**
+   * This webhook is @Public() — it never traverses TenantGuard, the only
+   * other place tenants.active gets checked. Without this, a suspended
+   * tenant's contracts keep getting flipped to "assinado" by a signed
+   * document callback indefinitely. Runs after the tenant is resolved from
+   * the contract (server-side, not client-supplied) and before
+   * runInTenantContext applies the signature.
+   */
+  private async assertTenantActive(tenantId: string): Promise<void> {
+    if (!this.tenantResolver) {
+      throw new ServiceUnavailableException('Tenant bootstrap unavailable for Autentique webhook');
+    }
+    const tenant = await this.tenantResolver.resolveTenant(tenantId);
+    if (!tenant || !tenant.active) {
+      throw new ForbiddenException('Tenant not found or inactive');
     }
   }
 
@@ -295,6 +315,8 @@ export class AutentiqueService {
         this.webhookSvc?.markProcessed(ingestResult.eventId, 'processed');
         return { received: true };
       }
+
+      await this.assertTenantActive(contractIdentity.tenant_id);
 
       await this.dbContext.runInTenantContext(
         { tenantId: contractIdentity.tenant_id, orgId: null, role: null },

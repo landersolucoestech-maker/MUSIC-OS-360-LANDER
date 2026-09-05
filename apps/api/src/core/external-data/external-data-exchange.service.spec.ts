@@ -35,10 +35,17 @@ function makeDs(opts: { works?: Record<string, unknown>[]; shares?: Record<strin
   return { getRepository: jest.fn((e: unknown) => map.get(e) ?? {}) } as never;
 }
 
-function makeService(opts: { works?: Record<string, unknown>[]; shares?: Record<string, unknown>[] }) {
+function makeTenantResolver(active = true) {
+  return { resolveTenant: jest.fn(async () => (active ? { id: 'tenant-1', active: true } : null)) };
+}
+
+function makeService(
+  opts: { works?: Record<string, unknown>[]; shares?: Record<string, unknown>[] },
+  tenantResolver: unknown = makeTenantResolver(),
+) {
   const registry = {} as never;
   const events = { emitTyped: jest.fn() } as never;
-  return new ExternalDataExchangeService(makeDs(opts), registry, events);
+  return new ExternalDataExchangeService(makeDs(opts), registry, events, tenantResolver as never);
 }
 
 describe('ExternalDataExchangeService.buildSocietyPayload — elegibilidade de shares (Fase 5 / C6)', () => {
@@ -76,5 +83,32 @@ describe('ExternalDataExchangeService.buildSocietyPayload — elegibilidade de s
 
     const metadata = payload.metadata as { contributors: unknown[] };
     expect(metadata.contributors).toHaveLength(0);
+  });
+});
+
+describe('ExternalDataExchangeService.ingestWebhook — P0-3: tenant desativado', () => {
+  it('tenant inativo: rejeita ANTES de qualquer escrita (webhookEvents.findOne/save nunca chamados)', async () => {
+    const resolver = makeTenantResolver(false); // resolveTenant → null
+    const svc = makeService({}, resolver);
+
+    await expect(
+      svc.ingestWebhook({ tenantId: 'tenant-1', providerId: 'abramus', kind: 'society', payload: { id: 'evt-1' } }),
+    ).rejects.toThrow('Tenant not found or inactive');
+
+    expect(resolver.resolveTenant).toHaveBeenCalledWith('tenant-1');
+  });
+
+  it('sem secret configurado (assertSignature no-op) ainda assim checa tenant.active antes de tocar o banco', async () => {
+    // Proves the tenant-active check doesn't depend on signature verification
+    // having run something DB-side first — it's an independent gate.
+    const resolver = { resolveTenant: jest.fn(async () => ({ id: 'tenant-1', active: false })) };
+    const svc = makeService({}, resolver);
+
+    await expect(
+      svc.ingestWebhook({
+        tenantId: 'tenant-1', providerId: 'abramus', kind: 'society',
+        payload: {}, signature: null, secret: null,
+      }),
+    ).rejects.toThrow('Tenant not found or inactive');
   });
 });

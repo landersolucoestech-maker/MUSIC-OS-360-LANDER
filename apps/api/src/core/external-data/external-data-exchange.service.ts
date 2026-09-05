@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
@@ -14,6 +14,7 @@ import {
 import { isRegistryEligibleShare } from '../../modules/shares/share-eligibility.util';
 import { EventsService, DOMAIN_EVENTS } from '../events/events.service';
 import { ExternalDataProviderRegistry } from './external-data-provider-registry.service';
+import { TenantBootstrapResolver } from '../../database/tenant-bootstrap.resolver';
 import {
   DistributorSubmissionPayload,
   ExternalDataExchangeKind,
@@ -74,6 +75,7 @@ export class ExternalDataExchangeService {
     @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
     private readonly registry: ExternalDataProviderRegistry,
     private readonly events: EventsService,
+    private readonly tenantResolver: TenantBootstrapResolver,
   ) {
     if (ds) {
       this.artists = ds.getRepository(ArtistEntity);
@@ -322,6 +324,7 @@ export class ExternalDataExchangeService {
   }) {
     this.assertDb();
     this.assertSignature(params.payload, params.signature, params.secret);
+    await this.assertTenantActive(params.tenantId);
     const provider = this.registry.get(params.providerId);
     const normalized = provider.normalizeWebhook(params.payload);
     const externalId = `${params.providerId}:${normalized.providerEventId}`;
@@ -620,5 +623,22 @@ export class ExternalDataExchangeService {
 
   private assertDb(): void {
     if (!this.ds) throw new ServiceUnavailableException('External data exchange persistence unavailable');
+  }
+
+  /**
+   * This endpoint is @Public() — it never traverses TenantGuard, which is
+   * the only other place `tenants.active` gets checked. Without this, a
+   * suspended/deactivated tenant's external-data webhooks keep being
+   * ingested and applied indefinitely (not just for TenantGuard's 60s
+   * cache window — forever, since this path never reaches that guard at
+   * all). Runs after signature verification (so an attacker can't probe
+   * tenant-active status without a valid signature) and before any DB
+   * write (webhookEvents insert, applyWebhook).
+   */
+  private async assertTenantActive(tenantId: string): Promise<void> {
+    const tenant = await this.tenantResolver.resolveTenant(tenantId);
+    if (!tenant || !tenant.active) {
+      throw new ForbiddenException('Tenant not found or inactive');
+    }
   }
 }
