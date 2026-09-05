@@ -87,6 +87,8 @@ describe('BillingService', () => {
     };
     enforcement = {
       recordWebhookProcessed: jest.fn().mockResolvedValue('inserted'),
+      markWebhookProcessed: jest.fn().mockResolvedValue(undefined),
+      markWebhookFailed: jest.fn().mockResolvedValue(undefined),
       findTenantIdByStripe: jest.fn().mockResolvedValue('tenant-1'),
       startPaymentGrace: jest.fn().mockResolvedValue({ status: 'payment_grace' }),
       activateTenant: jest.fn().mockResolvedValue({ status: 'active' }),
@@ -272,6 +274,84 @@ describe('BillingService', () => {
       });
       await service.handleWebhook('sig', Buffer.from('{}'));
       expect(enforcement.activateTenant).toHaveBeenCalledWith('tenant-1', 'invoice.payment_succeeded');
+    });
+  });
+
+  describe('handleWebhook — lifecycle status (P0-2, retry-safe idempotency)', () => {
+    function paidEvent(id: string) {
+      return {
+        id,
+        type: 'invoice.payment_succeeded',
+        data: {
+          object: {
+            id: 'in_1', customer: 'cus_1', subscription: 'sub_1',
+            status: 'paid', amount_due: 25000, amount_paid: 25000, currency: 'brl',
+          },
+        },
+      };
+    }
+
+    it('primeira execução com sucesso: marca processed, nunca failed', async () => {
+      const stripe = getStripeInstance();
+      stripe.webhooks.constructEvent.mockReturnValueOnce(paidEvent('evt_ok'));
+      await service.handleWebhook('sig', Buffer.from('{}'));
+      expect(enforcement.markWebhookProcessed).toHaveBeenCalledWith('evt_ok');
+      expect(enforcement.markWebhookFailed).not.toHaveBeenCalled();
+    });
+
+    it('falha transitória: marca failed (nunca processed) e propaga o erro — não retorna 200 silencioso', async () => {
+      const stripe = getStripeInstance();
+      stripe.webhooks.constructEvent.mockReturnValueOnce(paidEvent('evt_transient'));
+      enforcement.activateTenant.mockRejectedValueOnce(new Error('db pool exhausted'));
+
+      await expect(service.handleWebhook('sig', Buffer.from('{}'))).rejects.toThrow('db pool exhausted');
+
+      expect(enforcement.markWebhookFailed).toHaveBeenCalledWith('evt_transient');
+      expect(enforcement.markWebhookProcessed).not.toHaveBeenCalled();
+    });
+
+    it('retry legítimo após falha: recordWebhookProcessed reclama o evento (status=failed → processing) e reprocessa', async () => {
+      // Simulates what billing-enforcement.service.ts actually does: a FAILED
+      // row is reclaimed ('inserted'), a PROCESSED one is not ('duplicate').
+      // Exercised here at the BillingService boundary via the same contract
+      // the enforcement service guarantees.
+      const stripe = getStripeInstance();
+      stripe.webhooks.constructEvent.mockReturnValueOnce(paidEvent('evt_retry'));
+      enforcement.recordWebhookProcessed.mockResolvedValueOnce('inserted'); // reclaimed
+      const r = await service.handleWebhook('sig', Buffer.from('{}'));
+      expect(r).toEqual({ received: true });
+      expect(enforcement.activateTenant).toHaveBeenCalledWith('tenant-1', 'invoice.payment_succeeded');
+      expect(enforcement.markWebhookProcessed).toHaveBeenCalledWith('evt_retry');
+    });
+
+    it('duplicate após sucesso: recordWebhookProcessed nega a reclamação — nenhum efeito reaplicado', async () => {
+      const stripe = getStripeInstance();
+      stripe.webhooks.constructEvent.mockReturnValueOnce(paidEvent('evt_already_done'));
+      enforcement.recordWebhookProcessed.mockResolvedValueOnce('duplicate');
+      const r = await service.handleWebhook('sig', Buffer.from('{}'));
+      expect(r).toEqual({ received: true });
+      expect(enforcement.activateTenant).not.toHaveBeenCalled();
+      expect(enforcement.markWebhookProcessed).not.toHaveBeenCalled();
+    });
+
+    it('duas entregas concorrentes do mesmo evento: a segunda não reaplica o efeito', async () => {
+      const stripe = getStripeInstance();
+      // Both deliveries carry the same event.id — the enforcement layer (not
+      // mocked-away here) is what actually serializes this via the DB; at
+      // this boundary we assert the service correctly no-ops on 'duplicate'
+      // regardless of which delivery "won".
+      stripe.webhooks.constructEvent
+        .mockReturnValueOnce(paidEvent('evt_concurrent'))
+        .mockReturnValueOnce(paidEvent('evt_concurrent'));
+      enforcement.recordWebhookProcessed
+        .mockResolvedValueOnce('inserted')
+        .mockResolvedValueOnce('duplicate');
+
+      await service.handleWebhook('sig', Buffer.from('{}'));
+      await service.handleWebhook('sig', Buffer.from('{}'));
+
+      expect(enforcement.activateTenant).toHaveBeenCalledTimes(1);
+      expect(enforcement.markWebhookProcessed).toHaveBeenCalledTimes(1);
     });
   });
 

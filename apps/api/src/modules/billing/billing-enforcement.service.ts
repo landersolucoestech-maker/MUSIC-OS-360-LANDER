@@ -131,6 +131,24 @@ export class BillingEnforcementService {
     return rows[0]?.tenant_id ?? null;
   }
 
+  /**
+   * Claims the right to process a Stripe event, atomically.
+   *
+   * A row existing in `payment_events` used to mean "seen" and "safely
+   * applied" were the same fact — processed_at was stamped at insert time,
+   * before the caller had actually processed anything. A transient failure
+   * (not a business rejection) left a "seen" row behind with nothing
+   * actually applied; Stripe's retry of the same event.id then always hit
+   * the dedup path and the event's effect was permanently lost.
+   *
+   * Now: INSERT claims a fresh event (status='processing'). If another
+   * delivery already holds/held that event.id, only a row whose last
+   * attempt genuinely FAILED can be reclaimed — atomically, via the same
+   * single UPDATE statement (Postgres row-level locking serializes two
+   * concurrent reclaim attempts; only one UPDATE affects a row). A
+   * 'processing' or 'processed' row is never reclaimed — that's a real
+   * in-flight duplicate or an already-applied event, not a lost one.
+   */
   async recordWebhookProcessed(input: {
     tenantId: string | null;
     stripeEventId: string;
@@ -138,9 +156,9 @@ export class BillingEnforcementService {
     payload: Record<string, unknown>;
   }): Promise<'inserted' | 'duplicate'> {
     const ds = this.assertDb();
-    const result = await ds.query(
-      `INSERT INTO payment_events (stripe_event_id, tenant_id, event_type, payload, processed_at)
-       VALUES ($1, $2, $3, $4::jsonb, now())
+    const inserted = await ds.query(
+      `INSERT INTO payment_events (stripe_event_id, tenant_id, event_type, payload, status)
+       VALUES ($1, $2, $3, $4::jsonb, 'processing')
        ON CONFLICT (stripe_event_id) DO NOTHING
        RETURNING id`,
       [
@@ -150,7 +168,34 @@ export class BillingEnforcementService {
         JSON.stringify(input.payload),
       ],
     ) as Array<{ id: string }>;
-    return result.length > 0 ? 'inserted' : 'duplicate';
+    if (inserted.length > 0) return 'inserted';
+
+    const reclaimed = await ds.query(
+      `UPDATE payment_events
+          SET status = 'processing', tenant_id = COALESCE(tenant_id, $2), payload = $3::jsonb
+        WHERE stripe_event_id = $1 AND status = 'failed'
+        RETURNING id`,
+      [input.stripeEventId, input.tenantId, JSON.stringify(input.payload)],
+    ) as Array<{ id: string }>;
+    return reclaimed.length > 0 ? 'inserted' : 'duplicate';
+  }
+
+  /** Marks a claimed event as genuinely applied — the only state a retry treats as a true duplicate. */
+  async markWebhookProcessed(stripeEventId: string): Promise<void> {
+    const ds = this.assertDb();
+    await ds.query(
+      `UPDATE payment_events SET status = 'processed', processed_at = now() WHERE stripe_event_id = $1`,
+      [stripeEventId],
+    );
+  }
+
+  /** Marks a claimed event as failed — a later delivery of the same event.id can reclaim and retry it. */
+  async markWebhookFailed(stripeEventId: string): Promise<void> {
+    const ds = this.assertDb();
+    await ds.query(
+      `UPDATE payment_events SET status = 'failed' WHERE stripe_event_id = $1`,
+      [stripeEventId],
+    );
   }
 
   async startPaymentGrace(tenantId: string, reason: string, now = new Date()): Promise<TenantBillingState> {

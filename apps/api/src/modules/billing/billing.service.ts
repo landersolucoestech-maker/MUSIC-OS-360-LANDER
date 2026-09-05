@@ -569,8 +569,10 @@ export class BillingService {
 
     try {
       await this.processEvent(event, tenantId);
+      await this.enforcement.markWebhookProcessed(event.id);
       await this.recordLegacyWebhook(event, tenantId, WebhookEventStatus.PROCESSED);
     } catch (err) {
+      await this.enforcement.markWebhookFailed(event.id);
       await this.recordLegacyWebhook(event, tenantId, WebhookEventStatus.FAILED, (err as Error).message);
       throw err;
     }
