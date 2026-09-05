@@ -17,7 +17,7 @@ import { emptyLancamentoFormFields } from "./entity-to-form.mapper";
 function baseFields(overrides: Partial<LancamentoFormFields> = {}): LancamentoFormFields {
   return {
     ...emptyLancamentoFormFields(),
-    titulo: "Meu Lançamento",
+    title: "Meu Lançamento",
     tipo: "single",
     isrcGlobal: "BR-XXX-25-00001",
     notasInternas: "nota interna",

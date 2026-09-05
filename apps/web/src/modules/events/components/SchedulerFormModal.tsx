@@ -173,7 +173,7 @@ const getInitialFormData = (evento?: any) => {
   // descricao, observacoes, valor_cache, etc. Aceita todos os formatos.
   const meta = (evento?.metadata as Record<string, unknown> | undefined) ?? {};
   return {
-    titulo: evento?.titulo || evento?.title || "",
+    title: evento?.title || evento?.title || "",
     tipoEvento: normalizeSelectValue(
       evento?.tipoEvento || evento?.tipo_evento || evento?.tipo || evento?.type,
       tipoEventoAliases,
@@ -211,7 +211,7 @@ const getInitialFormData = (evento?: any) => {
 type SchedulerFormData = ReturnType<typeof getInitialFormData>;
 
 const validationFieldLabels: Record<string, string> = {
-  titulo: "Título do Evento",
+  title: "Título do Evento",
   tipoEvento: "Tipo de Evento",
   dataInicio: "Data de Início",
   horarioInicio: "Horário de Início",
@@ -318,7 +318,7 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
 
   const getNormalizedFormData = (): SchedulerFormData => ({
     ...formData,
-    titulo: String(formData.titulo || evento?.titulo || "").trim(),
+    title: String(formData.title || evento?.title || "").trim(),
     tipoEvento: normalizeSelectValue(formData.tipoEvento || evento?.tipoEvento || evento?.tipo_evento, tipoEventoAliases),
     status: normalizeSelectValue(formData.status || evento?.status, statusAliases) || "agendado",
     dataInicio: normalizeDate(formData.dataInicio) ?? normalizeEventDate(evento?.dataInicio || evento?.data_inicio || evento?.data),
@@ -331,7 +331,7 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
     const normalizedFormData = getNormalizedFormData();
 
     const result = eventoSchema.safeParse({
-      titulo: normalizedFormData.titulo,
+      title: normalizedFormData.title,
       tipoEvento: normalizedFormData.tipoEvento,
       artista: normalizedFormData.artista,
       status: normalizedFormData.status,
@@ -472,7 +472,7 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
     const endsAt   = combineDateAndTime(dataFim, data.horarioFim);
 
     const payload: Record<string, unknown> = {
-      title: String(data.titulo || "").trim(),
+      title: String(data.title || "").trim(),
       type:  mapTipoToBackendType(data.tipoEvento),
     };
 
@@ -563,13 +563,13 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
             <div className="space-y-2 md:col-span-2">
               <Label>Título do Evento *</Label>
               <Input
-                value={formData.titulo}
-                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Digite o título do evento"
                 disabled={isViewMode}
-                className={errors.titulo ? "border-destructive" : ""}
+                className={errors.title ? "border-destructive" : ""}
               />
-              <FieldError error={errors.titulo} />
+              <FieldError error={errors.title} />
             </div>
 
             {/* Tipo de Evento */}

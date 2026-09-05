@@ -99,7 +99,7 @@ interface FonogramaFormModalProps {
   fonograma?: FonogramaFormInput | null;
   mode: "create" | "edit" | "view";
   /** Chamado após salvar com sucesso — usado para abrir modal de contrato pré-preenchido */
-  onSaved?: (info: { titulo: string; observacoes: string }) => void;
+  onSaved?: (info: { title: string; observacoes: string }) => void;
 }
 
 const pickStr = (...values: Array<unknown>): string => {
@@ -310,7 +310,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
   const [status, setStatus] = useState(dbStatusToSelect(pickStr(fonograma?.status)));
   const [paisOrigem, setPaisOrigem] = useState(pickStr(fonograma?.paisOrigem, fonograma?.pais_origem));
   const [paisPublicacao, setPaisPublicacao] = useState(pickStr(fonograma?.paisPublicacao, fonograma?.pais_publicacao));
-  const [titulo, setTitulo] = useState(pickStr(fonograma?.titulo));
+  const [title, setTitle] = useState(pickStr(fonograma?.title));
   const [gravadora, setGravadora] = useState(pickStr(fonograma?.gravadora));
   const [observacoes, setObservacoes] = useState(pickStr(fonograma?.observacoes));
 
@@ -372,7 +372,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
     setStatus(f.status);
     setPaisOrigem(f.paisOrigem);
     setPaisPublicacao(f.paisPublicacao);
-    setTitulo(f.titulo);
+    setTitle(f.title);
     setGravadora(f.gravadora);
     setObservacoes(f.observacoes);
     setParticipacao(() => {
@@ -414,7 +414,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
     if (hydratedObra) {
       setObraVinculada({
         id: hydratedObra.id,
-        title: hydratedObra.titulo ?? "",
+        title: hydratedObra.title ?? "",
         genero: hydratedObra.genero ?? "",
         compositores: compositoresToString(hydratedObra.compositores),
         status: hydratedObra.status ?? "",
@@ -451,7 +451,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
   const obrasRegistradasFiltradas: ObraVinculada[] = obrasBusca
     .map((o) => ({
       id: o.id,
-      title: o.titulo ?? "",
+      title: o.title ?? "",
       genero: o.genero ?? "",
       compositores: compositoresToString(o.compositores),
       status: o.status ?? "",
@@ -459,7 +459,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
     .sort((a, b) => collatorFono.compare(a.title, b.title));
 
   const isViewMode = mode === "view";
-  const title = mode === "create" ? "Novo Fonograma" : mode === "edit" ? "Editar Fonograma" : "Detalhes do Fonograma";
+  const modalTitle = mode === "create" ? "Novo Fonograma" : mode === "edit" ? "Editar Fonograma" : "Detalhes do Fonograma";
 
   const calcularPercentualCategoria = (categoria: Participante[]) => {
     return categoria.reduce((total, p) => total + (parseFloat(p.percentual) || 0), 0);
@@ -550,10 +550,10 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
   const duracaoConcat = formatDuracao(duracaoMin, duracaoSeg);
 
   const buildPayload = (): FonogramaInsert => {
-    const tituloFinal = (titulo && titulo.trim()) || obraVinculada?.title || "Sem título";
+    const tituloFinal = (title && title.trim()) || obraVinculada?.title || "Sem título";
     // org_id não é campo do formulário — o tenant vem do contexto autenticado da API.
     return {
-      titulo: tituloFinal,
+      title: tituloFinal,
       cod_ecad: codEcad || null,
       cod_entidade: codEntidade || null,
       agregadora: agregadora || null,
@@ -597,7 +597,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
 
     const isrcJoined = joinIsrc({ pais: isrcPais, registrante: isrcRegistrante, ano: isrcAno, designacao: isrcDesignacao });
     const validation = fonogramaSchema.safeParse({
-      titulo: titulo || "",
+      title: title || "",
       isrc: isrcJoined || "",
       genero: generoMusical || "",
       instrumental,
@@ -644,12 +644,12 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
         );
       }
 
-      const tituloSalvo = (titulo && titulo.trim()) || obraVinculada?.title || "Sem título";
+      const tituloSalvo = (title && title.trim()) || obraVinculada?.title || "Sem título";
       onOpenChange(false);
 
       // Abre modal de contrato pré-preenchido após fechar o modal de fonograma
       onSaved?.({
-        titulo: `Contrato de Fonograma – ${tituloSalvo}`,
+        title: `Contrato de Fonograma – ${tituloSalvo}`,
         observacoes: [
           `Fonograma: ${tituloSalvo}`,
           obraVinculada?.title ? `Obra vinculada: ${obraVinculada.title}` : null,
@@ -665,7 +665,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
   };
 
   const renderParticipacaoSection = (
-    titulo: string,
+    title: string,
     categoria: keyof ParticipacaoCategoria,
     percentualMax: number,
     isOpen: boolean,
@@ -677,7 +677,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg border border-border">
           <span className="text-sm font-medium">
-            {titulo} - Percentual total: {percentualAtual.toFixed(2)}% de {percentualMax.toFixed(2)}%
+            {title} - Percentual total: {percentualAtual.toFixed(2)}% de {percentualMax.toFixed(2)}%
           </span>
           <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </CollapsibleTrigger>
@@ -746,7 +746,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{modalTitle}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -763,7 +763,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                   <Music className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium" data-testid="text-obra-vinculada-titulo">
+                  <p className="font-medium" data-testid="text-obra-vinculada-title">
                     {obraVinculada.title}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -823,7 +823,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                             const selectObra = async () => {
                               setObraVinculada(obra);
                               // Auto-fill título if blank
-                              if (!titulo && obra.title) setTitulo(obra.title);
+                              if (!title && obra.title) setTitle(obra.title);
                               // Normalize genre: match against Select options (accent+case insensitive)
                               if (obra.genero) {
                                 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -851,7 +851,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                                       const normT = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
                                       const musicas = JSON.parse(projeto.descricao as string) as Array<{ nome?: string; produtores?: string[] }>;
                                       const musicaMatch = musicas.find(m =>
-                                        normT(m.nome || "") === normT(fullObra.titulo || "") ||
+                                        normT(m.nome || "") === normT(fullObra.title || "") ||
                                         normT(m.nome || "") === normT(obra.title || "")
                                       );
                                       if (musicaMatch?.produtores?.length) {
@@ -965,7 +965,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                             }
                             setObraVinculada({
                               id: rec.localId,
-                              title: rec.titulo ?? "",
+                              title: rec.title ?? "",
                               genero: rec.genero ?? "",
                               compositores: Array.isArray(rec.compositores)
                                 ? rec.compositores.filter(Boolean).join(", ")

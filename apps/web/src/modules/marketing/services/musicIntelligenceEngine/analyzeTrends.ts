@@ -8,7 +8,7 @@ export function analyzeTrendsContext(sources: IntelligenceSources, filters?: { g
     filters,
     risingGenres: [filters?.genre || mostCommon(genres) || "genero a definir"],
     growingFormats: [filters?.platform || mostCommon(channels) || "Reels/TikTok/Shorts"],
-    internalMatches: sources.releases.slice(0, 6).map((item) => item.titulo),
+    internalMatches: sources.releases.slice(0, 6).map((item) => item.title),
     practicalSuggestions: [
       "Cruzar tendencia com lancamentos que ja possuem audio/letra/capa completos.",
       "Gerar cortes curtos para validar potencial antes de campanha paga.",

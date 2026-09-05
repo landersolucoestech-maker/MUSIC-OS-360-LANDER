@@ -138,7 +138,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialRelea
     () =>
       lancamentos
         .slice()
-        .sort((a, b) => String(a.titulo ?? "").localeCompare(String(b.titulo ?? ""), "pt-BR")),
+        .sort((a, b) => String(a.title ?? "").localeCompare(String(b.title ?? ""), "pt-BR")),
     [lancamentos],
   );
 
@@ -219,7 +219,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialRelea
             // direcao mantém semântica de fluxo de caixa (compat KPIs)
             direcao: "a_enviar",
             release_id: formData.release_id || null,
-            nome_musica: selectedRelease?.titulo ?? null,
+            nome_musica: selectedRelease?.title ?? null,
             detentor: formData.detentor.trim() || null,
             destinatario: formData.destinatario.trim() || null,
             tipo: formData.funcao || null,
@@ -308,7 +308,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialRelea
                   </SelectTrigger>
                   <SelectContent>
                     {lancamentosDistribuidos.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>{l.titulo}</SelectItem>
+                      <SelectItem key={l.id} value={l.id}>{l.title}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

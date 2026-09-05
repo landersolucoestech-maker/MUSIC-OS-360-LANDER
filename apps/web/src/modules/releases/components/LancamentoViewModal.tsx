@@ -225,13 +225,13 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <VisuallyHidden>
-          <DialogTitle>{lancamento.titulo}</DialogTitle>
+          <DialogTitle>{lancamento.title}</DialogTitle>
         </VisuallyHidden>
 
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <h2 className="text-2xl font-bold leading-tight text-foreground">{lancamento.titulo}</h2>
+              <h2 className="text-2xl font-bold leading-tight text-foreground">{lancamento.title}</h2>
               <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <UserRound className="h-4 w-4" />
                 {artista?.nome_artistico || "Artista não vinculado"}
@@ -411,7 +411,7 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
                       <Mic2 className="h-3.5 w-3.5 text-primary" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{f.titulo || f.title || `Faixa ${idx + 1}`}</p>
+                      <p className="truncate text-sm font-medium">{f.title || f.titulo || `Faixa ${idx + 1}`}</p>
                       <p className="truncate text-xs text-muted-foreground">
                         {[f.artista, f.isrc].filter(Boolean).join(" • ")}
                       </p>

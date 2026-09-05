@@ -171,7 +171,7 @@ const CONTEUDO_FILTERS: Array<{ key: string; label: string; status?: string[] }>
 
 interface Meta {
   id: number;
-  titulo: string;
+  title: string;
   descricao: string;
   tipo: string;
   categoria: string;
@@ -377,7 +377,7 @@ export function ArtistaVisao360Modal({
   }[] = [];
   contratosReais.forEach((c) => {
     const d = (c as { created_at?: string }).created_at;
-    if (d) movimentacaoItems.push({ id: `mv-ctr-${c.id}`, tipo: "Jurídico", descricao: `Contrato: ${c.titulo}`, data: d, responsavel: "Admin" });
+    if (d) movimentacaoItems.push({ id: `mv-ctr-${c.id}`, tipo: "Jurídico", descricao: `Contrato: ${c.title}`, data: d, responsavel: "Admin" });
   });
   transacoesArtista.forEach((t) => {
     const d = (t as { created_at?: string; data?: string }).created_at ?? (t as { data?: string }).data;
@@ -386,11 +386,11 @@ export function ArtistaVisao360Modal({
   eventosReais.forEach((e) => {
     const ev = e as { data?: string; tipo?: string; created_at?: string };
     const d = ev.data ?? ev.created_at;
-    if (d) movimentacaoItems.push({ id: `mv-evt-${e.id}`, tipo: "Agenda", descricao: `${getBackendEventTypeLabel(ev.tipo)}: ${e.titulo}`, data: d, responsavel: "—" });
+    if (d) movimentacaoItems.push({ id: `mv-evt-${e.id}`, tipo: "Agenda", descricao: `${getBackendEventTypeLabel(ev.tipo)}: ${e.title}`, data: d, responsavel: "—" });
   });
   lancamentosReais.forEach((l: any) => {
     const d = l.created_at ?? l.data_lancamento;
-    if (d) movimentacaoItems.push({ id: `mv-lan-${l.id}`, tipo: "Produção", descricao: `Lançamento: ${l.titulo ?? ""}`, data: d, responsavel: "Admin" });
+    if (d) movimentacaoItems.push({ id: `mv-lan-${l.id}`, tipo: "Produção", descricao: `Lançamento: ${l.title ?? ""}`, data: d, responsavel: "Admin" });
   });
   campanhasReais.forEach((c) => {
     const d = c.startDate ?? c.createdAt;
@@ -434,15 +434,15 @@ export function ArtistaVisao360Modal({
   const primeiroLanc = (lancamentosReais as any[])
     .filter((l) => l.created_at || l.data_lancamento)
     .sort((a, b) => new Date(a.created_at ?? a.data_lancamento).getTime() - new Date(b.created_at ?? b.data_lancamento).getTime())[0];
-  if (primeiroLanc) marcosEvolucao.push({ id: "m-lan", label: "Primeiro Lançamento", descricao: primeiroLanc.titulo ?? "Lançamento", data: primeiroLanc.created_at ?? primeiroLanc.data_lancamento });
+  if (primeiroLanc) marcosEvolucao.push({ id: "m-lan", label: "Primeiro Lançamento", descricao: primeiroLanc.title ?? "Lançamento", data: primeiroLanc.created_at ?? primeiroLanc.data_lancamento });
   const primeiroShow = (eventosReais as any[])
     .filter((e) => ["show", "festival"].includes(String(e.tipo ?? "").toLowerCase()) && e.data)
     .sort((a, b) => new Date(a.data!).getTime() - new Date(b.data!).getTime())[0];
-  if (primeiroShow) marcosEvolucao.push({ id: "m-show", label: "Primeira Turnê/Show", descricao: primeiroShow.titulo, data: primeiroShow.data! });
+  if (primeiroShow) marcosEvolucao.push({ id: "m-show", label: "Primeira Turnê/Show", descricao: primeiroShow.title, data: primeiroShow.data! });
   const primeiroContrato = (contratosReais as any[])
     .filter((c) => c.created_at)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-  if (primeiroContrato) marcosEvolucao.push({ id: "m-ctr", label: "Contrato Assinado", descricao: primeiroContrato.titulo, data: primeiroContrato.created_at });
+  if (primeiroContrato) marcosEvolucao.push({ id: "m-ctr", label: "Contrato Assinado", descricao: primeiroContrato.title, data: primeiroContrato.created_at });
   marcosEvolucao.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
 
   // ── Financeiro real ──────────────────────────────────────────────────
@@ -511,7 +511,7 @@ export function ArtistaVisao360Modal({
       historicoReal.push({
         id: `ctr-${c.id}`,
         tipo: "contrato",
-        descricao: `Contrato assinado: ${c.titulo}`,
+        descricao: `Contrato assinado: ${c.title}`,
         data: c.created_at,
         usuario: "Admin",
       });
@@ -521,7 +521,7 @@ export function ArtistaVisao360Modal({
       historicoReal.push({
         id: `obra-${o.id}`,
         tipo: "obra",
-        descricao: `Obra registrada: ${o.titulo}`,
+        descricao: `Obra registrada: ${o.title}`,
         data: o.created_at,
         usuario: "Produtor",
       });
@@ -531,7 +531,7 @@ export function ArtistaVisao360Modal({
       historicoReal.push({
         id: `lanc-${l.id}`,
         tipo: "obra",
-        descricao: `Lançamento registrado: ${l.titulo}`,
+        descricao: `Lançamento registrado: ${l.title}`,
         data: l.created_at,
         usuario: "Admin",
       });
@@ -581,7 +581,7 @@ export function ArtistaVisao360Modal({
   // a plataforma — assim evita chamadas inúteis para perfis não vinculados.
 
   const [metaForm, setMetaForm] = useState({
-    titulo: "",
+    title: "",
     descricao: "",
     tipo: "",
     categoria: "",
@@ -597,7 +597,7 @@ export function ArtistaVisao360Modal({
 
   const resetForm = () => {
     setMetaForm({
-      titulo: "",
+      title: "",
       descricao: "",
       tipo: "",
       categoria: "",
@@ -613,10 +613,10 @@ export function ArtistaVisao360Modal({
   };
 
   const handleSaveMeta = async () => {
-    if (!metaForm.titulo || !metaForm.tipo || !metaForm.valorMeta) return;
+    if (!metaForm.title || !metaForm.tipo || !metaForm.valorMeta) return;
     const payload = {
       artist_id: artistId,
-      titulo: metaForm.titulo,
+      title: metaForm.title,
       descricao: metaForm.descricao,
       tipo_meta: metaForm.tipo,
       categoria: metaForm.categoria,
@@ -637,7 +637,7 @@ export function ArtistaVisao360Modal({
 
   const handleEditMeta = (meta: any) => {
     setMetaForm({
-      titulo: meta.titulo || meta.tipo_meta || "",
+      title: meta.title || meta.tipo_meta || "",
       descricao: meta.descricao || "",
       tipo: meta.tipo_meta || meta.tipo || "",
       categoria: meta.categoria || "",
@@ -866,7 +866,7 @@ export function ArtistaVisao360Modal({
                     </div>
                     {proximoShow ? (
                       <>
-                        <p className="text-sm font-semibold truncate">{proximoShow.titulo}</p>
+                        <p className="text-sm font-semibold truncate">{proximoShow.title}</p>
                         <p className="text-xs text-muted-foreground">{formatDateDMY(proximoShow.data)}</p>
                       </>
                     ) : (
@@ -881,7 +881,7 @@ export function ArtistaVisao360Modal({
                     </div>
                     {proximoLancamento ? (
                       <>
-                        <p className="text-sm font-semibold truncate">{proximoLancamento.titulo}</p>
+                        <p className="text-sm font-semibold truncate">{proximoLancamento.title}</p>
                         <p className="text-xs text-muted-foreground">{formatDateDMY(proximoLancamento.data_lancamento)}</p>
                       </>
                     ) : (
@@ -1963,7 +1963,7 @@ export function ArtistaVisao360Modal({
                                 className="flex items-center justify-between py-1 border-b border-border/40 last:border-0"
                               >
                                 <span className="text-sm truncate flex-1 mr-2">
-                                  {obra.titulo}
+                                  {obra.title}
                                 </span>
                                 <Badge
                                   variant="outline"
@@ -1994,7 +1994,7 @@ export function ArtistaVisao360Modal({
                               >
                                 <div className="flex-1 min-w-0 mr-2">
                                   <p className="text-sm font-medium truncate">
-                                    {fono.titulo}
+                                    {fono.title}
                                   </p>
                                   {fono.gravadora && (
                                     <p className="text-xs text-muted-foreground truncate">
@@ -2031,7 +2031,7 @@ export function ArtistaVisao360Modal({
                               >
                                 <div className="flex-1 min-w-0 mr-2">
                                   <p className="text-sm font-medium truncate">
-                                    {lanc.titulo}
+                                    {lanc.title}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
                                     {lanc.data_lancamento
@@ -2070,7 +2070,7 @@ export function ArtistaVisao360Modal({
                               >
                                 <div className="flex-1 min-w-0 mr-2">
                                   <p className="text-sm font-medium truncate">
-                                    {proj.titulo}
+                                    {proj.title}
                                   </p>
                                   {Array.isArray(proj.produtores) &&
                                     (proj.produtores as string[]).length >
@@ -2299,7 +2299,7 @@ export function ArtistaVisao360Modal({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="font-medium text-sm truncate">
-                                  {contrato.titulo}
+                                  {contrato.title}
                                 </p>
                                 {expirando && (
                                   <span className="inline-flex items-center gap-0.5 text-[10px] text-warning border border-warning/20 bg-warning/10 rounded px-1 py-0.5 shrink-0">
@@ -2510,8 +2510,8 @@ export function ArtistaVisao360Modal({
                         const statusInfo = statusMeta.find(
                           (s) => s.value === meta.status,
                         );
-                        const titulo =
-                          (meta as any).titulo ||
+                        const title =
+                          (meta as any).title ||
                           meta.tipo_meta ||
                           meta.descricao ||
                           "Meta";
@@ -2527,7 +2527,7 @@ export function ArtistaVisao360Modal({
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <h4 className="font-medium">{titulo}</h4>
+                                    <h4 className="font-medium">{title}</h4>
                                     <Badge
                                       className={
                                         statusInfo?.color ?? "bg-gray-500"
@@ -2537,7 +2537,7 @@ export function ArtistaVisao360Modal({
                                     </Badge>
                                   </div>
                                   {meta.descricao &&
-                                    titulo !== meta.descricao && (
+                                    title !== meta.descricao && (
                                       <p className="text-sm text-muted-foreground">
                                         {meta.descricao}
                                       </p>
@@ -2702,7 +2702,7 @@ export function ArtistaVisao360Modal({
                               {e.data ? new Date(e.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
                             </span>
                             <span className="truncate">{getBackendEventTypeLabel(e.tipo)}</span>
-                            <span className="truncate font-medium">{e.titulo}</span>
+                            <span className="truncate font-medium">{e.title}</span>
                             <span className="truncate text-muted-foreground">{e.local || e.cidade || "—"}</span>
                             <span>
                               <Badge variant="outline" className="text-xs">
@@ -2903,9 +2903,9 @@ export function ArtistaVisao360Modal({
               <div className="col-span-2">
                 <Label>Título da Meta *</Label>
                 <Input
-                  value={metaForm.titulo}
+                  value={metaForm.title}
                   onChange={(e) =>
-                    setMetaForm({ ...metaForm, titulo: e.target.value })
+                    setMetaForm({ ...metaForm, title: e.target.value })
                   }
                   placeholder="Ex: Alcançar 1M de streams"
                 />

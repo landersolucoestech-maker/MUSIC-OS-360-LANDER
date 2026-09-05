@@ -7,17 +7,19 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 /**
  * CreateContractDto aceita BOTH English camelCase e pt-BR snake_case.
  *
- * Fase 5 / C1: pt-BR é o contrato canônico. Os 7 aliases EN abaixo
- * (title/type/artistId/value/startsAt/expiresAt/fileUrl) estão em
- * depreciação temporária — ainda aceitos, resolvidos e validados por
+ * Fase 5 / C1: pt-BR é o contrato canônico para type/artistId/value/
+ * startsAt/expiresAt/fileUrl — os aliases EN correspondentes estão em
+ * depreciação temporária, ainda aceitos, resolvidos e validados por
  * contract-legacy-alias.util.ts, mas marcados `deprecated` no Swagger.
+ * Exceção: `title` passou a ser o campo canônico (normalização de
+ * nomenclatura, 2026-09-05) — `titulo` (pt-BR) é o alias legado agora.
  * Conflitos entre o par PT/EN são rejeitados com 400
  * (CONTRACT_ALIAS_CONFLICT). currency/signedAt/parties não fazem parte
  * desta depreciação (ver C1.1 — dívida separada, fora deste escopo).
  */
 export class CreateContractDto {
-  // ── English legado (depreciado — ver contract-legacy-alias.util.ts) ────────
-  @ApiPropertyOptional({ example: 'Contrato de Gravação — Artista ABC', deprecated: true, description: 'Use "titulo".' })
+  // ── English (canônico desde a normalização de nomenclatura 2026-09-05) ─────
+  @ApiPropertyOptional({ example: 'Contrato de Gravação — Artista ABC' })
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -84,7 +86,7 @@ export class CreateContractDto {
   metadata?: Record<string, unknown>;
 
   // ── pt-BR (legacy + frontend) — passam directamente para a entity ────────
-  @ApiPropertyOptional({ example: 'Contrato de Gravação — Artista ABC' })
+  @ApiPropertyOptional({ example: 'Contrato de Gravação — Artista ABC', deprecated: true, description: 'Use "title".' })
   @IsOptional() @IsString() @MaxLength(500)
   titulo?: string;
 

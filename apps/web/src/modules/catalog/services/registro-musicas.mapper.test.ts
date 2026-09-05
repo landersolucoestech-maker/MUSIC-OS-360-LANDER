@@ -24,7 +24,7 @@ import {
 
 function baseInput(participantes: ParticipanteForm[] = []) {
   return {
-    titulo: "Minha Obra",
+    title: "Minha Obra",
     generoMusical: "MPB",
     idioma: "pt-BR",
     iswc: "",

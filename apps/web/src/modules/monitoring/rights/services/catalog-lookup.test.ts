@@ -8,7 +8,7 @@ import {
 
 const makeObra = (overrides: Partial<CatalogObra> = {}): CatalogObra => ({
   id: "obra-test-1",
-  titulo: "Test Song",
+  title: "Test Song",
   compositor: "Test Composer",
   compositores: "Test Composer",
   editora: "Test Publisher",
@@ -25,13 +25,13 @@ const makeObra = (overrides: Partial<CatalogObra> = {}): CatalogObra => ({
 describe("buildIsrcIndex", () => {
   it("builds a Map indexed by ISRC", () => {
     const obras = [
-      makeObra({ isrc: "BRMSC2500001", titulo: "Song A" }),
-      makeObra({ id: "obra-2", isrc: "BRMSC2500002", titulo: "Song B" }),
+      makeObra({ isrc: "BRMSC2500001", title: "Song A" }),
+      makeObra({ id: "obra-2", isrc: "BRMSC2500002", title: "Song B" }),
     ];
     const index = buildIsrcIndex(obras);
     expect(index.size).toBe(2);
-    expect(index.get("BRMSC2500001")?.titulo).toBe("Song A");
-    expect(index.get("BRMSC2500002")?.titulo).toBe("Song B");
+    expect(index.get("BRMSC2500001")?.title).toBe("Song A");
+    expect(index.get("BRMSC2500002")?.title).toBe("Song B");
   });
 
   it("returns an empty Map for empty obra list", () => {
@@ -52,12 +52,12 @@ describe("buildIsrcIndex", () => {
 
   it("last obra wins when duplicate ISRCs exist", () => {
     const obras = [
-      makeObra({ isrc: "BRMSC2500001", titulo: "First" }),
-      makeObra({ id: "obra-dup", isrc: "BRMSC2500001", titulo: "Second" }),
+      makeObra({ isrc: "BRMSC2500001", title: "First" }),
+      makeObra({ id: "obra-dup", isrc: "BRMSC2500001", title: "Second" }),
     ];
     const index = buildIsrcIndex(obras);
     expect(index.size).toBe(1);
-    expect(index.get("BRMSC2500001")?.titulo).toBe("Second");
+    expect(index.get("BRMSC2500001")?.title).toBe("Second");
   });
 });
 

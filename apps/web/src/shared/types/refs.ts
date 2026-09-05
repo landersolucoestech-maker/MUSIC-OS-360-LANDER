@@ -29,7 +29,7 @@ export interface ClienteRef {
 /** Referência leve a uma Obra musical. */
 export interface ObraRef {
   id: string;
-  titulo: string;
+  title: string;
   status?: string | null;
   genero?: string | null;
   isrc?: string | null;
@@ -38,7 +38,7 @@ export interface ObraRef {
 /** Referência leve a um Fonograma. */
 export interface FonogramaRef {
   id: string;
-  titulo?: string | null;
+  title?: string | null;
   isrc?: string | null;
   status?: string | null;
 }
@@ -46,7 +46,7 @@ export interface FonogramaRef {
 /** Referência leve a um Lançamento. */
 export interface LancamentoRef {
   id: string;
-  titulo: string;
+  title: string;
   tipo?: string | null;
   status?: string | null;
 }
@@ -54,7 +54,7 @@ export interface LancamentoRef {
 /** Referência leve a um Projeto. */
 export interface ProjetoRef {
   id: string;
-  titulo: string;
+  title: string;
   status?: string | null;
   tipo?: string | null;
 }
@@ -62,7 +62,7 @@ export interface ProjetoRef {
 /** Referência leve a um Contrato. */
 export interface ContratoRef {
   id: string;
-  titulo?: string | null;
+  title?: string | null;
   tipo?: string | null;
   status?: string | null;
 }

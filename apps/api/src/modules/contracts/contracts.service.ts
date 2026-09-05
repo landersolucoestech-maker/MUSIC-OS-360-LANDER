@@ -76,7 +76,7 @@ export class ContractsService {
     if (q['status'])              qb.andWhere('c.status = :status',        { status:    q['status'] });
     if (resolvedQuery.tipo)       qb.andWhere('c.tipo = :tipo',            { tipo:      resolvedQuery.tipo });
     if (resolvedQuery.artist_id) qb.andWhere('c.artist_id = :artistId', { artistId: resolvedQuery.artist_id });
-    if (q['search'])              qb.andWhere('c.titulo ILIKE :search',    { search: `%${q['search']}%` });
+    if (q['search'])              qb.andWhere('c.title ILIKE :search',    { search: `%${q['search']}%` });
     if (q['signing_platform'] === 'none') qb.andWhere('c.signing_platform IS NULL');
     else if (q['signing_platform'])       qb.andWhere('c.signing_platform = :sp', { sp: q['signing_platform'] });
 
@@ -138,7 +138,7 @@ export class ContractsService {
 
   /**
    * Monta o payload final para persistência a partir dos campos canônicos já
-   * resolvidos (titulo/tipo/artist_id/data_inicio/data_fim/arquivo_url/valor
+   * resolvidos (title/tipo/artist_id/data_inicio/data_fim/arquivo_url/valor
    * — ver resolveContractAliases()) e dos demais campos não relacionados a
    * aliases, que continuam passando direto para a entity.
    */
@@ -175,11 +175,11 @@ export class ContractsService {
     void _ignoredStatus;
 
     const { normalized: resolved, legacyAliasesUsed } = resolveContractAliases(rest);
-    if (resolved.titulo === undefined) {
+    if (resolved.title === undefined) {
       throw new BadRequestException({
         code: 'CONTRACT_TITLE_REQUIRED',
         message: 'Título é obrigatório.',
-        fields: [{ canonical: 'titulo', legacy: 'title' }],
+        fields: [{ canonical: 'title', legacy: 'title' }],
       });
     }
     this.logLegacyAliasUsage(legacyAliasesUsed, 'create', tenantId);
@@ -208,7 +208,7 @@ export class ContractsService {
       payload: {
         contractId: saved.id,
         tenantId,
-        titulo:     saved.titulo ?? (normalized['titulo'] as string) ?? '',
+        title:     saved.title ?? (normalized['title'] as string) ?? '',
         tipo:       saved.tipo   ?? (normalized['tipo']   as string) ?? '',
         artistId:   saved.artist_id ?? null,
         createdBy:  userId,
@@ -306,7 +306,7 @@ export class ContractsService {
           payload: {
             contractId: id,
             tenantId,
-            titulo:     current.titulo,
+            title:     current.title,
             artistId:   current.artist_id,
             signedBy:   userId,
             signedAt:   nowIso,
@@ -324,7 +324,7 @@ export class ContractsService {
           payload: {
             contractId: id,
             tenantId,
-            titulo:     current.titulo,
+            title:     current.title,
             artistId:   current.artist_id,
             expiredAt:  nowIso,
           },
@@ -341,7 +341,7 @@ export class ContractsService {
           payload: {
             contractId:  id,
             tenantId,
-            titulo:      current.titulo,
+            title:      current.title,
             artistId:    current.artist_id,
             cancelledBy: userId,
             cancelledAt: nowIso,
@@ -358,7 +358,7 @@ export class ContractsService {
         payload: {
           contractId:     id,
           tenantId,
-          titulo:         current.titulo,
+          title:         current.title,
           previousStatus: current.status,
           newStatus:      dtoMap['status'] as string,
           changedBy:      userId,
@@ -392,7 +392,7 @@ export class ContractsService {
       payload: {
         contractId:  id,
         tenantId,
-        titulo:      existing.titulo,
+        title:      existing.title,
         artistId:    existing.artist_id,
         cancelledBy: userId,
         cancelledAt: new Date().toISOString(),

@@ -26,7 +26,7 @@ async function validateDto(payload: Record<string, unknown>) {
   return validate(instance, { whitelist: true, forbidNonWhitelisted: true });
 }
 
-const MINIMAL_VALID = { titulo: 'Obra de Teste' };
+const MINIMAL_VALID = { title: 'Obra de Teste' };
 
 describe('CreateWorkDto — contrato canônico de campos', () => {
   it('aceita `cod_ecad` (nome canônico real, ECAD é entidade central e obrigatória — não removida)', async () => {

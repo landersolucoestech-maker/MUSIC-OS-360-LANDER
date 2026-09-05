@@ -27,14 +27,14 @@ export function useLancamentos(enabled = true, artistId?: string) {
       onCreate: (l) =>
         emit(DomainEvents.RELEASE_CREATED, {
           id: (l as LancamentoWithRelations & { id: string }).id,
-          titulo: l.titulo ?? "",
+          title: l.title ?? "",
           artist_id: l.artist_id ?? undefined,
           org_id: orgId,
         }),
       onUpdate: (l) =>
         emit(DomainEvents.RELEASE_UPDATED, {
           id: (l as LancamentoWithRelations & { id: string }).id,
-          titulo: l.titulo ?? "",
+          title: l.title ?? "",
           artist_id: l.artist_id ?? undefined,
           org_id: orgId,
         }),

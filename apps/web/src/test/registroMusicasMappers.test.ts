@@ -8,7 +8,7 @@ import {
   joinIsrc,
   obraToParticipantes,
   participantesToCompositoresLetristas,
-  obraTitulo,
+  obraTitle,
   fonogramaToParticipacao,
 } from "@/modules/catalog/mappers";
 
@@ -109,11 +109,11 @@ describe("joinIsrc", () => {
   });
 });
 
-describe("obraTitulo", () => {
-  it("prefers DB titulo, falls back to legacy title", () => {
-    expect(obraTitulo({ titulo: "DB Title", title: "Legacy" })).toBe("DB Title");
-    expect(obraTitulo({ title: "Legacy" })).toBe("Legacy");
-    expect(obraTitulo(null)).toBe("");
+describe("obraTitle", () => {
+  it("prefers DB title, falls back to legacy titulo", () => {
+    expect(obraTitle({ title: "DB Title", titulo: "Legacy" })).toBe("DB Title");
+    expect(obraTitle({ titulo: "Legacy" })).toBe("Legacy");
+    expect(obraTitle(null)).toBe("");
   });
 });
 

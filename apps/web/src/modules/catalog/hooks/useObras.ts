@@ -16,7 +16,7 @@ export function useObras(enabled = true, artistId?: string) {
     // filtro server-side diferente (ver Task G).
     queryKey: artistId ? [...QUERY_KEYS.OBRAS, "by-artist", artistId] : [...QUERY_KEYS.OBRAS],
     table: "obras",
-    select: "*, artistas(*), projetos(id, titulo)",
+    select: "*, artistas(*), projetos(id, title)",
     enabled,
     filters: artistId ? { artist_id: artistId } : undefined,
     additionalInvalidateKeys: [[...QUERY_KEYS.PROJETOS]],
@@ -24,13 +24,13 @@ export function useObras(enabled = true, artistId?: string) {
       onCreate: (o) =>
         emit(DomainEvents.MUSIC_REGISTERED, {
           work_id: (o as ObraWithRelations & { id: string }).id,
-          titulo: o.titulo ?? "",
+          title: o.title ?? "",
           org_id: orgId,
         }),
       onUpdate: (o) =>
         emit(DomainEvents.MUSIC_UPDATED, {
           work_id: (o as ObraWithRelations & { id: string }).id,
-          titulo: o.titulo ?? "",
+          title: o.title ?? "",
           org_id: orgId,
         }),
       onDelete: (id) =>

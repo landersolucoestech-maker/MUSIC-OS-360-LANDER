@@ -39,7 +39,7 @@ function makeDs(opts: {
   return { getRepository: jest.fn((e: unknown) => map.get(e)) } as never;
 }
 
-const baseWork = { id: 'w1', tenant_id: 't1', titulo: 'Obra', deleted_at: null, alternative_titles: [], ai_tools: [], ai_prompts: [] };
+const baseWork = { id: 'w1', tenant_id: 't1', title: 'Obra', deleted_at: null, alternative_titles: [], ai_tools: [], ai_prompts: [] };
 
 describe('SocietyPayloadBuilderService.buildWorkPayload — elegibilidade de shares (Fase 5 / C6)', () => {
   it('inclui uma share elegível (share_type null, não deletada) no payload', async () => {
@@ -107,7 +107,7 @@ describe('SocietyPayloadBuilderService.buildWorkPayload — elegibilidade de sha
 });
 
 describe('SocietyPayloadBuilderService.buildRecordingPayload — elegibilidade de shares (Fase 5 / C6)', () => {
-  const baseRec = { id: 'r1', tenant_id: 't1', titulo: 'Faixa', deleted_at: null };
+  const baseRec = { id: 'r1', tenant_id: 't1', title: 'Faixa', deleted_at: null };
 
   it('contributors só inclui shares elegíveis', async () => {
     const svc = new SocietyPayloadBuilderService(makeDs({

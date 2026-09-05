@@ -41,7 +41,7 @@ export function ExecucaoDetailModal({ exec, open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-base leading-snug">{catalog?.titulo ?? exec.titulo_detectado ?? "Detecção"}</DialogTitle>
+          <DialogTitle className="text-base leading-snug">{catalog?.title ?? exec.titulo_detectado ?? "Detecção"}</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">{exec.plataforma}</DialogDescription>
         </DialogHeader>
 

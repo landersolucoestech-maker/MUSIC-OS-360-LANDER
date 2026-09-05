@@ -42,7 +42,7 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
 
   if (!licenca) return null;
 
-  const obraTitulo = obra?.titulo ?? null;
+  const obraTitle = obra?.title ?? null;
   const artista = obraArtistaLabel(obra) || null;
   const clienteNome = cliente?.nome ?? null;
 
@@ -67,13 +67,13 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
               <Music className="h-4 w-4" /> Informações da Licença
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Título" value={licenca.titulo} />
+              <Field label="Título" value={licenca.title} />
               <div>
                 <span className="text-sm text-muted-foreground">Status</span>
                 <div className="mt-1">{getStatusBadge(licenca.status)}</div>
               </div>
               <Field label="Tipo de Licença" value={tipoLabel(licenca.tipo)} />
-              <Field label="Obra Musical" value={obraTitulo} />
+              <Field label="Obra Musical" value={obraTitle} />
               <Field label="Artista" value={artista} />
             </div>
           </div>

@@ -349,7 +349,7 @@ export default function Contratos() {
                             onCheckedChange={() => toggleSelect(contrato.id)}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{contrato.titulo}</TableCell>
+                        <TableCell className="font-medium">{contrato.title}</TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           {contrato.artistas?.nome_artistico || contrato.clientes?.nome || "—"}
                         </TableCell>
@@ -459,7 +459,7 @@ export default function Contratos() {
         open={deleteModal.open}
         onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}
         title="Excluir Contrato"
-        description={`Tem certeza que deseja excluir o contrato "${deleteModal.contrato?.titulo}"?`}
+        description={`Tem certeza que deseja excluir o contrato "${deleteModal.contrato?.title}"?`}
         onConfirm={handleDelete}
       />
     </>

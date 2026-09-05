@@ -2,7 +2,7 @@ import { z } from "zod";
 import { parseISO, isValid } from "date-fns";
 
 export const eventoSchema = z.object({
-  titulo: z.string()
+  title: z.string()
     .min(1, "Título do evento é obrigatório")
     .max(200, "Título deve ter no máximo 200 caracteres")
     .trim(),

@@ -204,7 +204,7 @@ export default function Agenda() {
       const inicio = splitDateTime(e.data);
       const fim = splitDateTime(e.data_fim);
       return {
-        titulo: e.titulo,
+        title: e.title,
         tipo: getBackendEventTypeLabel(e.tipo),
         status: e.status,
         participantes: summarizeAgendaParticipants(getEventoParticipants(e)),
@@ -251,8 +251,8 @@ export default function Agenda() {
 
       let importados = 0;
       for (const row of data) {
-        const titulo = row.titulo || row.Titulo || row.TITULO || row.Título;
-        if (!titulo) continue;
+        const title = row.title || row.Title || row.TITULO || row.Título;
+        if (!title) continue;
 
         const dataInicio = row.data_inicio || row.data || row.Data || new Date().toISOString().split("T")[0];
         const horarioInicio = row.horario_inicio || row.horario || row.Horario || null;
@@ -263,10 +263,10 @@ export default function Agenda() {
         const publicoEsperado = row.publico_esperado || row["Público Esperado"] || row.capacidade || row["Capacidade"];
 
         // Payload no formato do CreateEventDto real (title/type/startsAt/
-        // endsAt/venue — não titulo/tipo/data_inicio, que não existem no DTO;
+        // endsAt/venue — não title/tipo/data_inicio, que não existem no DTO;
         // status é omitido pois CreateEventDto não o aceita, só UpdateEventDto).
         const payload: Record<string, unknown> = {
-          title: titulo,
+          title: title,
           type: normalizeToBackendType(tipoRaw, granularToBackendType),
         };
         const startsAt = combineDateTime(dataInicio, horarioInicio);
@@ -298,7 +298,7 @@ export default function Agenda() {
     if (!searchTerm) return scopedEventos;
     const term = searchTerm.toLowerCase();
     return scopedEventos.filter((evento) =>
-      evento.titulo?.toLowerCase().includes(term) ||
+      evento.title?.toLowerCase().includes(term) ||
       evento.local?.toLowerCase().includes(term) ||
       summarizeAgendaParticipants(getEventoParticipants(evento)).toLowerCase().includes(term),
     );
@@ -315,7 +315,7 @@ export default function Agenda() {
 
     return {
       id: evento.id,
-      title: evento.titulo ?? "Evento",
+      title: evento.title ?? "Evento",
       artist: summarizeAgendaParticipants(getEventoParticipants(evento)) || undefined,
       startDate: start,
       endDate: end,
@@ -521,7 +521,7 @@ export default function Agenda() {
         open={deleteModal.open}
         onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}
         title="Excluir Evento"
-        description={`Tem certeza que deseja excluir "${deleteModal.evento?.titulo}"?`}
+        description={`Tem certeza que deseja excluir "${deleteModal.evento?.title}"?`}
         onConfirm={handleDelete}
       />
     </>

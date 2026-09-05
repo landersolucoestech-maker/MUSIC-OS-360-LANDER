@@ -93,7 +93,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {contrato.titulo}
+                  {contrato.title}
                 </DialogTitle>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <StatusBadge status={contrato.status ?? ""} />
@@ -361,7 +361,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                         <FileText className="h-8 w-8 text-primary" />
                       </div>
                       <div>
-                        <p className="font-semibold text-sm mb-1">{contrato.titulo}</p>
+                        <p className="font-semibold text-sm mb-1">{contrato.title}</p>
                         <p className="text-xs text-muted-foreground font-sans break-all max-w-sm mx-auto">
                           {contrato.arquivo_url}
                         </p>
@@ -487,7 +487,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                         <Music className="h-6 w-6 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">{lancamentoVinculado.titulo}</p>
+                        <p className="font-semibold text-sm truncate">{lancamentoVinculado.title}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge variant="outline" className="text-[10px] capitalize">
                             {lancamentoVinculado.tipo || "—"}

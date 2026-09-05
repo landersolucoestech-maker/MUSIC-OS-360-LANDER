@@ -5,7 +5,7 @@ export class CreateWorkDto {
   @ApiProperty({ example: 'Noite Estrelada' })
   @IsString()
   @MaxLength(500)
-  titulo!: string;
+  title!: string;
 
   @ApiPropertyOptional({ example: 'composicao' })
   @IsOptional()

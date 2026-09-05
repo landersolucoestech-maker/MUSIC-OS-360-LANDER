@@ -27,7 +27,7 @@ export interface EcadStatus extends IntegrationRuntimeStatus {
 
 export interface EcadArrecadacaoEntry {
   isrc:                 string;
-  titulo:               string;
+  title:               string;
   artista:              string;
   periodo:              string;
   fonte:                string;

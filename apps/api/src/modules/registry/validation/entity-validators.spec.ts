@@ -17,20 +17,20 @@ const errors = (issues: { severity: string }[]) => issues.filter((i) => i.severi
 describe('WorkRegistryValidationService', () => {
   it('passes a valid work (title + one author at 100%)', () => {
     const issues = work.validate(
-      asWork({ titulo: 'Minha Obra', ai_used: false }),
+      asWork({ title: 'Minha Obra', ai_used: false }),
       [share({ percentual: '100', papel: 'autor', titular_nome: 'A', deleted_at: null })],
     );
     expect(errors(issues)).toHaveLength(0);
   });
 
   it('flags a work without any author', () => {
-    const issues = work.validate(asWork({ titulo: 'X', ai_used: false }), []);
+    const issues = work.validate(asWork({ title: 'X', ai_used: false }), []);
     expect(codes(issues)).toContain('work_no_author');
   });
 
   it('flags splits that do not sum to 100%', () => {
     const issues = work.validate(
-      asWork({ titulo: 'X', ai_used: false }),
+      asWork({ title: 'X', ai_used: false }),
       [share({ percentual: '60', papel: 'autor', titular_nome: 'A', deleted_at: null })],
     );
     expect(codes(issues)).toContain('work_split_not_100');
@@ -38,7 +38,7 @@ describe('WorkRegistryValidationService', () => {
 
   it('requires AI tools/prompts when ai_used is true', () => {
     const issues = work.validate(
-      asWork({ titulo: 'X', ai_used: true, ai_tools: [], ai_prompts: [] }),
+      asWork({ title: 'X', ai_used: true, ai_tools: [], ai_prompts: [] }),
       [share({ percentual: '100', papel: 'autor', titular_nome: 'A', deleted_at: null })],
     );
     expect(codes(issues)).toContain('work_ai_declaration_missing');
@@ -48,7 +48,7 @@ describe('WorkRegistryValidationService', () => {
 
   it('excludes financial/pendente shares from author count and percentual sum', () => {
     const issues = work.validate(
-      asWork({ titulo: 'X', ai_used: false }),
+      asWork({ title: 'X', ai_used: false }),
       [financialShare({ percentual: '100', papel: 'autor', titular_nome: 'Financeiro', deleted_at: null })],
     );
     expect(codes(issues)).toContain('work_no_author');
@@ -57,7 +57,7 @@ describe('WorkRegistryValidationService', () => {
 
   it('excludes soft-deleted shares even when share_type is null', () => {
     const issues = work.validate(
-      asWork({ titulo: 'X', ai_used: false }),
+      asWork({ title: 'X', ai_used: false }),
       [share({ percentual: '100', papel: 'autor', titular_nome: 'A', deleted_at: new Date() })],
     );
     expect(codes(issues)).toContain('work_no_author');
@@ -65,7 +65,7 @@ describe('WorkRegistryValidationService', () => {
 
   it('flags an eligible share with null titular_nome instead of silently treating it as ""', () => {
     const issues = work.validate(
-      asWork({ titulo: 'X', ai_used: false }),
+      asWork({ title: 'X', ai_used: false }),
       [share({ percentual: '100', papel: 'autor', titular_nome: null, deleted_at: null })],
     );
     expect(codes(issues)).toContain('work_split_titular_nome_missing');
@@ -73,7 +73,7 @@ describe('WorkRegistryValidationService', () => {
 
   it('flags an eligible share with null percentual instead of coercing it to 0 (and correctly reports the resulting sum mismatch)', () => {
     const issues = work.validate(
-      asWork({ titulo: 'X', ai_used: false }),
+      asWork({ title: 'X', ai_used: false }),
       [share({ percentual: null, papel: 'autor', titular_nome: 'A', deleted_at: null })],
     );
     expect(codes(issues)).toContain('work_split_percentual_missing');
@@ -82,7 +82,7 @@ describe('WorkRegistryValidationService', () => {
 
   it('sums percentual only across eligible shares (mixed financial + registry set)', () => {
     const issues = work.validate(
-      asWork({ titulo: 'X', ai_used: false }),
+      asWork({ title: 'X', ai_used: false }),
       [
         share({ percentual: '100', papel: 'autor', titular_nome: 'A', deleted_at: null }),
         financialShare({ percentual: '500', papel: 'autor', titular_nome: 'Financeiro', deleted_at: null }),
@@ -94,7 +94,7 @@ describe('WorkRegistryValidationService', () => {
 
 describe('RecordingRegistryValidationService', () => {
   const valid = (): Partial<PhonogramEntity> => ({
-    titulo: 'Faixa',
+    title: 'Faixa',
     work_id: 'w1',
     duration_seconds: 180,
     artist_id: 'a1',

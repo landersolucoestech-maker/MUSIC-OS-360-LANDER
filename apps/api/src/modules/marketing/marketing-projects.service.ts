@@ -205,14 +205,14 @@ export class MarketingProjectsService {
       })),
       linkedWorks: works.map((item) => ({
         id: item.id,
-        title: item.titulo,
+        title: item.title,
         status: item.status,
         iswc: item.iswc,
         isrc: item.isrc,
       })),
       linkedPhonograms: phonograms.map((item) => ({
         id: item.id,
-        title: item.titulo,
+        title: item.title,
         status: item.status,
         isrc: item.isrc,
         workId: item.work_id,

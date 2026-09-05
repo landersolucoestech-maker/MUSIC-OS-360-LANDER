@@ -131,15 +131,15 @@ const splitNames = (s: string | null | undefined): string[] => {
  * sem filtro (Task J). Usado só para autofill best-effort (ISRC de uma faixa
  * de projeto); poucos resultados bastam, `pageSize` pequeno é intencional.
  */
-async function findFonogramaByTitulo(titulo: string): Promise<FonogramaWithRelations | undefined> {
-  if (!titulo.trim()) return undefined;
-  const alvo = normStr(titulo);
+async function findFonogramaByTitle(title: string): Promise<FonogramaWithRelations | undefined> {
+  if (!title.trim()) return undefined;
+  const alvo = normStr(title);
   const { items } = await storage.listPaged<FonogramaWithRelations & { id: string }>("fonogramas", {
     page: 1,
     pageSize: 5,
-    filters: { search: titulo },
+    filters: { search: title },
   });
-  return items.find((f) => normStr(f.titulo ?? "") === alvo);
+  return items.find((f) => normStr(f.title ?? "") === alvo);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -257,7 +257,7 @@ interface MusicianEntry {
 
 interface Faixa {
   id: number;
-  titulo: string;
+  title: string;
   artista: string;
   isrc: string;
   // version
@@ -311,7 +311,7 @@ interface LancamentoFormModalProps {
 // ─────────────────────────────────────────────────────────────────────────────
 const mkFaixa = (id = Date.now()): Faixa => ({
   id,
-  titulo: "",
+  title: "",
   artista: "",
   isrc: "",
   isVersionAlternativa: false,
@@ -500,7 +500,7 @@ export function LancamentoFormModal({
   // estar entre os primeiros carregados por useProjetos() sem filtro.
   const { entity: selectedProjeto } = useEntityById<ProjetoWithRelations>("projetos", formData.projetoSeed || undefined);
   const projetoLabel: string = selectedProjeto
-    ? ((selectedProjeto.titulo ?? (selectedProjeto.nome as string | undefined) ?? "") as string)
+    ? ((selectedProjeto.title ?? (selectedProjeto.nome as string | undefined) ?? "") as string)
     : "";
   // Task I: busca direto por ID (não depende do artista estar entre os
   // primeiros carregados por useArtistas() sem filtro).
@@ -587,13 +587,13 @@ export function LancamentoFormModal({
       ? await storage.findById<Artista>("artistas", projeto.artist_id as string)
       : undefined;
     const rawGenero = seed.genero?.trim() || linkedArtista?.genero_musical || "";
-    const fonoDosProjeto = projeto.titulo
-      ? await findFonogramaByTitulo(projeto.titulo)
+    const fonoDosProjeto = projeto.title
+      ? await findFonogramaByTitle(projeto.title)
       : undefined;
     setFormData((prev) => ({
       ...prev,
       projetoSeed: projectId,
-      titulo: !prev.titulo.trim() ? (seed.titulo ?? "") : prev.titulo,
+      title: !prev.title.trim() ? (seed.title ?? "") : prev.title,
       artist_id: !prev.artist_id.trim()
         ? (seed.artist_id ?? "")
         : prev.artist_id,
@@ -617,10 +617,10 @@ export function LancamentoFormModal({
           const faixasResolvidas = await Promise.all(
             musicas.map(async (m, i) => {
               const isrcFaixa =
-                m.isrc?.trim() || (m.nome ? (await findFonogramaByTitulo(m.nome))?.isrc ?? "" : "");
+                m.isrc?.trim() || (m.nome ? (await findFonogramaByTitle(m.nome))?.isrc ?? "" : "");
               return {
                 ...mkFaixa(i + 1),
-                titulo: m.nome ?? "",
+                title: m.nome ?? "",
                 artista: artistaNome,
                 isrc: isrcFaixa,
                 compositores: m.compositores?.length ? m.compositores : [""],
@@ -654,11 +654,11 @@ export function LancamentoFormModal({
     switch (currentStep) {
       case 0:
         return (
-          !!formData.titulo.trim() &&
+          !!formData.title.trim() &&
           (extraFields.variosArtistas || !!formData.artist_id.trim())
         );
       case 1:
-        return faixas.every((f) => !!f.titulo.trim() && !!f.aiAssistanceLevel);
+        return faixas.every((f) => !!f.title.trim() && !!f.aiAssistanceLevel);
       default:
         return true;
     }
@@ -874,7 +874,7 @@ export function LancamentoFormModal({
   // ─────────────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (mode === "view") return;
-    if (!formData.titulo.trim()) {
+    if (!formData.title.trim()) {
       toast.error("Informe o título do lançamento.");
       return;
     }
@@ -1107,14 +1107,14 @@ export function LancamentoFormModal({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">
-                              {String(p.titulo ?? p.nome ?? "—")}
+                              {String(p.title ?? p.nome ?? "—")}
                             </p>
                             {/* ponytail: subtítulo com nome do artista removido — a API real
                                 não embute o artista no /projects (sem join), e resolvê-lo por
                                 linha exigiria N lookups por página de resultados. O valor
                                 selecionado (projectId) continua correto independentemente
                                 deste subtítulo. Upgrade path: endpoint dedicado que devolva
-                                id+titulo+nome_artistico já agregados, se a UX exigir. */}
+                                id+title+nome_artistico já agregados, se a UX exigir. */}
                           </div>
                         </div>
                       ))
@@ -1146,9 +1146,9 @@ export function LancamentoFormModal({
           <div className="space-y-2">
             <Label>Título do Álbum / Single / EP *</Label>
             <Input
-              value={formData.titulo}
+              value={formData.title}
               onChange={(e) =>
-                setFormData({ ...formData, titulo: e.target.value })
+                setFormData({ ...formData, title: e.target.value })
               }
               placeholder="Título do lançamento"
               disabled={isViewMode}
@@ -1507,7 +1507,7 @@ export function LancamentoFormModal({
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">
-                {index + 1}. {faixa.titulo || "Nova Faixa"}
+                {index + 1}. {faixa.title || "Nova Faixa"}
               </CardTitle>
               {faixas.length > 1 && !isViewMode && (
                 <Button
@@ -1531,8 +1531,8 @@ export function LancamentoFormModal({
                 </span>
               </Label>
               <Input
-                value={faixa.titulo}
-                onChange={(e) => updF(faixa.id, "titulo", e.target.value)}
+                value={faixa.title}
+                onChange={(e) => updF(faixa.id, "title", e.target.value)}
                 placeholder="Nome da música"
                 disabled={isViewMode}
                 maxLength={200}
@@ -2413,7 +2413,7 @@ export function LancamentoFormModal({
       artistaLabel || (extraFields.variosArtistas ? "Various Artists" : "—");
 
     const warnings: string[] = [];
-    if (!formData.titulo.trim()) warnings.push("Título do lançamento ausente.");
+    if (!formData.title.trim()) warnings.push("Título do lançamento ausente.");
     if (!extraFields.variosArtistas && !formData.artist_id)
       warnings.push("Artista principal não selecionado.");
     if (!formData.genero) warnings.push("Gênero principal não informado.");
@@ -2428,7 +2428,7 @@ export function LancamentoFormModal({
     if (!formData.dataLancamento)
       warnings.push("Data de lançamento não definida.");
     faixas.forEach((f, i) => {
-      if (!f.titulo.trim()) warnings.push(`Faixa ${i + 1}: título ausente.`);
+      if (!f.title.trim()) warnings.push(`Faixa ${i + 1}: título ausente.`);
       if (!f.aiAssistanceLevel)
         warnings.push(`Faixa ${i + 1}: AI-Assisted Materials não declarado.`);
     });
@@ -2468,7 +2468,7 @@ export function LancamentoFormModal({
               <div className="flex-1 space-y-3">
                 <div>
                   <h3 className="text-xl font-bold">
-                    {formData.titulo || "—"}
+                    {formData.title || "—"}
                     {formData.tipo ? ` — ${formData.tipo.toUpperCase()}` : ""}
                   </h3>
                   <p className="text-muted-foreground">por {artistaNome}</p>
@@ -2534,7 +2534,7 @@ export function LancamentoFormModal({
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">
-                      {f.titulo || "Sem título"}
+                      {f.title || "Sem título"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {f.artista || artistaNome}

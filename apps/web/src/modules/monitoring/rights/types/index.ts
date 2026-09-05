@@ -11,7 +11,7 @@ export type EcadReportStatus = "pendente" | "importado" | "concluido" | "erro";
 
 export interface CatalogObraRef {
   id: string;
-  titulo: string;
+  title: string;
   compositor: string | null;
   compositores: string | string[] | null;
   editora: string | null;

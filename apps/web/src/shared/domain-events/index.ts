@@ -86,7 +86,7 @@ export interface ArtistCreatedPayload {
 export interface MusicRegisteredPayload {
   work_id: string;
   fonograma_id?: string;
-  titulo: string;
+  title: string;
   org_id: string;
 }
 
@@ -99,7 +99,7 @@ export interface ContractCreatedPayload {
 
 export interface ReleaseCreatedPayload {
   id: string;
-  titulo: string;
+  title: string;
   artist_id?: string;
   org_id: string;
 }

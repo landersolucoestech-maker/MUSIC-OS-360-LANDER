@@ -55,7 +55,7 @@ import {
   dbStatusToSelect,
   parseDuracao,
   obraToParticipantes,
-  obraTitulo,
+  obraTitle,
   obraOutrosTitulos,
   obraReferenciasConexas,
   obraLetraCompleta,
@@ -187,7 +187,7 @@ interface ObraFormModalProps {
    */
   tipoObra?: TipoObra;
   /** Chamado após salvar com sucesso — usado para abrir modal de contrato pré-preenchido */
-  onSaved?: (info: { titulo: string; observacoes: string }) => void;
+  onSaved?: (info: { title: string; observacoes: string }) => void;
 }
 
 interface Participante {
@@ -241,7 +241,7 @@ export function ObraFormModal({
     obra?.cod_entidade ?? obra?.codEntidade ?? "",
   );
   const [iswc, setIswc] = useState(obra?.iswc || "");
-  const [tituloObra, setTituloObra] = useState(obraTitulo(obra));
+  const [tituloObra, setTitleObra] = useState(obraTitle(obra));
   const [situacao, setSituacao] = useState(dbStatusToSelect(obra?.status));
   const [generoMusical, setGeneroMusical] = useState(
     obra?.genero?.toLowerCase() || "",
@@ -274,7 +274,7 @@ export function ObraFormModal({
     const f = obraToFormFields(obra);
     setBuscaProjeto("");
     setBuscaProjetoOpen(false);
-    setTituloObra(f.titulo);
+    setTitleObra(f.title);
     setSituacao(f.situacao);
     setGeneroMusical(f.generoMusical);
     setIdioma(f.idioma);
@@ -314,7 +314,7 @@ export function ObraFormModal({
     if (linkedProjeto) {
       setProjetoSelecionado({
         id: linkedProjeto.id,
-        nome: linkedProjeto.titulo ?? (linkedProjeto.nome as string) ?? "",
+        nome: linkedProjeto.title ?? (linkedProjeto.nome as string) ?? "",
         artistaNome: (linkedProjeto.artistas?.nome_artistico ?? null) as string | null,
       });
     } else {
@@ -464,7 +464,7 @@ export function ObraFormModal({
     }
 
     const payload = formToObraPayload({
-      titulo: tituloObra,
+      title: tituloObra,
       generoMusical,
       idioma,
       iswc,
@@ -517,7 +517,7 @@ export function ObraFormModal({
       ].filter((l): l is string => l !== null);
 
       onSaved?.({
-        titulo: `Cessão de Obras – ${tituloObra}`,
+        title: `Cessão de Obras – ${tituloObra}`,
         observacoes: obsLinhas.join("\n"),
       });
     } catch (err) {
@@ -617,7 +617,7 @@ export function ObraFormModal({
                       {projetosConcluidosFiltrados.length > 0 ? (
                         (projetosConcluidosFiltrados as ProjetoWithRelations[]).map((p) => {
                           const pId = p.id as string;
-                          const pNomeDisplay = (p.titulo ??
+                          const pNomeDisplay = (p.title ??
                             (p as { nome?: string }).nome ??
                             "") as string;
                           const pArtistaNomeDisplay = (p.artistas?.nome_artistico ?? "") as string;
@@ -628,7 +628,7 @@ export function ObraFormModal({
                               artistaNome: pArtistaNomeDisplay || null,
                             });
                             // Auto-fill fields from project registration
-                            if (!tituloObra && p.titulo) setTituloObra(p.titulo as string);
+                            if (!tituloObra && p.title) setTitleObra(p.title as string);
                             if (p.genero) {
                               const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
                               const generoRaw = p.genero as string;
@@ -787,7 +787,7 @@ export function ObraFormModal({
                 <Input
                   className="h-8 text-sm min-w-0"
                   value={tituloObra}
-                  onChange={(e) => setTituloObra(e.target.value)}
+                  onChange={(e) => setTitleObra(e.target.value)}
                   disabled={isViewMode}
                 />
               </div>
@@ -1294,10 +1294,10 @@ export function ObraFormModal({
               </div>
               <CollapsibleContent className="px-5 pb-5 space-y-3">
                 {outrosTitulos.length > 0 ? (
-                  outrosTitulos.map((titulo, index) => (
+                  outrosTitulos.map((title, index) => (
                     <div key={index} className="flex gap-2">
                       <Input
-                        value={titulo}
+                        value={title}
                         onChange={(e) =>
                           updateOutroTitulo(index, e.target.value)
                         }

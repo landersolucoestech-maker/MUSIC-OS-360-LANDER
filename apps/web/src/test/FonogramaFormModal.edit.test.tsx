@@ -25,7 +25,7 @@ vi.mock("@/modules/catalog/hooks/useObras", () => {
   const stableObras = [
     {
       id: "obra-1",
-      titulo: "Canção Vinculada",
+      title: "Canção Vinculada",
       genero: "pop",
       compositores: ["Alice"],
       status: "registrado",
@@ -79,7 +79,7 @@ vi.mock("@/shared/lib/storage", async () => {
       ...actual.storage,
       findById: vi.fn(async (table: string, id: string) => {
         if (table === "obras" && id === "obra-1") {
-          return { id: "obra-1", titulo: "Canção Vinculada", genero: "pop", compositores: ["Alice"], status: "registrado" };
+          return { id: "obra-1", title: "Canção Vinculada", genero: "pop", compositores: ["Alice"], status: "registrado" };
         }
         // Task J: artista "fora do cap" — nunca estaria entre os primeiros 50
         // retornados por useArtistas() sem filtro; só é alcançável por GET
@@ -98,7 +98,7 @@ vi.mock("@/shared/lib/storage", async () => {
             items: [
               {
                 id: "obra-99",
-                titulo: "Obra Rara",
+                title: "Obra Rara",
                 genero: "pop",
                 compositores: [],
                 artist_id: "art-99",
@@ -137,7 +137,7 @@ describe("FonogramaFormModal edit mode", () => {
 
   const baseFonograma = {
     id: "fono-1",
-    titulo: "Canção Vinculada",
+    title: "Canção Vinculada",
     work_id: "obra-1",
     isrc: "BR-ABC-25-12345",
     duracao: "04:20",
@@ -159,7 +159,7 @@ describe("FonogramaFormModal edit mode", () => {
 
     // Linked obra is hydrated
     await waitFor(() => {
-      expect(screen.getByTestId("text-obra-vinculada-titulo")).toHaveTextContent(
+      expect(screen.getByTestId("text-obra-vinculada-title")).toHaveTextContent(
         "Canção Vinculada",
       );
     });
@@ -192,7 +192,7 @@ describe("FonogramaFormModal edit mode", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("text-obra-vinculada-titulo")).toBeInTheDocument();
+      expect(screen.getByTestId("text-obra-vinculada-title")).toBeInTheDocument();
     });
 
     // Edit ISRC designacao

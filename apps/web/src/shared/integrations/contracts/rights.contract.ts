@@ -34,7 +34,7 @@ export interface RightsSearchQuery {
 export interface RightsSearchResult {
   external_id: string;
   kind: RightsKind;
-  titulo: string;
+  title: string;
   iswc?: string | null;
   isrc?: string | null;
   compositores?: string[] | null;
@@ -82,7 +82,7 @@ export interface RightsRegistrationStatus {
 }
 
 export interface RegisterObraInput {
-  titulo: string;
+  title: string;
   compositores: string[];
   letristas?: string[];
   editora?: string;
@@ -95,7 +95,7 @@ export interface RegisterObraInput {
 }
 
 export interface RegisterFonogramaInput {
-  titulo: string;
+  title: string;
   interpretes: string[];
   compositores?: string[];
   produtores?: string[];
@@ -131,7 +131,7 @@ export interface RegistrationHistoryEntry {
   kind: RightsKind;
   local_id: string;
   external_id?: string | null;
-  titulo: string;
+  title: string;
   action: "registered" | "updated" | "rejected" | "synced";
   iswc?: string | null;
   isrc?: string | null;
@@ -145,7 +145,7 @@ export interface RegistrationHistoryEntry {
 export interface GenerateISWCInput {
   /** ID local da obra no catálogo */
   local_work_id: string;
-  titulo: string;
+  title: string;
   compositores: string[];
   /** Se já existe ISWC, retorna o existente */
   existing_iswc?: string | null;
@@ -161,7 +161,7 @@ export interface GenerateISWCResult {
 export interface GenerateISRCInput {
   /** ID local do fonograma no catálogo */
   local_fonograma_id: string;
-  titulo: string;
+  title: string;
   interprete: string;
   ano?: number;
   /** País registante (ex.: "BR") */
@@ -218,7 +218,7 @@ export interface ConciliacaoResult {
   matched: Array<{
     local_id: string;
     external_id: string;
-    titulo: string;
+    title: string;
     diferenca_cents: number;
   }>;
   unmatched_local: string[];   // IDs locais sem correspondência

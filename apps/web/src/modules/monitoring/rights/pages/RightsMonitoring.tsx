@@ -106,7 +106,7 @@ export default function RightsMonitoring() {
       if (!o) return;
       map.set(workIds[i], {
         id: o.id,
-        titulo: o.titulo,
+        title: o.title,
         compositor: o.compositor ?? null,
         compositores: (o.compositores as string | string[] | null) ?? null,
         editora: o.editora ?? null,
@@ -164,7 +164,7 @@ export default function RightsMonitoring() {
       if (search.trim()) {
         const q = search.toLowerCase();
         const match =
-          (det.obra?.titulo ?? det.titulo_detectado ?? "").toLowerCase().includes(q) ||
+          (det.obra?.title ?? det.titulo_detectado ?? "").toLowerCase().includes(q) ||
           det.plataforma.toLowerCase().includes(q) ||
           det.tipo.toLowerCase().includes(q);
         if (!match) return false;
@@ -192,9 +192,9 @@ export default function RightsMonitoring() {
         id: `div-${det.id}`,
         tipo: det.obra ? "Obra sem código ECAD" : "Detecção sem obra vinculada",
         descricao: det.obra
-          ? `Detecção em "${det.plataforma}" está vinculada à obra "${det.obra.titulo}", mas ela não possui código ECAD cadastrado.`
+          ? `Detecção em "${det.plataforma}" está vinculada à obra "${det.obra.title}", mas ela não possui código ECAD cadastrado.`
           : `Detecção em "${det.plataforma}" (${det.titulo_detectado ?? "sem título"}) não possui obra vinculada no catálogo interno.`,
-        obra: det.obra?.titulo,
+        obra: det.obra?.title,
         origem: det.plataforma,
         severity: det.obra ? "media" as const : "alta" as const,
         risco_score: det.obra ? 45 : 65,
@@ -401,7 +401,7 @@ export default function RightsMonitoring() {
                         <FeatureGate key={r.id} feature="moduleMonitoring" featureName="Monitoramento">
                           <TableRow>
                             <TableCell className="font-semibold">{r.periodo}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground hidden md:table-cell">{r.obra?.titulo ?? r.work_id ?? "—"}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground hidden md:table-cell">{r.obra?.title ?? r.work_id ?? "—"}</TableCell>
                             <TableCell className="text-sm text-muted-foreground hidden lg:table-cell">{formatRightsDate(r.created_at)}</TableCell>
                             <TableCell className="text-right">{fmtBRL(Number(r.valor_liquido ?? r.valor_bruto ?? 0))}</TableCell>
                             <TableCell><Badge variant={STATUS_VARIANT[r.status] ?? "neutral"}>{STATUS_ECAD_LABEL[r.status] ?? r.status}</Badge></TableCell>

@@ -49,7 +49,7 @@ function makeDs(opts: { works?: unknown[]; recordings?: unknown[]; skillRuns?: u
 }
 
 const WORK_ROW = {
-  titulo: 'Aurora',
+  title: 'Aurora',
   compositor: 'Ana Lima',
   compositores: 'Ana Lima; Bruno Sá',
   co_compositores: null,
@@ -59,7 +59,7 @@ const WORK_ROW = {
 };
 
 const RECORDING_ROW = {
-  titulo: 'Aurora (Ao Vivo)',
+  title: 'Aurora (Ao Vivo)',
   compositores: 'Ana Lima',
   interpretes: 'Banda Aurora; Convidado Y',
   produtores: 'Produtor Z',

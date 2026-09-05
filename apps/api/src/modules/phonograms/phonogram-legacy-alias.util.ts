@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 
 /**
  * Resolução de aliases EN legados para os campos canônicos pt-BR de Phonograms
- * (C2): titulo/title, work_id/workId, artist_id/artistId. Puro: não loga,
+ * (C2): title/titulo, work_id/workId, artist_id/artistId. Puro: não loga,
  * não conhece tenant/operação, não acessa repository, não importa Swagger,
  * não aplica defaults de negócio (ex.: tipo='master') — isso é
  * responsabilidade do PhonogramsService.
@@ -31,7 +31,7 @@ export interface PhonogramAliasErrorBody {
 }
 
 export interface ResolvedPhonogramWriteFields {
-  titulo?: string;
+  title?: string;
   work_id?: string | null;
   artist_id?: string | null;
 }
@@ -76,8 +76,8 @@ function throwInvalidUuid(canonical: string, field: string): never {
 function throwInvalidTitle(field: string): never {
   const body: PhonogramAliasErrorBody = {
     code: 'PHONOGRAM_TITLE_INVALID',
-    message: 'titulo inválido.',
-    fields: [{ canonical: 'titulo', legacy: field !== 'titulo' ? field : undefined }],
+    message: 'title inválido.',
+    fields: [{ canonical: 'title', legacy: field !== 'title' ? field : undefined }],
   };
   throw new BadRequestException(body);
 }
@@ -147,32 +147,37 @@ function assertTitleContent(v: unknown, field: string): asserts v is string {
   }
 }
 
-function resolveTitulo(input: Record<string, unknown>, legacyUsed: Set<string>): string | undefined {
-  const ptAbsent = isAbsent(input, 'titulo');
+/**
+ * Após a normalização de nomenclatura (2026-09-05), a coluna física passou
+ * de `titulo` para `title`. `titulo` agora é o alias legado PT aceito para
+ * chamadores antigos — mesma estrutura de antes, papéis invertidos.
+ */
+function resolveTitle(input: Record<string, unknown>, legacyUsed: Set<string>): string | undefined {
   const enAbsent = isAbsent(input, 'title');
+  const ptAbsent = isAbsent(input, 'titulo');
 
   if (ptAbsent && enAbsent) return undefined;
 
-  if (!ptAbsent && enAbsent) {
-    const v = input['titulo'];
-    assertTitleContent(v, 'titulo');
-    return v;
-  }
-
-  if (ptAbsent && !enAbsent) {
-    legacyUsed.add('title');
+  if (!enAbsent && ptAbsent) {
     const v = input['title'];
     assertTitleContent(v, 'title');
     return v;
   }
 
-  const ptV = input['titulo'];
+  if (enAbsent && !ptAbsent) {
+    legacyUsed.add('titulo');
+    const v = input['titulo'];
+    assertTitleContent(v, 'titulo');
+    return v;
+  }
+
   const enV = input['title'];
-  assertTitleContent(ptV, 'titulo');
+  const ptV = input['titulo'];
   assertTitleContent(enV, 'title');
-  legacyUsed.add('title');
-  if (ptV.trim() === enV.trim()) return ptV; // persiste o valor original do lado PT, sem trim
-  throwConflict('titulo', 'title');
+  assertTitleContent(ptV, 'titulo');
+  legacyUsed.add('titulo');
+  if (enV.trim() === ptV.trim()) return enV; // persiste o valor original do lado EN, sem trim
+  throwConflict('title', 'titulo');
 }
 
 // ── API pública ──────────────────────────────────────────────────────────────
@@ -188,8 +193,8 @@ export function resolvePhonogramAliases(
   const legacyUsed = new Set<string>();
   const normalized: ResolvedPhonogramWriteFields = {};
 
-  const titulo = resolveTitulo(input, legacyUsed);
-  if (titulo !== undefined) normalized.titulo = titulo;
+  const title = resolveTitle(input, legacyUsed);
+  if (title !== undefined) normalized.title = title;
 
   const workId = resolveUuidPair(input, WORK_ID_SPEC, legacyUsed);
   if (workId !== undefined) normalized.work_id = workId;

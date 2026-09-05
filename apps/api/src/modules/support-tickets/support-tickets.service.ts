@@ -219,7 +219,7 @@ export class SupportTicketsService {
           payload: {
             ticketId:   id,
             tenantId,
-            titulo:     current.subject,
+            title:     current.subject,
             resolvedBy: userId,
             resolvedAt: new Date().toISOString(),
           },

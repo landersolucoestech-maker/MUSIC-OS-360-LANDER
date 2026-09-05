@@ -58,7 +58,7 @@ export interface MonitoringRightsEntry {
   source_label: string;
   isrc: string | null;
   iswc: string | null;
-  titulo: string | null;
+  title: string | null;
   periodo: string;
   valor_bruto_brl: string;
   status: RightsRecord["status"];
@@ -103,7 +103,7 @@ export function fromRightsRecord(record: RightsRecord): MonitoringRightsEntry {
     source_label: SOURCE_LABELS[record.source],
     isrc: record.isrc ?? null,
     iswc: record.iswc ?? null,
-    titulo: record.fonograma_titulo ?? record.obra_titulo ?? null,
+    title: record.fonograma_titulo ?? record.obra_titulo ?? null,
     periodo,
     valor_bruto_brl: valorBrl,
     status: record.status,

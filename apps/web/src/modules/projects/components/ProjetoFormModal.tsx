@@ -183,7 +183,7 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
 
   // Initialize state from projeto when the component mounts fresh (key-based remount ensures fresh mount per project).
   const [tipoLancamento, setTipoLancamento] = useState(() => normTipo(projeto?.tipo));
-  const [nomeEP, setNomeEP] = useState(() => (mode !== "create" && projeto?.tipo !== "single") ? (projeto?.titulo || "") : "");
+  const [nomeEP, setNomeEP] = useState(() => (mode !== "create" && projeto?.tipo !== "single") ? (projeto?.title || "") : "");
   const [musicas, setMusicas] = useState<MusicaData[]>(() => {
     if (mode === "create" || !projeto) return [createEmptyMusica()];
     // musicas[] normalizada em project_tracks (migration 20260718000013) —
@@ -202,7 +202,7 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
     }
     const tipo = normTipo(projeto?.tipo);
     const generoHerdado = normEnum(projeto?.genero as string | undefined, "");
-    return [{ ...createEmptyMusica(), nome: tipo === "single" ? (projeto?.titulo || "") : "", genero: generoHerdado }];
+    return [{ ...createEmptyMusica(), nome: tipo === "single" ? (projeto?.title || "") : "", genero: generoHerdado }];
   });
   const [observacoes, setObservacoes] = useState(() => projeto?.observacoes || "");
   const [status, setStatus] = useState(() => normStatus(projeto?.status));
@@ -236,11 +236,11 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
       return;
     }
 
-    const titulo = showAlbumEpName
+    const title = showAlbumEpName
       ? nomeEP.trim()
       : (musicas[0]?.nome?.trim() || "");
 
-    if (!titulo) {
+    if (!title) {
       toast.error(!showAlbumEpName
         ? "Digite o nome da música!"
         : `Digite o nome do ${tipoLancamento === "ep" ? "EP" : "Álbum"}!`);
@@ -254,7 +254,7 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
     const genero = musicas[0]?.genero || null;
 
     const basePayload: ProjetoUpdate = {
-      titulo,
+      title,
       tipo: tipoLancamento,
       status,
       observacoes: observacoes || null,
@@ -267,7 +267,7 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
       let savedId: string | undefined;
       if (mode === "create") {
         const insertPayload: ProjetoInsert = {
-          titulo,
+          title,
           tipo: tipoLancamento,
           status,
           observacoes: observacoes || null,

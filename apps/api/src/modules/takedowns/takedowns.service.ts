@@ -33,7 +33,7 @@ export class TakedownsService {
     if (query.artist_id) qb.andWhere('t.artist_id = :artistId', { artistId: query.artist_id });
     if (query.search) {
       qb.andWhere(
-        '(t.titulo ILIKE :search OR t.obra_afetada ILIKE :search OR t.artista ILIKE :search OR t.motivo ILIKE :search)',
+        '(t.title ILIKE :search OR t.obra_afetada ILIKE :search OR t.artista ILIKE :search OR t.motivo ILIKE :search)',
         { search: `%${query.search}%` },
       );
     }

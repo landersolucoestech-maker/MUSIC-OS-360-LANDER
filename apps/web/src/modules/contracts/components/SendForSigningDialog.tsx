@@ -58,7 +58,7 @@ export function SendForSigningDialog({
     try {
       const result = await signingService.sendForSigning({
         contratoId: contrato.id,
-        title:      contrato.titulo,
+        title:      contrato.title,
         fileUrl:    contrato.arquivo_url,
         signers:    signers.map((s) => ({ name: s.name, email: s.email })),
         provider:   selected,
@@ -97,7 +97,7 @@ export function SendForSigningDialog({
           </DialogTitle>
           <DialogDescription className="text-xs">
             Escolha o provedor de assinatura digital para enviar o contrato{" "}
-            <span className="font-medium text-foreground">&ldquo;{contrato.titulo}&rdquo;</span>.
+            <span className="font-medium text-foreground">&ldquo;{contrato.title}&rdquo;</span>.
           </DialogDescription>
         </DialogHeader>
 

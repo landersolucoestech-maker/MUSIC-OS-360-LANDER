@@ -30,7 +30,7 @@ export class TicketEventsHandler {
     const tenantId = event.tenantId ?? event.payload.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { ticketId, titulo, resolvedBy, resolvedAt } = event.payload;
+    const { ticketId, title, resolvedBy, resolvedAt } = event.payload;
     let slaCompliant: boolean | null = null;
     let createdBy: string | null = null;
 
@@ -92,7 +92,7 @@ export class TicketEventsHandler {
                 id: randomUUID(),
                 tenant_id: tenantId,
                 user_id: createdBy,
-                title: `Seu ticket foi resolvido: "${titulo}"${slaText}`,
+                title: `Seu ticket foi resolvido: "${title}"${slaText}`,
                 body: `Ticket resolvido por ${resolvedBy} em ${resolvedAt}. Por favor avalie o atendimento.`,
                 type: DOMAIN_EVENTS.TICKET_RESOLVED,
                 entity: 'support_ticket',

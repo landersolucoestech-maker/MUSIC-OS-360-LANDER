@@ -171,7 +171,7 @@ export class ProjectsService {
     if (q['type'])     qb.andWhere('p.tipo = :tipo',              { tipo:      q['type'] });
     if (q['artistId']) qb.andWhere('p.artist_id = :artistId',   { artistId: q['artistId'] });
     if (q['genero'])   qb.andWhere('p.genero = :genero',          { genero:    q['genero'] });
-    if (q['search'])   qb.andWhere('p.titulo ILIKE :search',      { search: `%${q['search']}%` });
+    if (q['search'])   qb.andWhere('p.title ILIKE :search',      { search: `%${q['search']}%` });
 
     qb.orderBy('p.created_at', q['ascending'] ? 'ASC' : 'DESC')
       .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
@@ -310,7 +310,7 @@ export class ProjectsService {
       payload: {
         projectId:   project.id,
         tenantId,
-        title:       project.titulo,
+        title:       project.title,
         type:        project.tipo,
         artistId:    project.artist_id,
         completedBy: userId,

@@ -20,7 +20,7 @@ export class BriefingsService {
 
     if ((query as any).status)     qb.andWhere('b.status = :status',       { status:     (query as any).status });
     if ((query as any).artist_id) qb.andWhere('b.artist_id = :artistId', { artistId: (query as any).artist_id });
-    if ((query as any).search)     qb.andWhere('b.titulo ILIKE :search',   { search: `%${(query as any).search}%` });
+    if ((query as any).search)     qb.andWhere('b.title ILIKE :search',   { search: `%${(query as any).search}%` });
 
     qb.orderBy('b.created_at', (query as any).ascending ? 'ASC' : 'DESC')
       .skip((query as any).offset ?? 0)
@@ -40,12 +40,12 @@ export class BriefingsService {
   }
 
   // O DTO usa nomes em inglês (title/content/campaignId/dueAt) mas as colunas
-  // físicas da entidade são em português (titulo/descricao/campaign_id/prazo)
+  // físicas da entidade são em português (title/descricao/campaign_id/prazo)
   // — sem este mapeamento explícito, um spread bruto do DTO nunca populava as
   // colunas reais (TypeORM só persiste propriedades decoradas com @Column).
   private toEntityFields(dto: CreateBriefingDto | UpdateBriefingDto): Record<string, unknown> {
     const out: Record<string, unknown> = {};
-    if (dto.title !== undefined) out.titulo = dto.title;
+    if (dto.title !== undefined) out.title = dto.title;
     if (dto.content !== undefined) out.descricao = dto.content;
     if (dto.campaignId !== undefined) out.campaign_id = dto.campaignId;
     if (dto.dueAt !== undefined) out.prazo = dto.dueAt;

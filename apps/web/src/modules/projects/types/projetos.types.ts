@@ -6,7 +6,7 @@ export type { ProjetoStatus, ProjetoTipo };
 export interface Projeto {
   id: string;
   user_id?: string;
-  titulo: string;
+  title: string;
   tipo?: ProjetoTipo | string | null;
   status?: ProjetoStatus | string | null;
   artist_id?: string | null;

@@ -69,7 +69,7 @@ export class AbramusService extends IntegrationBaseService {
   }
 
   async registerWork(tenantId: string, workData: {
-    titulo: string; compositor: string; iswc?: string;
+    title: string; compositor: string; iswc?: string;
     genero?: string; duracao?: string; editora?: string; coautores?: string[];
   }) {
     return this.request(tenantId, '/api/v1/works', { method: 'POST', body: JSON.stringify(workData) });

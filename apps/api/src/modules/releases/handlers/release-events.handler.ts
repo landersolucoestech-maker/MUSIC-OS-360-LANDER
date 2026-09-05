@@ -18,7 +18,7 @@ const APPROVAL_CHECKLIST = [
   'Confirmar ISRC atribuido a todos os fonogramas',
   'Confirmar UPC / EAN do album',
   'Selecionar distribuidora e plataformas de destino',
-  'Validar metadados (titulo, artistas, creditos, ISWC)',
+  'Validar metadados (title, artistas, creditos, ISWC)',
 ] as const;
 
 @Injectable()
@@ -38,7 +38,7 @@ export class ReleaseEventsHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { releaseId, titulo, artistId, approvedBy } = event.payload;
+    const { releaseId, title, artistId, approvedBy } = event.payload;
 
     if (this.notifRepo && event.userId) {
       try {
@@ -50,7 +50,7 @@ export class ReleaseEventsHandler {
               id: randomUUID(),
               tenant_id: tenantId,
               user_id: event.userId,
-              title: `Checklist de lancamento aprovado: "${titulo}"`,
+              title: `Checklist de lancamento aprovado: "${title}"`,
               body: APPROVAL_CHECKLIST.map((item, i) => `${i + 1}. ${item}`).join('\n'),
               type: 'release.approved.checklist',
               entity: 'release',
@@ -78,8 +78,8 @@ export class ReleaseEventsHandler {
               id: randomUUID(),
               tenant_id: tenantId,
               user_id: artistId,
-              title: `Seu lancamento foi aprovado: "${titulo}"`,
-              body: `O lancamento "${titulo}" foi aprovado por ${approvedBy} e segue para distribuicao. Aguarde o checklist de validacao.`,
+              title: `Seu lancamento foi aprovado: "${title}"`,
+              body: `O lancamento "${title}" foi aprovado por ${approvedBy} e segue para distribuicao. Aguarde o checklist de validacao.`,
               type: 'release.approved.artist',
               entity: 'release',
               entity_id: releaseId,

@@ -80,7 +80,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                   <Play className="h-5 w-5 text-foreground ml-0.5" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-lg font-bold">{projeto.titulo}</h2>
+                  <h2 className="text-lg font-bold">{projeto.title}</h2>
                   <div className="flex items-center gap-2 mt-1">
                     {getStatusBadge(projeto.status)}
                     <Badge variant="outline">{capitalize(projeto.tipo) || "Single"}</Badge>
@@ -121,7 +121,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                             {/* Título e Badges */}
                             <div className="flex items-start justify-between gap-2">
                               <h4 className="font-medium" data-testid={`text-view-musica-nome-${idx}`}>
-                                {musicas.length > 1 ? `${idx + 1}. ` : ""}{info.nome || projeto.titulo}
+                                {musicas.length > 1 ? `${idx + 1}. ` : ""}{info.nome || projeto.title}
                               </h4>
                               <div className="flex items-center gap-1 flex-wrap justify-end">
                                 <Badge variant="outline" className="text-xs">
@@ -233,7 +233,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                     <CardContent className="p-4 space-y-4">
                       {/* Fallback para projetos sem descricao JSON */}
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-medium">{projeto.titulo}</h4>
+                        <h4 className="font-medium">{projeto.title}</h4>
                         <div className="flex items-center gap-1">
                           <Badge variant="outline" className="text-xs">Solo</Badge>
                           <Badge variant="outline" className="text-xs">Original</Badge>
@@ -300,8 +300,8 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <Music2 className="h-4 w-4 text-warning shrink-0" />
-                              <span className="text-sm font-medium truncate" data-testid={`text-obra-titulo-${obra.id}`}>
-                                {obra.titulo}
+                              <span className="text-sm font-medium truncate" data-testid={`text-obra-title-${obra.id}`}>
+                                {obra.title}
                               </span>
                               {obra.status && (
                                 <Badge variant="outline" className="text-[10px] ">

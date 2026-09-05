@@ -337,7 +337,7 @@ function buildContactInitialValue(conversation: SupportConversation): Partial<Co
 
 function buildEventInitialValue(conversation: SupportConversation) {
   return {
-    titulo: `Atendimento - ${conversation.customer}`,
+    title: `Atendimento - ${conversation.customer}`,
     tipoEvento: "reunioes",
     tipo_evento: "reunioes",
     status: "agendado",

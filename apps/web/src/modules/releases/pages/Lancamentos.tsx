@@ -105,7 +105,7 @@ function ReleaseCard({ release, artista, now, selected, onToggleSelect, onView, 
     >
       <div className="relative h-96 overflow-hidden">
         {artworkUrl ? (
-          <img src={artworkUrl} alt={release.titulo} className="absolute inset-0 h-full w-full object-cover" />
+          <img src={artworkUrl} alt={release.title} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-muted">
             <Music className="h-20 w-20 text-muted-foreground" />
@@ -120,7 +120,7 @@ function ReleaseCard({ release, artista, now, selected, onToggleSelect, onView, 
             checked={selected}
             onCheckedChange={onToggleSelect}
             onClick={(event) => event.stopPropagation()}
-            aria-label={`Selecionar lançamento ${release.titulo}`}
+            aria-label={`Selecionar lançamento ${release.title}`}
             data-testid={`checkbox-lancamento-${release.id}`}
           />
           <Badge className={`border px-2 py-1 text-[10px] font-bold tracking-[0.18em] ${status.className} no-default-hover-elevate no-default-active-elevate`}>
@@ -162,8 +162,8 @@ function ReleaseCard({ release, artista, now, selected, onToggleSelect, onView, 
               {genre}
             </Badge>
           </div>
-          <h3 className={`line-clamp-2 text-2xl font-black leading-tight tracking-normal ${text}`} data-testid={`text-lancamento-titulo-${release.id}`}>
-            {release.titulo}
+          <h3 className={`line-clamp-2 text-2xl font-black leading-tight tracking-normal ${text}`} data-testid={`text-lancamento-title-${release.id}`}>
+            {release.title}
           </h3>
           <p className={`mt-1 text-sm font-medium ${subtext}`} data-testid={`text-lancamento-artista-${release.id}`}>
             {artista?.nome_artistico || "Artista não vinculado"}
@@ -336,8 +336,8 @@ export default function Lancamentos() {
       share_type: "internal_release",
       release_id: release.id,
       artist_id: release.artist_id ?? null,
-      nome_musica: release.titulo ?? null,
-      detentor: artista?.nome_artistico ?? release.titulo ?? "Lancamento",
+      nome_musica: release.title ?? null,
+      detentor: artista?.nome_artistico ?? release.title ?? "Lancamento",
       destinatario: null,
       tipo: "interprete",
       direcao: "a_enviar",
@@ -549,7 +549,7 @@ export default function Lancamentos() {
         onCreatedAndDistributed={handleReleaseCreatedAndDistributed}
       />
       <LancamentoViewModal open={viewModal.open} onOpenChange={(open) => setViewModal({ ...viewModal, open })} lancamento={viewModal.lancamento} />
-      <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Lançamento" description={`Tem certeza que deseja excluir "${deleteModal.lancamento?.titulo}"?`} onConfirm={handleDelete} />
+      <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Lançamento" description={`Tem certeza que deseja excluir "${deleteModal.lancamento?.title}"?`} onConfirm={handleDelete} />
       <Dialog open={sharePrompt.open} onOpenChange={(open) => setSharePrompt((current) => ({ ...current, open }))}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -560,7 +560,7 @@ export default function Lancamentos() {
           </DialogHeader>
           {sharePrompt.release && (
             <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
-              <p className="font-medium text-foreground">{sharePrompt.release.titulo}</p>
+              <p className="font-medium text-foreground">{sharePrompt.release.title}</p>
               {formatReleaseDate(sharePrompt.release.data_lancamento) && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Data de lançamento: {formatReleaseDate(sharePrompt.release.data_lancamento)}

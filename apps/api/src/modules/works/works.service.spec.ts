@@ -16,7 +16,7 @@ async function validateDto(payload: Record<string, unknown>) {
 
 const TENANT  = 'tenant-test';
 const WORK_ID = 'work-test';
-const mockWork = { id: WORK_ID, tenant_id: TENANT, titulo: 'Test', tipo: 'original', deleted_at: null };
+const mockWork = { id: WORK_ID, tenant_id: TENANT, title: 'Test', tipo: 'original', deleted_at: null };
 
 const buildMockQb = (getOneValue: any = mockWork) => {
   const qb: any = {
@@ -100,10 +100,10 @@ describe('WorksService', () => {
   });
 
   it('cria obra com dados corretos', async () => {
-    await service.create(TENANT, 'u1', { titulo: 'Nova', tipo: 'original' } as any);
+    await service.create(TENANT, 'u1', { title: 'Nova', tipo: 'original' } as any);
     expect(mockDs._repo.save).toHaveBeenCalled();
     expect(mockDs._repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ tenant_id: TENANT, titulo: 'Nova' }),
+      expect.objectContaining({ tenant_id: TENANT, title: 'Nova' }),
     );
   });
 
@@ -127,7 +127,7 @@ describe('WorksService', () => {
 
   describe('CreateWorkDto — payload real do formulário (Estado B, pré-C2)', () => {
     const realFormPayload = {
-      titulo: 'Minha Obra',
+      title: 'Minha Obra',
       genero: 'pop',
       idioma: 'pt',
       cod_ecad: 'ECAD-0001',
@@ -169,28 +169,28 @@ describe('WorksService', () => {
 
   describe('create() — fallback de tipo (works.tipo é NOT NULL)', () => {
     it('usa tipo_obra quando tipo está ausente', async () => {
-      await service.create(TENANT, 'u1', { titulo: 'Nova', tipo_obra: 'musica' } as any);
+      await service.create(TENANT, 'u1', { title: 'Nova', tipo_obra: 'musica' } as any);
       expect(mockDs._repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ tipo: 'musica' }),
       );
     });
 
     it('usa composicao quando tipo e tipo_obra estão ausentes', async () => {
-      await service.create(TENANT, 'u1', { titulo: 'Nova' } as any);
+      await service.create(TENANT, 'u1', { title: 'Nova' } as any);
       expect(mockDs._repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ tipo: 'composicao' }),
       );
     });
 
     it('tipo explícito vence sobre tipo_obra quando ambos presentes', async () => {
-      await service.create(TENANT, 'u1', { titulo: 'Nova', tipo: 'original', tipo_obra: 'musica' } as any);
+      await service.create(TENANT, 'u1', { title: 'Nova', tipo: 'original', tipo_obra: 'musica' } as any);
       expect(mockDs._repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ tipo: 'original' }),
       );
     });
 
     it('persiste compositores como array', async () => {
-      await service.create(TENANT, 'u1', { titulo: 'Nova', tipo: 'original', compositores: ['A', 'B'] } as any);
+      await service.create(TENANT, 'u1', { title: 'Nova', tipo: 'original', compositores: ['A', 'B'] } as any);
       expect(mockDs._repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ compositores: ['A', 'B'] }),
       );
@@ -208,7 +208,7 @@ describe('WorksService', () => {
   describe('participantes — normalizado em work_participants (migration 20260718000011)', () => {
     it('create() não envia participantes para o repo de WorkEntity (não é mais coluna)', async () => {
       await service.create(TENANT, 'u1', {
-        titulo: 'Nova', tipo: 'original',
+        title: 'Nova', tipo: 'original',
         participantes: [{ id: 'p1', nome: 'Fulano', classeFuncao: 'compositor/autor', link: '', percentual: '50' }],
       } as any);
       expect(mockDs._repo.create).toHaveBeenCalledWith(
@@ -218,7 +218,7 @@ describe('WorksService', () => {
 
     it('create() persiste cada participante como linha própria em work_participants', async () => {
       await service.create(TENANT, 'u1', {
-        titulo: 'Nova', tipo: 'original',
+        title: 'Nova', tipo: 'original',
         participantes: [
           { id: 'p1', nome: 'Fulano', classeFuncao: 'compositor/autor', link: 'https://x', percentual: '60' },
           { id: 'p2', nome: 'Beltrano', classeFuncao: 'tradutor', link: '', percentual: '40' },
@@ -278,7 +278,7 @@ describe('WorksService', () => {
 
     it('create() também roda obra + participantes na mesma transação', async () => {
       await service.create(TENANT, 'u1', {
-        titulo: 'Nova', tipo: 'original',
+        title: 'Nova', tipo: 'original',
         participantes: [{ id: 'p1', nome: 'X', classeFuncao: 'compositor/autor', link: '', percentual: '100' }],
       } as any);
       expect(mockDs.transaction).toHaveBeenCalledTimes(1);

@@ -64,7 +64,7 @@ export function ExecucoesTable({ deteccoes, onViewDetail, selectedIds, onToggleS
                     <Checkbox
                       checked={selectedIds?.includes(det.id)}
                       onCheckedChange={() => onToggleSelect(det.id)}
-                      aria-label={`Selecionar ${det.obra?.titulo ?? det.titulo_detectado ?? det.id}`}
+                      aria-label={`Selecionar ${det.obra?.title ?? det.titulo_detectado ?? det.id}`}
                       data-testid={`checkbox-deteccao-${det.id}`}
                     />
                   </TableCell>
@@ -72,7 +72,7 @@ export function ExecucoesTable({ deteccoes, onViewDetail, selectedIds, onToggleS
                 <TableCell className="py-3">
                   <div className="min-w-0 max-w-[240px]">
                     <p className="font-semibold text-foreground leading-tight truncate">
-                      {det.obra?.titulo ?? det.titulo_detectado ?? "—"}
+                      {det.obra?.title ?? det.titulo_detectado ?? "—"}
                     </p>
                     {!det.obra && (
                       <p className="text-xs text-destructive mt-0.5 truncate">Sem vínculo com obra do catálogo</p>

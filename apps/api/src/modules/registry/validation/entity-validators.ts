@@ -56,7 +56,7 @@ export class WorkRegistryValidationService {
     // entram na soma de splits.
     const eligible = active.filter(isRegistryEligibleShare);
 
-    if (!work.titulo || !work.titulo.trim()) {
+    if (!work.title || !work.title.trim()) {
       issues.push(issue(E, 'work_title_required', 'title', 'Título da obra é obrigatório.'));
     }
 
@@ -113,7 +113,7 @@ export class RecordingRegistryValidationService {
     if (!recording.work_id) {
       issues.push(issue(E, 'recording_work_required', 'work_id', 'Fonograma deve estar vinculado a uma obra (work_id).'));
     }
-    if (!recording.titulo || !recording.titulo.trim()) {
+    if (!recording.title || !recording.title.trim()) {
       issues.push(issue(E, 'recording_title_required', 'title', 'Título do fonograma é obrigatório.'));
     }
 

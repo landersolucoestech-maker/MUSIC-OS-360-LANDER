@@ -336,7 +336,7 @@ export class DocuSignService {
         payload: {
           contractId:      params.contractId,
           tenantId:        params.tenantId,
-          titulo:          params.name,
+          title:          params.name,
           artistId:        null,
           autentiqueDocId: envelopeId,
           sentBy:          params.userId,
@@ -498,7 +498,7 @@ export class DocuSignService {
         payload: {
           contractId: contract.id,
           tenantId,
-          titulo:     contract.titulo ?? '',
+          title:     contract.title ?? '',
           artistId:   (contract as any).artist_id ?? null,
           signedBy:   'docusign:webhook',
           signedAt,

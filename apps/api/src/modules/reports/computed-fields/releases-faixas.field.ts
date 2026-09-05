@@ -4,9 +4,9 @@
  * Resolver dedicado para a aba filha "Faixas do Lançamento"
  * (RELEASES_CONTRACT.childSheets). `faixas[]` vive dentro de
  * releases.metadata.faixas (não normalizada em tabela própria, ao contrário
- * de Projetos/project_tracks). Cada faixa usa a chave `titulo` no armazenamento
+ * de Projetos/project_tracks). Cada faixa usa a chave `title` no armazenamento
  * real do formulário (LancamentoFormModal.tsx) — renomeada para `nome` na aba
- * filha para não colidir com a coluna `titulo` do Lançamento (linha-pai).
+ * filha para não colidir com a coluna `title` do Lançamento (linha-pai).
  *
  * Simplificação documentada (Parte 89): produtores/músicos/artistas
  * adicionais de cada faixa são arrays de objetos ({nome,role}/{nome,
@@ -47,7 +47,7 @@ export async function fetchReleasesFaixasForExport(
     out.set(
       row.id,
       raw.map((f) => ({
-        nome: String(f.titulo ?? ''),
+        nome: String(f.title ?? ''),
         isVersionAlternativa: f.isVersionAlternativa ?? null,
         tipoVersao: f.tipoVersao ?? null,
         versionCustomName: f.versionCustomName ?? null,
@@ -75,7 +75,7 @@ export async function writeReleasesFaixasForImport(
   const stored = list.map((raw) => {
     const f = (raw ?? {}) as Record<string, unknown>;
     return {
-      titulo: String(f.nome ?? ''),
+      title: String(f.nome ?? ''),
       isVersionAlternativa: f.isVersionAlternativa ?? null,
       tipoVersao: f.tipoVersao ?? null,
       versionCustomName: f.versionCustomName ?? null,

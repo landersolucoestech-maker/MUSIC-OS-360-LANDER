@@ -7,14 +7,14 @@ import type { LancamentoFormFields } from "./entity-to-form.mapper";
 
 export function projetoToLancamentoSeed(projeto: {
   id: string;
-  titulo?: string | null;
+  title?: string | null;
   artist_id?: string | null;
   genero?: string | null;
   tipo?: string | null;
 }): Partial<LancamentoFormFields> {
   return {
     projetoSeed: projeto.id,
-    titulo:      projeto.titulo?.trim() ?? "",
+    title:      projeto.title?.trim() ?? "",
     artist_id:  projeto.artist_id ?? "",
     genero:      projeto.genero ?? "",
     tipo:        projeto.tipo ?? "single",

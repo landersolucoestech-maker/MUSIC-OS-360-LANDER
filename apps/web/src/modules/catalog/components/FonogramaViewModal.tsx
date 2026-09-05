@@ -53,7 +53,7 @@ interface ArquivoAudioView {
 
 export interface FonogramaViewData {
   // Identity
-  titulo?: string | null;
+  title?: string | null;
   gravadora?: string | null;
   observacoes?: string | null;
   // ABRAMUS / ECAD codes
@@ -232,16 +232,16 @@ export function FonogramaViewModal({
   if (!obraVinculada && lookupObraId) {
     obraVinculada = foundObra
       ? {
-          title: foundObra.titulo ?? "",
+          title: foundObra.title ?? "",
           genero: foundObra.genero ?? "",
           compositores: compositoresToString(foundObra.compositores),
         }
       : { title: "Obra vinculada" };
   }
 
-  const obraTitulo = obraVinculada?.title || obraVinculada?.titulo || "";
+  const obraTitle = obraVinculada?.title || obraVinculada?.titulo || "";
 
-  const fonogramaTitulo = pickStr(fonograma.titulo);
+  const fonogramaTitle = pickStr(fonograma.title);
   const gravadora = pickStr(fonograma.gravadora);
   const observacoes = pickStr(fonograma.observacoes);
 
@@ -336,7 +336,7 @@ export function FonogramaViewModal({
   const arquivoAudio = fonograma.arquivoAudio ?? fonograma.arquivo_audio ?? null;
 
   const renderParticipacaoSection = (
-    titulo: string,
+    title: string,
     categoria: keyof Required<ParticipacaoView>,
     percentualMax: number,
     isOpen: boolean,
@@ -349,7 +349,7 @@ export function FonogramaViewModal({
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 bg-muted/30 rounded-lg">
           <span className="text-sm font-medium text-foreground">
-            {titulo}{" "}
+            {title}{" "}
             <span className="text-muted-foreground font-normal">
               — {percentualAtual.toFixed(2)}% de {percentualMax.toFixed(2)}%
             </span>
@@ -402,10 +402,10 @@ export function FonogramaViewModal({
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold">
-                  {fonogramaTitulo || obraTitulo || "Fonograma sem título"}
+                  {fonogramaTitle || obraTitle || "Fonograma sem título"}
                 </h2>
-                {fonogramaTitulo && obraTitulo && fonogramaTitulo !== obraTitulo && (
-                  <p className="text-sm text-muted-foreground mt-0.5">Obra: {obraTitulo}</p>
+                {fonogramaTitle && obraTitle && fonogramaTitle !== obraTitle && (
+                  <p className="text-sm text-muted-foreground mt-0.5">Obra: {obraTitle}</p>
                 )}
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <StatusBadge status={status} />
@@ -433,9 +433,9 @@ export function FonogramaViewModal({
                   <div className="flex-1 min-w-0">
                     <p
                       className="font-medium text-foreground truncate"
-                      data-testid="text-obra-vinculada-titulo"
+                      data-testid="text-obra-vinculada-title"
                     >
-                      {obraTitulo || "—"}
+                      {obraTitle || "—"}
                     </p>
                     {(obraVinculada.genero || obraVinculada.compositores) && (
                       <p className="text-xs text-muted-foreground truncate">

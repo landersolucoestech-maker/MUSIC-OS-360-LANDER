@@ -80,7 +80,7 @@ export function ECADViewModal({ open, onOpenChange, relatorio }: ECADViewModalPr
               </div>
               {relatorio.obra ? (
                 <div className="p-4 text-sm space-y-1">
-                  <p className="font-medium text-foreground">{relatorio.obra.titulo}</p>
+                  <p className="font-medium text-foreground">{relatorio.obra.title}</p>
                   <p className="text-muted-foreground">{relatorio.obra.compositor || "—"} · {relatorio.obra.editora || "—"}</p>
                   <p className="text-xs text-muted-foreground">Cód. ECAD: {relatorio.obra.cod_ecad || "—"}</p>
                 </div>

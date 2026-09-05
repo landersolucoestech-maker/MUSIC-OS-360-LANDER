@@ -70,7 +70,7 @@ export function formToLancamentoPayload(f: LancamentoFormFields, mode: "create" 
   const hasCron = Object.values(cronograma).some(Boolean);
 
   const payload: Record<string, unknown> = {
-    title:       f.titulo.trim(),
+    title:       f.title.trim(),
     type:        ns(f.tipo) ?? "single",
   };
 

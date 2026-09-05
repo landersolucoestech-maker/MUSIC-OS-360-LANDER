@@ -53,7 +53,7 @@ export interface ReleasePlatformAttempt {
 export interface Lancamento {
   id: string;
   user_id?: string;
-  titulo: string;
+  title: string;
   tipo?: LancamentoTipo | string | null;
   status?: LancamentoStatus | string | null;
   artist_id?: string | null;

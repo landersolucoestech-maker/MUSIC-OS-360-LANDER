@@ -6,7 +6,7 @@ export type { EventoTipo, EventoStatus };
 export interface Evento {
   id: string;
   user_id?: string;
-  titulo: string;
+  title: string;
   tipo_evento?: EventoTipo | string | null;
   status?: EventoStatus | string | null;
   artist_id?: string | null;

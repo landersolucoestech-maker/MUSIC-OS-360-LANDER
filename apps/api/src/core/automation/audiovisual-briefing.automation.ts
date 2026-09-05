@@ -39,7 +39,7 @@ const CONTENT_TYPES: readonly AudiovisualContentType[] = [
 const BUDGET_LEVELS: readonly AudiovisualBudgetLevel[] = ['low', 'medium', 'high', 'premium'];
 
 interface ReleaseRow {
-  titulo: string;
+  title: string;
   artist_name: string | null;
   metadata: Record<string, unknown> | null;
 }
@@ -94,7 +94,7 @@ export class AudiovisualBriefingAutomation {
   ): Promise<ReleaseRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT r.titulo, r.metadata,
+      `SELECT r.title, r.metadata,
               a.nome_artistico AS artist_name
          FROM releases r
          LEFT JOIN artists a
@@ -136,11 +136,11 @@ export class AudiovisualBriefingAutomation {
       : 'medium';
 
     const input: AudiovisualBriefingInput = {
-      projectTitle: `${release.titulo} — Audiovisual`,
+      projectTitle: `${release.title} — Audiovisual`,
       artistName: release.artist_name?.trim() || 'Artista',
       contentType,
-      releaseTitle: release.titulo,
-      objective: `Produzir o material audiovisual de lançamento de "${release.titulo}".`,
+      releaseTitle: release.title,
+      objective: `Produzir o material audiovisual de lançamento de "${release.title}".`,
       budgetLevel,
       language: 'pt-BR',
     };

@@ -20,7 +20,7 @@ const NOW = new Date('2026-08-14T12:00:00.000Z');
 const mockLicense = {
   id: LICENSE_ID,
   tenant_id: TENANT,
-  titulo: 'Licença teste',
+  title: 'Licença teste',
   status: 'negociacao',
   valor: '100',
   moeda: 'BRL',
@@ -54,18 +54,18 @@ describe('LicensingService — concorrência otimista em update()', () => {
 
   it('sem expectedUpdatedAt: aplica update incondicional (compatibilidade retroativa)', async () => {
     service = await buildService({ affected: 1 });
-    await service.update(TENANT, 'u1', LICENSE_ID, { titulo: 'Novo título' } as any);
+    await service.update(TENANT, 'u1', LICENSE_ID, { title: 'Novo título' } as any);
 
     expect(mockDs._repo.update).toHaveBeenCalledWith(
       { id: LICENSE_ID, tenant_id: TENANT },
-      expect.objectContaining({ titulo: 'Novo título' }),
+      expect.objectContaining({ title: 'Novo título' }),
     );
   });
 
   it('com expectedUpdatedAt correto: inclui updated_at no critério', async () => {
     service = await buildService({ affected: 1 });
     await service.update(TENANT, 'u1', LICENSE_ID, {
-      titulo: 'Editado',
+      title: 'Editado',
       expectedUpdatedAt: NOW.toISOString(),
     } as any);
 
@@ -76,14 +76,14 @@ describe('LicensingService — concorrência otimista em update()', () => {
     const op = criteria.updated_at as any;
     expect(op._type).toBe('raw');
     expect(op._objectLiteralParameters).toEqual({ expected: NOW });
-    expect(payload).toEqual(expect.objectContaining({ titulo: 'Editado' }));
+    expect(payload).toEqual(expect.objectContaining({ title: 'Editado' }));
   });
 
   it('com expectedUpdatedAt desatualizado (0 linhas afetadas): lança ConflictException (409)', async () => {
     service = await buildService({ affected: 0 });
     await expect(
       service.update(TENANT, 'u1', LICENSE_ID, {
-        titulo: 'Tentativa concorrente',
+        title: 'Tentativa concorrente',
         expectedUpdatedAt: new Date('2026-08-14T11:00:00.000Z').toISOString(),
       } as any),
     ).rejects.toThrow(ConflictException);
@@ -93,7 +93,7 @@ describe('LicensingService — concorrência otimista em update()', () => {
     service = await buildService({ affected: 1 });
     await expect(
       service.update(TENANT, 'u1', LICENSE_ID, {
-        titulo: 'x',
+        title: 'x',
         expectedUpdatedAt: 'not-a-date',
       } as any),
     ).rejects.toThrow(BadRequestException);

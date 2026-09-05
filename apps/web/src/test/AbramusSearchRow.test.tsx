@@ -31,7 +31,7 @@ const renderWith = (ui: React.ReactElement) =>
 
 const baseResult = {
   external_id: "ABR-123",
-  titulo: "Canção de Teste",
+  title: "Canção de Teste",
   iswc: "T-123456789-0",
   isrc: null,
   artista_nome: "Artista X",
@@ -77,7 +77,7 @@ describe("AbramusSearchRow — already-imported flow", () => {
   it("shows the 'Já no sistema' badge when the obra has a local match", () => {
     setupHooks({
       lookup: new Map([
-        ["ABR-123", { id: "local-1", titulo: "Canção de Teste" }],
+        ["ABR-123", { id: "local-1", title: "Canção de Teste" }],
       ]),
     });
 
@@ -101,7 +101,7 @@ describe("AbramusSearchRow — already-imported flow", () => {
   it("clicking an already-imported obra calls onImported with localId and SKIPS useAbramusImport", async () => {
     const { importMutate } = setupHooks({
       lookup: new Map([
-        ["ABR-123", { id: "local-1", titulo: "Canção de Teste" }],
+        ["ABR-123", { id: "local-1", title: "Canção de Teste" }],
       ]),
     });
     const onImported = vi.fn();
@@ -125,7 +125,7 @@ describe("AbramusSearchRow — already-imported flow", () => {
   it("clicking an already-imported fonograma shows the fonograma toast", async () => {
     const { importMutate } = setupHooks({
       lookup: new Map([
-        ["ABR-123", { id: "local-9", titulo: "Faixa Teste" }],
+        ["ABR-123", { id: "local-9", title: "Faixa Teste" }],
       ]),
     });
     const onImported = vi.fn();

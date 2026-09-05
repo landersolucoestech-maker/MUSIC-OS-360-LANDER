@@ -43,7 +43,7 @@ export class ReleasesService {
     if (q.type)        qb.andWhere('r.tipo = :tipo',                   { tipo:        q.type });
     if (q.artistId)    qb.andWhere('r.artist_id = :artistId',        { artistId:   q.artistId });
     if (q.distributor) qb.andWhere('r.distribuidora = :distribuidora', { distribuidora: q.distributor });
-    if (q.search)      qb.andWhere('r.titulo ILIKE :search',           { search:      `%${q.search}%` });
+    if (q.search)      qb.andWhere('r.title ILIKE :search',           { search:      `%${q.search}%` });
 
     return qb;
   }
@@ -69,7 +69,7 @@ export class ReleasesService {
     const qb = this.baseQb(tenantId, q);
     qb.select('r.status', 'status')
       .addSelect(
-        `CASE WHEN r.titulo IS NOT NULL AND r.titulo <> '' AND r.artist_id IS NOT NULL
+        `CASE WHEN r.title IS NOT NULL AND r.title <> '' AND r.artist_id IS NOT NULL
               AND r.genero IS NOT NULL AND r.genero <> '' AND r.tipo IS NOT NULL AND r.tipo <> ''
          THEN true ELSE false END`,
         'has_required',
@@ -104,7 +104,7 @@ export class ReleasesService {
   async create(tenantId: string, userId: string, dto: CreateReleaseDto): Promise<ReleaseEntity> {
     const entity = this.repo!.create({
       tenant_id:       tenantId,
-      titulo:          dto.title,
+      title:          dto.title,
       tipo:            dto.type,
       artist_id:      dto.artistId    ?? null,
       upc:             dto.upc         ?? null,
@@ -127,8 +127,8 @@ export class ReleasesService {
       updated_by:      userId,
     });
     const saved = await this.repo!.save(entity);
-    await this.recordActivity(tenantId, userId, saved.id, 'created', `Lancamento "${saved.titulo}" criado`, {
-      titulo: saved.titulo,
+    await this.recordActivity(tenantId, userId, saved.id, 'created', `Lancamento "${saved.title}" criado`, {
+      title: saved.title,
       tipo: saved.tipo,
       artistId: saved.artist_id,
     });
@@ -143,7 +143,7 @@ export class ReleasesService {
       payload: {
         releaseId: saved.id,
         tenantId,
-        titulo:    saved.titulo,
+        title:    saved.title,
         tipo:      saved.tipo,
         artistId:  saved.artist_id,
         createdBy: userId,
@@ -167,7 +167,7 @@ export class ReleasesService {
     const conflictMessage = 'Este lançamento foi alterado por outro usuário desde que você o carregou. Recarregue e tente novamente.';
 
     const nonStatusUpdates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
-    if (dto.title       != null) nonStatusUpdates.titulo          = dto.title;
+    if (dto.title       != null) nonStatusUpdates.title          = dto.title;
     if (dto.type        != null) nonStatusUpdates.tipo            = dto.type;
     if (dto.artistId    != null) nonStatusUpdates.artist_id      = dto.artistId;
     if (dto.upc         != null) nonStatusUpdates.upc             = dto.upc;
@@ -242,7 +242,7 @@ export class ReleasesService {
           payload: {
             releaseId:  id,
             tenantId,
-            titulo:     current.titulo,
+            title:     current.title,
             artistId:   current.artist_id,
             approvedBy: userId,
             approvedAt: nowIso,
@@ -257,7 +257,7 @@ export class ReleasesService {
           payload: {
             releaseId:     id,
             tenantId,
-            titulo:        current.titulo,
+            title:        current.title,
             artistId:      current.artist_id,
             distribuidora: current.distribuidora,
             plataformas:   current.plataformas as unknown[],
@@ -273,7 +273,7 @@ export class ReleasesService {
           payload: {
             releaseId:   id,
             tenantId,
-            titulo:      current.titulo,
+            title:      current.title,
             artistId:    current.artist_id,
             publishedAt: nowIso,
           },

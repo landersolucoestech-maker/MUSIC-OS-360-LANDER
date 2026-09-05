@@ -69,13 +69,13 @@ const getSortText = (value: unknown): string => {
 
 const getFonogramaSortValue = (fonograma: Fonograma, key: string): unknown => {
   if (key === "genero_musical") return getFonogramaGeneroDisplay(fonograma);
-  if (key === "titulo") return fonograma.titulo ?? "";
+  if (key === "title") return fonograma.title ?? "";
   return getSortText((fonograma as Record<string, unknown>)[key]);
 };
 
 const getObraSortValue = (obra: Obra, key: string): unknown => {
   if (key === "genero") return getObraGeneroDisplay(obra);
-  if (key === "titulo") return obra.titulo ?? "";
+  if (key === "title") return obra.title ?? "";
   return getSortText((obra as Record<string, unknown>)[key]);
 };
 
@@ -145,7 +145,7 @@ export default function RegistroMusicas() {
   });
   const [fonogramaViewModal, setFonogramaViewModal] = useState<{ open: boolean; fonograma?: Fonograma }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; item?: Obra | Fonograma; type?: string }>({ open: false, item: undefined, type: undefined });
-  const [contratoModal, setContratoModal] = useState<{ open: boolean; prefill?: { titulo: string; observacoes: string } }>({ open: false });
+  const [contratoModal, setContratoModal] = useState<{ open: boolean; prefill?: { title: string; observacoes: string } }>({ open: false });
 
   // Apply incoming ?projeto=:id (and optional ?obra=:id) coming from the Projetos screen
   const [searchParams, setSearchParams] = useSearchParams();
@@ -300,14 +300,14 @@ export default function RegistroMusicas() {
   const projetosDisponiveis = useMemo(() => {
     const map = new Map<string, string>();
     allProjetos.forEach((p) => {
-      if (p?.id && p?.titulo) map.set(p.id, p.titulo);
+      if (p?.id && p?.title) map.set(p.id, p.title);
     });
     obras.forEach((o) => {
-      if (o.projetos?.id && o.projetos?.titulo && !map.has(o.projetos.id)) {
-        map.set(o.projetos.id, o.projetos.titulo);
+      if (o.projetos?.id && o.projetos?.title && !map.has(o.projetos.id)) {
+        map.set(o.projetos.id, o.projetos.title);
       }
     });
-    return Array.from(map.entries()).map(([id, titulo]) => ({ id, titulo }));
+    return Array.from(map.entries()).map(([id, title]) => ({ id, title }));
   }, [obras, allProjetos]);
 
   // Metrics — agregação exata do tenant inteiro (GROUP BY status), nunca
@@ -421,7 +421,7 @@ export default function RegistroMusicas() {
                 <SelectItem value="all-projetos">Todos Projetos</SelectItem>
                 <SelectItem value="no-projeto">Sem projeto vinculado</SelectItem>
                 {projetosDisponiveis.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.titulo}</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -540,7 +540,7 @@ export default function RegistroMusicas() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8"></TableHead>
-                        <SortableTableHead sortKey="titulo" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[180px]">Título</SortableTableHead>
+                        <SortableTableHead sortKey="title" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[180px]">Título</SortableTableHead>
                         <SortableTableHead sortKey="status" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[112px]">Status</SortableTableHead>
                         <SortableTableHead sortKey="cod_entidade" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Cód. Sociedade</SortableTableHead>
                         <SortableTableHead sortKey="cod_ecad" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Cód. ECAD</SortableTableHead>
@@ -563,7 +563,7 @@ export default function RegistroMusicas() {
                             />
                           </TableCell>
                           <TableCell className="py-3">
-                            <span className="font-medium block truncate" data-testid={`text-fonograma-titulo-${fonograma.id}`}>{fonograma.titulo}</span>
+                            <span className="font-medium block truncate" data-testid={`text-fonograma-title-${fonograma.id}`}>{fonograma.title}</span>
                             {!fonograma.work_id && (
                               <Badge
                                 variant="warning"
@@ -693,7 +693,7 @@ export default function RegistroMusicas() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8"></TableHead>
-                        <SortableTableHead sortKey="titulo" sortState={obraSort} onSort={toggleObraSort}>Título</SortableTableHead>
+                        <SortableTableHead sortKey="title" sortState={obraSort} onSort={toggleObraSort}>Título</SortableTableHead>
                         <SortableTableHead sortKey="status" sortState={obraSort} onSort={toggleObraSort} className="min-w-[112px]">Status</SortableTableHead>
                         <SortableTableHead sortKey="tipo_obra" sortState={obraSort} onSort={toggleObraSort} className="min-w-[112px]">Tipo</SortableTableHead>
                         <SortableTableHead sortKey="cod_entidade" sortState={obraSort} onSort={toggleObraSort}>Cód. Sociedade</SortableTableHead>
@@ -716,7 +716,7 @@ export default function RegistroMusicas() {
                             />
                           </TableCell>
                           <TableCell className="py-3">
-                            <span className="font-medium block truncate" data-testid={`text-obra-titulo-${obra.id}`}>{obra.titulo}</span>
+                            <span className="font-medium block truncate" data-testid={`text-obra-title-${obra.id}`}>{obra.title}</span>
                           </TableCell>
                           <TableCell className="py-3">
                             <Badge

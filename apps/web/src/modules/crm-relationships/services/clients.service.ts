@@ -87,7 +87,7 @@ export interface ClientTimelineEntry {
 
 export interface ClientContractSummary {
   id: string;
-  titulo: string;
+  title: string;
   tipo: string;
   status: string;
   valor: string | null;

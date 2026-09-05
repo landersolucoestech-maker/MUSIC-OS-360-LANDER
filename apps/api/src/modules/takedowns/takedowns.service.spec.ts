@@ -18,7 +18,7 @@ const NOW = new Date('2026-08-14T12:00:00.000Z');
 const mockTakedown = {
   id: TAKEDOWN_ID,
   tenant_id: TENANT,
-  titulo: 'Takedown teste',
+  title: 'Takedown teste',
   status: 'pendente',
   plataforma: 'youtube',
   deleted_at: null,
@@ -58,18 +58,18 @@ describe('TakedownsService — concorrência otimista em update()', () => {
 
   it('sem expectedUpdatedAt: aplica update incondicional (compatibilidade retroativa)', async () => {
     service = await buildService({ affected: 1 });
-    await service.update(TENANT, 'u1', TAKEDOWN_ID, { titulo: 'Novo título' } as any);
+    await service.update(TENANT, 'u1', TAKEDOWN_ID, { title: 'Novo título' } as any);
 
     expect(mockDs._repo.update).toHaveBeenCalledWith(
       { id: TAKEDOWN_ID, tenant_id: TENANT },
-      expect.objectContaining({ titulo: 'Novo título' }),
+      expect.objectContaining({ title: 'Novo título' }),
     );
   });
 
   it('com expectedUpdatedAt correto: inclui updated_at no critério', async () => {
     service = await buildService({ affected: 1 });
     await service.update(TENANT, 'u1', TAKEDOWN_ID, {
-      titulo: 'Editado',
+      title: 'Editado',
       expectedUpdatedAt: NOW.toISOString(),
     } as any);
 
@@ -80,14 +80,14 @@ describe('TakedownsService — concorrência otimista em update()', () => {
     const op = criteria.updated_at as any;
     expect(op._type).toBe('raw');
     expect(op._objectLiteralParameters).toEqual({ expected: NOW });
-    expect(payload).toEqual(expect.objectContaining({ titulo: 'Editado' }));
+    expect(payload).toEqual(expect.objectContaining({ title: 'Editado' }));
   });
 
   it('com expectedUpdatedAt desatualizado (0 linhas afetadas): lança ConflictException (409)', async () => {
     service = await buildService({ affected: 0 });
     await expect(
       service.update(TENANT, 'u1', TAKEDOWN_ID, {
-        titulo: 'Tentativa concorrente',
+        title: 'Tentativa concorrente',
         expectedUpdatedAt: new Date('2026-08-14T11:00:00.000Z').toISOString(),
       } as any),
     ).rejects.toThrow(ConflictException);
@@ -97,7 +97,7 @@ describe('TakedownsService — concorrência otimista em update()', () => {
     service = await buildService({ affected: 1 });
     await expect(
       service.update(TENANT, 'u1', TAKEDOWN_ID, {
-        titulo: 'x',
+        title: 'x',
         expectedUpdatedAt: 'not-a-date',
       } as any),
     ).rejects.toThrow(BadRequestException);

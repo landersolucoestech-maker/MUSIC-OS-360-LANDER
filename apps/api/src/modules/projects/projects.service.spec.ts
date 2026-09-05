@@ -8,7 +8,7 @@ import { ProjectEntity, ProjectTrackEntity, ProjectTrackParticipantEntity } from
 
 const TENANT = 'tenant-test';
 const PROJECT_ID = 'project-test';
-const mockProject = { id: PROJECT_ID, tenant_id: TENANT, titulo: 'Test', tipo: 'album', status: 'planejamento', deleted_at: null };
+const mockProject = { id: PROJECT_ID, tenant_id: TENANT, title: 'Test', tipo: 'album', status: 'planejamento', deleted_at: null };
 
 const buildMockQb = (getOneValue: unknown = mockProject) => {
   const qb: any = {
@@ -80,18 +80,18 @@ describe('ProjectsService', () => {
     await buildModule();
   });
 
-  it('create() persiste titulo/tipo/status/observacoes/descricao/genero corretamente', async () => {
+  it('create() persiste title/tipo/status/observacoes/descricao/genero corretamente', async () => {
     await service.create(TENANT, 'u1', {
-      titulo: 'Meu Álbum', tipo: 'album', observacoes: 'nota', descricao: null, genero: 'pop',
+      title: 'Meu Álbum', tipo: 'album', observacoes: 'nota', descricao: null, genero: 'pop',
     } as any);
     expect(mockDs._repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ tenant_id: TENANT, titulo: 'Meu Álbum', tipo: 'album', observacoes: 'nota', genero: 'pop' }),
+      expect.objectContaining({ tenant_id: TENANT, title: 'Meu Álbum', tipo: 'album', observacoes: 'nota', genero: 'pop' }),
     );
   });
 
   it('create() não envia musicas para o repo de ProjectEntity (não é mais coluna)', async () => {
     await service.create(TENANT, 'u1', {
-      titulo: 'X', tipo: 'single', musicas: [{ nome: 'Faixa 1' }],
+      title: 'X', tipo: 'single', musicas: [{ nome: 'Faixa 1' }],
     } as any);
     expect(mockDs._repo.create).toHaveBeenCalledWith(
       expect.not.objectContaining({ musicas: expect.anything() }),
@@ -100,7 +100,7 @@ describe('ProjectsService', () => {
 
   it('create() persiste cada música como linha própria em project_tracks, com participantes por role', async () => {
     await service.create(TENANT, 'u1', {
-      titulo: 'X', tipo: 'album',
+      title: 'X', tipo: 'album',
       musicas: [
         {
           id: 't1', nome: 'Faixa 1', duracaoMin: '3', duracaoSeg: '30',

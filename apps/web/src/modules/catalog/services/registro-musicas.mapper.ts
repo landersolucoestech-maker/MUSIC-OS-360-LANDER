@@ -193,9 +193,9 @@ export function participantesToCompositoresLetristas(
   };
 }
 
-export function obraTitulo(obra: any): string {
+export function obraTitle(obra: any): string {
   if (!obra) return "";
-  return (obra.titulo as string) ?? (obra.title as string) ?? "";
+  return (obra.title as string) ?? (obra.titulo as string) ?? "";
 }
 
 // ── IAElement interface ───────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ export { normalizeStr, normalizeBool } from "@/shared/lib/normalize";
 // ── Obra: form fields interface + readers ────────────────────────────────────
 
 export interface ObraFormFields {
-  titulo: string;
+  title: string;
   situacao: string;
   generoMusical: string;
   idioma: string;
@@ -304,7 +304,7 @@ export interface ObraFormFields {
 export function obraToFormFields(obra: any): ObraFormFields {
   const dur = parseDuracao(obra?.duracao);
   return {
-    titulo: obraTitulo(obra),
+    title: obraTitle(obra),
     situacao: dbStatusToSelect(obra?.status),
     generoMusical: obra?.genero?.toLowerCase() || "",
     idioma: obra?.idioma || "",
@@ -328,7 +328,7 @@ export function obraToFormFields(obra: any): ObraFormFields {
 }
 
 export interface FormToObraInput {
-  titulo: string;
+  title: string;
   generoMusical: string;
   idioma: string;
   iswc: string;
@@ -374,7 +374,7 @@ export function formToObraPayload(input: FormToObraInput): Record<string, unknow
   // Uma chave por campo do formulário (snake_case = nome exato da coluna física).
   // org_id não é campo do form: o tenant vem do contexto autenticado da API.
   return {
-    titulo: input.titulo.trim(),
+    title: input.title.trim(),
     genero: input.generoMusical || null,
     idioma: input.idioma || null,
     iswc: input.iswc || null,
@@ -425,7 +425,7 @@ export interface FonogramaFormFields {
   status: string;
   paisOrigem: string;
   paisPublicacao: string;
-  titulo: string;
+  title: string;
   gravadora: string;
   observacoes: string;
 }
@@ -465,7 +465,7 @@ export function fonogramaToFormFields(f: any): FonogramaFormFields {
     status: dbStatusToSelect(ps(f?.status)),
     paisOrigem: ps(f?.paisOrigem ?? f?.pais_origem),
     paisPublicacao: ps(f?.paisPublicacao ?? f?.pais_publicacao),
-    titulo: ps(f?.titulo),
+    title: ps(f?.title),
     gravadora: ps(f?.gravadora),
     observacoes: ps(f?.observacoes),
   };
@@ -486,7 +486,7 @@ export function fonogramaToFormFields(f: any): FonogramaFormFields {
 export function projetoToObraSeed(
   projeto: {
     id: string;
-    titulo?: string | null;
+    title?: string | null;
     artist_id?: string | null;
     genero?: string | null;
   },
@@ -517,7 +517,7 @@ export function projetoToObraSeed(
   return {
     project_id: projeto.id,
     artist_id: projeto.artist_id ?? null,
-    titulo: musica?.nome?.trim() || projeto.titulo?.trim() || "",
+    title: musica?.nome?.trim() || projeto.title?.trim() || "",
     genero,
     idioma: musica?.idioma || null,
     duracaoMin: musica?.duracaoMin || "",

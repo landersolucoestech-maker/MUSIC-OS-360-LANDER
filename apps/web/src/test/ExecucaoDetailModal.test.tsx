@@ -28,7 +28,7 @@ const BASE_EXEC: DetectionRow = {
   updated_at: "2026-05-08T14:32:00",
   obra: {
     id: "obra-001",
-    titulo: "Noite de Luz",
+    title: "Noite de Luz",
     compositor: "Vitória Carvalho",
     compositores: "Vitória Carvalho, Lucas Mendes",
     editora: "MusicOS Publishing",

@@ -60,7 +60,7 @@ export class PhonogramsService {
     }
     if (q['ecad'] === 'com-ecad')      qb.andWhere("p.cod_ecad IS NOT NULL AND p.cod_ecad <> ''");
     else if (q['ecad'] === 'sem-ecad') qb.andWhere("(p.cod_ecad IS NULL OR p.cod_ecad = '')");
-    if (q['search'])    qb.andWhere('p.titulo ILIKE :search',   { search: `%${q['search']}%` });
+    if (q['search'])    qb.andWhere('p.title ILIKE :search',   { search: `%${q['search']}%` });
 
     return { qb, legacyAliasesUsed };
   }
@@ -115,7 +115,7 @@ export class PhonogramsService {
 
   /**
    * Monta o payload final para persistência a partir dos campos canônicos já
-   * resolvidos (titulo/work_id/artist_id — ver resolvePhonogramAliases()) e
+   * resolvidos (title/work_id/artist_id — ver resolvePhonogramAliases()) e
    * dos demais campos não relacionados a aliases (21 campos físicos do
    * formulário, duration/duracao, metadata, status, ISRC etc.), que
    * continuam passando direto para a entity, inalterados.
@@ -132,7 +132,7 @@ export class PhonogramsService {
     // num PATCH sem tipo, não sobrescrever o valor persistido.
     if (input['tipo'] !== undefined) out['tipo'] = input['tipo'];
 
-    delete out['title'];
+    delete out['titulo'];
     delete out['workId'];
     delete out['artistId'];
     delete out['duration'];
@@ -148,11 +148,11 @@ export class PhonogramsService {
     const input = dto as unknown as Record<string, unknown>;
     const { normalized: resolved, legacyAliasesUsed } = resolvePhonogramAliases(input);
 
-    if (resolved.titulo === undefined) {
+    if (resolved.title === undefined) {
       throw new BadRequestException({
         code: 'PHONOGRAM_TITLE_REQUIRED',
-        message: 'titulo é obrigatório.',
-        fields: [{ canonical: 'titulo', legacy: 'title' }],
+        message: 'title é obrigatório.',
+        fields: [{ canonical: 'title', legacy: 'titulo' }],
       });
     }
     this.logLegacyAliasUsage(legacyAliasesUsed, 'create', tenantId);

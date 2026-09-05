@@ -94,9 +94,9 @@ function RealtimeSyncAndNotify() {
   });
 
   useWsEvent('catalog.music.registered', (d) => {
-    const titulo = (d as { titulo?: string }).titulo;
+    const title = (d as { title?: string }).title;
     toast.success('Música registrada', {
-      description: titulo ? `"${titulo}" adicionada ao catálogo` : 'Nova obra no catálogo',
+      description: title ? `"${title}" adicionada ao catálogo` : 'Nova obra no catálogo',
     });
   });
 

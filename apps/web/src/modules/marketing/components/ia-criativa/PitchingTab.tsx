@@ -30,7 +30,7 @@ export function PitchingTab({
       .filter((item) => !artist || item.artist_id === artist.id || item.artistas?.id === artist.id)
       .map((item) => ({
         id: item.id,
-        label: item.titulo,
+        label: item.title,
         helper: [item.artistas?.nome_artistico, item.genero, item.status].filter(Boolean).join(" · ") || undefined,
       }))
       .filter((option) => option.id && option.label)

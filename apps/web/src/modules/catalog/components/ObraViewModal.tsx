@@ -129,7 +129,7 @@ export function ObraViewModal({
       : obra.duracao || null;
 
   const artistaNome   = obra.artistas?.nome_artistico ?? null;
-  const projetoTitulo = obra.projetos?.titulo ?? null;
+  const projetoTitle = obra.projetos?.title ?? null;
 
   const iaElementos = [
     iaHarmonia.ferramenta || iaHarmonia.prompt ? "Harmonia" : null,
@@ -154,7 +154,7 @@ export function ObraViewModal({
                 <Music className="h-5 w-5 text-primary-foreground" />
               </div>
               <div className="flex-1">
-                <h2 className="text-lg font-bold">{obra.titulo || "—"}</h2>
+                <h2 className="text-lg font-bold">{obra.title || "—"}</h2>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <StatusBadge status={obra.status} />
                   <ObraTipoBadge tipo={obra.tipo_obra} />
@@ -168,13 +168,13 @@ export function ObraViewModal({
             </div>
 
             {/* Projeto Vinculado — exibido apenas quando há vínculo */}
-            {(artistaNome || projetoTitulo) && (
+            {(artistaNome || projetoTitle) && (
               <>
                 <Separator />
                 <div>
                   <SectionTitle>Projeto Vinculado</SectionTitle>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                    {projetoTitulo && <InfoField label="Projeto" value={projetoTitulo} />}
+                    {projetoTitle && <InfoField label="Projeto" value={projetoTitle} />}
                     {artistaNome && <InfoField label="Artista do Projeto" value={artistaNome} />}
                   </div>
                 </div>

@@ -43,7 +43,7 @@ export function TakedownViewModal({ open, onOpenChange, takedown }: TakedownView
               <FileText className="h-4 w-4" /> Informações do Takedown
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Título/Identificação" value={n.titulo} />
+              <Field label="Título/Identificação" value={n.title} />
               <div>
                 <span className="text-sm text-muted-foreground">Status</span>
                 <div className="mt-1">{statusBadge(n.status)}</div>

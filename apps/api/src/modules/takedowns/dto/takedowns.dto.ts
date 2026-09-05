@@ -15,7 +15,7 @@ const STATUSES = ['pendente', 'em_andamento', 'concluido', 'rejeitado'] as const
  * persistidos pelo formulário e às colunas físicas de `takedowns`.
  */
 export class CreateTakedownDto {
-  @ApiProperty() @IsString() @MaxLength(255) titulo!: string;
+  @ApiProperty() @IsString() @MaxLength(255) title!: string;
   @ApiPropertyOptional({ enum: TIPOS }) @IsOptional() @IsIn(TIPOS) tipo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) obra_afetada?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista?: string;

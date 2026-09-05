@@ -23,35 +23,35 @@ describe('LicensingService.create — FK cross-tenant (P1)', () => {
   it('rejeita work_id de outro tenant (ou inexistente)', async () => {
     const svc = makeService(jest.fn(async () => []));
     await expect(svc.create('tenant-1', 'user-1', {
-      work_id: 'work-from-another-tenant', titulo: 'X',
+      work_id: 'work-from-another-tenant', title: 'X',
     } as unknown as CreateLicenseDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejeita artist_id de outro tenant (ou inexistente)', async () => {
     const svc = makeService(jest.fn(async () => []));
     await expect(svc.create('tenant-1', 'user-1', {
-      artist_id: 'artist-from-another-tenant', titulo: 'X',
+      artist_id: 'artist-from-another-tenant', title: 'X',
     } as unknown as CreateLicenseDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejeita client_id de outro tenant (ou inexistente)', async () => {
     const svc = makeService(jest.fn(async () => []));
     await expect(svc.create('tenant-1', 'user-1', {
-      client_id: 'client-from-another-tenant', titulo: 'X',
+      client_id: 'client-from-another-tenant', title: 'X',
     } as unknown as CreateLicenseDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('permite quando todas as referências pertencem ao tenant', async () => {
     const svc = makeService(jest.fn(async () => [{ exists: 1 }]));
     await expect(svc.create('tenant-1', 'user-1', {
-      work_id: 'work-1', artist_id: 'artist-1', client_id: 'client-1', titulo: 'X',
+      work_id: 'work-1', artist_id: 'artist-1', client_id: 'client-1', title: 'X',
     } as unknown as CreateLicenseDto)).resolves.toBeDefined();
   });
 
   it('não consulta nada quando nenhuma referência é enviada', async () => {
     const queryImpl = jest.fn(async () => [{ exists: 1 }]);
     const svc = makeService(queryImpl);
-    await svc.create('tenant-1', 'user-1', { titulo: 'X' } as unknown as CreateLicenseDto);
+    await svc.create('tenant-1', 'user-1', { title: 'X' } as unknown as CreateLicenseDto);
     expect(queryImpl).not.toHaveBeenCalled();
   });
 });

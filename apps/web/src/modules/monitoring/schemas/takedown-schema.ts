@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const takedownSchema = z.object({
-  titulo: z.string()
+  title: z.string()
     .min(1, "Título é obrigatório")
     .max(200, "Título deve ter no máximo 200 caracteres")
     .trim(),

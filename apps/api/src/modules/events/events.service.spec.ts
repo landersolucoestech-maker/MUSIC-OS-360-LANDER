@@ -14,7 +14,7 @@ async function validateDto(payload: Record<string, unknown>) {
 
 const TENANT = 'tenant-test';
 const EVENT_ID = 'event-test';
-const mockEvent = { id: EVENT_ID, tenant_id: TENANT, titulo: 'Show', tipo: 'show', data: new Date('2026-08-01T20:00:00Z'), deleted_at: null };
+const mockEvent = { id: EVENT_ID, tenant_id: TENANT, title: 'Show', tipo: 'show', data: new Date('2026-08-01T20:00:00Z'), deleted_at: null };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const buildMockQb = (getOneValue: any = mockEvent) => {

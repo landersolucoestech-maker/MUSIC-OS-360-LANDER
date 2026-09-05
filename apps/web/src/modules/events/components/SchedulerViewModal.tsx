@@ -80,7 +80,7 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/10">
           <div className="flex flex-col gap-3">
             <div className="min-w-0">
-              <DialogTitle className="text-2xl font-semibold tracking-tight" data-testid="text-evento-titulo">{evento.titulo}</DialogTitle>
+              <DialogTitle className="text-2xl font-semibold tracking-tight" data-testid="text-evento-title">{evento.title}</DialogTitle>
               <DialogDescription className="mt-2 text-sm text-muted-foreground">
                 Detalhes completos do evento
               </DialogDescription>

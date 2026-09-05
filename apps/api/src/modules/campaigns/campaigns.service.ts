@@ -148,7 +148,7 @@ export class CampaignsService {
           payload: {
             campaignId: id,
             tenantId,
-            titulo:     current.nome,
+            title:     current.nome,
             startedBy:  userId,
             startedAt:  now,
           },
@@ -165,7 +165,7 @@ export class CampaignsService {
           payload: {
             campaignId: id,
             tenantId,
-            titulo:     current.nome,
+            title:     current.nome,
             endedAt:    now,
           },
         });

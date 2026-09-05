@@ -55,7 +55,7 @@ describe('Colunas dedicadas de formulário sempre expostas no DTO correspondente
     const block = entityBlock('TakedownEntity');
     const dto = source('../modules/takedowns/dto/takedowns.dto.ts');
     const fields = [
-      'titulo', 'tipo', 'obra_afetada', 'artista', 'plataforma',
+      'title', 'tipo', 'obra_afetada', 'artista', 'plataforma',
       'prioridade', 'url_infracao', 'motivo', 'descricao', 'evidencias',
       'data_identificacao', 'status', 'observacoes',
     ] as const;

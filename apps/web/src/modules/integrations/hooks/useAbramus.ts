@@ -60,7 +60,7 @@ export interface AbramusStatus {
 
 export interface AbramusSearchResult {
   external_id: string;
-  titulo: string;
+  title: string;
   iswc?: string | null;
   isrc?: string | null;
   duracao?: string | null;
@@ -84,7 +84,7 @@ export interface AbramusSearchResponse {
 
 export interface AbramusLocalMatch {
   id: string;
-  titulo: string;
+  title: string;
 }
 
 function backendUnavailable(operation: string): never {
@@ -224,7 +224,7 @@ export function useAbramusRegisterObra() {
       const res = await api.post<{ external_id?: string; code?: string; iswc?: string | null }>(
         "/integrations/abramus/register-work",
         {
-          titulo: input.titulo,
+          title: input.title,
           compositor: input.compositores[0] ?? "",
           coautores: input.compositores.slice(1),
           iswc: input.iswc,

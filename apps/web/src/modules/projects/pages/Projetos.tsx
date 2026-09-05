@@ -366,7 +366,7 @@ export default function Projetos() {
                             checked={selectedIds.includes(project.id)}
                             onCheckedChange={() => toggleSelect(project.id)}
                             data-testid={`checkbox-select-${project.id}`}
-                            aria-label={`Selecionar ${project.titulo}`}
+                            aria-label={`Selecionar ${project.title}`}
                           />
                         </TableCell>
                         <TableCell>
@@ -376,7 +376,7 @@ export default function Projetos() {
                               return (
                                 <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted flex items-center justify-center">
                                   {capa ? (
-                                    <img src={capa} alt={project.titulo} className="h-full w-full object-cover" />
+                                    <img src={capa} alt={project.title} className="h-full w-full object-cover" />
                                   ) : (
                                     <Music className="h-4 w-4 text-muted-foreground" />
                                   )}
@@ -384,7 +384,7 @@ export default function Projetos() {
                               );
                             })()}
                             <div className="min-w-0">
-                              <p className="font-medium truncate" data-testid={`text-titulo-${project.id}`}>{project.titulo}</p>
+                              <p className="font-medium truncate" data-testid={`text-title-${project.id}`}>{project.title}</p>
                               {project.artistas?.nome_artistico && (
                                 <p className="text-xs text-muted-foreground truncate">{project.artistas.nome_artistico}</p>
                               )}
@@ -453,7 +453,7 @@ export default function Projetos() {
           as mutations, a mesma query do isLoading acima. */}
       <ProjetoFormModal key={formModal.mode === "create" ? "create" : (formModal.projeto?.id ?? "edit")} open={formModal.open} onOpenChange={(open) => setFormModal(prev => ({ ...prev, open }))} projeto={formModal.projeto} mode={formModal.mode} onConcluido={(id) => navigate(`/registro-musicas?newObra=${id}`)} />
       <ProjetoViewModal open={viewModal.open} onOpenChange={(open) => setViewModal({ ...viewModal, open })} projeto={viewModal.projeto} />
-      <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Projeto" description={`Tem certeza que deseja excluir o projeto "${deleteModal.projeto?.titulo}"?`} onConfirm={handleDelete} />
+      <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Projeto" description={`Tem certeza que deseja excluir o projeto "${deleteModal.projeto?.title}"?`} onConfirm={handleDelete} />
     </>
   );
 }

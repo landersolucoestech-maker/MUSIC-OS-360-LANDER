@@ -15,7 +15,7 @@ export function useProjetos(enabled = true, artistId?: string) {
   const result = useDataQuery<ProjetoWithRelations>({
     queryKey: artistId ? [...QUERY_KEYS.PROJETOS, "by-artist", artistId] : [...QUERY_KEYS.PROJETOS],
     table: "projetos",
-    select: "*, artistas(*), obras(id, titulo, status)",
+    select: "*, artistas(*), obras(id, title, status)",
     enabled,
     // QueryProjectDto só aceita "artistId" (Task H alinhou DTO/service nesse nome) —
     // "artist_id" era rejeitado pelo whitelist do ValidationPipe (400), quebrando

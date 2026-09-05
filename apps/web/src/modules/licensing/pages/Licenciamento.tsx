@@ -127,7 +127,7 @@ export default function Licenciamento() {
     return () => { cancelled = true; };
   }, [licencaClientIds]);
 
-  const obraTituloDe = (l: any) => (l.work_id ? resolvedObras[l.work_id]?.titulo ?? null : null);
+  const obraTitleDe = (l: any) => (l.work_id ? resolvedObras[l.work_id]?.title ?? null : null);
   const artistaDe = (l: any) => (l.work_id ? obraArtistaLabel(resolvedObras[l.work_id]) : "");
   const clienteNomeDe = (l: any) => (l.client_id ? resolvedClientes[l.client_id]?.nome ?? null : null);
 
@@ -312,14 +312,14 @@ export default function Licenciamento() {
                           <Checkbox
                             checked={selectedLicencaIds.includes(licenca.id)}
                             onCheckedChange={() => toggleSelectLicenca(licenca.id)}
-                            aria-label={`Selecionar licença ${licenca.titulo || licenca.id}`}
+                            aria-label={`Selecionar licença ${licenca.title || licenca.id}`}
                             data-testid={`checkbox-licenca-${licenca.id}`}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{licenca.titulo || "—"}</TableCell>
+                        <TableCell className="font-medium">{licenca.title || "—"}</TableCell>
                         <TableCell>
                           <div className="min-w-0">
-                            <p className="font-medium truncate">{obraTituloDe(licenca) ?? "—"}</p>
+                            <p className="font-medium truncate">{obraTitleDe(licenca) ?? "—"}</p>
                             {artistaDe(licenca) && <p className="text-xs text-muted-foreground truncate">{artistaDe(licenca)}</p>}
                           </div>
                         </TableCell>
@@ -410,14 +410,14 @@ export default function Licenciamento() {
                             <Checkbox
                               checked={selectedLicencaIds.includes(licenca.id)}
                               onCheckedChange={() => toggleSelectLicenca(licenca.id)}
-                              aria-label={`Selecionar licença ${licenca.titulo || licenca.id}`}
+                              aria-label={`Selecionar licença ${licenca.title || licenca.id}`}
                               data-testid={`checkbox-proposta-${licenca.id}`}
                             />
                           </TableCell>
-                          <TableCell className="font-medium">{licenca.titulo || "—"}</TableCell>
+                          <TableCell className="font-medium">{licenca.title || "—"}</TableCell>
                           <TableCell>
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{obraTituloDe(licenca) ?? "—"}</p>
+                              <p className="font-medium truncate">{obraTitleDe(licenca) ?? "—"}</p>
                               {artistaDe(licenca) && <p className="text-xs text-muted-foreground truncate">{artistaDe(licenca)}</p>}
                             </div>
                           </TableCell>
@@ -505,14 +505,14 @@ export default function Licenciamento() {
                             <Checkbox
                               checked={selectedLicencaIds.includes(licenca.id)}
                               onCheckedChange={() => toggleSelectLicenca(licenca.id)}
-                              aria-label={`Selecionar licença ${licenca.titulo || licenca.id}`}
+                              aria-label={`Selecionar licença ${licenca.title || licenca.id}`}
                               data-testid={`checkbox-ativa-${licenca.id}`}
                             />
                           </TableCell>
-                          <TableCell className="font-medium">{licenca.titulo || "—"}</TableCell>
+                          <TableCell className="font-medium">{licenca.title || "—"}</TableCell>
                           <TableCell>
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{obraTituloDe(licenca) ?? "—"}</p>
+                              <p className="font-medium truncate">{obraTitleDe(licenca) ?? "—"}</p>
                               {artistaDe(licenca) && <p className="text-xs text-muted-foreground truncate">{artistaDe(licenca)}</p>}
                             </div>
                           </TableCell>
@@ -581,7 +581,7 @@ export default function Licenciamento() {
           infinito de loading. Mantê-los sempre montados quebra o ciclo. */}
       <LicencaFormModal open={licencaModal.open} onOpenChange={(open) => setLicencaModal({ ...licencaModal, open })} licenca={licencaModal.licenca} mode={licencaModal.mode} />
       <LicencaViewModal open={viewModal.open} onOpenChange={(open) => setViewModal({ ...viewModal, open })} licenca={viewModal.licenca} />
-      <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Licença" description={`Tem certeza que deseja excluir "${deleteModal.licenca?.titulo}"?`} onConfirm={handleDelete} />
+      <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Licença" description={`Tem certeza que deseja excluir "${deleteModal.licenca?.title}"?`} onConfirm={handleDelete} />
       <DeleteConfirmModal open={bulkDeleteModal.open} onOpenChange={(open) => setBulkDeleteModal({ ...bulkDeleteModal, open })} title="Excluir licencas selecionadas" description={`Tem certeza que deseja excluir ${bulkDeleteModal.ids.length} licenca(s) selecionada(s)?`} onConfirm={handleBulkDelete} />
     </>
     </FeatureGate>

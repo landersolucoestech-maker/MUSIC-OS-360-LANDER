@@ -79,7 +79,7 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
     payload: {
       releaseId: 'r1',
       tenantId: 't1',
-      titulo: 'Aurora',
+      title: 'Aurora',
       tipo: 'single',
       artistId: 'a1',
       createdBy: 'u1',
@@ -90,7 +90,7 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
 }
 
 const RELEASE_ROW = {
-  titulo: 'Aurora',
+  title: 'Aurora',
   tipo: 'single',
   data_lancamento: null,
   upc: null,

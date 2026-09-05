@@ -26,7 +26,7 @@ export class CampaignEventsHandler {
     const tenantId = event.tenantId ?? event.payload.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { campaignId, titulo, startedBy, startedAt } = event.payload;
+    const { campaignId, title, startedBy, startedAt } = event.payload;
 
     if (!this.notifRepo || !event.userId) return;
     try {
@@ -38,7 +38,7 @@ export class CampaignEventsHandler {
             id: randomUUID(),
             tenant_id: tenantId,
             user_id: event.userId,
-            title: `Campanha iniciada: "${titulo}"`,
+            title: `Campanha iniciada: "${title}"`,
             body: `Campanha iniciada em ${startedAt} por ${startedBy}. Monitoramento configurado automaticamente.`,
             type: DOMAIN_EVENTS.CAMPAIGN_STARTED,
             entity: 'campaign',
@@ -60,7 +60,7 @@ export class CampaignEventsHandler {
     const tenantId = event.tenantId ?? event.payload.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { campaignId, titulo, endedAt } = event.payload;
+    const { campaignId, title, endedAt } = event.payload;
 
     if (!this.notifRepo || !event.userId) return;
     try {
@@ -72,7 +72,7 @@ export class CampaignEventsHandler {
             id: randomUUID(),
             tenant_id: tenantId,
             user_id: event.userId,
-            title: `Campanha encerrada: "${titulo}"`,
+            title: `Campanha encerrada: "${title}"`,
             body: `Campanha encerrada em ${endedAt}. Relatorio de performance em processamento.`,
             type: DOMAIN_EVENTS.CAMPAIGN_ENDED,
             entity: 'campaign',

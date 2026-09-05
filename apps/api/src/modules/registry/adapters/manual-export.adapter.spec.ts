@@ -6,7 +6,7 @@ describe('ManualExportAdapter — exportPayload XLSX', () => {
 
   it('produz workbook OpenXML real com estrutura e conteúdo íntegros', async () => {
     const payload = {
-      titulo: 'Minha Obra',
+      title: 'Minha Obra',
       autores: [{ nome: 'Fulano', percentual: 100 }],
       ano: 2026,
     };
@@ -25,13 +25,13 @@ describe('ManualExportAdapter — exportPayload XLSX', () => {
     const sheet = workbook.Sheets[workbook.SheetNames[0]!]!;
     const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true });
     expect(rows[0]).toEqual(['field', 'value']);
-    expect(rows.some((row) => row[0] === 'titulo' && row[1] === 'Minha Obra')).toBe(true);
+    expect(rows.some((row) => row[0] === 'title' && row[1] === 'Minha Obra')).toBe(true);
     expect(rows.some((row) => row[0] === 'autores[0].nome' && row[1] === 'Fulano')).toBe(true);
     expect(rows.some((row) => row[0] === 'autores[0].percentual' && row[1] === '100')).toBe(true);
   });
 
   it('formato json continua disponível para integração técnica', async () => {
-    const payload = { titulo: 'Outra Obra' };
+    const payload = { title: 'Outra Obra' };
     const result = await adapter.exportPayload(payload, 'json', 'submission-json');
     expect(result.format).toBe('json');
     expect(result.fileName).toBe('submission-json.json');

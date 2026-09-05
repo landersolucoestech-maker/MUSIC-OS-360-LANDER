@@ -42,7 +42,7 @@ const SKILL_NAME = 'catalog-metadata-validator';
 const METADATA_KEY = 'aiCatalogValidation';
 
 interface WorkRow {
-  titulo: string;
+  title: string;
   compositor: string | null;
   compositores: string | null;
   editora: string | null;
@@ -51,7 +51,7 @@ interface WorkRow {
 }
 
 interface RecordingRow {
-  titulo: string;
+  title: string;
   compositores: string | null;
   interpretes: string | null;
   produtores: string | null;
@@ -155,7 +155,7 @@ export class CatalogMetadataValidatorAutomation {
   ): Promise<WorkRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT titulo, compositor, compositores, editora, isrc, metadata
+      `SELECT title, compositor, compositores, editora, isrc, metadata
          FROM works
         WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
         LIMIT 1`,
@@ -187,7 +187,7 @@ export class CatalogMetadataValidatorAutomation {
   ): Promise<RecordingRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT titulo, compositores, interpretes, produtores, isrc, gravadora, metadata
+      `SELECT title, compositores, interpretes, produtores, isrc, gravadora, metadata
          FROM phonograms
         WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
         LIMIT 1`,
@@ -215,7 +215,7 @@ export class CatalogMetadataValidatorAutomation {
   private buildWorkInput(work: WorkRow): CatalogMetadataValidatorInput {
     const md = (work.metadata ?? {}) as Record<string, unknown>;
     const input: CatalogMetadataValidatorInput = {
-      title: work.titulo,
+      title: work.title,
       type: 'work',
       composers: toComposers(work.compositor, work.compositores),
       language: 'pt-BR',
@@ -230,7 +230,7 @@ export class CatalogMetadataValidatorAutomation {
   private buildRecordingInput(rec: RecordingRow): CatalogMetadataValidatorInput {
     const md = (rec.metadata ?? {}) as Record<string, unknown>;
     const input: CatalogMetadataValidatorInput = {
-      title: rec.titulo,
+      title: rec.title,
       type: 'recording',
       performers: splitList(rec.interpretes),
       language: 'pt-BR',

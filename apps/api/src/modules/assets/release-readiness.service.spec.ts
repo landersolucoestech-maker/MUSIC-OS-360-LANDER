@@ -23,7 +23,7 @@ function makeDs(phonogram: Record<string, unknown> | null, work: Record<string, 
 const fullPhonogram = {
   id: 'ph-1',
   tenant_id: 't1',
-  titulo: 'Música X',
+  title: 'Música X',
   isrc: 'BR-ABC-26-00001',
   genero_musical: 'Pop',
   interpretes: 'Artista X',

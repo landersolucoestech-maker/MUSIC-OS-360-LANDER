@@ -77,11 +77,11 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
    * (work_id → lançamento_id → nome_musica), com fallbacks seguros adicionais.
    */
   const pickShareTitle = (): string | null => {
-    const obraTitulo = obraVinculada?.titulo;
-    const lancTitulo = lancamentos.find((l) => l.id === str("release_id"))?.titulo;
+    const obraTitle = obraVinculada?.title;
+    const lancTitle = lancamentos.find((l) => l.id === str("release_id"))?.title;
     return (
-      obraTitulo ||
-      lancTitulo ||
+      obraTitle ||
+      lancTitle ||
       str("nome_musica") ||
       str("titulo_obra") ||
       str("trackTitle") ||
@@ -91,7 +91,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
       null
     );
   };
-  const releaseTitulo = pickShareTitle();
+  const releaseTitle = pickShareTitle();
 
   // Participante: artista vinculado (artist_id) → detentor (igual à coluna Detentor da tabela)
   const participanteNome = artistaResolved?.nome_artistico ?? str("detentor") ?? null;
@@ -126,7 +126,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
             <CardContent className="p-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
               {isInternal ? (
                 <>
-                  <Field label="Lançamento / Música" value={releaseTitulo} icon={Disc3} />
+                  <Field label="Lançamento / Música" value={releaseTitle} icon={Disc3} />
                   {artistaNome && <Field label="Artista" value={artistaNome} icon={User} />}
                   <Field label="Participante" value={participanteNome} icon={User} />
                   <Field label="Destinatário" value={str("destinatario") || null} icon={User} />

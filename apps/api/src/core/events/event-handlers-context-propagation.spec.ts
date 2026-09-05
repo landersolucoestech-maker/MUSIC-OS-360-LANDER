@@ -154,7 +154,7 @@ describe('P2-9 event handlers context propagation', () => {
       type: DOMAIN_EVENTS.CAMPAIGN_STARTED,
       tenantId: 't1',
       userId: 'u1',
-      payload: { campaignId: 'c1', tenantId: 't1', titulo: 'Campanha', startedBy: 'u1', startedAt: 'now' },
+      payload: { campaignId: 'c1', tenantId: 't1', title: 'Campanha', startedBy: 'u1', startedAt: 'now' },
     } as any);
     expectTenantContext(dbContext);
     expect(manager.getRepository).toHaveBeenCalledWith(NotificationEntity);
@@ -213,7 +213,7 @@ describe('P2-9 event handlers context propagation', () => {
     await handler.onContractSigned({
       type: DOMAIN_EVENTS.CONTRACT_SIGNED,
       tenantId: 't1',
-      payload: { contractId: 'c1', titulo: 'Contrato', signedBy: 'u1', signedAt: 'now' },
+      payload: { contractId: 'c1', title: 'Contrato', signedBy: 'u1', signedAt: 'now' },
     } as any);
     expectTenantContext(dbContext);
     expect(manager.getRepository).toHaveBeenCalledWith(ContractEntity);
@@ -248,7 +248,7 @@ describe('P2-9 event handlers context propagation', () => {
     await handler.onContractSigned({
       type: DOMAIN_EVENTS.CONTRACT_SIGNED,
       tenantId: 't1',
-      payload: { contractId: 'c1', titulo: 'Contrato', artistId: 'a1', signedBy: 'u1', signedAt: 'now' },
+      payload: { contractId: 'c1', title: 'Contrato', artistId: 'a1', signedBy: 'u1', signedAt: 'now' },
     } as any);
     expectTenantContext(dbContext);
     expect(artistRepo.update).toHaveBeenCalledWith(
@@ -268,7 +268,7 @@ describe('P2-9 event handlers context propagation', () => {
       type: DOMAIN_EVENTS.RELEASE_APPROVED,
       tenantId: 't1',
       userId: 'u1',
-      payload: { releaseId: 'r1', titulo: 'Release', approvedBy: 'u1' },
+      payload: { releaseId: 'r1', title: 'Release', approvedBy: 'u1' },
     } as any);
     expectTenantContext(dbContext);
     expect(manager.getRepository).toHaveBeenCalledWith(NotificationEntity);
@@ -303,7 +303,7 @@ describe('P2-9 event handlers context propagation', () => {
     await handler.onTicketResolved({
       type: DOMAIN_EVENTS.TICKET_RESOLVED,
       tenantId: 't1',
-      payload: { ticketId: 'tk1', tenantId: 't1', titulo: 'Ticket', resolvedBy: 'u1', resolvedAt: 'now' },
+      payload: { ticketId: 'tk1', tenantId: 't1', title: 'Ticket', resolvedBy: 'u1', resolvedAt: 'now' },
     } as any);
     expectTenantContext(dbContext);
     expect(ticketRepo.update).toHaveBeenCalledWith(

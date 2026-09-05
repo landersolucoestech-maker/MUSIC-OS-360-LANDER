@@ -42,8 +42,8 @@ export const catalogService = {
   },
 
   async searchWorks(q: string) {
-    const all = await storage.list<{ id: string; titulo: string }>("obras");
+    const all = await storage.list<{ id: string; title: string }>("obras");
     const lower = q.toLowerCase();
-    return all.filter((w) => (w.titulo ?? "").toLowerCase().includes(lower));
+    return all.filter((w) => (w.title ?? "").toLowerCase().includes(lower));
   },
 };

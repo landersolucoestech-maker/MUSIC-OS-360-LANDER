@@ -70,7 +70,7 @@ vi.mock("@/shared/lib/storage", async () => {
         if (table === "projetos") {
           return {
             items: [
-              { id: "projeto-99", titulo: "Projeto Raro", status: "concluido", artist_id: "art-99" },
+              { id: "projeto-99", title: "Projeto Raro", status: "concluido", artist_id: "art-99" },
             ],
             page: 1,
             pageSize: 20,
@@ -110,7 +110,7 @@ describe("ObraFormModal edit mode", () => {
 
   const baseObra = {
     id: "obra-1",
-    titulo: "Canção Original",
+    title: "Canção Original",
     genero: "pop",
     iswc: "T-123.456.789-0",
     duracao: "03:45",
@@ -131,7 +131,7 @@ describe("ObraFormModal edit mode", () => {
       />
     );
 
-    // Title hydrated from titulo
+    // Title hydrated from title
     const tituloInput = screen.getByDisplayValue("Canção Original");
     expect(tituloInput).toBeInTheDocument();
 
@@ -183,7 +183,7 @@ describe("ObraFormModal edit mode", () => {
 
     const callArg = updateObraMock.mock.calls[0][0];
     expect(callArg.id).toBe("obra-1");
-    expect(callArg.titulo).toBe("Canção Editada");
+    expect(callArg.title).toBe("Canção Editada");
     // Status round-trips back to DB form
     expect(callArg.status).toBe("analise");
     // Duracao stays MM:SS

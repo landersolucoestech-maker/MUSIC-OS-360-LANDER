@@ -106,7 +106,7 @@ export class SocietyPayloadBuilderService {
       kind: 'WORK',
       work: {
         id: work.id,
-        title: work.titulo,
+        title: work.title,
         alternative_titles: Array.isArray(work.alternative_titles) ? work.alternative_titles : [],
         type: work.tipo ?? null,
         genre: work.genero ?? null,
@@ -144,7 +144,7 @@ export class SocietyPayloadBuilderService {
       kind: 'RECORDING',
       recording: {
         id: rec.id,
-        title: rec.titulo,
+        title: rec.title,
         version_title: rec.version_title ?? null,
         isrc: rec.isrc ?? null,
         duration_seconds: rec.duration_seconds ?? null,

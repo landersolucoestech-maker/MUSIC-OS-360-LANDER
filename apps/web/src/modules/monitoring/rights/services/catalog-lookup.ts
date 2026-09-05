@@ -8,7 +8,7 @@
 
 export interface CatalogObra {
   id: string;
-  titulo: string;
+  title: string;
   compositor: string;
   compositores: string;
   editora: string;

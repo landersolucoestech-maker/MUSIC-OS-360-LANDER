@@ -20,8 +20,8 @@ import {
 } from "@/modules/accounting/utils/financialRules.utils";
 
 interface Artista { id: string; nome_artistico: string }
-interface Projeto { id: string; titulo: string }
-interface Evento { id: string; titulo: string; data_inicio?: string | null }
+interface Projeto { id: string; title: string }
+interface Evento { id: string; title: string; data_inicio?: string | null }
 
 interface TransactionTypeSectionProps {
   formData: TransacaoFormData;
@@ -170,7 +170,7 @@ export function TransactionTypeSection({
               <Label className="text-sm">Projeto Vinculado *</Label>
               <AsyncEntityCombobox<Projeto>
                 table="projetos"
-                getLabel={(p) => p.titulo}
+                getLabel={(p) => p.title}
                 value={formData.projetoVinculado}
                 onChange={(id) => updateField("projetoVinculado", id)}
                 placeholder="Selecione o projeto"
@@ -200,7 +200,7 @@ export function TransactionTypeSection({
               onChange={(value) => updateField("eventoVinculado", value)}
               options={(formData.artistaVinculado ? eventosFiltrados : eventosFiltrados).map((evento) => ({
                 value: evento.id,
-                label: evento.data_inicio ? `${evento.titulo} (${evento.data_inicio})` : evento.titulo,
+                label: evento.data_inicio ? `${evento.title} (${evento.data_inicio})` : evento.title,
               }))}
               placeholder={eventosFiltrados.length === 0 ? "Nenhum evento encontrado" : "Selecione o evento"}
               error={errors.eventoVinculado}
@@ -267,7 +267,7 @@ export function TransactionTypeSection({
               </Label>
               <AsyncEntityCombobox<Projeto>
                 table="projetos"
-                getLabel={(p) => p.titulo}
+                getLabel={(p) => p.title}
                 value={formData.projetoVinculado}
                 onChange={(id) => updateField("projetoVinculado", id)}
                 filters={{ artistId: formData.artistaVinculado }}

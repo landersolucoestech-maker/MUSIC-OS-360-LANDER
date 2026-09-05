@@ -48,7 +48,7 @@ export class ContractWorkflowHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, titulo, artistId, signedBy, signedAt } = event.payload;
+    const { contractId, title, artistId, signedBy, signedAt } = event.payload;
     const now = new Date();
     let valorStr: string | null = null;
     let shouldContinue = true;
@@ -91,7 +91,7 @@ export class ContractWorkflowHandler {
               });
             });
             await taskRepo.save(tasks);
-            this.logger.log(`Created ${tasks.length} execution tasks for contract "${contractId}" ("${titulo}")`);
+            this.logger.log(`Created ${tasks.length} execution tasks for contract "${contractId}" ("${title}")`);
           } catch (err) {
             this.logger.error(`Failed to create execution tasks for "${contractId}" - ${String(err)}`);
           }
@@ -122,7 +122,7 @@ export class ContractWorkflowHandler {
           payload: {
             contractId,
             tenantId,
-            titulo,
+            title,
             artistId: artistId ?? null,
             valor: valorStr,
             readyAt: signedAt,
@@ -153,7 +153,7 @@ export class ContractWorkflowHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, titulo, daysLeft } = event.payload;
+    const { contractId, title, daysLeft } = event.payload;
 
     if (this.taskRepo) {
       await this.runInTenantContext(tenantId, async (manager) => {
@@ -182,7 +182,7 @@ export class ContractWorkflowHandler {
         try {
           const task = taskRepo.create({
             tenant_id: tenantId,
-            title: `Renovacao de contrato: "${titulo}"`,
+            title: `Renovacao de contrato: "${title}"`,
             description: `O contrato vence em ${daysLeft} dias. Iniciar negociacao de renovacao ou encerramento.`,
             status: 'pending',
             priority: daysLeft <= 7 ? 'high' : 'medium',

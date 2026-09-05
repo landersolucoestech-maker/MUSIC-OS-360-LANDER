@@ -28,7 +28,7 @@ export const RELEASES_WORKFLOW: WorkflowDefinition<string> = {
       roles: ['super_admin','tenant_owner','owner','admin','editor','manager','produtor','marketing_manager'],
       guard: async (ctx) => {
         const entity = ctx.entity;
-        if (!entity['titulo'] && !entity['title']) {
+        if (!entity['title'] && !entity['title']) {
           return { allowed: false, reason: 'Lançamento precisa de título antes de avançar para Assets' };
         }
         return { allowed: true };

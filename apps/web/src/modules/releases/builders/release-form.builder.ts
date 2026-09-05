@@ -6,7 +6,7 @@
  *
  * Usage:
  *   const payload = new ReleaseFormBuilder()
- *     .withCore({ titulo, artist_id, tipo, status })
+ *     .withCore({ title, artist_id, tipo, status })
  *     .withDistribution({ distribuidora, distribuidoraOutra, plataformas })
  *     .withAssets({ audio_master_url, capa_url })
  *     .withCronograma({ data_gravacao, data_mix_master })
@@ -20,7 +20,7 @@ import type { LancamentoInsert } from "@/modules/releases/hooks/useLancamentos";
 // ─── Param shapes ─────────────────────────────────────────────────────────────
 
 export interface ReleaseCore {
-  titulo: string;
+  title: string;
   artist_id: string;
   tipo: string;
   status?: string;
@@ -126,7 +126,7 @@ export class ReleaseFormBuilder {
     const hasCron = Object.values(cronObj).some(Boolean);
 
     return {
-      titulo:          this._core.titulo.trim(),
+      title:          this._core.title.trim(),
       artist_id:      normalizeStr(this._core.artist_id),
       tipo:            normalizeStr(this._core.tipo),
       status:          normalizeStr(this._core.status) ?? "analise",
@@ -151,7 +151,7 @@ export class ReleaseFormBuilder {
    * Convenience: build from flat form fields (compatible with LancamentoFormFields).
    */
   static fromFormFields(f: {
-    titulo: string;
+    title: string;
     artist_id: string;
     tipo: string;
     status?: string;
@@ -179,7 +179,7 @@ export class ReleaseFormBuilder {
   }): LancamentoInsert {
     return new ReleaseFormBuilder()
       .withCore({
-        titulo:          f.titulo,
+        title:          f.title,
         artist_id:      f.artist_id,
         tipo:            f.tipo,
         status:          f.status,

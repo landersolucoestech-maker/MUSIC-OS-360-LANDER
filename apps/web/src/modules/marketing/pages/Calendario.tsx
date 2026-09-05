@@ -602,7 +602,7 @@ function ContentScheduleModal({
 
               <FieldBlock label="Título" required error={errors.title} counter={`${values.title.length}/100`}>
                 <Input
-                  data-testid="input-titulo"
+                  data-testid="input-title"
                   value={values.title}
                   maxLength={100}
                   onChange={(event) => setValue("title", event.target.value)}

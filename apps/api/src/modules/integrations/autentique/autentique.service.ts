@@ -249,7 +249,7 @@ export class AutentiqueService {
         payload: {
           contractId:      params.contractId,
           tenantId:        params.tenantId,
-          titulo:          params.name,
+          title:          params.name,
           artistId:        null,
           autentiqueDocId: docId,
           sentBy:          'autentique:service',
@@ -405,7 +405,7 @@ export class AutentiqueService {
         payload: {
           contractId: contract.id,
           tenantId,
-          titulo:     contract.titulo ?? '',
+          title:     contract.title ?? '',
           artistId:   (contract as any).artist_id ?? null,
           signedBy:   'autentique:webhook',
           signedAt,

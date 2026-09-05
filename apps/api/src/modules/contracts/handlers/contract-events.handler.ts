@@ -44,8 +44,8 @@ export class ContractEventsHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, titulo, tipo, artistId, createdBy } = event.payload;
-    this.logger.log(`Contract created: "${titulo}" (${contractId}) tipo=${tipo} artist=${artistId ?? 'none'}`);
+    const { contractId, title, tipo, artistId, createdBy } = event.payload;
+    this.logger.log(`Contract created: "${title}" (${contractId}) tipo=${tipo} artist=${artistId ?? 'none'}`);
 
     if (!this.activityLogs || !createdBy) return;
     try {
@@ -54,8 +54,8 @@ export class ContractEventsHandler {
           entity_type: 'contract',
           entity_id: contractId,
           action: 'created',
-          description: `Contrato "${titulo}" criado`,
-          metadata: { titulo, tipo, artistId, correlationId: event.correlationId ?? null },
+          description: `Contrato "${title}" criado`,
+          metadata: { title, tipo, artistId, correlationId: event.correlationId ?? null },
         });
       });
     } catch (err) {
@@ -68,8 +68,8 @@ export class ContractEventsHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, titulo, previousStatus, newStatus, changedBy } = event.payload;
-    this.logger.log(`Contract status: "${titulo}" ${previousStatus} -> ${newStatus} by ${changedBy}`);
+    const { contractId, title, previousStatus, newStatus, changedBy } = event.payload;
+    this.logger.log(`Contract status: "${title}" ${previousStatus} -> ${newStatus} by ${changedBy}`);
 
     if (!this.activityLogs || !changedBy) return;
     try {
@@ -78,7 +78,7 @@ export class ContractEventsHandler {
           entity_type: 'contract',
           entity_id: contractId,
           action: 'status_changed',
-          description: `Status do contrato "${titulo}": ${previousStatus} -> ${newStatus}`,
+          description: `Status do contrato "${title}": ${previousStatus} -> ${newStatus}`,
           metadata: { previousStatus, newStatus, correlationId: event.correlationId ?? null },
         });
       });
@@ -92,8 +92,8 @@ export class ContractEventsHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, titulo, autentiqueDocId, sentBy } = event.payload;
-    this.logger.log(`Contract sent for signature: "${titulo}" (${contractId}) docId=${autentiqueDocId}`);
+    const { contractId, title, autentiqueDocId, sentBy } = event.payload;
+    this.logger.log(`Contract sent for signature: "${title}" (${contractId}) docId=${autentiqueDocId}`);
 
     if (!this.activityLogs || !sentBy) return;
     try {
@@ -102,7 +102,7 @@ export class ContractEventsHandler {
           entity_type: 'contract',
           entity_id: contractId,
           action: 'sent_for_signature',
-          description: `Contrato "${titulo}" enviado para assinatura Autentique (doc=${autentiqueDocId})`,
+          description: `Contrato "${title}" enviado para assinatura Autentique (doc=${autentiqueDocId})`,
           metadata: { autentiqueDocId, correlationId: event.correlationId ?? null },
         });
       });
@@ -116,7 +116,7 @@ export class ContractEventsHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, titulo, artistId, signedBy, signedAt } = event.payload;
+    const { contractId, title, artistId, signedBy, signedAt } = event.payload;
 
     if (this.artistRepo || this.transactionRepo || this.contractRepo || this.financialRules) {
       await this.runInTenantContext(tenantId, async (manager) => {
@@ -149,7 +149,7 @@ export class ContractEventsHandler {
                 tenant_id: tenantId,
                 tipo: 'receita' as any,
                 categoria: 'contratos',
-                descricao: `Receita prevista - contrato "${titulo}"`,
+                descricao: `Receita prevista - contrato "${title}"`,
                 valor: String(contractValor),
                 data: new Date(),
                 status: 'agendado' as any,
@@ -157,7 +157,7 @@ export class ContractEventsHandler {
                 contrato_id: contractId,
                 created_by: signedBy,
                 updated_by: signedBy,
-                metadata: { source: 'contract.signed', contractId, titulo },
+                metadata: { source: 'contract.signed', contractId, title },
               } as any);
               const savedTx = await transactionRepo.save(provisional as unknown as TransactionEntity);
               this.logger.log(`Provisional transaction "${savedTx.id}" (R$${contractValor}) created for contract "${contractId}"`);
@@ -205,7 +205,7 @@ export class ContractEventsHandler {
           entity_type: 'contract',
           entity_id: contractId,
           action: 'signed',
-          description: `Contrato "${titulo}" assinado`,
+          description: `Contrato "${title}" assinado`,
           metadata: { signedAt, artistId: artistId ?? null, correlationId: event.correlationId ?? null },
         });
       });
@@ -219,8 +219,8 @@ export class ContractEventsHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, titulo, artistId, cancelledBy, cancelledAt } = event.payload;
-    this.logger.log(`Contract cancelled: "${titulo}" (${contractId}) by ${cancelledBy}`);
+    const { contractId, title, artistId, cancelledBy, cancelledAt } = event.payload;
+    this.logger.log(`Contract cancelled: "${title}" (${contractId}) by ${cancelledBy}`);
 
     if (!this.activityLogs || !cancelledBy) return;
     try {
@@ -229,7 +229,7 @@ export class ContractEventsHandler {
           entity_type: 'contract',
           entity_id: contractId,
           action: 'cancelled',
-          description: `Contrato "${titulo}" cancelado`,
+          description: `Contrato "${title}" cancelado`,
           metadata: { cancelledAt, artistId: artistId ?? null, correlationId: event.correlationId ?? null },
         });
       });
@@ -243,8 +243,8 @@ export class ContractEventsHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, titulo, artistId, dataFim, daysLeft } = event.payload;
-    this.logger.warn(`Contract expiring soon: "${titulo}" (${contractId}) in ${daysLeft} days (${dataFim})`);
+    const { contractId, title, artistId, dataFim, daysLeft } = event.payload;
+    this.logger.warn(`Contract expiring soon: "${title}" (${contractId}) in ${daysLeft} days (${dataFim})`);
 
     if (!this.activityLogs) return;
     try {
@@ -253,7 +253,7 @@ export class ContractEventsHandler {
           entity_type: 'contract',
           entity_id: contractId,
           action: 'expiring_soon',
-          description: `Contrato "${titulo}" vence em ${daysLeft} dias (${dataFim})`,
+          description: `Contrato "${title}" vence em ${daysLeft} dias (${dataFim})`,
           metadata: { dataFim, daysLeft, artistId: artistId ?? null },
         });
       });

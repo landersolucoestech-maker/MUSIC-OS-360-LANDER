@@ -45,7 +45,7 @@ export interface ArtistDeletedPayload {
 export interface ContractCreatedPayload {
   contractId: string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   tipo:       string;
   artistId:   string | null;
   createdBy:  string;
@@ -54,7 +54,7 @@ export interface ContractCreatedPayload {
 export interface ContractStatusChangedPayload {
   contractId:     string;
   tenantId:       string;
-  titulo:         string;
+  title:         string;
   previousStatus: string;
   newStatus:      string;
   changedBy:      string;
@@ -63,7 +63,7 @@ export interface ContractStatusChangedPayload {
 export interface ContractSentForSignaturePayload {
   contractId:  string;
   tenantId:    string;
-  titulo:      string;
+  title:      string;
   artistId:    string | null;
   autentiqueDocId: string;
   sentBy:      string;
@@ -72,7 +72,7 @@ export interface ContractSentForSignaturePayload {
 export interface ContractCancelledPayload {
   contractId:  string;
   tenantId:    string;
-  titulo:      string;
+  title:      string;
   artistId:    string | null;
   cancelledBy: string;
   cancelledAt: string;
@@ -81,7 +81,7 @@ export interface ContractCancelledPayload {
 export interface ContractExpiringSoonPayload {
   contractId: string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   artistId:   string | null;
   dataFim:    string;
   daysLeft:   number;
@@ -90,7 +90,7 @@ export interface ContractExpiringSoonPayload {
 export interface ContractSignedPayload {
   contractId: string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   artistId:   string | null;
   signedBy:   string;
   signedAt:   string;
@@ -99,7 +99,7 @@ export interface ContractSignedPayload {
 export interface ContractExpiredPayload {
   contractId: string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   artistId:   string | null;
   expiredAt:  string;
 }
@@ -143,7 +143,7 @@ export interface ExternalDataSyncRequestedPayload {
 export interface ContractIntegrationReadyPayload {
   contractId:   string;
   tenantId:     string;
-  titulo:       string;
+  title:       string;
   artistId:     string | null;
   valor:        string | null;
   readyAt:      string;
@@ -352,7 +352,7 @@ export interface FinancialRuleTriggeredPayload {
 export interface ReleaseCreatedPayload {
   releaseId:  string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   tipo:       string;
   artistId:   string | null;
   createdBy:  string;
@@ -362,7 +362,7 @@ export interface ReleaseCreatedPayload {
 export interface ReleasePublishedPayload {
   releaseId:  string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   artistId:   string | null;
   publishedAt: string;
 }
@@ -370,7 +370,7 @@ export interface ReleasePublishedPayload {
 export interface ReleaseApprovedPayload {
   releaseId:  string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   artistId:   string | null;
   approvedBy: string;
   approvedAt: string;
@@ -379,7 +379,7 @@ export interface ReleaseApprovedPayload {
 export interface ReleaseDistributedPayload {
   releaseId:      string;
   tenantId:       string;
-  titulo:         string;
+  title:         string;
   artistId:       string | null;
   distribuidora:  string | null;
   plataformas:    unknown[];
@@ -402,7 +402,7 @@ export interface TakedownRequestedPayload {
 export interface CampaignStartedPayload {
   campaignId: string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   startedBy:  string;
   startedAt:  string;
 }
@@ -410,7 +410,7 @@ export interface CampaignStartedPayload {
 export interface CampaignEndedPayload {
   campaignId: string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   endedAt:    string;
 }
 
@@ -587,7 +587,7 @@ export interface SupportTicketCreatedPayload {
 export interface TicketResolvedPayload {
   ticketId:   string;
   tenantId:   string;
-  titulo:     string;
+  title:     string;
   resolvedBy: string;
   resolvedAt: string;
 }

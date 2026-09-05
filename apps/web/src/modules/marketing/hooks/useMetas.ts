@@ -37,8 +37,8 @@ function fromApi(row: GoalRow): Meta {
   const current = Number(row.valor_atual ?? 0);
   return {
     id: row.id,
-    nome: row.titulo,
-    titulo: row.titulo,
+    nome: row.title,
+    title: row.title,
     descricao: meta.descricao ?? "",
     tipo: normalizeType(row.tipo),
     tipo_meta: row.tipo,
@@ -70,7 +70,7 @@ function toApi(input: CreateMetaInput) {
   const current = Number(input.valorAtual ?? input.valor_atual ?? 0);
   return {
     artist_id: String(input.artist_id),
-    titulo: input.titulo ?? input.nome ?? "Meta",
+    title: input.title ?? input.nome ?? "Meta",
     tipo: input.tipo_meta ?? input.tipo ?? "personalizada",
     meta_valor: String(target),
     valor_atual: String(current),
@@ -142,8 +142,8 @@ export function useUpdateMeta() {
     mutationFn: async ({ id, ...input }: UpdateMetaInput) => {
       const current = await api.get<GoalRow>(`/artist-goals/${id}`);
       const merged: CreateMetaInput = {
-        nome: current.titulo,
-        titulo: current.titulo,
+        nome: current.title,
+        title: current.title,
         descricao: current.metadata?.descricao ?? "",
         tipo: current.tipo,
         categoria: current.metadata?.categoria ?? "",

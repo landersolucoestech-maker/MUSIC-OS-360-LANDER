@@ -79,19 +79,19 @@ describe('PhonogramsController — contrato HTTP real (C2)', () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
-  it('create somente com title legado → aceito, chega ao repository mock', async () => {
+  it('create somente com title (canônico) → aceito, chega ao repository mock', async () => {
     await request(app.getHttpServer())
       .post('/phonograms')
-      .send({ title: 'Fonograma Legado' })
+      .send({ title: 'Fonograma Canônico' })
       .expect(201);
     expect(repo.create).toHaveBeenCalledTimes(1);
-    expect(repo.create.mock.calls[0][0].titulo).toBe('Fonograma Legado');
+    expect(repo.create.mock.calls[0][0].title).toBe('Fonograma Canônico');
   });
 
-  it('titulo/title conflitantes → 400, repository não chamado', async () => {
+  it('title/titulo conflitantes → 400, repository não chamado', async () => {
     await request(app.getHttpServer())
       .post('/phonograms')
-      .send({ titulo: 'A', title: 'B' })
+      .send({ title: 'A', titulo: 'B' })
       .expect(400)
       .expect((res) => {
         expect(res.body.message?.code ?? res.body.code).toBe('PHONOGRAM_ALIAS_CONFLICT');
@@ -143,16 +143,16 @@ describe('Swagger/OpenAPI — metadados de depreciação dos aliases (C2)', () =
     await swaggerApp.close();
   });
 
-  it('CreatePhonogramDto: title, workId e artistId estão deprecated', () => {
+  it('CreatePhonogramDto: titulo, workId e artistId estão deprecated (title passou a canônico em 2026-09-05)', () => {
     const props = schemas['CreatePhonogramDto'].properties!;
-    for (const field of ['title', 'workId', 'artistId']) {
+    for (const field of ['titulo', 'workId', 'artistId']) {
       expect(props[field]?.deprecated).toBe(true);
     }
   });
 
-  it('CreatePhonogramDto: titulo, work_id e artist_id NÃO estão deprecated', () => {
+  it('CreatePhonogramDto: title, work_id e artist_id NÃO estão deprecated', () => {
     const props = schemas['CreatePhonogramDto'].properties!;
-    for (const field of ['titulo', 'work_id', 'artist_id']) {
+    for (const field of ['title', 'work_id', 'artist_id']) {
       expect(props[field]?.deprecated).toBeUndefined();
     }
   });

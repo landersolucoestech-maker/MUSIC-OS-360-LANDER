@@ -139,7 +139,7 @@ export class ContractExpiryScheduler implements OnApplicationBootstrap {
         payload: {
           contractId: contract.id,
           tenantId:   contract.tenant_id,
-          titulo:     contract.titulo,
+          title:     contract.title,
           artistId:   contract.artist_id,
           dataFim:    dataFim.toISOString(),
           daysLeft,
@@ -157,7 +157,7 @@ export class ContractExpiryScheduler implements OnApplicationBootstrap {
         .where('id = :id AND tenant_id = :tenantId', { id: contract.id, tenantId })
         .execute();
 
-      this.logger.log(`ContractExpiryScheduler: notified "${contract.titulo}" (${contract.id}) — ${daysLeft} days left`);
+      this.logger.log(`ContractExpiryScheduler: notified "${contract.title}" (${contract.id}) — ${daysLeft} days left`);
     }
   }
 }

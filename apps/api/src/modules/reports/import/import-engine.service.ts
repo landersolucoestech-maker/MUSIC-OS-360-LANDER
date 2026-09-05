@@ -64,7 +64,7 @@ function reportSheetName(report: EntityReport, entity: string): string {
 /**
  * A definição usa chaves lógicas do formulário, enquanto a metadata do banco
  * usa nomes físicos. Este mapa mantém coerção/required checks alinhados ao
- * contrato, inclusive quando `nome_ep_album` persiste em `projects.titulo`.
+ * contrato, inclusive quando `nome_ep_album` persiste em `projects.title`.
  */
 function buildLogicalTypeMap(
   report: EntityReport,

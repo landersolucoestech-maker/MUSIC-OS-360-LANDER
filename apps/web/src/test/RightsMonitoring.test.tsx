@@ -37,7 +37,7 @@ const DETECCOES = [
 
 const OBRAS = [
   {
-    id: "obra-001", titulo: "Noite de Luz",
+    id: "obra-001", title: "Noite de Luz",
     compositor: "Vitória Carvalho", compositores: "Vitória Carvalho, Lucas Mendes",
     editora: "MusicOS Publishing", isrc: "BRMSC2500001", iswc: "T-123.456.789-0",
     cod_entidade: "ABR-001-2025", cod_ecad: "ECAD-0001-VL",

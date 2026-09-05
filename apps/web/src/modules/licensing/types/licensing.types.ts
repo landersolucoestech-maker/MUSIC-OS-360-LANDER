@@ -9,7 +9,7 @@ export type Currency = "BRL" | "USD" | "EUR";
 export interface Licenca {
   id: string;
   user_id?: string;
-  titulo: string;
+  title: string;
   // Relações (fonte da verdade)
   work_id?: string | null;
   client_id?: string | null;

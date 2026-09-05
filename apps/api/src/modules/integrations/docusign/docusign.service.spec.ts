@@ -13,7 +13,7 @@ function buildHarness(overrides: {
   tenantActive?: boolean;
 } = {}) {
   const contract = overrides.contract === undefined
-    ? { id: 'contract-a', tenant_id: 'tenant-a', titulo: 'Contrato A', artist_id: 'artist-a' }
+    ? { id: 'contract-a', tenant_id: 'tenant-a', title: 'Contrato A', artist_id: 'artist-a' }
     : overrides.contract;
   const tenantResolver = {
     resolveTenant: jest.fn(async () => (

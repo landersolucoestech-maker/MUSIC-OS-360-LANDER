@@ -34,7 +34,7 @@ export interface WizardSignerRecord {
 export interface Contrato {
   id: string;
   user_id?: string;
-  titulo: string;
+  title: string;
   tipo?: ContratoTipo | string | null;
   status?: ContratoStatus | string | null;
   artist_id?: string | null;

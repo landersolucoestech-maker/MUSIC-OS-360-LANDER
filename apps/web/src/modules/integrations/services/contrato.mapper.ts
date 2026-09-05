@@ -18,7 +18,7 @@ import type { CreateSigningDocumentParams as CreateDocumentInput, SigningDocumen
 /** Entidade de domínio Contrato (fonte: mockData). */
 export interface ContratoEntity {
   id:            string;
-  titulo:        string;
+  title:        string;
   tipo:          string;
   status:        string;
   partes:        Array<{ nome: string; email: string; papel: string }>;
@@ -36,7 +36,7 @@ export const contratoMapper = {
    */
   toSigningInput(contrato: ContratoEntity, _deadline_days = 7): CreateDocumentInput {
     return {
-      title:    contrato.titulo,
+      title:    contrato.title,
       document: contrato.fileKey
         ? `/storage/${contrato.bucket ?? "documents"}/${contrato.fileKey}`
         : "",

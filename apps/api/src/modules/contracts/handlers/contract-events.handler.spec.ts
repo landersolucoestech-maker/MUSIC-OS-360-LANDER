@@ -32,7 +32,7 @@ function build() {
 }
 
 describe('ContractEventsHandler — onContractSigned', () => {
-  const payload = { contractId: 'c1', titulo: 'Contrato X', artistId: 'a1', signedBy: 'u1', signedAt: '2026-06-12' };
+  const payload = { contractId: 'c1', title: 'Contrato X', artistId: 'a1', signedBy: 'u1', signedAt: '2026-06-12' };
 
   it('marca a transação criada com source: contract.signed para evitar avaliação duplicada de regras', async () => {
     const { handler, events } = build();

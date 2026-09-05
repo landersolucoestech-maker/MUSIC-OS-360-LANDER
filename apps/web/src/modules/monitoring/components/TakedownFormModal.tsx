@@ -40,7 +40,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
   } = useForm<TakedownFormData>({
     resolver: zodResolver(takedownSchema),
     defaultValues: {
-      titulo: "",
+      title: "",
       tipo: "enviado",
       obraAfetada: "",
       artista: "",
@@ -61,7 +61,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
     if (takedown) {
       const n = normalizeTakedown(takedown);
       reset({
-        titulo: n.titulo,
+        title: n.title,
         tipo: n.tipo || "enviado",
         obraAfetada: n.obra_afetada,
         artista: n.artista,
@@ -77,7 +77,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
       });
     } else {
       reset({
-        titulo: "",
+        title: "",
         tipo: "enviado",
         obraAfetada: "",
         artista: "",
@@ -96,7 +96,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
 
   /** Converte os campos do formulário no shape canônico snake_case persistido. */
   const buildPayload = (data: TakedownFormData) => ({
-    titulo: data.titulo,
+    title: data.title,
     tipo: data.tipo || null,
     obra_afetada: data.obraAfetada || null,
     artista: data.artista || null,
@@ -151,13 +151,13 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
               <div className="space-y-2">
                 <Label>Título/Identificação *</Label>
                 <Input
-                  {...register("titulo")}
+                  {...register("title")}
                   disabled={isViewMode}
                   placeholder="Identificação do takedown"
-                  className={errors.titulo ? "border-destructive" : ""}
-                  data-testid="input-titulo"
+                  className={errors.title ? "border-destructive" : ""}
+                  data-testid="input-title"
                 />
-                <FieldError error={errors.titulo?.message} />
+                <FieldError error={errors.title?.message} />
               </div>
               <div className="space-y-2">
                 <Label>Tipo</Label>

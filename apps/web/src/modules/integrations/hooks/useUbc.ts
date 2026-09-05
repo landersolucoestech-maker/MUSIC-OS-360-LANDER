@@ -63,7 +63,7 @@ export interface UbcStatus extends IntegrationRuntimeStatus {
 
 export interface UbcSearchResult {
   external_id:     string;
-  titulo:          string;
+  title:          string;
   iswc?:           string | null;
   genero?:         string | null;
   compositores?:   string[] | null;
@@ -85,7 +85,7 @@ export interface UbcSearchResponse {
 
 export interface UbcLocalMatch {
   id:     string;
-  titulo: string;
+  title: string;
 }
 
 const UBC_UNAVAILABLE =

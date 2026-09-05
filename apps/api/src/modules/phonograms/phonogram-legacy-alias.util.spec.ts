@@ -21,70 +21,70 @@ const UUID_A_UPPER = '123E4567-E89B-12D3-A456-426614174000';
 const UUID_B = '223e4567-e89b-12d3-a456-426614174000';
 
 describe('phonogram-legacy-alias.util', () => {
-  describe('resolvePhonogramAliases — titulo/title', () => {
-    it('somente PT: retorna titulo, sem alias legado', () => {
-      const { normalized, legacyAliasesUsed } = resolvePhonogramAliases({ titulo: 'Nome PT' });
-      expect(normalized.titulo).toBe('Nome PT');
-      expect(legacyAliasesUsed).not.toContain('title');
-    });
-
-    it('somente EN: retorna titulo com o valor de title, registra alias', () => {
+  describe('resolvePhonogramAliases — title/titulo', () => {
+    it('somente EN: retorna title, sem alias legado', () => {
       const { normalized, legacyAliasesUsed } = resolvePhonogramAliases({ title: 'Nome EN' });
-      expect(normalized.titulo).toBe('Nome EN');
-      expect(legacyAliasesUsed).toContain('title');
+      expect(normalized.title).toBe('Nome EN');
+      expect(legacyAliasesUsed).not.toContain('titulo');
     });
 
-    it('ambos equivalentes (trim iguais): PT vence, valor original PT persistido, alias registrado', () => {
+    it('somente PT (legado): retorna title com o valor de titulo, registra alias', () => {
+      const { normalized, legacyAliasesUsed } = resolvePhonogramAliases({ titulo: 'Nome PT' });
+      expect(normalized.title).toBe('Nome PT');
+      expect(legacyAliasesUsed).toContain('titulo');
+    });
+
+    it('ambos equivalentes (trim iguais): EN vence, valor original EN persistido, alias registrado', () => {
       const { normalized, legacyAliasesUsed } = resolvePhonogramAliases({
-        titulo: 'Nome', title: '  Nome  ',
+        title: 'Nome', titulo: '  Nome  ',
       });
-      expect(normalized.titulo).toBe('Nome');
-      expect(legacyAliasesUsed).toContain('title');
+      expect(normalized.title).toBe('Nome');
+      expect(legacyAliasesUsed).toContain('titulo');
     });
 
     it('ambos conflitantes: lança PHONOGRAM_ALIAS_CONFLICT com fields corretos', () => {
-      const body = errorBody(() => resolvePhonogramAliases({ titulo: 'A', title: 'B' }));
+      const body = errorBody(() => resolvePhonogramAliases({ title: 'A', titulo: 'B' }));
       expect(body.code).toBe('PHONOGRAM_ALIAS_CONFLICT');
-      expect(body.fields).toEqual([{ canonical: 'titulo', legacy: 'title' }]);
+      expect(body.fields).toEqual([{ canonical: 'title', legacy: 'titulo' }]);
     });
 
-    it('title undefined explícito: tratado como ausente (não conflita, não lança)', () => {
-      const { normalized } = resolvePhonogramAliases({ titulo: 'Nome', title: undefined });
-      expect(normalized.titulo).toBe('Nome');
+    it('titulo undefined explícito: tratado como ausente (não conflita, não lança)', () => {
+      const { normalized } = resolvePhonogramAliases({ title: 'Nome', titulo: undefined });
+      expect(normalized.title).toBe('Nome');
     });
 
-    it('ausência total: titulo fica undefined no resultado', () => {
+    it('ausência total: title fica undefined no resultado', () => {
       const { normalized } = resolvePhonogramAliases({});
-      expect(normalized.titulo).toBeUndefined();
+      expect(normalized.title).toBeUndefined();
     });
 
-    it('titulo null: inválido (PHONOGRAM_TITLE_INVALID)', () => {
-      const body = errorBody(() => resolvePhonogramAliases({ titulo: null }));
+    it('title null: inválido (PHONOGRAM_TITLE_INVALID)', () => {
+      const body = errorBody(() => resolvePhonogramAliases({ title: null }));
       expect(body.code).toBe('PHONOGRAM_TITLE_INVALID');
     });
 
-    it('titulo vazio: inválido', () => {
-      const body = errorBody(() => resolvePhonogramAliases({ titulo: '' }));
-      expect(body.code).toBe('PHONOGRAM_TITLE_INVALID');
-    });
-
-    it('titulo somente espaços: inválido', () => {
-      const body = errorBody(() => resolvePhonogramAliases({ titulo: '   ' }));
-      expect(body.code).toBe('PHONOGRAM_TITLE_INVALID');
-    });
-
-    it('title (alias) vazio: também inválido', () => {
+    it('title vazio: inválido', () => {
       const body = errorBody(() => resolvePhonogramAliases({ title: '' }));
       expect(body.code).toBe('PHONOGRAM_TITLE_INVALID');
     });
 
+    it('title somente espaços: inválido', () => {
+      const body = errorBody(() => resolvePhonogramAliases({ title: '   ' }));
+      expect(body.code).toBe('PHONOGRAM_TITLE_INVALID');
+    });
+
+    it('titulo (alias) vazio: também inválido', () => {
+      const body = errorBody(() => resolvePhonogramAliases({ titulo: '' }));
+      expect(body.code).toBe('PHONOGRAM_TITLE_INVALID');
+    });
+
     it('não trima silenciosamente o valor salvo (persiste string original com espaços internos/externos preservados quando só um lado é enviado)', () => {
-      const { normalized } = resolvePhonogramAliases({ titulo: '  Nome Com Espaço  ' });
-      expect(normalized.titulo).toBe('  Nome Com Espaço  ');
+      const { normalized } = resolvePhonogramAliases({ title: '  Nome Com Espaço  ' });
+      expect(normalized.title).toBe('  Nome Com Espaço  ');
     });
 
     it('mensagem de erro não inclui o conteúdo do título', () => {
-      const body = errorBody(() => resolvePhonogramAliases({ titulo: 'ValorSecreto', title: 'OutroValor' }));
+      const body = errorBody(() => resolvePhonogramAliases({ title: 'ValorSecreto', titulo: 'OutroValor' }));
       expect(JSON.stringify(body)).not.toContain('ValorSecreto');
       expect(JSON.stringify(body)).not.toContain('OutroValor');
     });

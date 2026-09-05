@@ -39,7 +39,7 @@ const statusOptions = [
 ];
 
 const DEFAULT_VALUES: LicencaFormData = {
-  titulo: "",
+  title: "",
   tipoLicenca: "",
   workId: "",
   clientId: "",
@@ -86,7 +86,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
     if (!open) return;
     if (licenca) {
       reset({
-        titulo: licenca.titulo || "",
+        title: licenca.title || "",
         tipoLicenca: licenca.tipo || "",
         workId: licenca.work_id || "",
         clientId: licenca.client_id || "",
@@ -114,7 +114,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
     const amountNum = data.amount ? Number(data.amount) : null;
     const pctNum = data.percentage ? Number(data.percentage) : null;
     return {
-      titulo:            data.titulo,
+      title:            data.title,
       tipo:              data.tipoLicenca || undefined,
       work_id:           data.workId,
       client_id:        data.clientId,
@@ -176,13 +176,13 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
               <div className="space-y-2">
                 <Label>Título da Licença *</Label>
                 <Input
-                  {...register("titulo")}
+                  {...register("title")}
                   disabled={isViewMode}
                   placeholder="Nome/Título da licença"
-                  className={errors.titulo ? "border-destructive" : ""}
-                  data-testid="input-titulo"
+                  className={errors.title ? "border-destructive" : ""}
+                  data-testid="input-title"
                 />
-                <FieldError error={errors.titulo?.message} />
+                <FieldError error={errors.title?.message} />
               </div>
               <div className="space-y-2">
                 <Label>Tipo de Licença</Label>
@@ -214,7 +214,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
                   render={({ field }) => (
                     <AsyncEntityCombobox<Obra>
                       table="obras"
-                      getLabel={(o) => o.titulo ?? ""}
+                      getLabel={(o) => o.title ?? ""}
                       value={field.value}
                       onChange={(id) => field.onChange(id)}
                       placeholder="Selecione a obra"

@@ -68,7 +68,7 @@ interface WizardSigner {
 }
 
 interface WizardMeta {
-  titulo: string;
+  title: string;
   status: string;
   data_inicio: string;
   data_fim: string;
@@ -146,7 +146,7 @@ const STATUS_LABELS: Record<string, string> = {
 const EMPTY_PARTY: PartyData = { tipo: "pf", origin: "manual" };
 
 const EMPTY_META: WizardMeta = {
-  titulo: "", status: "rascunho", data_inicio: "", data_fim: "", observations: "",
+  title: "", status: "rascunho", data_inicio: "", data_fim: "", observations: "",
 };
 
 const EMPTY_WIZARD: WizardState = {
@@ -852,9 +852,9 @@ function ReviewStep({ state, onMeta }: { state: WizardState; onMeta: (m: WizardM
         <div className="space-y-1.5">
           <Label>Título do Contrato *</Label>
           <Input
-            data-testid="input-titulo-revisao"
-            value={m.titulo}
-            onChange={(e) => setMeta({ titulo: e.target.value })}
+            data-testid="input-title-revisao"
+            value={m.title}
+            onChange={(e) => setMeta({ title: e.target.value })}
             placeholder="Ex: Contrato de Empresariamento Artístico"
           />
         </div>
@@ -942,7 +942,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
       } catch { /* ignore parse errors */ }
 
       const baseMeta: WizardMeta = {
-        titulo:       contrato.titulo || "",
+        title:       contrato.title || "",
         status:       String(contrato.status || "rascunho"),
         data_inicio:  contrato.data_inicio || "",
         data_fim:     contrato.data_fim || "",
@@ -1072,7 +1072,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
 
   const canAdvance = useMemo(() => {
     if (step === 1) return !!state.templateId;
-    if (step === 6) return !!state.meta.titulo.trim() && !!state.meta.data_inicio;
+    if (step === 6) return !!state.meta.title.trim() && !!state.meta.data_inicio;
     return true;
   }, [step, state]);
 
@@ -1081,7 +1081,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
   // ── Save ─────────────────────────────────────────────────────────────────
 
   async function handleSave(sendForSignature: boolean) {
-    if (!state.meta.titulo.trim()) { toast.error("Preencha o título do contrato"); return; }
+    if (!state.meta.title.trim()) { toast.error("Preencha o título do contrato"); return; }
     if (!state.meta.data_inicio)  { toast.error("Preencha a data de início");      return; }
 
     setIsSaving(true);
@@ -1103,7 +1103,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
 
       // FIX: build typed payload — no `as any`
       const payload: ContratoInsert = {
-        titulo:           state.meta.titulo.trim(),
+        title:           state.meta.title.trim(),
         template_id:      state.templateId || null,
         tipo:             state.templateTipoServico || state.templateNome || null,
         status:           resolvedStatus,

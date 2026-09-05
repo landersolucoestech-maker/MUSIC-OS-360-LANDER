@@ -123,7 +123,7 @@ function describeAuditAction(action: string, entity: string): string {
 function mapAuditToActivity(row: AuditLogRow): ActivityItem {
   const after = (row.after ?? {}) as Record<string, unknown>;
   const description =
-    (after["titulo"]         as string | undefined) ??
+    (after["title"]         as string | undefined) ??
     (after["nome_artistico"] as string | undefined) ??
     (after["nome"]           as string | undefined) ??
     (row.entity_id ?? "—");
@@ -399,7 +399,7 @@ export default function Dashboard() {
     push({ icon: <Users className="h-3.5 w-3.5" />, label: "Artista removido", description: d.id, badge: "Artista", badgeVariant: "outline" }),
   );
   useWsEvent("catalog.music.registered", (d) =>
-    push({ icon: <Music className="h-3.5 w-3.5" />, label: "Música registrada", description: (d as { titulo?: string }).titulo ?? d.id, badge: "Catálogo", badgeVariant: "default" }),
+    push({ icon: <Music className="h-3.5 w-3.5" />, label: "Música registrada", description: (d as { title?: string }).title ?? d.id, badge: "Catálogo", badgeVariant: "default" }),
   );
   useWsEvent("catalog.phonogram.registered", (d) =>
     push({ icon: <Music className="h-3.5 w-3.5" />, label: "Fonograma registrado", description: d.id, badge: "Catálogo", badgeVariant: "secondary" }),
@@ -457,8 +457,8 @@ export default function Dashboard() {
       {
         event: "musicos360:MUSIC_REGISTERED",
         fn: (e) => {
-          const d = (e as CustomEvent).detail as { titulo?: string };
-          pushRef.current({ icon: <Music className="h-3.5 w-3.5" />, label: "Música registrada", description: d.titulo ?? "–", badge: "Catálogo", badgeVariant: "default" });
+          const d = (e as CustomEvent).detail as { title?: string };
+          pushRef.current({ icon: <Music className="h-3.5 w-3.5" />, label: "Música registrada", description: d.title ?? "–", badge: "Catálogo", badgeVariant: "default" });
         },
       },
       {
@@ -718,7 +718,7 @@ export default function Dashboard() {
                       </div>
                       <div className="hidden w-px self-stretch bg-primary/20 sm:block" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium leading-tight">{evento.titulo}</p>
+                        <p className="text-sm font-medium leading-tight">{evento.title}</p>
                         <Badge
                           variant="outline"
                           className="mt-1.5 px-1.5 py-0 text-[10px] border-border text-muted-foreground"

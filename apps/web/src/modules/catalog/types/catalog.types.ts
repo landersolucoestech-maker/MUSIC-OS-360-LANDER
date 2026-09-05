@@ -7,7 +7,7 @@ export type { ObraStatus, ObraTipo, FonogramaStatus };
 export interface Obra {
   id: string;
   user_id?: string;
-  titulo: string;
+  title: string;
   compositor?: string | null;
   compositores?: string | string[] | null;
   letristas?: string | string[] | null;
@@ -43,7 +43,7 @@ export interface ObraWithRelations extends Obra {
 export interface Fonograma {
   id: string;
   user_id?: string;
-  titulo?: string | null;
+  title?: string | null;
   work_id?: string | null;
   artist_id?: string | null;
   isrc?: string | null;

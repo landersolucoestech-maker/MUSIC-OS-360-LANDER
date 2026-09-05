@@ -75,7 +75,6 @@ export const FIELD_LABELS_PT_BR = {
   attachments: 'Anexos',
   anexos: 'Anexos',
   assunto: 'Assunto',
-  titulo: 'Título',
   title: 'Título',
   funcao: 'Função',
 

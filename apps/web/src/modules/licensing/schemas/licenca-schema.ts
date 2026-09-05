@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const licencaSchema = z
   .object({
-    titulo: z.string().min(1, "Título é obrigatório").max(200, "Título deve ter no máximo 200 caracteres").trim(),
+    title: z.string().min(1, "Título é obrigatório").max(200, "Título deve ter no máximo 200 caracteres").trim(),
     tipoLicenca: z.string().optional().or(z.literal("")),
     workId: z.string().min(1, "Obra musical é obrigatória"),
     clientId: z.string().min(1, "Cliente é obrigatório"),

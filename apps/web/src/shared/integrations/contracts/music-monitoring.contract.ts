@@ -45,7 +45,7 @@ export interface FingerprintInput {
 export interface FingerprintMatch {
   /** Confidence score 0–100 */
   score: number;
-  titulo: string;
+  title: string;
   artista: string;
   isrc?: string | null;
   iswc?: string | null;
@@ -76,7 +76,7 @@ export interface FingerprintResult {
 
 export interface PlayReport {
   id: string;
-  titulo: string;
+  title: string;
   artista: string;
   isrc?: string | null;
   iswc?: string | null;
@@ -100,7 +100,7 @@ export interface PlayReportQuery {
   isrc?: string;
   iswc?: string;
   artista?: string;
-  titulo?: string;
+  title?: string;
   source_type?: MonitoringSourceType;
   /** Período inicial "YYYY-MM-DD" */
   date_from?: string;
@@ -137,7 +137,7 @@ export interface MonitoringAlert {
   id: string;
   type: AlertType;
   severity: AlertSeverity;
-  titulo: string;
+  title: string;
   artista?: string | null;
   isrc?: string | null;
   iswc?: string | null;
@@ -183,13 +183,13 @@ export interface CreateMonitoringProjectInput {
 
 export interface MusicSearchQuery {
   query: string;
-  field?: "titulo" | "artista" | "isrc" | "iswc" | "all";
+  field?: "title" | "artista" | "isrc" | "iswc" | "all";
   limit?: number;
 }
 
 export interface MusicSearchResult {
   external_id: string;
-  titulo: string;
+  title: string;
   artista: string;
   isrc?: string | null;
   iswc?: string | null;

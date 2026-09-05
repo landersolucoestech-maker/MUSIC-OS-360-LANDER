@@ -36,7 +36,7 @@ const DEFAULT_PLATFORMS: MarketingPlatform[] = ['instagram', 'tiktok', 'youtube'
 const CAMPAIGN_WINDOW_DAYS = 28;
 
 interface ReleaseRow {
-  titulo: string;
+  title: string;
   data_lancamento: string | Date | null;
   artist_name: string | null;
   metadata: Record<string, unknown> | null;
@@ -97,7 +97,7 @@ export class MarketingCalendarBuilderAutomation {
   ): Promise<ReleaseRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT r.titulo, r.data_lancamento, r.metadata,
+      `SELECT r.title, r.data_lancamento, r.metadata,
               a.nome_artistico AS artist_name
          FROM releases r
          LEFT JOIN artists a
@@ -143,8 +143,8 @@ export class MarketingCalendarBuilderAutomation {
 
     const input: MarketingCalendarBuilderInput = {
       artistName: release.artist_name?.trim() || 'Artista',
-      releaseTitle: release.titulo,
-      campaignGoal: `Lançamento e promoção de "${release.titulo}".`,
+      releaseTitle: release.title,
+      campaignGoal: `Lançamento e promoção de "${release.title}".`,
       startDate,
       endDate,
       platforms,

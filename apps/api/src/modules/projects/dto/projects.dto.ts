@@ -15,7 +15,7 @@ const STATUSES = Object.values(ProjectStatus) as string[];
  * aceitos, não batiam com as colunas físicas (nome/tipo/status/descricao).
  */
 export class CreateProjectDto {
-  @ApiProperty() @IsString() @MaxLength(500) titulo!: string;
+  @ApiProperty() @IsString() @MaxLength(500) title!: string;
   @ApiProperty({ enum: TYPES }) @IsIn(TYPES) tipo!: typeof TYPES[number];
   @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) orcamento?: number;

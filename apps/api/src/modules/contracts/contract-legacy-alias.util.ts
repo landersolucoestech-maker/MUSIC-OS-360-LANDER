@@ -32,7 +32,7 @@ export interface ContractAliasErrorBody {
 }
 
 export interface ResolvedContractWriteFields {
-  titulo?: string;
+  title?: string;
   tipo?: string | null;
   artist_id?: string | null;
   data_inicio?: string | null;
@@ -209,36 +209,41 @@ const VALOR_SPEC: PairSpec = {
 
 function assertTitleContent(v: unknown, field: string): asserts v is string {
   if (v === null || typeof v !== 'string' || v.trim() === '') {
-    throwInvalid('CONTRACT_TITLE_INVALID', 'titulo', field);
+    throwInvalid('CONTRACT_TITLE_INVALID', 'title', field);
   }
 }
 
-function resolveTitulo(input: Record<string, unknown>, legacyUsed: Set<string>): string | undefined {
-  const ptAbsent = isAbsent(input, 'titulo');
+/**
+ * Após a normalização de nomenclatura (2026-09-05), a coluna física passou
+ * de `titulo` para `title`. `titulo` agora é o alias legado PT aceito para
+ * chamadores antigos — mesma estrutura de antes, papéis invertidos.
+ */
+function resolveTitle(input: Record<string, unknown>, legacyUsed: Set<string>): string | undefined {
   const enAbsent = isAbsent(input, 'title');
+  const ptAbsent = isAbsent(input, 'titulo');
 
   if (ptAbsent && enAbsent) return undefined;
 
-  if (!ptAbsent && enAbsent) {
-    const v = input['titulo'];
-    assertTitleContent(v, 'titulo');
-    return v;
-  }
-
-  if (ptAbsent && !enAbsent) {
-    legacyUsed.add('title');
+  if (!enAbsent && ptAbsent) {
     const v = input['title'];
     assertTitleContent(v, 'title');
     return v;
   }
 
-  const ptV = input['titulo'];
+  if (enAbsent && !ptAbsent) {
+    legacyUsed.add('titulo');
+    const v = input['titulo'];
+    assertTitleContent(v, 'titulo');
+    return v;
+  }
+
   const enV = input['title'];
-  assertTitleContent(ptV, 'titulo');
+  const ptV = input['titulo'];
   assertTitleContent(enV, 'title');
-  legacyUsed.add('title');
-  if (ptV.trim() === enV.trim()) return ptV;
-  throwConflict('titulo', 'title');
+  assertTitleContent(ptV, 'titulo');
+  legacyUsed.add('titulo');
+  if (enV.trim() === ptV.trim()) return enV;
+  throwConflict('title', 'titulo');
 }
 
 // ── API pública ──────────────────────────────────────────────────────────────
@@ -252,8 +257,8 @@ export function resolveContractAliases(input: Record<string, unknown>): Contract
   const legacyUsed = new Set<string>();
   const normalized: ResolvedContractWriteFields = {};
 
-  const titulo = resolveTitulo(input, legacyUsed);
-  if (titulo !== undefined) normalized.titulo = titulo;
+  const title = resolveTitle(input, legacyUsed);
+  if (title !== undefined) normalized.title = title;
 
   const tipo = resolvePair(input, TIPO_SPEC, legacyUsed);
   if (tipo !== undefined) normalized.tipo = tipo as string | null;

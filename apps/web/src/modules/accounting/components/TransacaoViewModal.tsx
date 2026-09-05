@@ -166,14 +166,14 @@ function textValue(value: unknown): string | undefined {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
   if (typeof value !== "object") return undefined;
   const record = value as Detail;
-  return textValue(record.nome_artistico ?? record.nome ?? record.name ?? record.titulo ?? record.title ?? record.descricao ?? record.id);
+  return textValue(record.nome_artistico ?? record.nome ?? record.name ?? record.title ?? record.title ?? record.descricao ?? record.id);
 }
 
 function displayName(value: unknown): string | undefined {
   if (!hasValue(value)) return undefined;
   if (typeof value === "object") {
     const record = value as Detail;
-    return textValue(record.nome_artistico ?? record.nome ?? record.name ?? record.titulo ?? record.title ?? record.descricao);
+    return textValue(record.nome_artistico ?? record.nome ?? record.name ?? record.title ?? record.title ?? record.descricao);
   }
   const raw = textValue(value);
   if (!raw || /^[a-z]+-\d+$/i.test(raw) || /^[a-f0-9-]{8,}$/i.test(raw)) return undefined;

@@ -5,7 +5,7 @@ export class CreateArtistGoalDto {
   artist_id: string;
 
   @IsString()
-  titulo: string;
+  title: string;
 
   @IsString()
   tipo: string;

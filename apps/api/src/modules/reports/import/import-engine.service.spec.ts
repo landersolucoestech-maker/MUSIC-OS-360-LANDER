@@ -155,7 +155,7 @@ describe('ImportEngineService — projetos em uma única aba', () => {
     tableName: 'projects', label: 'Projetos', reportable: true, hasSoftDelete: false,
     columns: [
       { name: 'tipo', type: 'String', isEnum: false, nullable: false, hasDefault: false },
-      { name: 'titulo', type: 'String', isEnum: false, nullable: false, hasDefault: false },
+      { name: 'title', type: 'String', isEnum: false, nullable: false, hasDefault: false },
       { name: 'observacoes', type: 'String', isEnum: false, nullable: true, hasDefault: false },
       { name: 'status', type: 'String', isEnum: false, nullable: false, hasDefault: true },
     ],

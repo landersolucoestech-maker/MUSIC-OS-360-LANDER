@@ -186,7 +186,7 @@ export class ClientsService {
   async getContracts(tenantId: string, id: string) {
     await this.findById(tenantId, id);
     return this.repo!.manager.query(
-      `SELECT id, titulo, tipo, status, valor, data_inicio, data_fim, created_at
+      `SELECT id, title, tipo, status, valor, data_inicio, data_fim, created_at
          FROM contracts
         WHERE tenant_id = $1 AND client_id = $2 AND deleted_at IS NULL
         ORDER BY created_at DESC`,

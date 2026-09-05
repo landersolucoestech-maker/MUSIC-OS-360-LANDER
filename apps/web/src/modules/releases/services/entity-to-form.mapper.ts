@@ -8,7 +8,7 @@ import type { Lancamento } from "@/modules/releases/hooks/useLancamentos";
 
 export interface LancamentoFormFields {
   projetoSeed: string;
-  titulo: string;
+  title: string;
   artist_id: string;
   tipo: string;
   codigoUPC: string;
@@ -72,7 +72,7 @@ export function lancamentoToFormFields(l: Lancamento | null | undefined): Lancam
 
   return {
     projetoSeed:               "",
-    titulo:                    ps(l?.titulo ?? r?.["title"]),
+    title:                    ps(l?.title ?? r?.["title"]),
     artist_id:                ps(l?.artist_id ?? r?.["artistId"]),
     tipo:                      ps(l?.tipo ?? r?.["type"]),
     codigoUPC:                 ps(l?.codigo_upc ?? l?.upc ?? r?.["upc"]),
@@ -102,7 +102,7 @@ export function lancamentoToFormFields(l: Lancamento | null | undefined): Lancam
 
 export function emptyLancamentoFormFields(): LancamentoFormFields {
   return {
-    projetoSeed: "", titulo: "", artist_id: "", tipo: "",
+    projetoSeed: "", title: "", artist_id: "", tipo: "",
     codigoUPC: "", genero: "", idioma: "", dataLancamento: "",
     status: "analise", gravadora: "", copyright: "",
     distribuidora: "onerpm", notasDistribuicao: "",

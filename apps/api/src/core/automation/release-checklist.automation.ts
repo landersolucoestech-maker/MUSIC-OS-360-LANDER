@@ -49,7 +49,7 @@ function mapReleaseType(tipo: string | null | undefined): ReleaseType {
 }
 
 interface ReleaseRow {
-  titulo: string;
+  title: string;
   tipo: string | null;
   data_lancamento: string | Date | null;
   upc: string | null;
@@ -109,7 +109,7 @@ export class ReleaseChecklistAutomation {
   ): Promise<ReleaseRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT r.titulo, r.tipo, r.data_lancamento, r.upc, r.capa_url, r.artist_id, r.metadata,
+      `SELECT r.title, r.tipo, r.data_lancamento, r.upc, r.capa_url, r.artist_id, r.metadata,
               a.nome_artistico AS artist_name
          FROM releases r
          LEFT JOIN artists a
@@ -142,7 +142,7 @@ export class ReleaseChecklistAutomation {
     const flag = (key: string): boolean => md[key] === true;
 
     const input: ReleaseChecklistInput = {
-      releaseTitle: release.titulo,
+      releaseTitle: release.title,
       artistName: release.artist_name?.trim() || 'Artista não identificado',
       releaseType: mapReleaseType(release.tipo),
       hasCover: release.capa_url != null,

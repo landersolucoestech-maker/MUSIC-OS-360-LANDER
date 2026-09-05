@@ -25,10 +25,10 @@ function makeDs(releaseRows: unknown[], skillRunRows: unknown[] = []) {
   return { ds: { query }, query };
 }
 function makeEvent(overrides: Record<string, unknown> = {}) {
-  return { tenantId: 't1', payload: { releaseId: 'rel1', tenantId: 't1', titulo: 'Aurora', artistId: 'a1', approvedBy: 'u1', approvedAt: '2026-06-10T00:00:00.000Z', ...overrides } };
+  return { tenantId: 't1', payload: { releaseId: 'rel1', tenantId: 't1', title: 'Aurora', artistId: 'a1', approvedBy: 'u1', approvedAt: '2026-06-10T00:00:00.000Z', ...overrides } };
 }
 
-const RELEASE_ROW = { titulo: 'Aurora', artist_name: 'Banda Aurora', metadata: {} };
+const RELEASE_ROW = { title: 'Aurora', artist_name: 'Banda Aurora', metadata: {} };
 const VALID_JSON = JSON.stringify({
   concept: 'Conceito', contentType: 'music-video', scriptScenes: [], scenes: [], assets: [], deliverables: [],
   teamNeeds: [], checklist: [], risks: [],

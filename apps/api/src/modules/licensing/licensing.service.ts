@@ -75,7 +75,7 @@ export class LicensingService {
     if (query.midia_destino) qb.andWhere('l.midia_destino ILIKE :midia', { midia: `%${query.midia_destino}%` });
     if (query.search) {
       qb.andWhere(
-        '(l.titulo ILIKE :search OR l.projeto ILIKE :search OR l.artista ILIKE :search OR l.cliente ILIKE :search)',
+        '(l.title ILIKE :search OR l.projeto ILIKE :search OR l.artista ILIKE :search OR l.cliente ILIKE :search)',
         { search: `%${query.search}%` },
       );
     }

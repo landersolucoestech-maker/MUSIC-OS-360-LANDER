@@ -387,7 +387,7 @@ export class ExternalDataExchangeService {
         },
         release: release ? {
           id: release.id,
-          title: release.titulo,
+          title: release.title,
           type: release.tipo,
           status: release.status,
           distributor: release.distribuidora,
@@ -398,7 +398,7 @@ export class ExternalDataExchangeService {
         } : null,
         phonograms: phonograms.map((p) => ({
           id: p.id,
-          title: p.titulo,
+          title: p.title,
           isrc: p.isrc,
           duration: p.duracao,
           performers: p.interpretes,
@@ -441,7 +441,7 @@ export class ExternalDataExchangeService {
         ...(input.metadata ?? {}),
         works: works.map((w) => ({
           id: w.id,
-          title: w.titulo,
+          title: w.title,
           isrc: w.isrc,
           iswc: w.iswc,
           composers: w.compositores ?? w.compositor,
@@ -450,7 +450,7 @@ export class ExternalDataExchangeService {
         })),
         phonograms: phonograms.map((p) => ({
           id: p.id,
-          title: p.titulo,
+          title: p.title,
           isrc: p.isrc,
           composers: p.compositores,
           performers: p.interpretes,

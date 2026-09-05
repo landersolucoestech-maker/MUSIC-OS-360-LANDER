@@ -278,11 +278,11 @@ export default function Takedowns() {
                         <Checkbox
                           checked={selectedTakedownIds.includes(n.id)}
                           onCheckedChange={() => toggleSelectTakedown(n.id)}
-                          aria-label={`Selecionar takedown ${n.titulo || n.id}`}
+                          aria-label={`Selecionar takedown ${n.title || n.id}`}
                           data-testid={`checkbox-takedown-${n.id}`}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{n.titulo || "—"}</TableCell>
+                      <TableCell className="font-medium">{n.title || "—"}</TableCell>
                       <TableCell>{tipoBadge(n.tipo)}</TableCell>
                       <TableCell>{n.plataforma ? <Badge variant="neutral">{n.plataforma}</Badge> : "—"}</TableCell>
                       <TableCell>{n.motivo || "—"}</TableCell>
@@ -336,7 +336,7 @@ export default function Takedowns() {
           as mutations, a mesma query do isLoading acima. */}
       <TakedownFormModal open={takedownModal.open} onOpenChange={(open) => setTakedownModal({ ...takedownModal, open })} takedown={takedownModal.takedown} mode={takedownModal.mode} />
       <TakedownViewModal open={viewModal.open} onOpenChange={(open) => setViewModal({ ...viewModal, open })} takedown={viewModal.takedown} />
-      <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Takedown" description={`Tem certeza que deseja excluir "${deleteModal.takedown?.titulo}"?`} onConfirm={handleDelete} />
+      <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Takedown" description={`Tem certeza que deseja excluir "${deleteModal.takedown?.title}"?`} onConfirm={handleDelete} />
       <DeleteConfirmModal open={bulkDeleteModal.open} onOpenChange={(open) => setBulkDeleteModal({ ...bulkDeleteModal, open })} title="Excluir takedowns selecionados" description={`Tem certeza que deseja excluir ${bulkDeleteModal.ids.length} takedown(s) selecionado(s)?`} onConfirm={handleBulkDelete} />
     </>
     </FeatureGate>

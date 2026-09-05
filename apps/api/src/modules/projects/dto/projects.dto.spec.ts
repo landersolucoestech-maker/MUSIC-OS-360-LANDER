@@ -7,13 +7,14 @@ import { CreateProjectDto } from './projects.dto';
  * projects.dto.spec.ts
  *
  * Guarda permanente (auditoria 2026-07-18 — bug real confirmado): o DTO
- * antigo usava nomes em inglês (title/type/artistId/budget/currency/
+ * antigo usava nomes em inglês (type/artistId/budget/currency/
  * startsAt/deadlineAt/releasedAt) que NUNCA batiam com o payload real
- * enviado por ProjetoFormModal.tsx/Projetos.tsx (titulo/tipo/status/
+ * enviado por ProjetoFormModal.tsx/Projetos.tsx (title/tipo/status/
  * observacoes/descricao/genero/artist_id/musicas[]) nem com as colunas
- * físicas da entity (titulo/tipo/status/descricao — português). Com
+ * físicas da entity (title/tipo/status/descricao). Com
  * ValidationPipe (whitelist + forbidNonWhitelisted), toda criação/edição de
- * projeto retornava 400.
+ * projeto retornava 400. `title` passou de nome legado a canônico na
+ * normalização de nomenclatura (2026-09-05).
  */
 async function validatePayload(payload: Record<string, unknown>) {
   const instance = plainToInstance(CreateProjectDto, payload);
@@ -21,7 +22,7 @@ async function validatePayload(payload: Record<string, unknown>) {
 }
 
 const REAL_FORM_PAYLOAD = {
-  titulo: 'Meu Álbum',
+  title: 'Meu Álbum',
   tipo: 'album',
   observacoes: 'Notas internas',
   descricao: null,
@@ -42,20 +43,20 @@ describe('CreateProjectDto — contrato canônico real (auditoria 2026-07-18)', 
     expect(errors).toEqual([]);
   });
 
-  it('rejeita os nomes em inglês do DTO antigo (title/type/artistId/budget/currency/startsAt/deadlineAt/releasedAt)', async () => {
-    for (const key of ['title', 'type', 'artistId', 'budget', 'currency', 'startsAt', 'deadlineAt', 'releasedAt']) {
+  it('rejeita os nomes em inglês do DTO antigo (type/artistId/budget/currency/startsAt/deadlineAt/releasedAt) — "title" passou a canônico em 2026-09-05', async () => {
+    for (const key of ['type', 'artistId', 'budget', 'currency', 'startsAt', 'deadlineAt', 'releasedAt']) {
       const errors = await validatePayload({ ...REAL_FORM_PAYLOAD, [key]: 'x' });
       expect(errors.some((e) => e.property === key)).toBe(true);
     }
   });
 
-  it('aceita payload mínimo (apenas titulo/tipo obrigatórios)', async () => {
-    const errors = await validatePayload({ titulo: 'X', tipo: 'single' });
+  it('aceita payload mínimo (apenas title/tipo obrigatórios)', async () => {
+    const errors = await validatePayload({ title: 'X', tipo: 'single' });
     expect(errors).toEqual([]);
   });
 
   it('rejeita tipo fora do enum real', async () => {
-    const errors = await validatePayload({ titulo: 'X', tipo: 'inexistente' });
+    const errors = await validatePayload({ title: 'X', tipo: 'inexistente' });
     expect(errors.some((e) => e.property === 'tipo')).toBe(true);
   });
 });

@@ -285,7 +285,7 @@ export default function Metricas() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">Release selecionado</Badge>
                 <span className="font-medium text-foreground">
-                  {selectedRelease?.titulo ?? "Lançamento não encontrado"}
+                  {selectedRelease?.title ?? "Lançamento não encontrado"}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">

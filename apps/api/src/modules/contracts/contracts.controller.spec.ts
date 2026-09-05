@@ -93,19 +93,19 @@ describe('ContractsController — contrato HTTP real (Fase 5 / C1)', () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
-  it('create somente com title legado válido → passa da validação, chega ao repository mock', async () => {
+  it('create somente com title (canônico) válido → passa da validação, chega ao repository mock', async () => {
     await request(app.getHttpServer())
       .post('/contracts')
-      .send({ title: 'Contrato Legado' })
+      .send({ title: 'Contrato Canônico' })
       .expect(201);
     expect(repo.create).toHaveBeenCalledTimes(1);
-    expect(repo.create.mock.calls[0][0].titulo).toBe('Contrato Legado');
+    expect(repo.create.mock.calls[0][0].title).toBe('Contrato Canônico');
   });
 
-  it('titulo/title conflitantes → 400 e repository não chamado', async () => {
+  it('title/titulo conflitantes → 400 e repository não chamado', async () => {
     await request(app.getHttpServer())
       .post('/contracts')
-      .send({ titulo: 'A', title: 'B' })
+      .send({ title: 'A', titulo: 'B' })
       .expect(400)
       .expect((res) => {
         expect(res.body.message?.code ?? res.body.code).toBe('CONTRACT_ALIAS_CONFLICT');
@@ -157,16 +157,16 @@ describe('Swagger/OpenAPI — metadados de depreciação dos aliases (Fase 5 / C
     await swaggerApp.close();
   });
 
-  it('CreateContractDto: os 7 aliases EN estão deprecated', () => {
+  it('CreateContractDto: os 6 aliases EN restantes estão deprecated (title passou a canônico em 2026-09-05)', () => {
     const props = schemas['CreateContractDto'].properties!;
-    for (const field of ['title', 'type', 'artistId', 'value', 'startsAt', 'expiresAt', 'fileUrl']) {
+    for (const field of ['type', 'artistId', 'value', 'startsAt', 'expiresAt', 'fileUrl']) {
       expect(props[field]?.deprecated).toBe(true);
     }
   });
 
   it('CreateContractDto: os campos canônicos NÃO estão deprecated', () => {
     const props = schemas['CreateContractDto'].properties!;
-    for (const field of ['titulo', 'tipo', 'artist_id', 'valor', 'data_inicio', 'data_fim', 'arquivo_url']) {
+    for (const field of ['title', 'tipo', 'artist_id', 'valor', 'data_inicio', 'data_fim', 'arquivo_url']) {
       expect(props[field]?.deprecated).toBeUndefined();
     }
   });

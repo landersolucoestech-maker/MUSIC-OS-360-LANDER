@@ -9,7 +9,7 @@ import type { Takedown } from "@/modules/monitoring/types/monitoring.types";
  */
 export interface NormalizedTakedown {
   id: string;
-  titulo: string;
+  title: string;
   tipo: string;
   obra_afetada: string;
   artista: string;
@@ -56,7 +56,7 @@ export function formatTakedownDate(value?: string | Date | null): string | null 
 export function normalizeTakedown(raw: Takedown & Record<string, unknown>): NormalizedTakedown {
   return {
     id: String(raw.id),
-    titulo: pick(raw.titulo),
+    title: pick(raw.title),
     tipo: pick(raw.tipo),
     obra_afetada: pick(raw.obra_afetada, raw.obraAfetada),
     artista: pick(raw.artista),

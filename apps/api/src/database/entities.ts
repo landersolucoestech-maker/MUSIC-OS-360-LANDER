@@ -688,7 +688,7 @@ export class MarketReferenceMetricEntity {
 export class WorkEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 500 }) titulo: string;
+  @Column({ type: 'varchar', length: 500 }) title: string;
   @Column({ type: 'varchar', length: 255, nullable: true }) compositor: string | null;
   // `compositores`/`letristas` são derivados de `participantes` (hoje work_participants)
   // e persistidos para leitura rápida em listas/relatórios sem join — justificativa
@@ -797,7 +797,7 @@ export class WorkParticipantEntity {
 export class PhonogramEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 500 }) titulo: string;
+  @Column({ type: 'varchar', length: 500 }) title: string;
   @Column({ type: 'uuid', nullable: true }) work_id: string | null;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) isrc: string | null;
@@ -883,7 +883,7 @@ export class PhonogramEntity {
 export class ContractEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 500 }) titulo: string;
+  @Column({ type: 'varchar', length: 500 }) title: string;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ContractStatus.RASCUNHO }) status: ContractStatus;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
@@ -1281,7 +1281,7 @@ export class CampaignEntity {
 export class BriefingEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 255 }) titulo: string;
+  @Column({ type: 'varchar', length: 255 }) title: string;
   @Column({ type: 'text', nullable: true }) descricao: string | null;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'uuid', nullable: true }) campaign_id: string | null;
@@ -1306,7 +1306,7 @@ export class BriefingEntity {
 export class EventEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 255 }) titulo: string;
+  @Column({ type: 'varchar', length: 255 }) title: string;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: EventStatus.AGENDADO }) status: EventStatus;
   @Column({ type: 'timestamp' }) data: Date;
@@ -1339,8 +1339,8 @@ export class ProjectEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
   // Renomeada de `nome` (migration ProjectsFormFieldAlignment20260718000013) —
-  // `titulo` é o nome real e único enviado pelo formulário ativo.
-  @Column({ type: 'varchar', length: 255 }) titulo: string;
+  // `title` é o nome real e único enviado pelo formulário ativo.
+  @Column({ type: 'varchar', length: 255 }) title: string;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ProjectStatus.PLANEJAMENTO }) status: ProjectStatus;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
@@ -1419,7 +1419,7 @@ export class ReleaseEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
-  @Column({ type: 'varchar', length: 500 }) titulo: string;
+  @Column({ type: 'varchar', length: 500 }) title: string;
   @Column({ type: 'varchar', length: 100, default: 'single' }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ReleaseStatus.DRAFT }) status: ReleaseStatus;
   @Column({ type: 'varchar', length: 255, nullable: true }) distribuidora: string | null;
@@ -1526,7 +1526,7 @@ export class ShareEntity {
 export class TakedownEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 255 }) titulo: string;
+  @Column({ type: 'varchar', length: 255 }) title: string;
   @Column({ type: 'varchar', length: 100 }) plataforma: string;
   @Column({ type: 'text', nullable: true }) url: string | null;
   @Column({ type: 'varchar', length: 50, default: TakedownStatus.PENDENTE }) status: TakedownStatus;
@@ -1835,7 +1835,7 @@ export class ArtistGoalEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'uuid' }) artist_id: string;
-  @Column({ type: 'varchar', length: 255 }) titulo: string;
+  @Column({ type: 'varchar', length: 255 }) title: string;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) meta_valor: string | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, default: '0' }) valor_atual: string;
@@ -2484,7 +2484,7 @@ export class InventoryItemEntity {
 export class LicenseEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 500 }) titulo: string;
+  @Column({ type: 'varchar', length: 500 }) title: string;
   @Column({ type: 'uuid', nullable: true }) work_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) obra_musical: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) artista: string | null;

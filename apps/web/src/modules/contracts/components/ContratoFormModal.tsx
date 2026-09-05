@@ -176,7 +176,7 @@ const ContractForm = ({
                 id="title"
                 {...form.register("title")}
                 placeholder="Ex: Contrato de Agenciamento Artístico"
-                data-testid="input-titulo"
+                data-testid="input-title"
               />
               {form.formState.errors.title && (
                 <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
@@ -412,7 +412,7 @@ const ContractForm = ({
               <SelectContent>
                 <SelectItem value="none">Nenhum</SelectItem>
                 {lancamentos.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>{l.titulo}</SelectItem>
+                  <SelectItem key={l.id} value={l.id}>{l.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -568,7 +568,7 @@ function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormSubmi
   const status = c.status as ContratoFormData["status"] | undefined;
   const serviceType = c.tipo as ContratoFormData["service_type"] | undefined;
   return {
-    title:        c.titulo ?? "",
+    title:        c.title ?? "",
     service_type: serviceType,
     status:       status ?? "rascunho",
     arquivo_url:  c.arquivo_url ?? undefined,
@@ -590,7 +590,7 @@ interface ContratoFormModalProps {
   onOpenChange: (open: boolean) => void;
   contrato?: ContratoWithRelations;
   mode?: "create" | "edit";
-  prefill?: { titulo: string; observacoes: string };
+  prefill?: { title: string; observacoes: string };
 }
 
 export const ContratoFormModal = ({
@@ -615,7 +615,7 @@ export const ContratoFormModal = ({
     const resolvedReleaseId = release_id || (mode === "edit" && contrato ? (contrato.release_id ?? null) : null);
 
     const payload: Record<string, unknown> = {
-      titulo: title,
+      title: title,
       tipo: service_type,
       status: status || "rascunho",
       arquivo_url: resolvedArquivoUrl,
@@ -698,7 +698,7 @@ export const ContratoFormModal = ({
               contrato
                 ? contratoToFormData(contrato)
                 : prefill
-                  ? { title: prefill.titulo, observations: prefill.observacoes }
+                  ? { title: prefill.title, observations: prefill.observacoes }
                   : undefined
             }
           />

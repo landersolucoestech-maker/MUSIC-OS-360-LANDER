@@ -20,7 +20,7 @@
  *   - `excludedFormFields` documenta TODO campo do DTO do formulário que ficou
  *     deliberadamente fora do contrato, com o motivo (o guard exige isso).
  *   - `formFieldAliases` mapeia campos legados/EN do DTO para a chave física
- *     canônica (ex.: `title` → `titulo`).
+ *     canônica (ex.: `title` → `title`).
  */
 import { ACCOUNTING_SUMMARY_TABLE_NAME } from '../report-module-registry';
 
@@ -152,9 +152,9 @@ const EMPLOYEES_CONTRACT: ReportFormContract = {
 // ─── Contratos ────────────────────────────────────────────────────────────────
 const CONTRACTS_CONTRACT: ReportFormContract = {
   tableName: 'contracts',
-  identityColumn: 'titulo',
+  identityColumn: 'title',
   fields: [
-    col('titulo'), col('tipo'), col('status'), col('valor'),
+    col('title'), col('tipo'), col('status'), col('valor'),
     col('data_inicio'), col('data_fim'), col('exclusivo'), col('observacoes'),
     col('arquivo_url'), col('signing_platform'),
     col('artist_id'), col('client_id'), col('release_id'),
@@ -171,7 +171,7 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
     signers: 'estrutura da integração de assinatura, não coluna tabular',
   },
   formFieldAliases: {
-    title: 'titulo',
+    titulo: 'title',
     type: 'tipo',
     value: 'valor',
     fileUrl: 'arquivo_url',
@@ -184,9 +184,9 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
 // ─── Obras ────────────────────────────────────────────────────────────────────
 const WORKS_CONTRACT: ReportFormContract = {
   tableName: 'works',
-  identityColumn: 'titulo',
+  identityColumn: 'title',
   fields: [
-    col('titulo'), col('tipo'), col('status'), col('genero'),
+    col('title'), col('tipo'), col('status'), col('genero'),
     col('compositor'), col('compositores'), col('editora'),
     col('isrc'), col('iswc'),
     // Campos do formulário de Obra (regra 2026-07-12: 1 coluna por campo, nome exato)
@@ -216,9 +216,9 @@ const WORKS_CONTRACT: ReportFormContract = {
 // ─── Fonogramas ───────────────────────────────────────────────────────────────
 const PHONOGRAMS_CONTRACT: ReportFormContract = {
   tableName: 'phonograms',
-  identityColumn: 'titulo',
+  identityColumn: 'title',
   fields: [
-    col('titulo'), col('status'), col('genero_musical'), col('isrc'),
+    col('title'), col('status'), col('genero_musical'), col('isrc'),
     col('duracao'), col('artist_id'), col('work_id'),
     // Campos do formulário de Fonograma (regra 2026-07-12: 1 coluna por campo, nome exato)
     col('cod_entidade'), col('cod_ecad'), col('agregadora'),
@@ -242,7 +242,7 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
     abramus_protocol: 'coluna órfã removida (20260718000016) — nunca escrita por nenhum fluxo real',
   },
   formFieldAliases: {
-    title: 'titulo',
+    titulo: 'title',
     duration: 'duracao',
     artistId: 'artist_id',
     workId: 'work_id',
@@ -300,7 +300,7 @@ const PROJECTS_CONTRACT: ReportFormContract = {
   identityColumn: 'nome_ep_album',
   fields: [
     col('tipo_lancamento', 'tipo'),
-    col('nome_ep_album', 'titulo'),
+    col('nome_ep_album', 'title'),
     col('observacoes'),
     col('status_projeto', 'status'),
   ],
@@ -357,36 +357,36 @@ const CONTENT_DETECTIONS_CONTRACT: ReportFormContract = {
 // exista fisicamente na entidade, também não está no DTO — excluído.
 const LICENSES_CONTRACT: ReportFormContract = {
   tableName: 'licenses',
-  identityColumn: 'titulo',
+  identityColumn: 'title',
   fields: [
-    col('titulo'), col('tipo'), col('work_id'), col('obra_musical'), col('artista'),
+    col('title'), col('tipo'), col('work_id'), col('obra_musical'), col('artista'),
     col('client_id'), col('cliente'), col('projeto'), col('tipo_uso'),
     col('midia_destino'), col('territorio'), col('status'),
     col('data_inicio'), col('data_fim'), col('valor'), col('moeda'), col('observacoes'),
   ],
   excludedFormFields: {},
   filterableColumns: ['status', 'tipo', 'territorio'],
-  searchableColumns: ['titulo', 'obra_musical', 'artista', 'cliente', 'projeto'],
+  searchableColumns: ['title', 'obra_musical', 'artista', 'cliente', 'projeto'],
 };
 
 // ─── Takedowns ────────────────────────────────────────────────────────────────
 // CreateTakedownDto (platform/trackId/reason/requestedAt) diverge por completo
 // dos nomes reais de coluna e do formulário real (TakedownFormModal.tsx, que
-// usa titulo/tipo/obra_afetada/artista/.../observacoes) — bug pré-existente
+// usa title/tipo/obra_afetada/artista/.../observacoes) — bug pré-existente
 // de mismatch DTO↔form, fora do escopo desta Parte. O contrato usa as colunas
 // físicas reais que o formulário de fato grava; não é checado contra o DTO
 // quebrado (ausente de FORM_DTO_BY_TABLE no guard test).
 const TAKEDOWNS_CONTRACT: ReportFormContract = {
   tableName: 'takedowns',
-  identityColumn: 'titulo',
+  identityColumn: 'title',
   fields: [
-    col('titulo'), col('tipo'), col('obra_afetada'), col('artista'), col('status'),
+    col('title'), col('tipo'), col('obra_afetada'), col('artista'), col('status'),
     col('prioridade'), col('plataforma'), col('url_infracao'), col('motivo'),
     col('data_identificacao'), col('descricao'), col('evidencias'), col('observacoes'),
   ],
   excludedFormFields: {},
   filterableColumns: ['status', 'tipo', 'prioridade', 'plataforma'],
-  searchableColumns: ['titulo', 'obra_afetada', 'artista', 'motivo'],
+  searchableColumns: ['title', 'obra_afetada', 'artista', 'motivo'],
 };
 
 // ─── Distribuição (releases) ───────────────────────────────────────────────────
@@ -400,9 +400,9 @@ const TAKEDOWNS_CONTRACT: ReportFormContract = {
 // somente leitura.
 const RELEASES_CONTRACT: ReportFormContract = {
   tableName: 'releases',
-  identityColumn: 'titulo',
+  identityColumn: 'title',
   fields: [
-    col('titulo'), col('tipo'), col('artist_id'), col('upc'), col('distribuidora'),
+    col('title'), col('tipo'), col('artist_id'), col('upc'), col('distribuidora'),
     col('data_lancamento'), col('capa_url'), col('isrc_global'), col('notas_internas'),
     col('observacoes'), col('gravadora'), col('copyright'), col('genero'), col('idioma'),
     ro('status'), ro('cronograma'),
@@ -419,7 +419,7 @@ const RELEASES_CONTRACT: ReportFormContract = {
     faixas: 'representada em grupo repetível própria ("Faixas do Lançamento", repeatingGroup) — nunca compactada numa única célula',
   },
   formFieldAliases: {
-    title: 'titulo',
+    title: 'title',
     type: 'tipo',
     artistId: 'artist_id',
     distributor: 'distribuidora',
@@ -562,9 +562,9 @@ const INVOICES_CONTRACT: ReportFormContract = {
 // ─── Agenda (events) ────────────────────────────────────────────────────────────
 const EVENTS_CONTRACT: ReportFormContract = {
   tableName: 'events',
-  identityColumn: 'titulo',
+  identityColumn: 'title',
   fields: [
-    col('titulo'), col('tipo'), col('data'), col('data_fim'), col('local'),
+    col('title'), col('tipo'), col('data'), col('data_fim'), col('local'),
     col('contato_local'), col('endereco'), col('valor_cache'), col('publico_esperado'),
     col('descricao'), col('observacoes'), col('status'),
   ],
@@ -578,7 +578,7 @@ const EVENTS_CONTRACT: ReportFormContract = {
     participantes: 'representada em grupo repetível própria ("Participantes do Evento", repeatingGroup) — nunca compactada numa única célula',
   },
   formFieldAliases: {
-    title: 'titulo',
+    title: 'title',
     type: 'tipo',
     venue: 'local',
     startsAt: 'data',
@@ -709,15 +709,15 @@ const MARKETING_CONTENT_POSTS_CONTRACT: ReportFormContract = {
 // ─── Briefing (genérico, marketing) ──────────────────────────────────────────
 // Correção Parte 89 (briefings.service.ts): o DTO usava nomes em inglês
 // (title/content/campaignId/dueAt) que nunca chegavam às colunas físicas reais
-// (titulo/descricao/campaign_id/prazo) — bug de mapeamento corrigido para que
+// (title/descricao/campaign_id/prazo) — bug de mapeamento corrigido para que
 // este contrato seja utilizável. Os campos "avançados" (objetivo, contexto,
 // público-alvo etc., presentes só no Editar) vivem na coluna `metadata`
 // genérica.
 const BRIEFINGS_CONTRACT: ReportFormContract = {
   tableName: 'briefings',
-  identityColumn: 'titulo',
+  identityColumn: 'title',
   fields: [
-    col('titulo'), col('descricao'), col('campaign_id'), col('prazo'), col('status'),
+    col('title'), col('descricao'), col('campaign_id'), col('prazo'), col('status'),
     meta('type'), meta('owners'), meta('objective'), meta('context'), meta('audience'),
     meta('positioning'), meta('tone'), meta('requirements'), meta('creativeDirection'),
     meta('references'), meta('visualGuidelines'), meta('textGuidelines'), meta('market'),
@@ -730,7 +730,7 @@ const BRIEFINGS_CONTRACT: ReportFormContract = {
     metadata: 'objeto jsonb interno bruto — os campos individuais (objective, context, audience, etc.) já são colunas do contrato',
   },
   formFieldAliases: {
-    title: 'titulo',
+    title: 'title',
     content: 'descricao',
     campaignId: 'campaign_id',
     dueAt: 'prazo',

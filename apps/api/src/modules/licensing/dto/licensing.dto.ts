@@ -8,7 +8,7 @@ const REMUNERATION_TYPES = ['FIXED', 'PERCENTAGE', 'FIXED_PLUS_PERCENTAGE'] as c
 
 /** Contrato canônico do formulário LicencaFormModal. */
 export class CreateLicenseDto {
-  @ApiProperty() @IsString() @MaxLength(500) titulo!: string;
+  @ApiProperty() @IsString() @MaxLength(500) title!: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() work_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) obra_musical?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista?: string;

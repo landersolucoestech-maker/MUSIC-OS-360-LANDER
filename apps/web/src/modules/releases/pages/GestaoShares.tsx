@@ -96,7 +96,7 @@ export default function GestaoShares() {
   // direto (GET /works/:id, /artists/:id) só para os registros da página
   // atual — antes escaneava useObras()/useArtistas() sem filtro, truncado
   // nos primeiros 50 do tenant.
-  type ObraLabel = { titulo?: string | null; compositor?: string | null };
+  type ObraLabel = { title?: string | null; compositor?: string | null };
   type ArtistaLabel = { nome_artistico?: string | null };
   const [resolvedObras, setResolvedObras] = useState<Record<string, ObraLabel>>({});
   const [resolvedArtistas, setResolvedArtistas] = useState<Record<string, ArtistaLabel>>({});
@@ -417,7 +417,7 @@ export default function GestaoShares() {
                               <Share2 className="h-3.5 w-3.5 text-primary" />
                             </div>
                             <div>
-                              <p className="font-medium text-foreground text-sm">{obra?.titulo ?? lancamento?.titulo ?? share.nome_musica ?? share.work_id ?? "—"}</p>
+                              <p className="font-medium text-foreground text-sm">{obra?.title ?? lancamento?.title ?? share.nome_musica ?? share.work_id ?? "—"}</p>
                               <p className="text-xs text-muted-foreground">{obra?.compositor ?? ""}</p>
                             </div>
                           </div>
