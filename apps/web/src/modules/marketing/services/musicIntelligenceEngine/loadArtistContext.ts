@@ -5,8 +5,8 @@ import { estimateReleaseFrequency, inferCareerStage, mostCommon, score, stringif
 
 /**
  * Task J — obras/fonogramas/artistRecord chegam já resolvidos pelo chamador
- * (busca server-side escopada ao artista, via useObras(true, artistaId)/
- * useFonogramas(true, artistaId)/useEntityById), não mais filtrados de
+ * (busca server-side escopada ao artista, via useObras(true, artistId)/
+ * useFonogramas(true, artistId)/useEntityById), não mais filtrados de
  * sources.obras/sources.fonogramas/sources.artists sem filtro (capados aos
  * primeiros 50 do tenant).
  */
@@ -18,7 +18,7 @@ export function loadArtistContext(
   const artistRecord = catalog.artistRecord;
   const obras = catalog.obras;
   const fonogramas = catalog.fonogramas;
-  const releases = sources.releases.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
+  const releases = sources.releases.filter((item) => item.artist_id === artist.id || item.artistas?.id === artist.id);
   const projects = sources.projects.filter((item) => item.artistId === artist.id);
   const campaigns = sources.campaigns.filter((item) => item.targetType === "artista" && item.targetId === artist.id);
   const contents = sources.contents.filter((item) => item.targetType === "artista" && item.targetId === artist.id);

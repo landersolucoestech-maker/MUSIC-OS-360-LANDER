@@ -97,7 +97,7 @@ describe('RecordingRegistryValidationService', () => {
     titulo: 'Faixa',
     obra_id: 'w1',
     duration_seconds: 180,
-    artista_id: 'a1',
+    artist_id: 'a1',
     phonographic_producer_id: 'p1',
     isrc: 'BRABC2600001',
   });
@@ -121,7 +121,7 @@ describe('RecordingRegistryValidationService', () => {
 
   it('a financial/pendente share role does not satisfy interpreter/producer requirements', () => {
     const issues = recording.validate(
-      asRec({ ...valid(), artista_id: null, phonographic_producer_id: null, produtores: null }),
+      asRec({ ...valid(), artist_id: null, phonographic_producer_id: null, produtores: null }),
       [financialShare({ papel: 'produtor', titular_nome: 'Financeiro' })],
     );
     expect(codes(issues)).toContain('recording_producer_required');
@@ -129,7 +129,7 @@ describe('RecordingRegistryValidationService', () => {
 
   it('an eligible share with an interpreter role satisfies the interpreter requirement', () => {
     const issues = recording.validate(
-      asRec({ ...valid(), artista_id: null }),
+      asRec({ ...valid(), artist_id: null }),
       [share({ papel: 'interpretes', titular_nome: 'A' })],
     );
     expect(codes(issues)).not.toContain('recording_no_interpreter');

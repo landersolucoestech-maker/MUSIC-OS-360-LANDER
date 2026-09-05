@@ -10,7 +10,7 @@
 //   * Plataformas em queda → veredito "em queda"
 //   * Tendência empatada (snapshots iguais) → veredito "estável" com saldo 0
 //   * Plataformas sem ID configurado → cards mostram missing-config label
-//   * artistaId null → mensagem de erro
+//   * artistId null → mensagem de erro
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithProviders } from "./_helpers/render-with-providers";

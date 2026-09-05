@@ -27,7 +27,7 @@ export function PitchingTab({
 
   const releaseOptions = useMemo<TargetOption[]>(() => (
     sources.releases
-      .filter((item) => !artist || item.artista_id === artist.id || item.artistas?.id === artist.id)
+      .filter((item) => !artist || item.artist_id === artist.id || item.artistas?.id === artist.id)
       .map((item) => ({
         id: item.id,
         label: item.titulo,

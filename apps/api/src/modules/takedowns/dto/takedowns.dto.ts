@@ -32,7 +32,7 @@ export class CreateTakedownDto {
   // Relações opcionais preenchidas por fluxos internos, sem substituir os
   // campos legíveis exibidos no formulário.
   @ApiPropertyOptional() @IsOptional() @IsUUID() obra_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
 }
 
@@ -44,6 +44,6 @@ export class UpdateTakedownDto extends PartialType(CreateTakedownDto) {
 export class QueryTakedownDto extends PaginationDto {
   @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() plataforma?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
 }

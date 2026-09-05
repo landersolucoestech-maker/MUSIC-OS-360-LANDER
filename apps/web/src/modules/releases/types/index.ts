@@ -56,7 +56,7 @@ export interface Lancamento {
   titulo: string;
   tipo?: LancamentoTipo | string | null;
   status?: LancamentoStatus | string | null;
-  artista_id?: string | null;
+  artist_id?: string | null;
   data_lancamento?: string | null;
   distribuidora?: string | null;
   plataformas?: string[] | null;
@@ -106,7 +106,7 @@ export interface Share {
   /** Discriminador interno/externo. Quando ausente, derivar via `resolveShareType`. */
   share_type?: ShareType | string | null;
   obra_id?: string | null;
-  artista_id?: string | null;
+  artist_id?: string | null;
   percentual?: number | null;
   tipo?: ShareTipo | string | null;
   direcao?: ShareDirecao | string | null;

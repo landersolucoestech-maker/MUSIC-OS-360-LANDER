@@ -22,7 +22,7 @@ export interface TransacaoFormPayload {
   status: string;
   observacao: string | null;
   observacoes: string | null;
-  artista_id: string | null;
+  artist_id: string | null;
   artistaVinculado: string | null;
   projeto_id: string | null;
   projetoVinculado: string | null;
@@ -78,7 +78,7 @@ export function formToTransacaoPayload(f: TransacaoFormData): TransacaoFormPaylo
     status:                  str(f.status) ?? "pendente",
     observacao:              str(f.observacao),
     observacoes:             str(f.observacao),
-    artista_id:              str(f.artistaVinculado),
+    artist_id:              str(f.artistaVinculado),
     artistaVinculado:        str(f.artistaVinculado),
     projeto_id:              str(f.projetoVinculado),
     projetoVinculado:        str(f.projetoVinculado),

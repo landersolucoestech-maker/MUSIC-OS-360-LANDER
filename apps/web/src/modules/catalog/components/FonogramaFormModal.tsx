@@ -144,7 +144,7 @@ interface Participante {
   id: string;
   nome: string;
   percentual: string;
-  artista_id?: string;
+  artist_id?: string;
 }
 
 interface ParticipacaoCategoria {
@@ -693,7 +693,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                   <ArtistNameInput
                     value={p.nome}
                     onChange={(val) => updateParticipante(categoria, p.id, 'nome', val)}
-                    onSelect={(a) => updateParticipante(categoria, p.id, 'artista_id', a.id)}
+                    onSelect={(a) => updateParticipante(categoria, p.id, 'artist_id', a.id)}
                     placeholder="Nome do participante"
                     disabled={isViewMode}
                     className="flex-1"
@@ -717,8 +717,8 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                       // Busca por ID direto — não depende do artista estar entre os
                       // primeiros carregados; cai para busca por nome só quando o
                       // participante nunca foi vinculado a um artista cadastrado.
-                      const found = p.artista_id
-                        ? await storage.findById<Artista>("artistas", p.artista_id)
+                      const found = p.artist_id
+                        ? await storage.findById<Artista>("artistas", p.artist_id)
                         : p.nome
                           ? (await storage.listPaged<Artista>("artistas", { page: 1, pageSize: 5, filters: { search: p.nome } }))
                               .items.find(a => (a.nome_civil || a.nome_artistico) === p.nome)
@@ -867,14 +867,14 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                                 // escaneava o array `artistas` de useArtistas() sem filtro,
                                 // truncado em 50 artistas por tenant; GET /artists/:id alcan\u00e7a
                                 // qualquer artista do tenant), 3) compositor name match (s\u00f3
-                                // quando n\u00e3o h\u00e1 artista_id \u2014 mesma concess\u00e3o j\u00e1 aceita em
+                                // quando n\u00e3o h\u00e1 artist_id \u2014 mesma concess\u00e3o j\u00e1 aceita em
                                 // outras migra\u00e7\u00f5es desta tarefa).
                                 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
                                 let artistaNome = fullObra.artistas?.nome_artistico as string | undefined;
-                                let artistaId = fullObra.artistas?.id as string | undefined;
-                                if (!artistaNome && (fullObra.artista_id as string | null | undefined)) {
-                                  const byId = await storage.findById<Artista>("artistas", fullObra.artista_id as string);
-                                  if (byId) { artistaNome = byId.nome_artistico; artistaId = byId.id; }
+                                let artistId = fullObra.artistas?.id as string | undefined;
+                                if (!artistaNome && (fullObra.artist_id as string | null | undefined)) {
+                                  const byId = await storage.findById<Artista>("artistas", fullObra.artist_id as string);
+                                  if (byId) { artistaNome = byId.nome_artistico; artistId = byId.id; }
                                 }
                                 if (!artistaNome && compositoresStr) {
                                   const firstComp = compositoresStr.split(",")[0]?.trim();
@@ -887,11 +887,11 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                                       norm((a as any).nome_civil || "") === norm(firstComp) ||
                                       norm((a as any).nome || "") === norm(firstComp)
                                     );
-                                    if (byName) { artistaNome = byName.nome_artistico; artistaId = byName.id; }
+                                    if (byName) { artistaNome = byName.nome_artistico; artistId = byName.id; }
                                   }
                                 }
                                 const interpretes: Participante[] = artistaNome
-                                  ? [{ id: crypto.randomUUID(), nome: artistaNome, percentual: "", artista_id: artistaId }]
+                                  ? [{ id: crypto.randomUUID(), nome: artistaNome, percentual: "", artist_id: artistId }]
                                   : [];
                                 setParticipacao(prev => ({
                                   ...prev,

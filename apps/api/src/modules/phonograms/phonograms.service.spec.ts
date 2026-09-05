@@ -76,7 +76,7 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
     const realFormPayload = {
       titulo: 'Noite Estrelada',
       obra_id: '123e4567-e89b-12d3-a456-426614174000',
-      artista_id: '223e4567-e89b-12d3-a456-426614174000',
+      artist_id: '223e4567-e89b-12d3-a456-426614174000',
       cod_ecad: null,
       cod_entidade: null,
       agregadora: null,
@@ -177,11 +177,11 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
       expect(mockDs._repo.create).not.toHaveBeenCalled();
     });
 
-    it('artista_id (PT) e artistId (EN) diferentes: 400 PHONOGRAM_ALIAS_CONFLICT, repository não chamado', async () => {
+    it('artist_id (PT) e artistId (EN) diferentes: 400 PHONOGRAM_ALIAS_CONFLICT, repository não chamado', async () => {
       await expect(
         service.create(TENANT, 'u1', {
           titulo: 'X',
-          artista_id: '123e4567-e89b-12d3-a456-426614174000',
+          artist_id: '123e4567-e89b-12d3-a456-426614174000',
           artistId: '223e4567-e89b-12d3-a456-426614174000',
         } as any),
       ).rejects.toMatchObject({ response: { code: 'PHONOGRAM_ALIAS_CONFLICT' } });
@@ -237,7 +237,7 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
         titulo: 'X', title: 'X',
         obra_id: '123e4567-e89b-12d3-a456-426614174000',
         workId: '123e4567-e89b-12d3-a456-426614174000',
-        artista_id: '223e4567-e89b-12d3-a456-426614174000',
+        artist_id: '223e4567-e89b-12d3-a456-426614174000',
         artistId: '223e4567-e89b-12d3-a456-426614174000',
         duration: 120, fileUrl: 'x.mp3',
       } as any);
@@ -250,7 +250,7 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
       expect(created).toMatchObject({
         titulo: 'X',
         obra_id: '123e4567-e89b-12d3-a456-426614174000',
-        artista_id: '223e4567-e89b-12d3-a456-426614174000',
+        artist_id: '223e4567-e89b-12d3-a456-426614174000',
       });
     });
   });
@@ -270,12 +270,12 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
   });
 
   describe('update() — resolução de aliases (C2)', () => {
-    it('PATCH sem titulo/title/obra_id/artista_id: nenhum desses campos é alterado (ausência não altera)', async () => {
+    it('PATCH sem titulo/title/obra_id/artist_id: nenhum desses campos é alterado (ausência não altera)', async () => {
       await service.update(TENANT, 'u1', PHONO_ID, { observacoes: 'x' } as any);
       const updateCall = mockDs._repo.update.mock.calls[0];
       expect(updateCall[1]).not.toHaveProperty('titulo');
       expect(updateCall[1]).not.toHaveProperty('obra_id');
-      expect(updateCall[1]).not.toHaveProperty('artista_id');
+      expect(updateCall[1]).not.toHaveProperty('artist_id');
     });
 
     it('alias legado em update: aceito e resolvido para o nome canônico', async () => {
@@ -314,7 +314,7 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
     });
   });
 
-  describe('list() — resolução de aliases de obra_id/artista_id (C2)', () => {
+  describe('list() — resolução de aliases de obra_id/artist_id (C2)', () => {
     it('obra_id: filtra pelo canônico', async () => {
       await service.list(TENANT, { obra_id: '123e4567-e89b-12d3-a456-426614174000' } as any);
       expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith(
@@ -351,33 +351,33 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
       expect(mockDs._repo._qb.getManyAndCount).not.toHaveBeenCalled();
     });
 
-    it('artista_id: filtra pelo canônico', async () => {
-      await service.list(TENANT, { artista_id: '123e4567-e89b-12d3-a456-426614174000' } as any);
+    it('artist_id: filtra pelo canônico', async () => {
+      await service.list(TENANT, { artist_id: '123e4567-e89b-12d3-a456-426614174000' } as any);
       expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith(
-        'p.artista_id = :artistaId', { artistaId: '123e4567-e89b-12d3-a456-426614174000' },
+        'p.artist_id = :artistId', { artistId: '123e4567-e89b-12d3-a456-426614174000' },
       );
     });
 
     it('artistId (alias legado): filtra pelo canônico e emite warning', async () => {
       await service.list(TENANT, { artistId: '123e4567-e89b-12d3-a456-426614174000' } as any);
       expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith(
-        'p.artista_id = :artistaId', { artistaId: '123e4567-e89b-12d3-a456-426614174000' },
+        'p.artist_id = :artistId', { artistId: '123e4567-e89b-12d3-a456-426614174000' },
       );
     });
 
-    it('artista_id e artistId conflitantes: 400', async () => {
+    it('artist_id e artistId conflitantes: 400', async () => {
       await expect(
         service.list(TENANT, {
-          artista_id: '123e4567-e89b-12d3-a456-426614174000',
+          artist_id: '123e4567-e89b-12d3-a456-426614174000',
           artistId: '223e4567-e89b-12d3-a456-426614174000',
         } as any),
       ).rejects.toMatchObject({ response: { code: 'PHONOGRAM_ALIAS_CONFLICT' } });
     });
 
-    it('ausência de obra_id/artista_id: não adiciona filtro para esses campos', async () => {
+    it('ausência de obra_id/artist_id: não adiciona filtro para esses campos', async () => {
       await service.list(TENANT, { status: 'ativo' } as any);
       const calledWithObraId = mockDs._repo._qb.andWhere.mock.calls.some((c: unknown[]) => c[0] === 'p.obra_id = :obraId');
-      const calledWithArtistaId = mockDs._repo._qb.andWhere.mock.calls.some((c: unknown[]) => c[0] === 'p.artista_id = :artistaId');
+      const calledWithArtistaId = mockDs._repo._qb.andWhere.mock.calls.some((c: unknown[]) => c[0] === 'p.artist_id = :artistId');
       expect(calledWithObraId).toBe(false);
       expect(calledWithArtistaId).toBe(false);
     });

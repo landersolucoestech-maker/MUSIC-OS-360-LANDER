@@ -26,7 +26,7 @@ export interface Obra {
   origem_externa_id?: string | null;
   origem_externa_sincronizado_em?: string | null;
   projeto_id?: string | null;
-  artista_id?: string | null;
+  artist_id?: string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;
@@ -45,7 +45,7 @@ export interface Fonograma {
   user_id?: string;
   titulo?: string | null;
   obra_id?: string | null;
-  artista_id?: string | null;
+  artist_id?: string | null;
   isrc?: string | null;
   duracao?: string | null;
   tipo?: string | null;

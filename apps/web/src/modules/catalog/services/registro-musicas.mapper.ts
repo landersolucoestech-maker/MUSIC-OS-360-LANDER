@@ -297,7 +297,7 @@ export interface ObraFormFields {
   outrosTitulos: string[];
   referenciasConexas: string[];
   letraCompleta: string;
-  artistaId: string;
+  artistId: string;
 }
 
 /** DB record → form field initial values (single source of truth for useEffect) */
@@ -323,7 +323,7 @@ export function obraToFormFields(obra: any): ObraFormFields {
     outrosTitulos: obraOutrosTitulos(obra),
     referenciasConexas: obraReferenciasConexas(obra),
     letraCompleta: obraLetraCompleta(obra),
-    artistaId: obra?.artista_id ?? "",
+    artistId: obra?.artist_id ?? "",
   };
 }
 
@@ -348,7 +348,7 @@ export interface FormToObraInput {
   participantes: ParticipanteForm[];
   situacao: string;
   projetoId: string | null;
-  artistaId: string | null;
+  artistId: string | null;
   tipoObra: string;
   orgId: string;
 }
@@ -395,7 +395,7 @@ export function formToObraPayload(input: FormToObraInput): Record<string, unknow
     compositores,
     letristas,
     projeto_id: input.projetoId ?? null,
-    artista_id: input.artistaId ?? null,
+    artist_id: input.artistId ?? null,
     tipo_obra: input.tipoObra,
   };
 }
@@ -487,7 +487,7 @@ export function projetoToObraSeed(
   projeto: {
     id: string;
     titulo?: string | null;
-    artista_id?: string | null;
+    artist_id?: string | null;
     genero?: string | null;
   },
   musica?: {
@@ -516,7 +516,7 @@ export function projetoToObraSeed(
 
   return {
     projeto_id: projeto.id,
-    artista_id: projeto.artista_id ?? null,
+    artist_id: projeto.artist_id ?? null,
     titulo: musica?.nome?.trim() || projeto.titulo?.trim() || "",
     genero,
     idioma: musica?.idioma || null,

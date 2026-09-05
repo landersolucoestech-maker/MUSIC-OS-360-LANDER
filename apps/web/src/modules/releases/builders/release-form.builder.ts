@@ -6,7 +6,7 @@
  *
  * Usage:
  *   const payload = new ReleaseFormBuilder()
- *     .withCore({ titulo, artista_id, tipo, status })
+ *     .withCore({ titulo, artist_id, tipo, status })
  *     .withDistribution({ distribuidora, distribuidoraOutra, plataformas })
  *     .withAssets({ audio_master_url, capa_url })
  *     .withCronograma({ data_gravacao, data_mix_master })
@@ -21,7 +21,7 @@ import type { LancamentoInsert } from "@/modules/releases/hooks/useLancamentos";
 
 export interface ReleaseCore {
   titulo: string;
-  artista_id: string;
+  artist_id: string;
   tipo: string;
   status?: string;
   data_lancamento?: string;
@@ -127,7 +127,7 @@ export class ReleaseFormBuilder {
 
     return {
       titulo:          this._core.titulo.trim(),
-      artista_id:      normalizeStr(this._core.artista_id),
+      artist_id:      normalizeStr(this._core.artist_id),
       tipo:            normalizeStr(this._core.tipo),
       status:          normalizeStr(this._core.status) ?? "analise",
       data_lancamento: normalizeStr(this._core.data_lancamento),
@@ -152,7 +152,7 @@ export class ReleaseFormBuilder {
    */
   static fromFormFields(f: {
     titulo: string;
-    artista_id: string;
+    artist_id: string;
     tipo: string;
     status?: string;
     dataLancamento?: string;
@@ -180,7 +180,7 @@ export class ReleaseFormBuilder {
     return new ReleaseFormBuilder()
       .withCore({
         titulo:          f.titulo,
-        artista_id:      f.artista_id,
+        artist_id:      f.artist_id,
         tipo:            f.tipo,
         status:          f.status,
         data_lancamento: f.dataLancamento,

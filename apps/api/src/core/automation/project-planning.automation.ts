@@ -49,7 +49,7 @@ interface ProjectRow {
   nome: string;
   tipo: string;
   descricao: string | null;
-  artista_id: string | null;
+  artist_id: string | null;
   data_fim: string | Date | null;
   metadata: Record<string, unknown> | null;
 }
@@ -111,7 +111,7 @@ export class ProjectPlanningAutomation {
   ): Promise<ProjectRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT nome, tipo, descricao, artista_id, data_fim, metadata
+      `SELECT nome, tipo, descricao, artist_id, data_fim, metadata
          FROM projects
         WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
         LIMIT 1`,

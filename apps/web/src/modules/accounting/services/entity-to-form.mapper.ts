@@ -26,7 +26,7 @@ export interface TransacaoFormEntity {
   observacao?: unknown;
   observacoes?: unknown;
   artistaVinculado?: unknown;
-  artista_id?: unknown;
+  artist_id?: unknown;
   projetoVinculado?: unknown;
   projeto_id?: unknown;
   contratoVinculado?: unknown;
@@ -82,7 +82,7 @@ export function transacaoToFormFields(t: TransacaoFormEntity | null | undefined)
     dataTransacao:       str(t.dataTransacao      ?? t.data_transacao ?? t.data),
     status:              str(t.status)            || "pendente",
     observacao:          str(t.observacao         ?? t.observacoes),
-    artistaVinculado:    str(t.artistaVinculado   ?? t.artista_id),
+    artistaVinculado:    str(t.artistaVinculado   ?? t.artist_id),
     projetoVinculado:    str(t.projetoVinculado   ?? t.projeto_id),
     contratoVinculado:   str(t.contratoVinculado  ?? t.contrato_id),
     eventoVinculado:     str(t.eventoVinculado    ?? t.evento_id),

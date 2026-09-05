@@ -25,12 +25,12 @@ function initConsistencyHooks(): void {
   _initialized = true;
 
   // ── CONTRACT_CREATED → Artista vira "contratado" ─────────────────────────
-  subscribe(DomainEvents.CONTRACT_CREATED, async ({ artista_id, id }) => {
-    if (!artista_id) return;
+  subscribe(DomainEvents.CONTRACT_CREATED, async ({ artist_id, id }) => {
+    if (!artist_id) return;
     try {
-      const artista = await storage.findById<Record<string, unknown> & { id: string }>("artistas", artista_id);
+      const artista = await storage.findById<Record<string, unknown> & { id: string }>("artistas", artist_id);
       if (artista && artista.status !== "contratado") {
-        await storage.update("artistas", artista_id, {
+        await storage.update("artistas", artist_id, {
           status: "contratado",
           contrato_id: id,
         });
@@ -53,14 +53,14 @@ function initConsistencyHooks(): void {
   });
 
   // ── TRANSACTION_CREATED → Sinaliza recálculo financeiro pendente ─────────
-  subscribe(DomainEvents.TRANSACTION_CREATED, ({ artista_id, tipo, valor }) => {
+  subscribe(DomainEvents.TRANSACTION_CREATED, ({ artist_id, tipo, valor }) => {
     try {
       const orgId = getCurrentOrgId();
       // Marca que o P&L deste artista está desatualizado (flag para UI)
       const flagKey = `_pl_stale_${orgId}`;
       const existing = storage.getRaw<Record<string, boolean>>(flagKey) ?? {};
-      if (artista_id) {
-        existing[artista_id] = true;
+      if (artist_id) {
+        existing[artist_id] = true;
       }
       existing["_global"] = true;
       storage.setRaw(flagKey, existing);
@@ -76,10 +76,10 @@ function initConsistencyHooks(): void {
   });
 
   // ── LEAD_CONVERTED → Cria artista rascunho se lead era artista ───────────
-  subscribe(DomainEvents.LEAD_CONVERTED, ({ id, artista_id }) => {
+  subscribe(DomainEvents.LEAD_CONVERTED, ({ id, artist_id }) => {
     if (IS_DEV) {
       console.info(
-        `[consistency] Lead ${id} convertido${artista_id ? ` → artista ${artista_id}` : ""}`,
+        `[consistency] Lead ${id} convertido${artist_id ? ` → artista ${artist_id}` : ""}`,
       );
     }
   });

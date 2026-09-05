@@ -22,7 +22,7 @@ describe('RebuildLicensesInCanonicalFormOrder20260719000015', () => {
     expect(obraIdx).toBeGreaterThan(tituloIdx);
   });
 
-  it('remuneration_type/artista_id ficam antes do bloco de auditoria (não mais após deleted_at)', () => {
+  it('remuneration_type/artista_id (nome histórico da migration) ficam antes do bloco de auditoria (não mais após deleted_at)', () => {
     const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
     const observacoesIdx = block.indexOf('observacoes ');
     const remunerationIdx = block.indexOf('remuneration_type');

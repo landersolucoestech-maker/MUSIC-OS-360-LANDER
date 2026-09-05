@@ -62,7 +62,7 @@ const FORM_DTO_BY_TABLE: Record<string, new () => object> = {
  */
 const REPORT_DTO_EXCLUSIONS: Record<string, Record<string, string>> = {
   licenses: {
-    artista_id: 'a Central de Relatórios expõe o nome do artista; o vínculo UUID permanece validado no serviço',
+    artist_id: 'a Central de Relatórios expõe o nome do artista; o vínculo UUID permanece validado no serviço',
     remuneration_type: 'persistido em coluna própria, ainda não incluído no layout público de Licenciamento',
     currency: 'alias de entrada para a coluna física moeda, validado pelo serviço de licenciamento',
     amount: 'alias de entrada para a coluna física valor, validado pelo serviço de licenciamento',

@@ -108,7 +108,7 @@ function aggregateField(faixas: any[], key: string): string {
 export function LancamentoViewModal({ open, onOpenChange, lancamento }: LancamentoViewModalProps) {
   // Artista principal do lançamento — busca DIRETO por ID (GET /artists/:id),
   // não depende de estar entre os primeiros 50 carregados (Task J).
-  const { entity: artista } = useEntityById<Artista>("artistas", open ? lancamento?.artista_id ?? undefined : undefined);
+  const { entity: artista } = useEntityById<Artista>("artistas", open ? lancamento?.artist_id ?? undefined : undefined);
   const { shares } = useShares();
   const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
     table: "lancamentos",
@@ -146,7 +146,7 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
   }, [open, fonogramaIds]);
 
   const shareArtistaIds = useMemo(
-    () => Array.from(new Set(shares.filter((s) => (s as Record<string, unknown>)["lancamento_id"] === lancamento?.id && s.artista_id).map((s) => s.artista_id as string))),
+    () => Array.from(new Set(shares.filter((s) => (s as Record<string, unknown>)["lancamento_id"] === lancamento?.id && s.artist_id).map((s) => s.artist_id as string))),
     [shares, lancamento?.id],
   );
   const [resolvedShareArtistas, setResolvedShareArtistas] = useState<Record<string, Artista>>({});
@@ -440,7 +440,7 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
                 {linkedShares.map((s) => {
                   const sr = s as Record<string, unknown>;
                   const nome =
-                    (s.artista_id ? resolvedShareArtistas[s.artista_id]?.nome_artistico : undefined) ??
+                    (s.artist_id ? resolvedShareArtistas[s.artist_id]?.nome_artistico : undefined) ??
                     textValue(sr["detentor"]) ??
                     textValue(sr["nome_musica"]) ??
                     "—";

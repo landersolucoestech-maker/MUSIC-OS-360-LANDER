@@ -37,7 +37,7 @@ export interface Contrato {
   titulo: string;
   tipo?: ContratoTipo | string | null;
   status?: ContratoStatus | string | null;
-  artista_id?: string | null;
+  artist_id?: string | null;
   cliente_id?: string | null;
   lancamento_id?: string | null;
   data_inicio?: string | null;

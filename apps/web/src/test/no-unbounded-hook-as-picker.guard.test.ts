@@ -64,7 +64,7 @@ const ALLOWED_CALL_SITES: Record<string, string> = {
   "modules/artist/pages/Artistas.tsx":
     "useArtistas() só para mutations; a tabela usa paginação real (Task H) via hook separado.",
   "modules/artist/components/ArtistaVisao360Modal.tsx":
-    "useObras/useFonogramas/useProjetos/useContratos(open, artistaId) recebem artistaId explícito e filtram server-side — não é 'me dê tudo'.",
+    "useObras/useFonogramas/useProjetos/useContratos(open, artistId) recebem artistId explícito e filtram server-side — não é 'me dê tudo'.",
   "modules/contracts/pages/Contratos.tsx":
     "useContratos() só para mutations; a lista é passada a useEditQueryParam, que tem fallback findById para IDs fora da página carregada.",
   "modules/contracts/components/ContratoWizard.tsx":

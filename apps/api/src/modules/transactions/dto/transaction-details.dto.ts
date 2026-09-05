@@ -44,7 +44,7 @@ export interface TransactionDetailsDTO {
   labels?: string[];
   attachments?: Array<Record<string, unknown>>;
   artist?: Record<string, unknown> | null;
-  artista_id?: string | null;
+  artist_id?: string | null;
   artistaVinculado?: string | null;
   project?: Record<string, unknown> | null;
   projeto_id?: string | null;

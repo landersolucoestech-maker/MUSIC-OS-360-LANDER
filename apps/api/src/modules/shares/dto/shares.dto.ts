@@ -36,7 +36,7 @@ export class CreateShareDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) tipo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista_externo?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() artista_projeto_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) pagador?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) pagador_contato?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) origem_acordo?: string;

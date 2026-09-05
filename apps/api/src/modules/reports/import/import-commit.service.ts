@@ -41,7 +41,7 @@ interface RowGroup {
 
 const MULTI_VALUE_SEPARATOR = ' | ';
 const RELATION_TARGETS: Record<string, string> = {
-  artista_id: 'artists',
+  artist_id: 'artists',
   projeto_id: 'projects',
   release_id: 'releases',
   contrato_id: 'contracts',

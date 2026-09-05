@@ -62,9 +62,9 @@ function EmptyState({ icon, title, subtitle }: { icon: ReactNode; title: string;
  * carreira já disponível, e vice-versa. Nenhum cálculo é duplicado aqui — o
  * componente só apresenta os contratos já calculados no backend.
  */
-export function PositioningCard({ artistaId }: { artistaId: string }) {
-  const careerStage = useCareerStage(artistaId);
-  const benchmark = useMarketBenchmark(artistaId);
+export function PositioningCard({ artistId }: { artistId: string }) {
+  const careerStage = useCareerStage(artistId);
+  const benchmark = useMarketBenchmark(artistId);
 
   const cs = careerStage.data;
   const mb = benchmark.data;
@@ -105,7 +105,7 @@ export function PositioningCard({ artistaId }: { artistaId: string }) {
             <div className="flex items-start gap-4 mb-4">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full bg-teal-500/20 border-4 border-teal-500 flex items-center justify-center">
-                  <span className="text-lg font-bold text-teal-400" data-testid={`positioning-score-${artistaId}`}>
+                  <span className="text-lg font-bold text-teal-400" data-testid={`positioning-score-${artistId}`}>
                     {cs.score?.toFixed(1)}
                   </span>
                 </div>
@@ -114,7 +114,7 @@ export function PositioningCard({ artistaId }: { artistaId: string }) {
                 </span>
               </div>
               <div className="flex-1">
-                <h4 className="text-lg font-bold text-teal-400" data-testid={`positioning-classification-${artistaId}`}>
+                <h4 className="text-lg font-bold text-teal-400" data-testid={`positioning-classification-${artistId}`}>
                   {cs.classification}
                 </h4>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -168,7 +168,7 @@ export function PositioningCard({ artistaId }: { artistaId: string }) {
             <div className="h-px bg-border my-3" />
 
             {/* Nível 4 — comparação com o mercado (contexto, não segundo diagnóstico) */}
-            <MarketComparisonSection artistaId={artistaId} isLoading={benchmark.isLoading} isError={benchmark.isError} data={mb} />
+            <MarketComparisonSection artistId={artistId} isLoading={benchmark.isLoading} isError={benchmark.isError} data={mb} />
 
             {/* Nível 6 — fonte, cobertura, freshness */}
             <p className="text-[10px] text-muted-foreground/60 mt-3">
@@ -254,7 +254,7 @@ function MarketComparisonSection({
   isError,
   data,
 }: {
-  artistaId: string;
+  artistId: string;
   isLoading: boolean;
   isError: boolean;
   data: ReturnType<typeof useMarketBenchmark>["data"];

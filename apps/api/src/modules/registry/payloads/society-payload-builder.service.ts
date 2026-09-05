@@ -155,7 +155,7 @@ export class SocietyPayloadBuilderService {
         country_of_recording: rec.country_of_recording ?? null,
       },
       linked_work: { id: rec.obra_id ?? null },
-      main_artist: { id: rec.main_artist_id ?? rec.artista_id ?? null },
+      main_artist: { id: rec.main_artist_id ?? rec.artist_id ?? null },
       phonographic_producer: { id: rec.phonographic_producer_id ?? null },
       contributors: shares.map(shareToParty),
       identifiers: await this.loadIdentifiers(tenantId, RegistrableEntityType.RECORDING, recordingId, legacy),

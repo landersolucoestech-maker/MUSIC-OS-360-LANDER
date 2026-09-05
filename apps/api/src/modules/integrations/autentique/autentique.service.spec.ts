@@ -9,7 +9,7 @@ describe('AutentiqueService webhook tenant context', () => {
       id: 'contract-a',
       tenant_id: 'tenant-a',
       titulo: 'Contrato A',
-      artista_id: 'artist-a',
+      artist_id: 'artist-a',
       autentique_doc_id: 'doc-a',
     };
     const updateQb = {
@@ -105,7 +105,7 @@ describe('AutentiqueService webhook tenant context', () => {
   it('P0-3: assinatura válida + tenant inativo — NÃO assina o contrato (webhook é @Public, TenantGuard nunca roda)', async () => {
     const contract = {
       id: 'contract-a', tenant_id: 'tenant-a', titulo: 'Contrato A',
-      artista_id: 'artist-a', autentique_doc_id: 'doc-a',
+      artist_id: 'artist-a', autentique_doc_id: 'doc-a',
     };
     const integrationQb = { where: jest.fn().mockReturnThis(), getOne: jest.fn(async () => null) };
     const integrationRepo = { createQueryBuilder: jest.fn(() => integrationQb) };

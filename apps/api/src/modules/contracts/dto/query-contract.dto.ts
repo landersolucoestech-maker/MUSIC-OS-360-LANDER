@@ -3,7 +3,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 /**
- * Fase 5 / C1: tipo/artista_id são os filtros canônicos (corrige o bug em
+ * Fase 5 / C1: tipo/artist_id são os filtros canônicos (corrige o bug em
  * que ContractsService.list() lia esses nomes pt-BR enquanto o DTO só
  * declarava type/artistId — o filtro nunca funcionava). type/artistId
  * seguem aceitos temporariamente, resolvidos via
@@ -28,9 +28,9 @@ export class QueryContractDto extends PaginationDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
-  artista_id?: string;
+  artist_id?: string;
 
-  @ApiPropertyOptional({ deprecated: true, description: 'Use "artista_id".' })
+  @ApiPropertyOptional({ deprecated: true, description: 'Use "artist_id".' })
   @IsOptional()
   @IsUUID()
   artistId?: string;

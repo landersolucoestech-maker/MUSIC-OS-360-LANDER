@@ -11,16 +11,16 @@ import type {
 
 export type { Projeto, ProjetoInsert, ProjetoUpdate, ProjetoObraSummary, ProjetoWithRelations, ProjetoWithRelationsExtended };
 
-export function useProjetos(enabled = true, artistaId?: string) {
+export function useProjetos(enabled = true, artistId?: string) {
   const result = useDataQuery<ProjetoWithRelations>({
-    queryKey: artistaId ? [...QUERY_KEYS.PROJETOS, "by-artist", artistaId] : [...QUERY_KEYS.PROJETOS],
+    queryKey: artistId ? [...QUERY_KEYS.PROJETOS, "by-artist", artistId] : [...QUERY_KEYS.PROJETOS],
     table: "projetos",
     select: "*, artistas(*), obras(id, titulo, status)",
     enabled,
     // QueryProjectDto só aceita "artistId" (Task H alinhou DTO/service nesse nome) —
-    // "artista_id" era rejeitado pelo whitelist do ValidationPipe (400), quebrando
+    // "artist_id" era rejeitado pelo whitelist do ValidationPipe (400), quebrando
     // a aba Projetos do modal Visão 360° do artista.
-    filters: artistaId ? { artistId: artistaId } : undefined,
+    filters: artistId ? { artistId: artistId } : undefined,
   }, {
     create: { success: "Projeto criado com sucesso!", error: "Erro ao criar projeto" },
     update: { success: "Projeto atualizado com sucesso!", error: "Erro ao atualizar projeto" },

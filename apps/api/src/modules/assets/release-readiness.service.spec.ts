@@ -27,7 +27,7 @@ const fullPhonogram = {
   isrc: 'BR-ABC-26-00001',
   genero_musical: 'Pop',
   interpretes: 'Artista X',
-  artista_id: 'art-1',
+  artist_id: 'art-1',
   obra_id: null,
 };
 

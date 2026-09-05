@@ -24,7 +24,7 @@ describe('RebuildTakedownsInCanonicalFormOrder20260719000016', () => {
     expect(plataformaIdx).toBeGreaterThan(tituloIdx);
   });
 
-  it('remove url/resposta/obra_id/artista_id (órfãs comprovadas) com validação fail-fast', () => {
+  it('remove url/resposta/obra_id/artista_id (órfãs comprovadas, nomes históricos da migration) com validação fail-fast', () => {
     const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
     expect(block).not.toMatch(/\bresposta\b/);
     expect(block).not.toMatch(/\bobra_id\b/);

@@ -23,7 +23,7 @@ export class CreatePhonogramDto {
   @IsUUID()
   workId?: string;
 
-  @ApiPropertyOptional({ example: 'uuid-do-artista', deprecated: true, description: 'Alias legado. Use "artista_id".' })
+  @ApiPropertyOptional({ example: 'uuid-do-artista', deprecated: true, description: 'Alias legado. Use "artist_id".' })
   @IsOptional()
   @IsUUID()
   artistId?: string;
@@ -90,7 +90,7 @@ export class CreatePhonogramDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) gravadora?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() obra_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsArray() participacao?: unknown[];
   @ApiPropertyOptional() @IsOptional() @IsObject() arquivo_audio?: Record<string, unknown>;
 }

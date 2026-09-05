@@ -12,29 +12,29 @@ import type {
 
 export type { Contrato, ContratoInsert, ContratoUpdate, ContratoVersao, ContratoWithRelations };
 
-export function useContratos(enabled = true, artistaId?: string) {
+export function useContratos(enabled = true, artistId?: string) {
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
 
   const result = useDataQuery<ContratoWithRelations>({
-    queryKey: artistaId ? [...QUERY_KEYS.CONTRATOS, "by-artist", artistaId] : [...QUERY_KEYS.CONTRATOS],
+    queryKey: artistId ? [...QUERY_KEYS.CONTRATOS, "by-artist", artistId] : [...QUERY_KEYS.CONTRATOS],
     table: "contratos",
     select: "*, artistas(*), clientes(*)",
     enabled,
-    filters: artistaId ? { artista_id: artistaId } : undefined,
+    filters: artistId ? { artist_id: artistId } : undefined,
     additionalInvalidateKeys: [[...QUERY_KEYS.ARTISTAS]],
     onMutationSuccess: {
       onCreate: (c) =>
         emit(DomainEvents.CONTRACT_CREATED, {
           id: (c as ContratoWithRelations & { id: string }).id,
-          artista_id: c.artista_id ?? undefined,
+          artist_id: c.artist_id ?? undefined,
           valor: c.valor ?? undefined,
           org_id: orgId,
         }),
       onUpdate: (c) =>
         emit(DomainEvents.CONTRACT_UPDATED, {
           id: (c as ContratoWithRelations & { id: string }).id,
-          artista_id: c.artista_id ?? undefined,
+          artist_id: c.artist_id ?? undefined,
           valor: c.valor ?? undefined,
           org_id: orgId,
         }),

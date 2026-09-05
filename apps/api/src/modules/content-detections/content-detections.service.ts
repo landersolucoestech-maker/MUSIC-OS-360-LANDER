@@ -21,7 +21,7 @@ export class ContentDetectionsService {
 
     if (query.status)     qb.andWhere('c.status = :status',       { status:     query.status });
     if (query.plataforma) qb.andWhere('c.plataforma = :plataforma', { plataforma: query.plataforma });
-    if (query.artista_id) qb.andWhere('c.artista_id = :artistaId', { artistaId: query.artista_id });
+    if (query.artist_id) qb.andWhere('c.artist_id = :artistId', { artistId: query.artist_id });
     if (query.obra_id)    qb.andWhere('c.obra_id = :obraId',      { obraId:     query.obra_id });
 
     qb.orderBy('c.detectado_em', query.ascending ? 'ASC' : 'DESC')

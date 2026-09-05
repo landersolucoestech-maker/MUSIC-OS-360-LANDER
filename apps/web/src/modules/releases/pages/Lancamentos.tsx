@@ -292,7 +292,7 @@ export default function Lancamentos() {
   // useArtistas() sem filtro, truncado nos primeiros 50 do tenant.
   const [resolvedArtistas, setResolvedArtistas] = useState<Record<string, Artista>>({});
   const pageArtistaIds = useMemo(
-    () => Array.from(new Set(pageItems.map((r) => r.artista_id).filter((id): id is string => !!id))),
+    () => Array.from(new Set(pageItems.map((r) => r.artist_id).filter((id): id is string => !!id))),
     [pageItems],
   );
   useEffect(() => {
@@ -328,14 +328,14 @@ export default function Lancamentos() {
     if (!release.id || shares.some((share) => share.lancamento_id === release.id)) return;
     // Busca DIRETO por ID — o release recém-criado pode não estar (ainda)
     // no batch resolvido para a página atual (Task J).
-    const artista = release.artista_id
-      ? await storage.findById<Artista & { id: string }>("artistas", release.artista_id)
+    const artista = release.artist_id
+      ? await storage.findById<Artista & { id: string }>("artistas", release.artist_id)
       : undefined;
 
     await addShare.mutateAsync({
       share_type: "internal_release",
       lancamento_id: release.id,
-      artista_id: release.artista_id ?? null,
+      artist_id: release.artist_id ?? null,
       nome_musica: release.titulo ?? null,
       detentor: artista?.nome_artistico ?? release.titulo ?? "Lancamento",
       destinatario: null,
@@ -501,7 +501,7 @@ export default function Lancamentos() {
                     <ReleaseCard
                       key={release.id}
                       release={release}
-                      artista={getArtistaById(release.artista_id ?? null)}
+                      artista={getArtistaById(release.artist_id ?? null)}
                       now={now}
                       selected={selectedIds.includes(release.id)}
                       onToggleSelect={() => toggleSelect(release.id)}

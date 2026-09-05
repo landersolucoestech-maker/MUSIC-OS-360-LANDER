@@ -56,7 +56,7 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
   const artista = evento.artistas;
   const meta = (evento.metadata as Record<string, unknown> | undefined) ?? {};
   const storedParticipants = normalizeAgendaParticipants(meta["participants"]);
-  const legacyArtistParticipant = getArtistParticipantById(evento.artista_id);
+  const legacyArtistParticipant = getArtistParticipantById(evento.artist_id);
   const participants = storedParticipants.length > 0
     ? storedParticipants
     : legacyArtistParticipant
@@ -64,7 +64,7 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
       : artista
         ? [{
             source: "artist" as const,
-            id: String(artista.id ?? evento.artista_id ?? "legacy-artist"),
+            id: String(artista.id ?? evento.artist_id ?? "legacy-artist"),
             label: String(artista.nome_artistico || artista.nome || "Artista"),
             email: artista.email ? String(artista.email) : undefined,
             phone: artista.telefone ? String(artista.telefone) : undefined,

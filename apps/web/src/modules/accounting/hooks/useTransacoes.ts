@@ -11,28 +11,28 @@ import type {
 
 export type { Transacao, TransacaoInsert, TransacaoUpdate, TransacaoWithRelations };
 
-export function useTransacoes(enabled = true, artistaId?: string) {
+export function useTransacoes(enabled = true, artistId?: string) {
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
 
   const result = useDataQuery<TransacaoWithRelations>({
-    queryKey: artistaId ? [...QUERY_KEYS.TRANSACOES, "by-artist", artistaId] : [...QUERY_KEYS.TRANSACOES],
+    queryKey: artistId ? [...QUERY_KEYS.TRANSACOES, "by-artist", artistId] : [...QUERY_KEYS.TRANSACOES],
     table: "transacoes",
     select: "*, clientes(*), artistas(*)",
     orderBy: { column: "data", ascending: false },
     enabled,
     // QueryTransactionDto: "artistId" é alias legado NUNCA lido pelo service (só existe
-    // para não quebrar 400 em callers antigos) — o campo real é "artista_id". Enviar
+    // para não quebrar 400 em callers antigos) — o campo real é "artist_id". Enviar
     // "artistId" fazia esse filtro ser silenciosamente ignorado (200 com todas as
     // transações do tenant, não só as do artista) na aba Financeiro do Visão 360°.
-    filters: artistaId ? { artista_id: artistaId } : undefined,
+    filters: artistId ? { artist_id: artistId } : undefined,
     onMutationSuccess: {
       onCreate: (t) =>
         emit(DomainEvents.TRANSACTION_CREATED, {
           id: (t as TransacaoWithRelations & { id: string }).id,
           tipo: t.tipo as "receita" | "despesa",
           valor: t.valor ?? 0,
-          artista_id: t.artista_id ?? undefined,
+          artist_id: t.artist_id ?? undefined,
           projeto_id: typeof t.projeto_id === "string" ? t.projeto_id : undefined,
           org_id: orgId,
         }),
@@ -41,7 +41,7 @@ export function useTransacoes(enabled = true, artistaId?: string) {
           id: (t as TransacaoWithRelations & { id: string }).id,
           tipo: t.tipo as "receita" | "despesa",
           valor: t.valor ?? 0,
-          artista_id: t.artista_id ?? undefined,
+          artist_id: t.artist_id ?? undefined,
           projeto_id: typeof t.projeto_id === "string" ? t.projeto_id : undefined,
           org_id: orgId,
         }),

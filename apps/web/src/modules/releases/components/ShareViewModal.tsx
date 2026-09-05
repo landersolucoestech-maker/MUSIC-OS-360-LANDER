@@ -62,8 +62,8 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
   // de obra/artista estarem entre os primeiros 50 carregados por
   // useObras()/useArtistas() sem filtro (Task J).
   const { entity: obraVinculada } = useEntityById<ObraWithRelations>("obras", open ? str("obra_id") || undefined : undefined);
-  const { entity: artistaResolved } = useEntityById<Artista>("artistas", open ? share?.artista_id ?? undefined : undefined);
-  const vinculoArtistaId = str("artista_projeto_id") || share?.artista_id || undefined;
+  const { entity: artistaResolved } = useEntityById<Artista>("artistas", open ? share?.artist_id ?? undefined : undefined);
+  const vinculoArtistaId = str("artista_projeto_id") || share?.artist_id || undefined;
   const { entity: vinculoArtistaResolved } = useEntityById<Artista>("artistas", open ? vinculoArtistaId : undefined);
 
   if (!share) return null;
@@ -93,7 +93,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
   };
   const releaseTitulo = pickShareTitle();
 
-  // Participante: artista vinculado (artista_id) → detentor (igual à coluna Detentor da tabela)
+  // Participante: artista vinculado (artist_id) → detentor (igual à coluna Detentor da tabela)
   const participanteNome = artistaResolved?.nome_artistico ?? str("detentor") ?? null;
   const artistaNome = artistaResolved?.nome_artistico ?? null;
   const vinculoNome = vinculoArtistaResolved?.nome_artistico ?? null;

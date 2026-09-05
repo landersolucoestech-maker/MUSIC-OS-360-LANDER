@@ -577,7 +577,7 @@ export default function Artistas() {
                   </Card>
 
                   <ArtistaPlatformMetrics
-                    artistaId={artista.id}
+                    artistId={artista.id}
                     spotifyUrl={(artista as Artista).spotify_url ?? null}
                     youtubeUrl={(artista as Artista).youtube_url ?? null}
                     instagramUrl={(artista as Artista).instagram_url ?? null}

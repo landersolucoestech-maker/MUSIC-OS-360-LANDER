@@ -166,16 +166,16 @@ describe('Swagger/OpenAPI — metadados de depreciação dos aliases (Fase 5 / C
 
   it('CreateContractDto: os campos canônicos NÃO estão deprecated', () => {
     const props = schemas['CreateContractDto'].properties!;
-    for (const field of ['titulo', 'tipo', 'artista_id', 'valor', 'data_inicio', 'data_fim', 'arquivo_url']) {
+    for (const field of ['titulo', 'tipo', 'artist_id', 'valor', 'data_inicio', 'data_fim', 'arquivo_url']) {
       expect(props[field]?.deprecated).toBeUndefined();
     }
   });
 
-  it('QueryContractDto: type e artistId estão deprecated; tipo e artista_id não (parâmetros de query no path /contracts)', () => {
+  it('QueryContractDto: type e artistId estão deprecated; tipo e artist_id não (parâmetros de query no path /contracts)', () => {
     const byName = Object.fromEntries(queryParams.map((p) => [p.name, p]));
     expect(byName['type']?.deprecated).toBe(true);
     expect(byName['artistId']?.deprecated).toBe(true);
     expect(byName['tipo']?.deprecated).toBeFalsy();
-    expect(byName['artista_id']?.deprecated).toBeFalsy();
+    expect(byName['artist_id']?.deprecated).toBeFalsy();
   });
 });

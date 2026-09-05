@@ -55,7 +55,7 @@ describe('RebuildContractsInCanonicalFormOrder20260719000012', () => {
     expect(migrationSrc).not.toMatch(/DROP\s+\w+[^;]*CASCADE/i);
   });
 
-  it('recria a FK própria (artista_id), a FK dependente (financial_transactions), RLS + policies e possui down() honesto', () => {
+  it('recria a FK própria (artista_id — nome histórico da migration), a FK dependente (financial_transactions), RLS + policies e possui down() honesto', () => {
     expect(migrationSrc).toMatch(/fk_contracts_artista_id/);
     expect(migrationSrc.match(/ALTER TABLE financial_transactions DROP CONSTRAINT/g)?.length).toBeGreaterThanOrEqual(1);
     expect(migrationSrc.match(/ALTER TABLE financial_transactions ADD CONSTRAINT/g)?.length).toBeGreaterThanOrEqual(1);

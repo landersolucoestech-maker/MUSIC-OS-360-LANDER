@@ -51,7 +51,7 @@ export class ArtistEventsHandler {
             goalRepo.create({
               id: randomUUID(),
               tenant_id: tenantId,
-              artista_id: artistId,
+              artist_id: artistId,
               titulo: goal.titulo,
               tipo: goal.tipo,
               meta_valor: goal.meta_valor,

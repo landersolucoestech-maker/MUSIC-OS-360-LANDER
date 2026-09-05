@@ -150,18 +150,18 @@ describe('Swagger/OpenAPI — metadados de depreciação dos aliases (C2)', () =
     }
   });
 
-  it('CreatePhonogramDto: titulo, obra_id e artista_id NÃO estão deprecated', () => {
+  it('CreatePhonogramDto: titulo, obra_id e artist_id NÃO estão deprecated', () => {
     const props = schemas['CreatePhonogramDto'].properties!;
-    for (const field of ['titulo', 'obra_id', 'artista_id']) {
+    for (const field of ['titulo', 'obra_id', 'artist_id']) {
       expect(props[field]?.deprecated).toBeUndefined();
     }
   });
 
-  it('QueryPhonogramDto: workId e artistId estão deprecated; obra_id e artista_id não (parâmetros de query em /phonograms)', () => {
+  it('QueryPhonogramDto: workId e artistId estão deprecated; obra_id e artist_id não (parâmetros de query em /phonograms)', () => {
     const byName = Object.fromEntries(queryParams.map((p) => [p.name, p]));
     expect(byName['workId']?.deprecated).toBe(true);
     expect(byName['artistId']?.deprecated).toBe(true);
     expect(byName['obra_id']?.deprecated).toBeFalsy();
-    expect(byName['artista_id']?.deprecated).toBeFalsy();
+    expect(byName['artist_id']?.deprecated).toBeFalsy();
   });
 });

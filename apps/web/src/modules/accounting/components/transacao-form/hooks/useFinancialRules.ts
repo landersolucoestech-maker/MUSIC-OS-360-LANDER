@@ -12,7 +12,7 @@ import {
 } from "@/modules/accounting/components/transacao-form/rules/financial-form-rules";
 import { getStoredOverrides, buildKey } from "./useRuleOverrides";
 
-interface Evento  { id: string; artista_id?: string | null; titulo: string; data_inicio?: string | null }
+interface Evento  { id: string; artist_id?: string | null; titulo: string; data_inicio?: string | null }
 
 export interface FinancialRulesResult extends FinancialFormRules {
   categorias:          { value: string; label: string }[];
@@ -65,7 +65,7 @@ export function useFinancialRules({
 
   const eventosFiltrados = useMemo(
     () => formData.artistaVinculado
-      ? eventos.filter(e => e.artista_id != null && e.artista_id === formData.artistaVinculado)
+      ? eventos.filter(e => e.artist_id != null && e.artist_id === formData.artistaVinculado)
       : [],
     [formData.artistaVinculado, eventos],
   );

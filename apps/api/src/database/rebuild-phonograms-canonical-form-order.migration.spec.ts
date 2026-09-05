@@ -50,7 +50,7 @@ describe('RebuildPhonogramsInCanonicalFormOrder20260719000003', () => {
     }
   });
 
-  it('recria as próprias FKs (artista_id, obra_id), o CHECK de registry_status e RLS + policies', () => {
+  it('recria as próprias FKs (artista_id, obra_id — nomes históricos da migration), o CHECK de registry_status e RLS + policies', () => {
     expect(migrationSrc).toMatch(/fk_phonograms_artista_id/);
     expect(migrationSrc).toMatch(/fk_phonograms_obra_id/);
     expect(migrationSrc).toMatch(/chk_phonograms_registry_status/);

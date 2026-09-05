@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 
 interface ArtistaPlatformMetricsProps {
-  artistaId: string;
+  artistId: string;
   spotifyUrl?: string | null;
   youtubeUrl?: string | null;
   instagramUrl?: string | null;
@@ -162,7 +162,7 @@ function renderSyncState(
 }
 
 export function ArtistaPlatformMetrics({
-  artistaId,
+  artistId,
   spotifyUrl,
   youtubeUrl,
   instagramUrl,
@@ -172,8 +172,8 @@ export function ArtistaPlatformMetrics({
   soundcloudUrl,
 }: ArtistaPlatformMetricsProps) {
   const qc = useQueryClient();
-  const platformProfiles = useArtistPlatformProfiles(artistaId);
-  const syncPlatformProfile = useSyncArtistPlatformProfile(artistaId);
+  const platformProfiles = useArtistPlatformProfiles(artistId);
+  const syncPlatformProfile = useSyncArtistPlatformProfile(artistId);
 
   const snapshots = platformProfiles.data ?? [];
   const spotifySnapshot = snapshots.find((profile) => profile.platform === "spotify") ?? null;
@@ -228,7 +228,7 @@ export function ArtistaPlatformMetrics({
   };
 
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ["artists", artistaId, "platform-profiles"] });
+    qc.invalidateQueries({ queryKey: ["artists", artistId, "platform-profiles"] });
     let dispatched = false;
     const attempts: Array<[SocialPlatform, string | null, ArtistPlatformProfileSnapshot | null]> = [
       ["spotify", spotifyProfileUrl, spotifySnapshot],
@@ -240,7 +240,7 @@ export function ArtistaPlatformMetrics({
       ["apple-music", appleMusicProfileUrl, appleMusicSnapshot],
     ];
     for (const [platform, profileUrl, snapshot] of attempts) {
-      if (artistaId && profileUrl && snapshot?.sync_status !== "pending") {
+      if (artistId && profileUrl && snapshot?.sync_status !== "pending") {
         enqueueProfileSync(platform, profileUrl);
         dispatched = true;
       }
@@ -287,8 +287,8 @@ export function ArtistaPlatformMetrics({
       type="button"
       className="mt-2 h-6 w-full px-1 text-[10px]"
       onClick={() => syncNow(platform)}
-      disabled={!artistaId || syncPlatformProfile.isPending || snapshot?.sync_status === "pending"}
-      data-testid={`button-sync-${platform}-${artistaId}`}
+      disabled={!artistId || syncPlatformProfile.isPending || snapshot?.sync_status === "pending"}
+      data-testid={`button-sync-${platform}-${artistId}`}
     >
       <RefreshCw className={`h-3 w-3 ${syncPlatformProfile.isPending ? "animate-spin" : ""}`} />
       Sincronizar agora
@@ -306,14 +306,14 @@ export function ArtistaPlatformMetrics({
           className="text-muted-foreground gap-1 h-7"
           onClick={refresh}
           disabled={isFetching || syncPlatformProfile.isPending || !hasAnyProfileInput}
-          data-testid={`button-atualizar-metricas-${artistaId}`}
+          data-testid={`button-atualizar-metricas-${artistId}`}
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isFetching || syncPlatformProfile.isPending ? "animate-spin" : ""}`} />
           Atualizar
         </Button>
       </div>
       {platformProfiles.isError ? (
-        <p className="mb-2 text-xs text-destructive" data-testid={`metrics-load-error-${artistaId}`}>
+        <p className="mb-2 text-xs text-destructive" data-testid={`metrics-load-error-${artistId}`}>
           Falha ao carregar métricas de plataformas. Tente novamente em instantes.
         </p>
       ) : null}
@@ -328,21 +328,21 @@ export function ArtistaPlatformMetrics({
             <span className="text-[10px] text-foreground font-medium">Instagram</span>
           </div>
           {renderSyncState(
-            `metric-instagram-${artistaId}`,
+            `metric-instagram-${artistId}`,
             hasInstagramProfileInput,
             instagramSnapshot,
             instagramMetric?.value != null ? (
               <>
-                <p className="text-sm font-bold text-foreground" data-testid={`metric-instagram-${artistaId}`}>
+                <p className="text-sm font-bold text-foreground" data-testid={`metric-instagram-${artistId}`}>
                   {formatCount(instagramMetric.value)}
                 </p>
-                <p className="text-[10px] text-muted-foreground" data-testid={`metric-instagram-source-${artistaId}`}>
+                <p className="text-[10px] text-muted-foreground" data-testid={`metric-instagram-source-${artistId}`}>
                   Seguidores{isDevMockSnapshot(instagramSnapshot) ? " · dados de demonstração (dev)" : ""}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-sm font-semibold text-foreground" data-testid={`metric-instagram-${artistaId}`}>
+                <p className="text-sm font-semibold text-foreground" data-testid={`metric-instagram-${artistId}`}>
                   Indisponível
                 </p>
                 <p className="text-[10px] text-muted-foreground">
@@ -363,21 +363,21 @@ export function ArtistaPlatformMetrics({
             <span className="text-[10px] text-foreground font-medium">TikTok</span>
           </div>
           {renderSyncState(
-            `metric-tiktok-${artistaId}`,
+            `metric-tiktok-${artistId}`,
             hasTikTokProfileInput,
             tiktokSnapshot,
             tiktokMetric?.value != null ? (
               <>
-                <p className="text-sm font-bold text-foreground" data-testid={`metric-tiktok-${artistaId}`}>
+                <p className="text-sm font-bold text-foreground" data-testid={`metric-tiktok-${artistId}`}>
                   {formatCount(tiktokMetric.value)}
                 </p>
-                <p className="text-[10px] text-muted-foreground" data-testid={`metric-tiktok-source-${artistaId}`}>
+                <p className="text-[10px] text-muted-foreground" data-testid={`metric-tiktok-source-${artistId}`}>
                   Seguidores{isDevMockSnapshot(tiktokSnapshot) ? " · dados de demonstração (dev)" : ""}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-sm font-semibold text-foreground" data-testid={`metric-tiktok-${artistaId}`}>
+                <p className="text-sm font-semibold text-foreground" data-testid={`metric-tiktok-${artistId}`}>
                   Indisponível
                 </p>
                 <p className="text-[10px] text-muted-foreground">
@@ -396,12 +396,12 @@ export function ArtistaPlatformMetrics({
             <span className="text-[10px] text-foreground font-medium">Spotify</span>
           </div>
           {renderSyncState(
-            `metric-spotify-${artistaId}`,
+            `metric-spotify-${artistId}`,
             hasSpotifyProfileInput,
             spotifySnapshot,
             spotifyMetric?.value != null ? (
               <>
-                <p className="text-sm font-bold text-foreground" data-testid={`metric-spotify-${artistaId}`}>
+                <p className="text-sm font-bold text-foreground" data-testid={`metric-spotify-${artistId}`}>
                   {formatCount(spotifyMetric.value)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">Ouvintes</p>
@@ -410,7 +410,7 @@ export function ArtistaPlatformMetrics({
               <>
                 {/* API pública do Spotify (client_credentials) não expõe monthly listeners —
                     nunca usar spotifySnapshot.followers aqui como substituto. */}
-                <p className="text-sm font-semibold text-foreground" data-testid={`metric-spotify-${artistaId}`}>
+                <p className="text-sm font-semibold text-foreground" data-testid={`metric-spotify-${artistId}`}>
                   Indisponível
                 </p>
                 <p className="text-[10px] text-muted-foreground">
@@ -429,11 +429,11 @@ export function ArtistaPlatformMetrics({
             <span className="text-[10px] text-foreground font-medium">YouTube</span>
           </div>
           {renderSyncState(
-            `metric-youtube-${artistaId}`,
+            `metric-youtube-${artistId}`,
             hasYouTubeProfileInput,
             youtubeSnapshot,
             <>
-              <p className="text-sm font-bold text-foreground" data-testid={`metric-youtube-${artistaId}`}>
+              <p className="text-sm font-bold text-foreground" data-testid={`metric-youtube-${artistId}`}>
                 {formatCount(youtubeMetric?.value)}
               </p>
               <p className="text-[10px] text-muted-foreground">
@@ -451,11 +451,11 @@ export function ArtistaPlatformMetrics({
             <span className="text-[10px] text-foreground font-medium">Deezer</span>
           </div>
           {renderSyncState(
-            `metric-deezer-${artistaId}`,
+            `metric-deezer-${artistId}`,
             hasDeezerProfileInput,
             deezerSnapshot,
             <>
-              <p className="text-sm font-bold text-foreground" data-testid={`metric-deezer-${artistaId}`}>
+              <p className="text-sm font-bold text-foreground" data-testid={`metric-deezer-${artistId}`}>
                 {formatCount(deezerMetric?.value)}
               </p>
               <p className="text-[10px] text-muted-foreground">Fãs</p>
@@ -476,11 +476,11 @@ export function ArtistaPlatformMetrics({
             <span className="text-[10px] text-foreground font-medium">Apple Music</span>
           </div>
           {renderSyncState(
-            `metric-apple-music-${artistaId}`,
+            `metric-apple-music-${artistId}`,
             hasAppleMusicProfileInput,
             appleMusicSnapshot,
             <>
-              <p className="text-sm font-semibold text-foreground" data-testid={`metric-apple-music-${artistaId}`}>
+              <p className="text-sm font-semibold text-foreground" data-testid={`metric-apple-music-${artistId}`}>
                 Indisponível
               </p>
               <p className="text-[10px] text-muted-foreground">
@@ -498,11 +498,11 @@ export function ArtistaPlatformMetrics({
             <span className="text-[10px] text-foreground font-medium">SoundCloud</span>
           </div>
           {renderSyncState(
-            `metric-soundcloud-${artistaId}`,
+            `metric-soundcloud-${artistId}`,
             hasSoundCloudProfileInput,
             soundcloudSnapshot,
             <>
-              <p className="text-sm font-bold text-foreground" data-testid={`metric-soundcloud-${artistaId}`}>
+              <p className="text-sm font-bold text-foreground" data-testid={`metric-soundcloud-${artistId}`}>
                 {formatCount(soundcloudMetric?.value)}
               </p>
               <p className="text-[10px] text-muted-foreground">Seguidores</p>

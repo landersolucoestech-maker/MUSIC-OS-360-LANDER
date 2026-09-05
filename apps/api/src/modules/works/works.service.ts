@@ -112,8 +112,8 @@ export class WorksService {
     if (q['ecad'] === 'com-ecad')      qb.andWhere("w.cod_ecad IS NOT NULL AND w.cod_ecad <> ''");
     else if (q['ecad'] === 'sem-ecad') qb.andWhere("(w.cod_ecad IS NULL OR w.cod_ecad = '')");
     if (q['search']) qb.andWhere('w.titulo ILIKE :search', { search: `%${q['search']}%` });
-    const artistaId = q['artista_id'] ?? q['artistId'];
-    if (artistaId) qb.andWhere('w.artista_id = :artistaId', { artistaId });
+    const artistId = q['artist_id'] ?? q['artistId'];
+    if (artistId) qb.andWhere('w.artist_id = :artistId', { artistId });
 
     return qb;
   }

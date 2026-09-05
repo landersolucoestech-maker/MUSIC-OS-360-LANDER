@@ -132,7 +132,6 @@ export const FIELD_LABELS_PT_BR = {
   gravadoraResponsavelNome: 'Responsável na gravadora',
   gravadoraResponsavelEmail: 'E-mail do responsável na gravadora',
   gravadoraResponsavelTelefone: 'Telefone do responsável na gravadora',
-  artistaId: 'Artista (ID)',
   clienteId: 'Cliente (ID)',
   lancamentoId: 'Lançamento (ID)',
   obraId: 'Obra (ID)',

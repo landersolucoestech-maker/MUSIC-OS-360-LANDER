@@ -18,7 +18,7 @@ export class QueryTransactionDto extends PaginationDto {
   @IsString()
   status?: string;
 
-  @ApiPropertyOptional({ deprecated: true, description: 'Alias legado, não lido pelo service. Use "artista_id".' })
+  @ApiPropertyOptional({ deprecated: true, description: 'Alias legado, não lido pelo service. Use "artist_id".' })
   @IsOptional()
   @IsUUID()
   artistId?: string;
@@ -37,7 +37,7 @@ export class QueryTransactionDto extends PaginationDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
-  artista_id?: string;
+  artist_id?: string;
 
   @ApiPropertyOptional({ type: String, format: 'date' })
   @IsOptional()

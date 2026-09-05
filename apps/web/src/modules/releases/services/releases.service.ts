@@ -9,7 +9,7 @@ export const releasesService = {
   },
   async deleteRelease(id: string) { return storage.delete("lancamentos", id); },
   async listByArtist(artistId: string) {
-    return storage.list("lancamentos", { filters: { artista_id: artistId } });
+    return storage.list("lancamentos", { filters: { artist_id: artistId } });
   },
   async listByStatus(status: string) {
     return storage.list("lancamentos", { filters: { status } });

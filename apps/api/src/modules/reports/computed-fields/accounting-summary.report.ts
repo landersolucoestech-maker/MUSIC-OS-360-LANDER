@@ -26,7 +26,7 @@ export async function fetchAccountingSummaryRows(
        COALESCE(SUM(t.valor) FILTER (WHERE t.tipo = 'receita'), 0) AS receitas,
        COALESCE(SUM(t.valor) FILTER (WHERE t.tipo = 'despesa'), 0) AS despesas
      FROM artists a
-     JOIN transactions t ON t.artista_id = a.id AND t.tenant_id = a.tenant_id
+     JOIN transactions t ON t.artist_id = a.id AND t.tenant_id = a.tenant_id
      WHERE a.tenant_id = $1 AND t.deleted_at IS NULL
      GROUP BY a.id, a.nome_artistico
      ORDER BY a.nome_artistico ASC`,

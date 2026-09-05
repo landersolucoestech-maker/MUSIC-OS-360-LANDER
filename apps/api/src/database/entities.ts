@@ -710,7 +710,7 @@ export class WorkEntity {
   @Column({ type: 'varchar', length: 100, nullable: true }) origem_externa: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) origem_externa_id: string | null;
   @Column({ type: 'timestamp', nullable: true }) origem_externa_sincronizado_em: Date | null;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
@@ -749,7 +749,7 @@ export class WorkEntity {
 
   // ── Relations ───────────────────────────────────────────────────────────────
   @ManyToOne(() => ArtistEntity, (a) => a.works, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'artista_id' })
+  @JoinColumn({ name: 'artist_id' })
   artist: Relation<ArtistEntity> | null;
 
   @OneToMany(() => PhonogramEntity, (p) => p.work)
@@ -792,14 +792,14 @@ export class WorkParticipantEntity {
 @Entity('phonograms')
 @Index(['tenant_id'])
 @Index(['obra_id'])
-@Index(['artista_id'])
+@Index(['artist_id'])
 @Index(['isrc'])
 export class PhonogramEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'varchar', length: 500 }) titulo: string;
   @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) isrc: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) duracao: string | null;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
@@ -866,7 +866,7 @@ export class PhonogramEntity {
   // ── Relations ───────────────────────────────────────────────────────────────
   // Artist→Works navigation: Artist → phonograms → PhonogramEntity → work → WorkEntity
   @ManyToOne(() => ArtistEntity, (a) => a.phonograms, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'artista_id' })
+  @JoinColumn({ name: 'artist_id' })
   artist: Relation<ArtistEntity> | null;
 
   @ManyToOne(() => WorkEntity, (w) => w.phonograms, { nullable: true, onDelete: 'SET NULL' })
@@ -878,7 +878,7 @@ export class PhonogramEntity {
 @Entity('contracts')
 @Index(['tenant_id'])
 @Index(['tenant_id', 'status'])
-@Index(['artista_id'])
+@Index(['artist_id'])
 @Index(['data_fim'])
 export class ContractEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
@@ -886,7 +886,7 @@ export class ContractEntity {
   @Column({ type: 'varchar', length: 500 }) titulo: string;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ContractStatus.RASCUNHO }) status: ContractStatus;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'uuid', nullable: true }) cliente_id: string | null;
   @Column({ type: 'uuid', nullable: true }) lancamento_id: string | null;
   @Column({ type: 'timestamp', nullable: true }) data_inicio: Date | null;
@@ -911,7 +911,7 @@ export class ContractEntity {
 
   // ── Relations ───────────────────────────────────────────────────────────────
   @ManyToOne(() => ArtistEntity, (a) => a.contracts, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'artista_id' })
+  @JoinColumn({ name: 'artist_id' })
   artist: Relation<ArtistEntity> | null;
 }
 
@@ -979,7 +979,7 @@ export class ContractServiceTypeEntity {
 @Entity('transactions')
 @Index(['tenant_id'])
 @Index(['tenant_id', 'data'])
-@Index(['artista_id'])
+@Index(['artist_id'])
 export class TransactionEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
@@ -989,7 +989,7 @@ export class TransactionEntity {
   @Column({ type: 'decimal', precision: 15, scale: 2 }) valor: string;
   @Column({ type: 'timestamp' }) data: Date;
   @Column({ type: 'varchar', length: 50, default: TransactionStatus.PENDENTE }) status: TransactionStatus;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'uuid', nullable: true }) contrato_id: string | null;
   @Column({ type: 'uuid', nullable: true }) projeto_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) referencia: string | null;
@@ -1262,7 +1262,7 @@ export class CampaignEntity {
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) orcamento: string | null;
   @Column({ type: 'timestamp', nullable: true }) data_inicio: Date | null;
   @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
@@ -1283,7 +1283,7 @@ export class BriefingEntity {
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'varchar', length: 255 }) titulo: string;
   @Column({ type: 'text', nullable: true }) descricao: string | null;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'uuid', nullable: true }) campanha_id: string | null;
   @Column({ type: 'varchar', length: 50, default: BriefingStatus.RASCUNHO }) status: BriefingStatus;
   @Column({ type: 'timestamp', nullable: true }) prazo: Date | null;
@@ -1314,7 +1314,7 @@ export class EventEntity {
   // Nullable até a fase E5; dual-written com `data` a partir da fase E2.
   @Column({ type: 'timestamp', nullable: true }) starts_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) local: string | null;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
   // ── Campos do formulário de Evento (1 coluna por campo — nome exato) ─────────
   @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
@@ -1343,7 +1343,7 @@ export class ProjectEntity {
   @Column({ type: 'varchar', length: 255 }) titulo: string;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ProjectStatus.PLANEJAMENTO }) status: ProjectStatus;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) orcamento: string | null;
   // `descricao` volta a ser texto livre puro — musicas[] normalizada em project_tracks.
   @Column({ type: 'text', nullable: true }) descricao: string | null;
@@ -1414,11 +1414,11 @@ export class ProjectTrackParticipantEntity {
 // ─── Releases (Lançamentos) ───────────────────────────────────────────────────
 @Entity('releases')
 @Index(['tenant_id'])
-@Index(['artista_id'])
+@Index(['artist_id'])
 export class ReleaseEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'varchar', length: 500 }) titulo: string;
   @Column({ type: 'varchar', length: 100, default: 'single' }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ReleaseStatus.DRAFT }) status: ReleaseStatus;
@@ -1446,7 +1446,7 @@ export class ReleaseEntity {
 
   // ── Relations ───────────────────────────────────────────────────────────────
   @ManyToOne(() => ArtistEntity, (a) => a.releases, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'artista_id' })
+  @JoinColumn({ name: 'artist_id' })
   artist: Relation<ArtistEntity> | null;
 
   @ManyToMany(() => WorkEntity, (w) => w.releases)
@@ -1499,7 +1499,7 @@ export class ShareEntity {
   @Column({ type: 'varchar', length: 100, nullable: true }) tipo: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) artista_externo: string | null;
   @Column({ type: 'uuid', nullable: true }) artista_projeto_id: string | null;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) pagador: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) pagador_contato: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) origem_acordo: string | null;
@@ -1531,7 +1531,7 @@ export class TakedownEntity {
   @Column({ type: 'text', nullable: true }) url: string | null;
   @Column({ type: 'varchar', length: 50, default: TakedownStatus.PENDENTE }) status: TakedownStatus;
   @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'text', nullable: true }) motivo: string | null;
   @Column({ type: 'text', nullable: true }) resposta: string | null;
   // ── Campos do formulário de Takedown (1 coluna por campo — nome exato) ───────
@@ -1830,11 +1830,11 @@ export class AIJobEntity {
 // ─── Artist Goals ─────────────────────────────────────────────────────────────
 @Entity('artist_goals')
 @Index(['tenant_id'])
-@Index(['artista_id'])
+@Index(['artist_id'])
 export class ArtistGoalEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid' }) artista_id: string;
+  @Column({ type: 'uuid' }) artist_id: string;
   @Column({ type: 'varchar', length: 255 }) titulo: string;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) meta_valor: string | null;
@@ -1858,7 +1858,7 @@ export class ContentDetectionEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'varchar', length: 100 }) plataforma: string;
   @Column({ type: 'varchar', length: 500, nullable: true }) titulo_detectado: string | null;
   @Column({ type: 'text', nullable: true }) url: string | null;
@@ -2504,7 +2504,7 @@ export class LicenseEntity {
   // Campos do formulário de Licença (regra 2026-07-12: 1 coluna por campo)
   @Column({ type: 'varchar', length: 50, nullable: true }) remuneration_type: string | null;
   @Column({ type: 'decimal', precision: 7, scale: 4, nullable: true }) percentage: string | null;
-  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;

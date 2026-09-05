@@ -98,7 +98,7 @@ export class AudiovisualBriefingAutomation {
               a.nome_artistico AS artist_name
          FROM releases r
          LEFT JOIN artists a
-           ON a.id = r.artista_id AND a.tenant_id = r.tenant_id AND a.deleted_at IS NULL
+           ON a.id = r.artist_id AND a.tenant_id = r.tenant_id AND a.deleted_at IS NULL
         WHERE r.id = $1 AND r.tenant_id = $2 AND r.deleted_at IS NULL
         LIMIT 1`,
       [releaseId, tenantId],

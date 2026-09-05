@@ -109,7 +109,7 @@ export class FinancialClassificationAutomation {
               a.nome_artistico AS artist_name
          FROM transactions t
          LEFT JOIN artists a
-           ON a.id = t.artista_id AND a.tenant_id = t.tenant_id AND a.deleted_at IS NULL
+           ON a.id = t.artist_id AND a.tenant_id = t.tenant_id AND a.deleted_at IS NULL
         WHERE t.id = $1 AND t.tenant_id = $2 AND t.deleted_at IS NULL
         LIMIT 1`,
       [transactionId, tenantId],

@@ -34,14 +34,14 @@ export class ReleasesService {
         'r.artistas',
         ArtistEntity,
         'artistas',
-        'artistas.id = r.artista_id AND artistas.tenant_id = r.tenant_id AND artistas.deleted_at IS NULL',
+        'artistas.id = r.artist_id AND artistas.tenant_id = r.tenant_id AND artistas.deleted_at IS NULL',
       )
       .where('r.tenant_id = :tenantId', { tenantId })
       .andWhere('r.deleted_at IS NULL');
 
     if (q.status)      qb.andWhere('r.status = :status',               { status:      q.status });
     if (q.type)        qb.andWhere('r.tipo = :tipo',                   { tipo:        q.type });
-    if (q.artistId)    qb.andWhere('r.artista_id = :artistaId',        { artistaId:   q.artistId });
+    if (q.artistId)    qb.andWhere('r.artist_id = :artistId',        { artistId:   q.artistId });
     if (q.distributor) qb.andWhere('r.distribuidora = :distribuidora', { distribuidora: q.distributor });
     if (q.search)      qb.andWhere('r.titulo ILIKE :search',           { search:      `%${q.search}%` });
 
@@ -69,7 +69,7 @@ export class ReleasesService {
     const qb = this.baseQb(tenantId, q);
     qb.select('r.status', 'status')
       .addSelect(
-        `CASE WHEN r.titulo IS NOT NULL AND r.titulo <> '' AND r.artista_id IS NOT NULL
+        `CASE WHEN r.titulo IS NOT NULL AND r.titulo <> '' AND r.artist_id IS NOT NULL
               AND r.genero IS NOT NULL AND r.genero <> '' AND r.tipo IS NOT NULL AND r.tipo <> ''
          THEN true ELSE false END`,
         'has_required',
@@ -92,7 +92,7 @@ export class ReleasesService {
         'r.artistas',
         ArtistEntity,
         'artistas',
-        'artistas.id = r.artista_id AND artistas.tenant_id = r.tenant_id AND artistas.deleted_at IS NULL',
+        'artistas.id = r.artist_id AND artistas.tenant_id = r.tenant_id AND artistas.deleted_at IS NULL',
       )
       .where('r.id = :id AND r.tenant_id = :tenantId AND r.deleted_at IS NULL', { id, tenantId })
       .getOne();
@@ -106,7 +106,7 @@ export class ReleasesService {
       tenant_id:       tenantId,
       titulo:          dto.title,
       tipo:            dto.type,
-      artista_id:      dto.artistId    ?? null,
+      artist_id:      dto.artistId    ?? null,
       upc:             dto.upc         ?? null,
       distribuidora:   dto.distributor ?? null,
       data_lancamento: dto.releasedAt  ? new Date(dto.releasedAt) : null,
@@ -130,7 +130,7 @@ export class ReleasesService {
     await this.recordActivity(tenantId, userId, saved.id, 'created', `Lancamento "${saved.titulo}" criado`, {
       titulo: saved.titulo,
       tipo: saved.tipo,
-      artistId: saved.artista_id,
+      artistId: saved.artist_id,
     });
 
     // Dispara automações nativas internas (ex.: release-checklist). Os handlers são
@@ -145,7 +145,7 @@ export class ReleasesService {
         tenantId,
         titulo:    saved.titulo,
         tipo:      saved.tipo,
-        artistId:  saved.artista_id,
+        artistId:  saved.artist_id,
         createdBy: userId,
         createdAt: (saved.created_at ?? new Date()).toISOString(),
       },
@@ -169,7 +169,7 @@ export class ReleasesService {
     const nonStatusUpdates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
     if (dto.title       != null) nonStatusUpdates.titulo          = dto.title;
     if (dto.type        != null) nonStatusUpdates.tipo            = dto.type;
-    if (dto.artistId    != null) nonStatusUpdates.artista_id      = dto.artistId;
+    if (dto.artistId    != null) nonStatusUpdates.artist_id      = dto.artistId;
     if (dto.upc         != null) nonStatusUpdates.upc             = dto.upc;
     if (dto.distributor != null) nonStatusUpdates.distribuidora   = dto.distributor;
     if (dto.releasedAt  != null) nonStatusUpdates.data_lancamento = new Date(dto.releasedAt);
@@ -243,7 +243,7 @@ export class ReleasesService {
             releaseId:  id,
             tenantId,
             titulo:     current.titulo,
-            artistId:   current.artista_id,
+            artistId:   current.artist_id,
             approvedBy: userId,
             approvedAt: nowIso,
           },
@@ -258,7 +258,7 @@ export class ReleasesService {
             releaseId:     id,
             tenantId,
             titulo:        current.titulo,
-            artistId:      current.artista_id,
+            artistId:      current.artist_id,
             distribuidora: current.distribuidora,
             plataformas:   current.plataformas as unknown[],
             distributedAt: nowIso,
@@ -274,7 +274,7 @@ export class ReleasesService {
             releaseId:   id,
             tenantId,
             titulo:      current.titulo,
-            artistId:    current.artista_id,
+            artistId:    current.artist_id,
             publishedAt: nowIso,
           },
         });

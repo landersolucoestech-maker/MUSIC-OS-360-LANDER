@@ -17,7 +17,7 @@ const STATUSES = Object.values(ProjectStatus) as string[];
 export class CreateProjectDto {
   @ApiProperty() @IsString() @MaxLength(500) titulo!: string;
   @ApiProperty({ enum: TYPES }) @IsIn(TYPES) tipo!: typeof TYPES[number];
-  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) orcamento?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() descricao?: string;

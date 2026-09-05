@@ -62,7 +62,7 @@ function renderMetrics(overrides: Partial<MetricsProps> = {}) {
   });
 
   const props: MetricsProps = {
-    artistaId: "artist-1",
+    artistId: "artist-1",
     spotifyUrl: SPOTIFY_URL,
     youtubeUrl: YOUTUBE_URL,
     ...overrides,
@@ -410,7 +410,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
   it("artistId ausente nao chama endpoint e nao quebra", async () => {
     vi.mocked(api.get).mockResolvedValue([]);
 
-    renderMetrics({ artistaId: "" });
+    renderMetrics({ artistId: "" });
 
     const button = await screen.findByTestId("button-sync-spotify-");
     expect(button).toBeDisabled();

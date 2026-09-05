@@ -18,7 +18,7 @@ export class ArtistGoalsService {
       .where('g.tenant_id = :tenantId', { tenantId })
       .andWhere('g.deleted_at IS NULL');
 
-    if (query.artista_id) qb.andWhere('g.artista_id = :artistaId', { artistaId: query.artista_id });
+    if (query.artist_id) qb.andWhere('g.artist_id = :artistId', { artistId: query.artist_id });
     if (query.status)     qb.andWhere('g.status = :status',        { status:    query.status });
     if (query.tipo)       qb.andWhere('g.tipo = :tipo',            { tipo:      query.tipo });
 

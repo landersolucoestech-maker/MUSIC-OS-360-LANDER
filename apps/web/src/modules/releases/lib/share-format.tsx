@@ -19,7 +19,7 @@ export function resolveShareType(share: Share & Record<string, unknown>): ShareT
   if (explicit === "internal_release" || explicit === "external_receivable") return explicit;
   if (str(share.lancamento_id)) return "internal_release";
   if (str(share.nome_musica) || str(share.pagador) || str(share.artista_externo)) return "external_receivable";
-  // Royalty splits existentes (obra_id + artista_id/detentor) são tratados como internos.
+  // Royalty splits existentes (obra_id + artist_id/detentor) são tratados como internos.
   return "internal_release";
 }
 

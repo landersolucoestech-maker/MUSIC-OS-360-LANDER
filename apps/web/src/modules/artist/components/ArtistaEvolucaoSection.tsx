@@ -133,7 +133,7 @@ function aggregateVerdict(platforms: PlatformInput[]): {
 }
 
 export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps) {
-  const artistaId: string | null = artista?.id ?? null;
+  const artistId: string | null = artista?.id ?? null;
   const spotifyUrl: string | null = artista?.spotify_url ?? null;
   const youtubeUrl: string | null = artista?.youtube_url ?? null;
   const deezerUrl: string | null = artista?.deezer_url ?? null;
@@ -142,13 +142,13 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
   const instagramHandle: string | null = artista?.instagram ?? null;
   const tiktokHandle: string | null = artista?.tiktok ?? null;
 
-  const spotifyQ = useArtistPlatformEvolution(artistaId, "spotify");
-  const youtubeQ = useArtistPlatformEvolution(artistaId, "youtube");
-  const deezerQ = useArtistPlatformEvolution(artistaId, "deezer");
-  const soundcloudQ = useArtistPlatformEvolution(artistaId, "soundcloud");
-  const appleMusicQ = useArtistPlatformEvolution(artistaId, "apple-music");
-  const instagramQ = useArtistPlatformEvolution(artistaId, "instagram");
-  const tiktokQ = useArtistPlatformEvolution(artistaId, "tiktok");
+  const spotifyQ = useArtistPlatformEvolution(artistId, "spotify");
+  const youtubeQ = useArtistPlatformEvolution(artistId, "youtube");
+  const deezerQ = useArtistPlatformEvolution(artistId, "deezer");
+  const soundcloudQ = useArtistPlatformEvolution(artistId, "soundcloud");
+  const appleMusicQ = useArtistPlatformEvolution(artistId, "apple-music");
+  const instagramQ = useArtistPlatformEvolution(artistId, "instagram");
+  const tiktokQ = useArtistPlatformEvolution(artistId, "tiktok");
 
   const spotifySummary = useMemo(
     () => computeEvolutionSummary(spotifyQ.data, "followers"),
@@ -242,7 +242,7 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
 
   const isAnyLoading = platforms.some((p) => p.isLoading && !p.isMissingConfig);
 
-  if (!artistaId) {
+  if (!artistId) {
     return (
       <Card>
         <CardContent className="p-6 text-sm text-muted-foreground">

@@ -196,7 +196,7 @@ interface Participante {
   classeFuncao: string;
   link: string;
   percentual: string;
-  artista_id?: string;
+  artist_id?: string;
 }
 
 interface IAElement {
@@ -484,7 +484,7 @@ export function ObraFormModal({
       participantes,
       situacao,
       projetoId: projetoSelecionado?.id ?? null,
-      artistaId: null,
+      artistId: null,
       tipoObra,
       orgId: orgId as string,
     });
@@ -637,9 +637,9 @@ export function ObraFormModal({
                             }
                             // Resolve artista por ID direto \u2014 n\u00e3o depende do artista estar
                             // entre os primeiros registros carregados (Task J).
-                            const artistaId = p.artista_id as string | null | undefined;
-                            const artistaFound = artistaId
-                              ? await storage.findById<Artista>("artistas", artistaId)
+                            const artistId = p.artist_id as string | null | undefined;
+                            const artistaFound = artistId
+                              ? await storage.findById<Artista>("artistas", artistId)
                               : undefined;
                             const artistaNomeResolved = artistaFound?.nome_artistico || pArtistaNomeDisplay;
                             // Parse descricao JSON for composers/producers from project songs
@@ -668,7 +668,7 @@ export function ObraFormModal({
                                 classeFuncao: "compositor/autor",
                                 link: "",
                                 percentual: "100",
-                                artista_id: artistaId ?? undefined,
+                                artist_id: artistId ?? undefined,
                               }];
                             }
                             if (autoParticipantes.length > 0 && participantes.length === 0) {
@@ -1168,7 +1168,7 @@ export function ObraFormModal({
                           <ArtistNameInput
                             value={p.nome}
                             onChange={(val) => updateParticipante(p.id, "nome", val)}
-                            onSelect={(a) => updateParticipante(p.id, "artista_id", a.id)}
+                            onSelect={(a) => updateParticipante(p.id, "artist_id", a.id)}
                             placeholder="Nome do participante"
                             disabled={isViewMode}
                           />
@@ -1235,8 +1235,8 @@ export function ObraFormModal({
                               // Busca por ID direto (não depende do artista estar entre os
                               // primeiros carregados) — cai para busca por nome só quando o
                               // participante nunca foi vinculado a um artista cadastrado.
-                              const found = p.artista_id
-                                ? await storage.findById<Artista>("artistas", p.artista_id)
+                              const found = p.artist_id
+                                ? await storage.findById<Artista>("artistas", p.artist_id)
                                 : p.nome
                                   ? (await storage.listPaged<Artista>("artistas", { page: 1, pageSize: 5, filters: { search: p.nome } }))
                                       .items.find(a => (a.nome_civil || a.nome_artistico) === p.nome)

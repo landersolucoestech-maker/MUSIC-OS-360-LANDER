@@ -62,7 +62,7 @@ export class ContractsService {
         'c.artistas',
         ArtistEntity,
         'artistas',
-        'artistas.id = c.artista_id AND artistas.tenant_id = c.tenant_id AND artistas.deleted_at IS NULL',
+        'artistas.id = c.artist_id AND artistas.tenant_id = c.tenant_id AND artistas.deleted_at IS NULL',
       )
       .leftJoinAndMapOne(
         'c.clientes',
@@ -75,7 +75,7 @@ export class ContractsService {
 
     if (q['status'])              qb.andWhere('c.status = :status',        { status:    q['status'] });
     if (resolvedQuery.tipo)       qb.andWhere('c.tipo = :tipo',            { tipo:      resolvedQuery.tipo });
-    if (resolvedQuery.artista_id) qb.andWhere('c.artista_id = :artistaId', { artistaId: resolvedQuery.artista_id });
+    if (resolvedQuery.artist_id) qb.andWhere('c.artist_id = :artistId', { artistId: resolvedQuery.artist_id });
     if (q['search'])              qb.andWhere('c.titulo ILIKE :search',    { search: `%${q['search']}%` });
     if (q['signing_platform'] === 'none') qb.andWhere('c.signing_platform IS NULL');
     else if (q['signing_platform'])       qb.andWhere('c.signing_platform = :sp', { sp: q['signing_platform'] });
@@ -121,7 +121,7 @@ export class ContractsService {
         'c.artistas',
         ArtistEntity,
         'artistas',
-        'artistas.id = c.artista_id AND artistas.tenant_id = c.tenant_id AND artistas.deleted_at IS NULL',
+        'artistas.id = c.artist_id AND artistas.tenant_id = c.tenant_id AND artistas.deleted_at IS NULL',
       )
       .leftJoinAndMapOne(
         'c.clientes',
@@ -138,7 +138,7 @@ export class ContractsService {
 
   /**
    * Monta o payload final para persistência a partir dos campos canônicos já
-   * resolvidos (titulo/tipo/artista_id/data_inicio/data_fim/arquivo_url/valor
+   * resolvidos (titulo/tipo/artist_id/data_inicio/data_fim/arquivo_url/valor
    * — ver resolveContractAliases()) e dos demais campos não relacionados a
    * aliases, que continuam passando direto para a entity.
    */
@@ -188,7 +188,7 @@ export class ContractsService {
     // contracts.tipo é NOT NULL; o wizard pode não ter tipo de serviço definido.
     if (normalized['tipo'] == null) normalized['tipo'] = 'outro';
 
-    await assertSameTenantFk(this.ds!, 'artists', normalized['artista_id'] as string | undefined, tenantId, 'Artista');
+    await assertSameTenantFk(this.ds!, 'artists', normalized['artist_id'] as string | undefined, tenantId, 'Artista');
     await assertSameTenantFk(this.ds!, 'clients', normalized['cliente_id'] as string | undefined, tenantId, 'Cliente');
 
     const entity = this.repo!.create({
@@ -210,7 +210,7 @@ export class ContractsService {
         tenantId,
         titulo:     saved.titulo ?? (normalized['titulo'] as string) ?? '',
         tipo:       saved.tipo   ?? (normalized['tipo']   as string) ?? '',
-        artistId:   saved.artista_id ?? null,
+        artistId:   saved.artist_id ?? null,
         createdBy:  userId,
       },
     });
@@ -307,7 +307,7 @@ export class ContractsService {
             contractId: id,
             tenantId,
             titulo:     current.titulo,
-            artistId:   current.artista_id,
+            artistId:   current.artist_id,
             signedBy:   userId,
             signedAt:   nowIso,
           },
@@ -325,7 +325,7 @@ export class ContractsService {
             contractId: id,
             tenantId,
             titulo:     current.titulo,
-            artistId:   current.artista_id,
+            artistId:   current.artist_id,
             expiredAt:  nowIso,
           },
         });
@@ -342,7 +342,7 @@ export class ContractsService {
             contractId:  id,
             tenantId,
             titulo:      current.titulo,
-            artistId:    current.artista_id,
+            artistId:    current.artist_id,
             cancelledBy: userId,
             cancelledAt: nowIso,
           },
@@ -393,7 +393,7 @@ export class ContractsService {
         contractId:  id,
         tenantId,
         titulo:      existing.titulo,
-        artistId:    existing.artista_id,
+        artistId:    existing.artist_id,
         cancelledBy: userId,
         cancelledAt: new Date().toISOString(),
       },

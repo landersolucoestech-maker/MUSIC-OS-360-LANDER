@@ -10,7 +10,7 @@ export class CreateContentDetectionDto {
 
   @IsOptional()
   @IsString()
-  artista_id?: string;
+  artist_id?: string;
 
   @IsOptional()
   @IsString()

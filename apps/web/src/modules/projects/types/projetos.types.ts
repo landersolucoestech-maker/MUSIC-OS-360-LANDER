@@ -9,7 +9,7 @@ export interface Projeto {
   titulo: string;
   tipo?: ProjetoTipo | string | null;
   status?: ProjetoStatus | string | null;
-  artista_id?: string | null;
+  artist_id?: string | null;
   orcamento?: number | null;
   descricao?: string | null;
   genero?: string | null;

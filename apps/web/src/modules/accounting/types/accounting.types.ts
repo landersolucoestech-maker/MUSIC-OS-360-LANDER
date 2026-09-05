@@ -38,7 +38,7 @@ export interface Transacao {
   valor: number;
   data: string;
   status?: TransacaoStatus | string | null;
-  artista_id?: string | null;
+  artist_id?: string | null;
   cliente_id?: string | null;
   venda_id?: string | null;
   /** Vínculos gerenciais obrigatórios para consolidação no P&L (≥1). */

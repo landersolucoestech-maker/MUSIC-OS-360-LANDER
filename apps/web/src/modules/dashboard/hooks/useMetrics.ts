@@ -155,8 +155,8 @@ export function useMetrics(): UseMetricsReturn {
     }).length;
 
     const artistasComMetricas: ArtistaDestaque[] = artistas.map(artista => {
-      const lancamentos = lancamentosData.filter(l => l.artista_id === artista.id).length;
-      const projetosCount = projetos.filter(p => p.artista_id === artista.id).length;
+      const lancamentos = lancamentosData.filter(l => l.artist_id === artista.id).length;
+      const projetosCount = projetos.filter(p => p.artist_id === artista.id).length;
 
       // Streams: tenta múltiplas fontes; se nenhuma disponível, retorna null
       // para a UI poder exibir "–" em vez de "0" falso.

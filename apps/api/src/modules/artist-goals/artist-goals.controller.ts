@@ -23,13 +23,13 @@ export class ArtistGoalsController {
   @ApiOperation({ summary: 'Listar metas de artistas do tenant' })
   list(
     @CurrentTenant() tenant: { id: string },
-    @Query('artista_id') artista_id?: string,
+    @Query('artist_id') artist_id?: string,
     @Query('status') status?: string,
     @Query('offset') offset?: string,
     @Query('limit') limit?: string,
   ) {
     return this.svc.list(tenant.id, {
-      artista_id,
+      artist_id,
       status,
       offset: offset ? +offset : undefined,
       limit:  limit  ? +limit  : undefined,

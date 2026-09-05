@@ -35,13 +35,13 @@ import { getFirstMusicaInfo, parseMusicasFromProjeto } from "@/modules/projects/
 // backend não devolve a relação `artistas` embutida. Injeta manualmente a
 // partir do id→artista map — usado tanto na lista completa (deep-link,
 // dropdown de gêneros) quanto na página atual vinda do backend.
-function withArtista<T extends { artista_id?: string | null; artistas?: unknown }>(
+function withArtista<T extends { artist_id?: string | null; artistas?: unknown }>(
   list: T[],
   artistasById: Record<string, any>,
 ): T[] {
   return list.map(p => ({
     ...p,
-    artistas: p.artistas ?? (p.artista_id ? artistasById[p.artista_id] : undefined),
+    artistas: p.artistas ?? (p.artist_id ? artistasById[p.artist_id] : undefined),
   }));
 }
 
@@ -125,7 +125,7 @@ export default function Projetos() {
     search: debouncedSearch || undefined,
     status: statusFilter !== "all" ? statusFilter : undefined,
     tipo: tipoFilter !== "all" ? tipoFilter : undefined,
-    artistaId: artistaFilter !== "all" ? artistaFilter : undefined,
+    artistId: artistaFilter !== "all" ? artistaFilter : undefined,
     genero: generoFilter !== "all" ? generoFilter : undefined,
   });
 
@@ -136,7 +136,7 @@ export default function Projetos() {
   // desse cap).
   const [resolvedArtistasMap, setResolvedArtistasMap] = useState<Record<string, Artista>>({});
   const pageArtistaIds = useMemo(
-    () => Array.from(new Set((pageItems as ProjetoWithRelationsExtended[]).map(p => p.artista_id).filter((id): id is string => !!id))),
+    () => Array.from(new Set((pageItems as ProjetoWithRelationsExtended[]).map(p => p.artist_id).filter((id): id is string => !!id))),
     [pageItems],
   );
   useEffect(() => {

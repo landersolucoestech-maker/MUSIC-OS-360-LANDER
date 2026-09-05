@@ -28,7 +28,7 @@ export interface CatalogObraRef {
 export interface ContentDetection {
   id: string;
   obra_id: string | null;
-  artista_id: string | null;
+  artist_id: string | null;
   plataforma: string;
   titulo_detectado: string | null;
   url: string | null;

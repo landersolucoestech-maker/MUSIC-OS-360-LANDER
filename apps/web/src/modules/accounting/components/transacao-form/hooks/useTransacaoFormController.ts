@@ -25,7 +25,7 @@ import {
 
 interface Evento {
   id: string;
-  artista_id?: string | null;
+  artist_id?: string | null;
   titulo: string;
   data_inicio?: string | null;
 }

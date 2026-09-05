@@ -122,7 +122,7 @@ export class RecordingRegistryValidationService {
       issues.push(issue(E, 'recording_duration_required', 'duration_seconds', 'Duração do fonograma é obrigatória.'));
     }
 
-    const hasMainArtist = !!recording.main_artist_id || !!recording.artista_id ||
+    const hasMainArtist = !!recording.main_artist_id || !!recording.artist_id ||
       eligible.some((s) => isInterpreterRole(s.role ?? s.papel));
     if (!hasMainArtist) {
       issues.push(issue(E, 'recording_main_artist_required', 'main_artist', 'Fonograma precisa de um artista principal/intérprete.'));
@@ -136,7 +136,7 @@ export class RecordingRegistryValidationService {
     }
 
     const hasInterpreter = eligible.some((s) => isInterpreterRole(s.role ?? s.papel)) ||
-      !!(recording.interpretes && recording.interpretes.trim()) || !!recording.artista_id;
+      !!(recording.interpretes && recording.interpretes.trim()) || !!recording.artist_id;
     if (!hasInterpreter) {
       issues.push(issue(E, 'recording_no_interpreter', 'interpreters', 'Fonograma precisa de pelo menos um intérprete.'));
     }

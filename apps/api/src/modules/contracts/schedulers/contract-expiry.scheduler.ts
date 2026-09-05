@@ -140,7 +140,7 @@ export class ContractExpiryScheduler implements OnApplicationBootstrap {
           contractId: contract.id,
           tenantId:   contract.tenant_id,
           titulo:     contract.titulo,
-          artistId:   contract.artista_id,
+          artistId:   contract.artist_id,
           dataFim:    dataFim.toISOString(),
           daysLeft,
         },

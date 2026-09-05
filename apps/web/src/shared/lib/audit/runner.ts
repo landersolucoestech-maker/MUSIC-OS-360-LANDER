@@ -64,7 +64,7 @@ const CONFIGS: AuditConfig[] = [
       { key: "tipo", label: "Tipo", severity: "obrigatorio" },
       { key: "status", label: "Status", severity: "obrigatorio" },
       { key: "genero", label: "Gênero musical", severity: "recomendado" },
-      { key: "artista_id", label: "Artista vinculado", severity: "recomendado" },
+      { key: "artist_id", label: "Artista vinculado", severity: "recomendado" },
     ],
   },
   {
@@ -90,7 +90,7 @@ const CONFIGS: AuditConfig[] = [
     fields: [
       { key: "titulo", label: "Título", severity: "obrigatorio" },
       { key: "isrc", label: "ISRC", severity: "obrigatorio" },
-      { key: "artista_id", label: "Artista vinculado", severity: "recomendado" },
+      { key: "artist_id", label: "Artista vinculado", severity: "recomendado" },
       { key: "obra_id", label: "Obra vinculada", severity: "recomendado" },
       { key: "genero_musical", label: "Gênero musical", severity: "recomendado" },
     ],
@@ -105,7 +105,7 @@ const CONFIGS: AuditConfig[] = [
       { key: "titulo", label: "Título", severity: "obrigatorio" },
       { key: "tipo", label: "Tipo", severity: "obrigatorio" },
       { key: "status", label: "Status", severity: "obrigatorio" },
-      { key: "artista_id", label: "Artista vinculado", severity: "obrigatorio" },
+      { key: "artist_id", label: "Artista vinculado", severity: "obrigatorio" },
       { key: "data_lancamento", label: "Data de lançamento", severity: "recomendado" },
       { key: "distribuidora", label: "Distribuidora", severity: "recomendado" },
       { key: "plataformas", label: "Plataformas", severity: "recomendado" },
@@ -151,7 +151,7 @@ const CONFIGS: AuditConfig[] = [
       { key: "titulo", label: "Título", severity: "obrigatorio" },
       { key: "data_inicio", label: "Data de início", severity: "obrigatorio" },
       { key: "local", label: "Local", severity: "recomendado" },
-      { key: "artista_id", label: "Artista vinculado", severity: "recomendado" },
+      { key: "artist_id", label: "Artista vinculado", severity: "recomendado" },
     ],
   },
   {

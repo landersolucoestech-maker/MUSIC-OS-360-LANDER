@@ -51,7 +51,7 @@ export class QueryEventDto extends PaginationDto {
   // em inglês) existiam aqui sem nenhum caller real e sem leitura no service —
   // removidos (eram um filtro 200-mas-silenciosamente-ignorado à espera de acontecer).
   @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() artista_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() artist_id?: string;
   @ApiPropertyOptional({ type: String, format: 'date-time' }) @IsOptional() @IsDateString() dateFrom?: string;
   @ApiPropertyOptional({ type: String, format: 'date-time' }) @IsOptional() @IsDateString() dateTo?: string;
 }

@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 
 /**
  * Resolução de aliases EN legados para os campos canônicos pt-BR de Phonograms
- * (C2): titulo/title, obra_id/workId, artista_id/artistId. Puro: não loga,
+ * (C2): titulo/title, obra_id/workId, artist_id/artistId. Puro: não loga,
  * não conhece tenant/operação, não acessa repository, não importa Swagger,
  * não aplica defaults de negócio (ex.: tipo='master') — isso é
  * responsabilidade do PhonogramsService.
@@ -33,12 +33,12 @@ export interface PhonogramAliasErrorBody {
 export interface ResolvedPhonogramWriteFields {
   titulo?: string;
   obra_id?: string | null;
-  artista_id?: string | null;
+  artist_id?: string | null;
 }
 
 export interface ResolvedPhonogramQueryFields {
   obra_id?: string;
-  artista_id?: string;
+  artist_id?: string;
 }
 
 export interface PhonogramAliasResolution<T> {
@@ -82,7 +82,7 @@ function throwInvalidTitle(field: string): never {
   throw new BadRequestException(body);
 }
 
-// ── Par genérico de UUID (obra_id/workId, artista_id/artistId) ──────────────
+// ── Par genérico de UUID (obra_id/workId, artist_id/artistId) ──────────────
 
 interface UuidPairSpec {
   canonical: string;
@@ -137,7 +137,7 @@ function resolveUuidPair(
 }
 
 const OBRA_ID_SPEC: UuidPairSpec = { canonical: 'obra_id', legacy: 'workId' };
-const ARTISTA_ID_SPEC: UuidPairSpec = { canonical: 'artista_id', legacy: 'artistId' };
+const ARTIST_ID_SPEC: UuidPairSpec = { canonical: 'artist_id', legacy: 'artistId' };
 
 // ── Título — obrigatoriedade tratada pelo chamador; aqui só conteúdo/conflito ─
 
@@ -194,15 +194,15 @@ export function resolvePhonogramAliases(
   const obraId = resolveUuidPair(input, OBRA_ID_SPEC, legacyUsed);
   if (obraId !== undefined) normalized.obra_id = obraId;
 
-  const artistaId = resolveUuidPair(input, ARTISTA_ID_SPEC, legacyUsed);
-  if (artistaId !== undefined) normalized.artista_id = artistaId;
+  const artistId = resolveUuidPair(input, ARTIST_ID_SPEC, legacyUsed);
+  if (artistId !== undefined) normalized.artist_id = artistId;
 
   return { normalized, legacyAliasesUsed: Array.from(legacyUsed) };
 }
 
 /**
  * Resolve exclusivamente os 2 aliases de consulta (obra_id/workId,
- * artista_id/artistId). Não conhece nem processa titulo/title — impossível
+ * artist_id/artistId). Não conhece nem processa titulo/title — impossível
  * vazarem pela query.
  */
 export function resolvePhonogramQueryAliases(
@@ -214,8 +214,8 @@ export function resolvePhonogramQueryAliases(
   const obraId = resolveUuidPair(input, OBRA_ID_SPEC, legacyUsed);
   if (obraId !== undefined && obraId !== null) normalized.obra_id = obraId;
 
-  const artistaId = resolveUuidPair(input, ARTISTA_ID_SPEC, legacyUsed);
-  if (artistaId !== undefined && artistaId !== null) normalized.artista_id = artistaId;
+  const artistId = resolveUuidPair(input, ARTIST_ID_SPEC, legacyUsed);
+  if (artistId !== undefined && artistId !== null) normalized.artist_id = artistId;
 
   return { normalized, legacyAliasesUsed: Array.from(legacyUsed) };
 }

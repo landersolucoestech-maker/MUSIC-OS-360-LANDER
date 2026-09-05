@@ -10,7 +10,7 @@ export const licensingService = {
     return storage.list("licencas", { filters: { status } });
   },
   async listByArtist(artistId: string) {
-    return storage.list("licencas", { filters: { artista_id: artistId } });
+    return storage.list("licencas", { filters: { artist_id: artistId } });
   },
   async listFinancialRules() { return storage.list("regras_financeiras"); },
 };

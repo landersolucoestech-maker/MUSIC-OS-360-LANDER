@@ -302,29 +302,29 @@ export function ArtistaVisao360Modal({
   // fechado. `enabled: open` preserva o comportamento de todo outro
   // consumidor desses hooks (default `true`).
   //
-  // Task G: cada uma agora também é filtrada por artista_id NO SERVIDOR
+  // Task G: cada uma agora também é filtrada por artist_id NO SERVIDOR
   // (backend já suporta — ver QueryPhonogramDto/QueryContractDto/
   // QueryTransactionDto/QueryEventDto/projects.dto.ts/artist-goals — works
   // ganhou o filtro nesta task). Antes, o modal baixava a tabela inteira do
-  // tenant e filtrava no cliente com `.filter(x => x.artista_id === id)`
+  // tenant e filtrava no cliente com `.filter(x => x.artist_id === id)`
   // (padrão que a Task G pede para eliminar) — trocar de artista reaproveitava
   // até o mesmo cache incorreto, já que a queryKey não distinguia o artista.
-  const artistaId = artista?.id;
-  const { obras: obrasReais } = useObras(open, artistaId);
-  const { fonogramas: fonogramasReais } = useFonogramas(open, artistaId);
-  const { lancamentos: lancamentosReais } = useLancamentos(open, artistaId);
-  const { projetos: projetosReais } = useProjetos(open, artistaId);
+  const artistId = artista?.id;
+  const { obras: obrasReais } = useObras(open, artistId);
+  const { fonogramas: fonogramasReais } = useFonogramas(open, artistId);
+  const { lancamentos: lancamentosReais } = useLancamentos(open, artistId);
+  const { projetos: projetosReais } = useProjetos(open, artistId);
   const {
     metas: metasReais,
     addMeta,
     updateMeta,
     deleteMeta,
     getProgressPercent: calcProgress,
-  } = useMetas(open, artistaId);
-  const { contratos: contratosReais } = useContratos(open, artistaId);
-  const { transacoes: transacoesArtista } = useTransacoes(open, artistaId);
+  } = useMetas(open, artistId);
+  const { contratos: contratosReais } = useContratos(open, artistId);
+  const { transacoes: transacoesArtista } = useTransacoes(open, artistId);
   const { contacts } = useContacts(open);
-  const { eventos: eventosReais } = useEventos(open, artistaId);
+  const { eventos: eventosReais } = useEventos(open, artistId);
   const { data: marketingContents = [] } = useMarketingContents(open);
   const { data: marketingCampaigns = [] } = useMarketingCampaigns(open);
 
@@ -354,7 +354,7 @@ export function ArtistaVisao360Modal({
 
   // ── Conteúdos (marketing contents do artista) ──────────────────────────
   const conteudosReais = marketingContents.filter(
-    (c) => c.targetType === "artista" && c.targetId === artistaId,
+    (c) => c.targetType === "artista" && c.targetId === artistId,
   );
   const conteudosFiltrados = conteudosReais.filter((c) => {
     const cfg = CONTEUDO_FILTERS.find((f) => f.key === conteudoFilter);
@@ -364,7 +364,7 @@ export function ArtistaVisao360Modal({
 
   // ── Marketing (campanhas do artista) ───────────────────────────────────
   const campanhasReais = marketingCampaigns.filter(
-    (c) => c.targetType === "artista" && c.targetId === artistaId,
+    (c) => c.targetType === "artista" && c.targetId === artistId,
   );
 
   // ── Movimentação (timeline operacional derivada dos dados do artista) ──
@@ -615,7 +615,7 @@ export function ArtistaVisao360Modal({
   const handleSaveMeta = async () => {
     if (!metaForm.titulo || !metaForm.tipo || !metaForm.valorMeta) return;
     const payload = {
-      artista_id: artistaId,
+      artist_id: artistId,
       titulo: metaForm.titulo,
       descricao: metaForm.descricao,
       tipo_meta: metaForm.tipo,
@@ -919,7 +919,7 @@ export function ArtistaVisao360Modal({
                   Career Stage + Market Benchmark em um único diagnóstico;
                   ambos calculados no backend a partir de métricas
                   Soundcharts já ingeridas) */}
-              <PositioningCard artistaId={artista.id} />
+              <PositioningCard artistId={artista.id} />
 
               {/* Métricas */}
               <div className="grid grid-cols-5 gap-4">
@@ -1316,7 +1316,7 @@ export function ArtistaVisao360Modal({
 
               {/* Perfis e Redes Sociais */}
               <ArtistaPlatformMetrics
-                artistaId={artista.id}
+                artistId={artista.id}
                 spotifyUrl={artista.spotify_url ?? null}
                 youtubeUrl={artista.youtube_url ?? null}
                 instagramUrl={artista.instagram_url ?? null}

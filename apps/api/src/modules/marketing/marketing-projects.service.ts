@@ -170,13 +170,13 @@ export class MarketingProjectsService {
     const [works, phonograms, uploads] = await Promise.all([
       payload.artistId
         ? this.workRepo.find({
-            where: { tenant_id: payload.tenantId, artista_id: payload.artistId, deleted_at: null } as never,
+            where: { tenant_id: payload.tenantId, artist_id: payload.artistId, deleted_at: null } as never,
             take: 50,
           })
         : Promise.resolve([]),
       payload.artistId
         ? this.phonogramRepo.find({
-            where: { tenant_id: payload.tenantId, artista_id: payload.artistId, deleted_at: null } as never,
+            where: { tenant_id: payload.tenantId, artist_id: payload.artistId, deleted_at: null } as never,
             take: 50,
           })
         : Promise.resolve([]),

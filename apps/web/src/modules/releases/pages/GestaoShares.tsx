@@ -105,7 +105,7 @@ export default function GestaoShares() {
     [pageShares],
   );
   const shareArtistaIds = useMemo(
-    () => Array.from(new Set(pageShares.map((s: any) => s.artista_id).filter(Boolean))) as string[],
+    () => Array.from(new Set(pageShares.map((s: any) => s.artist_id).filter(Boolean))) as string[],
     [pageShares],
   );
   useEffect(() => {
@@ -397,7 +397,7 @@ export default function GestaoShares() {
                   {sharesPg.pageItems.map((share: any) => {
                     const obra = share.obra_id ? resolvedObras[share.obra_id] : undefined;
                     const lancamento = lancamentos.find((l: any) => l.id === share.lancamento_id);
-                    const artista = share.artista_id ? resolvedArtistas[share.artista_id] : undefined;
+                    const artista = share.artist_id ? resolvedArtistas[share.artist_id] : undefined;
                     const nomeDetentor = artista?.nome_artistico || share.detentor || "—";
                     const sType = resolveShareType(share as Share & Record<string, unknown>);
                     const isPendente = share.status === "pendente" || share.status === "parcial";

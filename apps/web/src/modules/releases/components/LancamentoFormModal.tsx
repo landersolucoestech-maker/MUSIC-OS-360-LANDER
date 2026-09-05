@@ -504,7 +504,7 @@ export function LancamentoFormModal({
     : "";
   // Task I: busca direto por ID (não depende do artista estar entre os
   // primeiros carregados por useArtistas() sem filtro).
-  const { entity: selectedArtista } = useEntityById<Artista>("artistas", formData.artista_id || undefined);
+  const { entity: selectedArtista } = useEntityById<Artista>("artistas", formData.artist_id || undefined);
   const artistaLabel = selectedArtista?.nome_artistico ?? "";
 
   // ── Filtered lists ────────────────────────────────────────────────────────
@@ -583,8 +583,8 @@ export function LancamentoFormModal({
   const handleSelectProjeto = async (projeto: ProjetoWithRelations) => {
     const projetoId = projeto.id;
     const seed = projetoToLancamentoSeed(projeto);
-    const linkedArtista = projeto.artista_id
-      ? await storage.findById<Artista>("artistas", projeto.artista_id as string)
+    const linkedArtista = projeto.artist_id
+      ? await storage.findById<Artista>("artistas", projeto.artist_id as string)
       : undefined;
     const rawGenero = seed.genero?.trim() || linkedArtista?.genero_musical || "";
     const fonoDosProjeto = projeto.titulo
@@ -594,9 +594,9 @@ export function LancamentoFormModal({
       ...prev,
       projetoSeed: projetoId,
       titulo: !prev.titulo.trim() ? (seed.titulo ?? "") : prev.titulo,
-      artista_id: !prev.artista_id.trim()
-        ? (seed.artista_id ?? "")
-        : prev.artista_id,
+      artist_id: !prev.artist_id.trim()
+        ? (seed.artist_id ?? "")
+        : prev.artist_id,
       genero: !prev.genero.trim() ? matchGenero(rawGenero) : prev.genero,
       tipo: !prev.tipo.trim() ? (seed.tipo ?? "") : prev.tipo,
       isrcGlobal: !prev.isrcGlobal.trim()
@@ -641,8 +641,8 @@ export function LancamentoFormModal({
     setProjetoSearch("");
   };
 
-  const handleSelectArtista = (artistaId: string) => {
-    setFormData((prev) => ({ ...prev, artista_id: artistaId }));
+  const handleSelectArtista = (artistId: string) => {
+    setFormData((prev) => ({ ...prev, artist_id: artistId }));
     setArtistaOpen(false);
     setArtistaSearch("");
   };
@@ -655,7 +655,7 @@ export function LancamentoFormModal({
       case 0:
         return (
           !!formData.titulo.trim() &&
-          (extraFields.variosArtistas || !!formData.artista_id.trim())
+          (extraFields.variosArtistas || !!formData.artist_id.trim())
         );
       case 1:
         return faixas.every((f) => !!f.titulo.trim() && !!f.aiAssistanceLevel);
@@ -1220,13 +1220,13 @@ export function LancamentoFormModal({
                       className="pl-10"
                       data-testid="input-buscar-artista"
                     />
-                    {formData.artista_id && !isViewMode && (
+                    {formData.artist_id && !isViewMode && (
                       <button
                         type="button"
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setFormData((prev) => ({ ...prev, artista_id: "" }));
+                          setFormData((prev) => ({ ...prev, artist_id: "" }));
                         }}
                       >
                         <X className="w-3.5 h-3.5" />
@@ -2414,7 +2414,7 @@ export function LancamentoFormModal({
 
     const warnings: string[] = [];
     if (!formData.titulo.trim()) warnings.push("Título do lançamento ausente.");
-    if (!extraFields.variosArtistas && !formData.artista_id)
+    if (!extraFields.variosArtistas && !formData.artist_id)
       warnings.push("Artista principal não selecionado.");
     if (!formData.genero) warnings.push("Gênero principal não informado.");
     if (!extraFields.generoSecundario)

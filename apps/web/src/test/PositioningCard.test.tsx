@@ -79,7 +79,7 @@ describe("<PositioningCard />", () => {
   it("shows a single primary diagnosis, driven by Career Stage", () => {
     mockCareerStage.mockReturnValue({ data: csResult(), isLoading: false, isError: false });
     mockBenchmark.mockReturnValue({ data: mbReady(), isLoading: false, isError: false });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.getByText("Posicionamento da Carreira")).toBeInTheDocument();
     expect(screen.getByTestId("positioning-score-a1")).toHaveTextContent("5.6");
     expect(screen.getByTestId("positioning-classification-a1")).toHaveTextContent("Em Desenvolvimento");
@@ -88,7 +88,7 @@ describe("<PositioningCard />", () => {
   it("never shows raw percentile/P77 or a competing qualitative label in the main view", () => {
     mockCareerStage.mockReturnValue({ data: csResult(), isLoading: false, isError: false });
     mockBenchmark.mockReturnValue({ data: mbReady(), isLoading: false, isError: false });
-    const { container } = renderWithProviders(<PositioningCard artistaId="a1" />);
+    const { container } = renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.queryByText(/P77/)).not.toBeInTheDocument();
     expect(screen.queryByText("Forte")).not.toBeInTheDocument();
     expect(container.textContent).toContain("Melhor que 77% dos 20 artistas comparáveis");
@@ -97,7 +97,7 @@ describe("<PositioningCard />", () => {
   it("uses friendly platform labels, never raw metric keys", () => {
     mockCareerStage.mockReturnValue({ data: csResult(), isLoading: false, isError: false });
     mockBenchmark.mockReturnValue({ data: mbReady(), isLoading: false, isError: false });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.getByText("Spotify · Ouvintes mensais")).toBeInTheDocument();
     expect(screen.queryByText("spotify.monthly_listeners")).not.toBeInTheDocument();
   });
@@ -105,21 +105,21 @@ describe("<PositioningCard />", () => {
   it("dimension without data shows 'sem dado', never zero", () => {
     mockCareerStage.mockReturnValue({ data: csResult(), isLoading: false, isError: false });
     mockBenchmark.mockReturnValue({ data: mbReady(), isLoading: false, isError: false });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.getByText("sem dado")).toBeInTheDocument();
   });
 
   it("career stage insufficient data: shows an honest empty state for the whole card", () => {
     mockCareerStage.mockReturnValue({ data: { status: "INSUFFICIENT_DATA", coverage: 0.1 }, isLoading: false, isError: false });
     mockBenchmark.mockReturnValue({ data: mbReady(), isLoading: false, isError: false });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.getByText(/Posicionamento não calculado/)).toBeInTheDocument();
   });
 
   it("career stage loading: shows skeleton placeholders, not an error", () => {
     mockCareerStage.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     mockBenchmark.mockReturnValue({ data: undefined, isLoading: true, isError: false });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.queryByTestId("positioning-score-a1")).not.toBeInTheDocument();
     expect(screen.queryByText(/Integração indisponível/)).not.toBeInTheDocument();
   });
@@ -127,14 +127,14 @@ describe("<PositioningCard />", () => {
   it("career stage error: whole card shows an honest integration-unavailable message", () => {
     mockCareerStage.mockReturnValue({ data: undefined, isLoading: false, isError: true });
     mockBenchmark.mockReturnValue({ data: mbReady(), isLoading: false, isError: false });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.getByText(/Integração indisponível/)).toBeInTheDocument();
   });
 
   it("benchmark REFRESHING with no result yet: career stage still renders, market section shows real searching state with no fabricated progress percentage", () => {
     mockCareerStage.mockReturnValue({ data: csResult(), isLoading: false, isError: false });
     mockBenchmark.mockReturnValue({ data: { readStatus: "REFRESHING", result: null, staleSince: null }, isLoading: false, isError: false });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.getByTestId("positioning-score-a1")).toBeInTheDocument();
     expect(screen.getByText(/Buscando artistas comparáveis reais/)).toBeInTheDocument();
     expect(screen.queryByText(/%\s*conclu[ií]do/i)).not.toBeInTheDocument();
@@ -147,7 +147,7 @@ describe("<PositioningCard />", () => {
       isLoading: false,
       isError: false,
     });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.getByTestId("positioning-score-a1")).toBeInTheDocument();
     expect(screen.getByText(/4 artista\(s\) comparável\(is\)/)).toBeInTheDocument();
   });
@@ -159,7 +159,7 @@ describe("<PositioningCard />", () => {
       isLoading: false,
       isError: false,
     });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.getByText(/Melhor que/)).toBeInTheDocument();
     expect(screen.getByText(/Atualizando em segundo plano/)).toBeInTheDocument();
   });
@@ -167,7 +167,7 @@ describe("<PositioningCard />", () => {
   it("benchmark failure never breaks career stage rendering", () => {
     mockCareerStage.mockReturnValue({ data: csResult(), isLoading: false, isError: false });
     mockBenchmark.mockReturnValue({ data: undefined, isLoading: false, isError: true });
-    renderWithProviders(<PositioningCard artistaId="a1" />);
+    renderWithProviders(<PositioningCard artistId="a1" />);
     expect(screen.getByTestId("positioning-score-a1")).toBeInTheDocument();
     expect(screen.getByText(/última tentativa de comparação falhou/)).toBeInTheDocument();
   });

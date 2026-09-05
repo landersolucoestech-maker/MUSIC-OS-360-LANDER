@@ -172,6 +172,7 @@ import { CreateAnalyticsSnapshots20260831000002 } from './20260831000002_CreateA
 import { CreateMarketReferenceMetrics20260831000003 } from './20260831000003_CreateMarketReferenceMetrics';
 import { PaymentEventsLifecycleStatus20260905000001 } from './20260905000001_PaymentEventsLifecycleStatus';
 import { SharesPercentualRangeCheck20260905000002 } from './20260905000002_SharesPercentualRangeCheck';
+import { RenameArtistaIdToArtistId20260905000003 } from './20260905000003_RenameArtistaIdToArtistId';
 import { FixDefaultPrivilegesCreatorRole20260803000002 } from './20260803000002_FixDefaultPrivilegesCreatorRole';
 import { CreateContractServiceTypes20260803000003 } from './20260803000003_CreateContractServiceTypes';
 import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicensePercentage';
@@ -360,4 +361,5 @@ export const ALL_MIGRATIONS = [
   CreateMarketReferenceMetrics20260831000003,
   PaymentEventsLifecycleStatus20260905000001,
   SharesPercentualRangeCheck20260905000002,
+  RenameArtistaIdToArtistId20260905000003,
 ] as const;

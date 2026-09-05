@@ -178,7 +178,7 @@ export default function Agenda() {
     const meta = (evento.metadata as Record<string, unknown> | undefined) ?? {};
     const stored = normalizeAgendaParticipants(meta["participants"]);
     if (stored.length > 0) return stored;
-    const artist = getArtistParticipantById(evento.artista_id);
+    const artist = getArtistParticipantById(evento.artist_id);
     return artist ? [artist] : [];
   }, [getArtistParticipantById]);
 

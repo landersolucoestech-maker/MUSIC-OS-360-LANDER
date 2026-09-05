@@ -95,7 +95,7 @@ const RELEASE_ROW = {
   data_lancamento: null,
   upc: null,
   capa_url: null,
-  artista_id: 'a1',
+  artist_id: 'a1',
   artist_name: 'Banda Aurora',
   metadata: {},
 };

@@ -121,7 +121,7 @@ export class LicensingService {
   ): Promise<Record<string, unknown>> {
     const payload = this.normalizePayload(dto);
     await assertSameTenantFk(this.ds!, 'works',   payload['obra_id']    as string | undefined, tenantId, 'Obra');
-    await assertSameTenantFk(this.ds!, 'artists', payload['artista_id'] as string | undefined, tenantId, 'Artista');
+    await assertSameTenantFk(this.ds!, 'artists', payload['artist_id'] as string | undefined, tenantId, 'Artista');
     await assertSameTenantFk(this.ds!, 'clients', payload['cliente_id'] as string | undefined, tenantId, 'Cliente');
 
     const item = this.repository.create({

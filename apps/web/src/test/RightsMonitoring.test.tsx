@@ -22,13 +22,13 @@ vi.mock("@/shared/components/MainLayout", () => ({
 
 const DETECCOES = [
   {
-    id: "det-001", obra_id: "obra-001", artista_id: null,
+    id: "det-001", obra_id: "obra-001", artist_id: null,
     plataforma: "YouTube", titulo_detectado: "Noite de Luz", url: "https://youtube.com/x",
     score: "0.92", status: "concluido", tipo: "uso_nao_autorizado",
     detectado_em: "2026-05-08T14:32:00", metadata: {}, created_at: "2026-05-08T14:32:00", updated_at: "2026-05-08T14:32:00",
   },
   {
-    id: "det-011", obra_id: null, artista_id: null,
+    id: "det-011", obra_id: null, artist_id: null,
     plataforma: "TikTok", titulo_detectado: "Track Desconhecida", url: null,
     score: null, status: "pendente", tipo: "uso_nao_autorizado",
     detectado_em: "2026-05-02T11:20:00", metadata: {}, created_at: "2026-05-02T11:20:00", updated_at: "2026-05-02T11:20:00",

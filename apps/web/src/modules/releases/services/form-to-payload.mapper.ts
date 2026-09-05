@@ -74,7 +74,7 @@ export function formToLancamentoPayload(f: LancamentoFormFields, mode: "create" 
     type:        ns(f.tipo) ?? "single",
   };
 
-  const artistId  = ns(f.artista_id);
+  const artistId  = ns(f.artist_id);
   const upc       = ns(f.upc) || ns(f.codigoUPC);
   const distributor = ns(f.distribuidora);
   const releasedAt  = ns(f.dataLancamento);

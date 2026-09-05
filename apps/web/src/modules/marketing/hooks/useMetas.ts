@@ -51,7 +51,7 @@ function fromApi(row: GoalRow): Meta {
     prazo: row.data_fim ? String(row.data_fim).slice(0, 10) : "",
     data_inicio: row.data_inicio,
     data_fim: row.data_fim,
-    artista_id: row.artista_id,
+    artist_id: row.artist_id,
     status: row.status,
     progresso: progress(current, target),
     responsavel: meta.responsavel ?? "",
@@ -63,13 +63,13 @@ function fromApi(row: GoalRow): Meta {
 }
 
 function toApi(input: CreateMetaInput) {
-  if (!input.artista_id) {
-    throw new Error("[marketing] artista_id é obrigatório para persistir uma meta");
+  if (!input.artist_id) {
+    throw new Error("[marketing] artist_id é obrigatório para persistir uma meta");
   }
   const target = Number(input.valorAlvo ?? input.valor_meta ?? 0);
   const current = Number(input.valorAtual ?? input.valor_atual ?? 0);
   return {
-    artista_id: String(input.artista_id),
+    artist_id: String(input.artist_id),
     titulo: input.titulo ?? input.nome ?? "Meta",
     tipo: input.tipo_meta ?? input.tipo ?? "personalizada",
     meta_valor: String(target),
@@ -100,14 +100,14 @@ export function getProgressPercent(meta: Pick<Meta, "valorAtual" | "valorAlvo"> 
 
 const EMPTY_METAS: Meta[] = [];
 
-export function useMetas(enabled = true, artistaId?: string) {
+export function useMetas(enabled = true, artistId?: string) {
   const createMeta = useCreateMeta();
   const updateMetaMutation = useUpdateMeta();
   const deleteMetaMutation = useDeleteMeta();
   const query = useQuery({
-    queryKey: artistaId ? [...QUERY_KEY, "by-artist", artistaId] : QUERY_KEY,
+    queryKey: artistId ? [...QUERY_KEY, "by-artist", artistId] : QUERY_KEY,
     queryFn: async ({ signal }) => listRows(await api.get<ApiList<GoalRow>>(
-      `/artist-goals?limit=100${artistaId ? `&artista_id=${encodeURIComponent(artistaId)}` : ""}`,
+      `/artist-goals?limit=100${artistId ? `&artist_id=${encodeURIComponent(artistId)}` : ""}`,
       { signal },
     )).map(fromApi),
     enabled,
@@ -150,7 +150,7 @@ export function useUpdateMeta() {
         valorAlvo: Number(current.meta_valor ?? 0),
         valorAtual: Number(current.valor_atual ?? 0),
         unidade: current.metadata?.unidade ?? "",
-        artista_id: current.artista_id,
+        artist_id: current.artist_id,
         status: current.status,
         data_inicio: current.data_inicio,
         data_fim: current.data_fim,

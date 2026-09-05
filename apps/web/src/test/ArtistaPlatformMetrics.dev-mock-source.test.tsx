@@ -43,7 +43,7 @@ function renderMetrics(overrides: Record<string, unknown> = {}) {
   return render(
     <QueryClientProvider client={queryClient}>
       <ArtistaPlatformMetrics
-        artistaId="artist-1"
+        artistId="artist-1"
         instagramUrl={INSTAGRAM_URL}
         tiktokUrl={TIKTOK_URL}
         {...overrides}

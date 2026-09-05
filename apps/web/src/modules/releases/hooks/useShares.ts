@@ -24,7 +24,7 @@ export function useShares() {
         emit(DomainEvents.SHARE_CREATED, {
           id:          (s as ShareWithRelations & { id: string }).id,
           obra_id:     (s as ShareWithRelations & { obra_id?: string }).obra_id ?? undefined,
-          artista_id:  (s as ShareWithRelations & { artista_id?: string }).artista_id ?? undefined,
+          artist_id:  (s as ShareWithRelations & { artist_id?: string }).artist_id ?? undefined,
           percentual:  (s as ShareWithRelations & { percentual?: number }).percentual ?? undefined,
           org_id:      orgId,
         }),
@@ -32,7 +32,7 @@ export function useShares() {
         emit(DomainEvents.SHARE_UPDATED, {
           id:          (s as ShareWithRelations & { id: string }).id,
           obra_id:     (s as ShareWithRelations & { obra_id?: string }).obra_id ?? undefined,
-          artista_id:  (s as ShareWithRelations & { artista_id?: string }).artista_id ?? undefined,
+          artist_id:  (s as ShareWithRelations & { artist_id?: string }).artist_id ?? undefined,
           percentual:  (s as ShareWithRelations & { percentual?: number }).percentual ?? undefined,
           org_id:      orgId,
         }),

@@ -92,7 +92,7 @@ export interface MusicRegisteredPayload {
 
 export interface ContractCreatedPayload {
   id: string;
-  artista_id?: string;
+  artist_id?: string;
   valor?: number;
   org_id: string;
 }
@@ -100,7 +100,7 @@ export interface ContractCreatedPayload {
 export interface ReleaseCreatedPayload {
   id: string;
   titulo: string;
-  artista_id?: string;
+  artist_id?: string;
   org_id: string;
 }
 
@@ -114,7 +114,7 @@ export interface TransactionCreatedPayload {
   id: string;
   tipo: "receita" | "despesa";
   valor: number;
-  artista_id?: string;
+  artist_id?: string;
   projeto_id?: string;
   org_id: string;
 }
@@ -147,15 +147,15 @@ export type DomainEventPayloads = {
   RELEASE_CREATED:       ReleaseCreatedPayload;
   RELEASE_UPDATED:       Partial<ReleaseCreatedPayload> & { id: string };
   RELEASE_DELETED:       { id: string; org_id: string };
-  SHARE_CREATED:         { id: string; obra_id?: string; artista_id?: string; percentual?: number; org_id: string };
-  SHARE_UPDATED:         { id: string; obra_id?: string; artista_id?: string; percentual?: number; org_id: string };
+  SHARE_CREATED:         { id: string; obra_id?: string; artist_id?: string; percentual?: number; org_id: string };
+  SHARE_UPDATED:         { id: string; obra_id?: string; artist_id?: string; percentual?: number; org_id: string };
   SHARE_DELETED:         { id: string; org_id: string };
   LEAD_CAPTURED:         LeadCapturedPayload;
-  LEAD_CONVERTED:        { id: string; artista_id?: string; org_id: string };
+  LEAD_CONVERTED:        { id: string; artist_id?: string; org_id: string };
   TRANSACTION_CREATED:   TransactionCreatedPayload;
   TRANSACTION_UPDATED:   Partial<TransactionCreatedPayload> & { id: string };
   TRANSACTION_DELETED:   { id: string; org_id: string };
-  FINANCE_CALCULATED:    { artista_id: string; valor: number; org_id: string };
+  FINANCE_CALCULATED:    { artist_id: string; valor: number; org_id: string };
   INVOICE_CREATED:       { id: string; numero?: string; cliente_id?: string; valor?: number; org_id: string };
   INVOICE_UPDATED:       { id: string; numero?: string; cliente_id?: string; valor?: number; org_id: string };
   INVOICE_DELETED:       { id: string; org_id: string };

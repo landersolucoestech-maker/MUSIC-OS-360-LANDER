@@ -54,7 +54,7 @@ export interface VinculadoDocument {
   content_html: string;
   pdf_url?: string;
   autentique_doc_id?: string;
-  artista_id?: string;
+  artist_id?: string;
   contract_id?: string;
   signing_provider?: SigningProviderLabel;
   variables: Record<string, string>;

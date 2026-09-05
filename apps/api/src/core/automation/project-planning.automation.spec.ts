@@ -65,7 +65,7 @@ const PROJECT_ROW = {
   nome: 'Single Aurora',
   tipo: 'lancamento',
   descricao: 'Lançamento do single Aurora',
-  artista_id: null,
+  artist_id: null,
   data_fim: null,
   metadata: {},
 };

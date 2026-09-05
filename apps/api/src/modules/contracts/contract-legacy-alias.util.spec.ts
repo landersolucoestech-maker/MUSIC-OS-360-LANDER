@@ -114,32 +114,32 @@ describe('resolveContractAliases — tipo/type (comparação estrita, sem trim)'
   });
 });
 
-describe('resolveContractAliases — artista_id/artistId (UUID, case-insensitive na comparação)', () => {
+describe('resolveContractAliases — artist_id/artistId (UUID, case-insensitive na comparação)', () => {
   const UUID_A = '11111111-1111-4111-8111-111111111111';
   const UUID_A_UPPER = '11111111-1111-4111-8111-111111111111'.toUpperCase();
   const UUID_B = '22222222-2222-4222-8222-222222222222';
 
   it('somente PT válido', () => {
-    expect(resolveContractAliases({ titulo: 'X', artista_id: UUID_A }).normalized.artista_id).toBe(UUID_A);
+    expect(resolveContractAliases({ titulo: 'X', artist_id: UUID_A }).normalized.artist_id).toBe(UUID_A);
   });
 
   it('somente EN válido', () => {
     const { normalized, legacyAliasesUsed } = resolveContractAliases({ titulo: 'X', artistId: UUID_A });
-    expect(normalized.artista_id).toBe(UUID_A);
+    expect(normalized.artist_id).toBe(UUID_A);
     expect(legacyAliasesUsed).toContain('artistId');
   });
 
   it('ambos com mesmo UUID mas capitalização diferente → equivalente, persiste o valor PT original', () => {
-    const { normalized } = resolveContractAliases({ titulo: 'X', artista_id: UUID_A, artistId: UUID_A_UPPER });
-    expect(normalized.artista_id).toBe(UUID_A);
+    const { normalized } = resolveContractAliases({ titulo: 'X', artist_id: UUID_A, artistId: UUID_A_UPPER });
+    expect(normalized.artist_id).toBe(UUID_A);
   });
 
   it('ambos diferentes → conflito', () => {
-    expect(getBody(() => resolveContractAliases({ titulo: 'X', artista_id: UUID_A, artistId: UUID_B })).code).toBe('CONTRACT_ALIAS_CONFLICT');
+    expect(getBody(() => resolveContractAliases({ titulo: 'X', artist_id: UUID_A, artistId: UUID_B })).code).toBe('CONTRACT_ALIAS_CONFLICT');
   });
 
   it('UUID inválido (só PT) → CONTRACT_UUID_INVALID', () => {
-    expect(getBody(() => resolveContractAliases({ titulo: 'X', artista_id: 'not-a-uuid' })).code).toBe('CONTRACT_UUID_INVALID');
+    expect(getBody(() => resolveContractAliases({ titulo: 'X', artist_id: 'not-a-uuid' })).code).toBe('CONTRACT_UUID_INVALID');
   });
 
   it('UUID inválido (só EN) → CONTRACT_UUID_INVALID', () => {
@@ -147,16 +147,16 @@ describe('resolveContractAliases — artista_id/artistId (UUID, case-insensitive
   });
 
   it('null/null → equivalente, retorna null', () => {
-    const { normalized } = resolveContractAliases({ titulo: 'X', artista_id: null, artistId: null });
-    expect(normalized.artista_id).toBeNull();
+    const { normalized } = resolveContractAliases({ titulo: 'X', artist_id: null, artistId: null });
+    expect(normalized.artist_id).toBeNull();
   });
 
   it('null/válido → conflito', () => {
-    expect(getBody(() => resolveContractAliases({ titulo: 'X', artista_id: null, artistId: UUID_A })).code).toBe('CONTRACT_ALIAS_CONFLICT');
+    expect(getBody(() => resolveContractAliases({ titulo: 'X', artist_id: null, artistId: UUID_A })).code).toBe('CONTRACT_ALIAS_CONFLICT');
   });
 
   it('ausência total → undefined', () => {
-    expect(resolveContractAliases({ titulo: 'X' }).normalized.artista_id).toBeUndefined();
+    expect(resolveContractAliases({ titulo: 'X' }).normalized.artist_id).toBeUndefined();
   });
 });
 
@@ -303,7 +303,7 @@ describe('resolveContractAliases — valor/value (coerção numérica)', () => {
   });
 });
 
-describe('resolveContractQueryAliases — apenas tipo/type e artista_id/artistId', () => {
+describe('resolveContractQueryAliases — apenas tipo/type e artist_id/artistId', () => {
   it('tipo canônico', () => {
     expect(resolveContractQueryAliases({ tipo: 'gravacao' }).normalized.tipo).toBe('gravacao');
   });
@@ -314,15 +314,15 @@ describe('resolveContractQueryAliases — apenas tipo/type e artista_id/artistId
     expect(legacyAliasesUsed).toContain('type');
   });
 
-  it('artista_id canônico', () => {
+  it('artist_id canônico', () => {
     const uuid = '11111111-1111-4111-8111-111111111111';
-    expect(resolveContractQueryAliases({ artista_id: uuid }).normalized.artista_id).toBe(uuid);
+    expect(resolveContractQueryAliases({ artist_id: uuid }).normalized.artist_id).toBe(uuid);
   });
 
   it('artistId legado', () => {
     const uuid = '11111111-1111-4111-8111-111111111111';
     const { normalized, legacyAliasesUsed } = resolveContractQueryAliases({ artistId: uuid });
-    expect(normalized.artista_id).toBe(uuid);
+    expect(normalized.artist_id).toBe(uuid);
     expect(legacyAliasesUsed).toContain('artistId');
   });
 
@@ -338,7 +338,7 @@ describe('resolveContractQueryAliases — apenas tipo/type e artista_id/artistId
   it('ausência total → objeto vazio', () => {
     const { normalized, legacyAliasesUsed } = resolveContractQueryAliases({});
     expect(normalized.tipo).toBeUndefined();
-    expect(normalized.artista_id).toBeUndefined();
+    expect(normalized.artist_id).toBeUndefined();
     expect(legacyAliasesUsed).toEqual([]);
   });
 

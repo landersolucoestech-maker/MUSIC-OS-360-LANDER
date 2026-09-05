@@ -157,7 +157,7 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
     col('titulo'), col('tipo'), col('status'), col('valor'),
     col('data_inicio'), col('data_fim'), col('exclusivo'), col('observacoes'),
     col('arquivo_url'), col('signing_platform'),
-    col('artista_id'), col('cliente_id'), col('lancamento_id'),
+    col('artist_id'), col('cliente_id'), col('lancamento_id'),
     col('template_id'), // campo do wizard (regra 2026-07-12: coluna própria)
     ro('autentique_doc_id'), // estado técnico da integração de assinatura
     ro('versoes'),           // histórico de versões (gerado pelo fluxo de assinatura)
@@ -177,7 +177,7 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
     fileUrl: 'arquivo_url',
     startsAt: 'data_inicio',
     expiresAt: 'data_fim',
-    artistId: 'artista_id',
+    artistId: 'artist_id',
   },
 };
 
@@ -195,7 +195,7 @@ const WORKS_CONTRACT: ReportFormContract = {
     col('ia_harmonia'), col('ia_melodia'), col('ia_letra'),
     col('outros_titulos'), col('referencias_conexas'), col('letra_completa'),
     col('letristas'), col('projeto_id'),
-    col('artista_id'), col('tipo_obra'),
+    col('artist_id'), col('tipo_obra'),
     // Somente leitura: registro/sociedades e enriquecimento (não são do form de criação)
     ro('duration_seconds'),
     ro('language'), ro('lyrics'), ro('is_instrumental'), ro('ai_used'),
@@ -219,7 +219,7 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
   identityColumn: 'titulo',
   fields: [
     col('titulo'), col('status'), col('genero_musical'), col('isrc'),
-    col('duracao'), col('artista_id'), col('obra_id'),
+    col('duracao'), col('artist_id'), col('obra_id'),
     // Campos do formulário de Fonograma (regra 2026-07-12: 1 coluna por campo, nome exato)
     col('cod_entidade'), col('cod_ecad'), col('agregadora'),
     col('isrc_pais'), col('isrc_registrante'), col('isrc_ano'), col('isrc_designacao'),
@@ -244,7 +244,7 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
   formFieldAliases: {
     title: 'titulo',
     duration: 'duracao',
-    artistId: 'artista_id',
+    artistId: 'artist_id',
     workId: 'obra_id',
   },
 };
@@ -306,7 +306,7 @@ const PROJECTS_CONTRACT: ReportFormContract = {
   ],
   excludedFormFields: {
     metadata: 'objeto jsonb interno bruto',
-    artista_id: 'sem campo correspondente no modal Criar/Editar',
+    artist_id: 'sem campo correspondente no modal Criar/Editar',
     orcamento: 'sem campo correspondente no modal Criar/Editar',
     descricao: 'sem campo correspondente no modal Criar/Editar',
     genero: 'derivado das músicas, não é campo geral do formulário',
@@ -345,7 +345,7 @@ const CONTENT_DETECTIONS_CONTRACT: ReportFormContract = {
   identityColumn: 'titulo_detectado',
   fields: [
     ro('titulo_detectado'), ro('plataforma'), ro('tipo'), ro('status'),
-    ro('url'), ro('score'), ro('detectado_em'), ro('obra_id'), ro('artista_id'),
+    ro('url'), ro('score'), ro('detectado_em'), ro('obra_id'), ro('artist_id'),
   ],
   excludedFormFields: {},
 };
@@ -402,7 +402,7 @@ const RELEASES_CONTRACT: ReportFormContract = {
   tableName: 'releases',
   identityColumn: 'titulo',
   fields: [
-    col('titulo'), col('tipo'), col('artista_id'), col('upc'), col('distribuidora'),
+    col('titulo'), col('tipo'), col('artist_id'), col('upc'), col('distribuidora'),
     col('data_lancamento'), col('capa_url'), col('isrc_global'), col('notas_internas'),
     col('observacoes'), col('gravadora'), col('copyright'), col('genero'), col('idioma'),
     ro('status'), ro('cronograma'),
@@ -421,7 +421,7 @@ const RELEASES_CONTRACT: ReportFormContract = {
   formFieldAliases: {
     title: 'titulo',
     type: 'tipo',
-    artistId: 'artista_id',
+    artistId: 'artist_id',
     distributor: 'distribuidora',
     releasedAt: 'data_lancamento',
     coverUrl: 'capa_url',
@@ -448,7 +448,7 @@ const SHARES_CONTRACT: ReportFormContract = {
   fields: [
     col('share_type'), col('percentual'), col('status'), col('direcao'),
     col('lancamento_id'), col('nome_musica'), col('detentor'), col('destinatario'),
-    col('tipo'), col('artista_externo'), col('artista_projeto_id'), col('artista_id'),
+    col('tipo'), col('artista_externo'), col('artista_projeto_id'), col('artist_id'),
     col('pagador'), col('pagador_contato'), col('origem_acordo'), col('data_prevista'),
     col('documentos'), col('acordo_notas'), col('acordo_url'), col('observacoes'),
     col('valor_total'), col('valor_liquidado'),
@@ -516,7 +516,7 @@ const TRANSACTIONS_CONTRACT: ReportFormContract = {
   fields: [
     col('tipo_transacao', 'tipo'), col('tipo_cliente'), col('categoria'), col('subcategoria'),
     col('descricao'), col('valor'), col('data_transacao', 'data'), col('status'),
-    col('artista_id'), col('projeto_id'), col('contrato_id'), col('evento_id'),
+    col('artist_id'), col('projeto_id'), col('contrato_id'), col('evento_id'),
     col('fornecedor_cliente'), col('orgao_arrecadador'), col('centro_custo'), col('competencia'),
     col('conta_origem'), col('conta_destino'), col('item_investimento'), col('motivo_viagem'),
     col('nome_publicidade'), col('forma_pagamento'), col('tipo_pagamento'),

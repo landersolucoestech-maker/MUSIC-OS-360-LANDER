@@ -147,7 +147,7 @@ describe('WorksService', () => {
       compositores: ['Fulano'],
       letristas: null,
       projeto_id: '123e4567-e89b-12d3-a456-426614174000',
-      artista_id: null,
+      artist_id: null,
       tipo_obra: 'musica',
     };
 

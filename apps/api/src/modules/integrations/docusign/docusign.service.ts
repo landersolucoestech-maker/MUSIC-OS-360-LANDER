@@ -499,7 +499,7 @@ export class DocuSignService {
           contractId: contract.id,
           tenantId,
           titulo:     contract.titulo ?? '',
-          artistId:   (contract as any).artista_id ?? null,
+          artistId:   (contract as any).artist_id ?? null,
           signedBy:   'docusign:webhook',
           signedAt,
         },

@@ -101,7 +101,7 @@ vi.mock("@/shared/lib/storage", async () => {
                 titulo: "Obra Rara",
                 genero: "pop",
                 compositores: [],
-                artista_id: "art-99",
+                artist_id: "art-99",
               },
             ],
             page: 1,

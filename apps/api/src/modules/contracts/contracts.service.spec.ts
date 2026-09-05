@@ -170,7 +170,7 @@ const baseContractRow = (overrides: Record<string, unknown> = {}) => ({
   titulo: 'Contrato existente',
   tipo: 'gravacao',
   status: 'rascunho',
-  artista_id: null,
+  artist_id: null,
   cliente_id: null,
   valor: null,
   data_inicio: null,
@@ -184,14 +184,14 @@ describe('ContractsService.create — consolidação de aliases (Fase 5 / C1)', 
   it('payload PT canônico persiste somente chaves canônicas', async () => {
     const { svc, repo } = makeServiceC1();
     await svc.create('tenant-1', 'user-1', {
-      titulo: 'Contrato X', tipo: 'gravacao', artista_id: '11111111-1111-4111-8111-111111111111',
+      titulo: 'Contrato X', tipo: 'gravacao', artist_id: '11111111-1111-4111-8111-111111111111',
       data_inicio: '2026-01-01T00:00:00.000Z', arquivo_url: 'https://a.com/x.pdf', valor: 10,
     } as unknown as CreateContractDto);
 
     const row = createdC1(repo);
     expect(row['titulo']).toBe('Contrato X');
     expect(row['tipo']).toBe('gravacao');
-    expect(row['artista_id']).toBe('11111111-1111-4111-8111-111111111111');
+    expect(row['artist_id']).toBe('11111111-1111-4111-8111-111111111111');
     expect(row['valor']).toBe('10');
     expect(row['title']).toBeUndefined();
     expect(row['type']).toBeUndefined();
@@ -374,24 +374,24 @@ describe('ContractsService.list — filtros canônicos e legados (Fase 5 / C1)',
     expect(repo._qb['getManyAndCount']).not.toHaveBeenCalled();
   });
 
-  it('filtra por artista_id canônico', async () => {
+  it('filtra por artist_id canônico', async () => {
     const uuid = '11111111-1111-4111-8111-111111111111';
     const { svc, repo } = makeServiceC1([baseContractRow()]);
-    await svc.list('tenant-1', { artista_id: uuid } as unknown as QueryContractDto);
-    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.artista_id = :artistaId', { artistaId: uuid });
+    await svc.list('tenant-1', { artist_id: uuid } as unknown as QueryContractDto);
+    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.artist_id = :artistId', { artistId: uuid });
   });
 
   it('filtra por artistId legado', async () => {
     const uuid = '11111111-1111-4111-8111-111111111111';
     const { svc, repo } = makeServiceC1([baseContractRow()]);
     await svc.list('tenant-1', { artistId: uuid } as unknown as QueryContractDto);
-    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.artista_id = :artistaId', { artistaId: uuid });
+    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.artist_id = :artistId', { artistId: uuid });
   });
 
-  it('artista_id e artistId conflitantes rejeitam', async () => {
+  it('artist_id e artistId conflitantes rejeitam', async () => {
     const { svc } = makeServiceC1([baseContractRow()]);
     await expect(svc.list('tenant-1', {
-      artista_id: '11111111-1111-4111-8111-111111111111', artistId: '22222222-2222-4222-8222-222222222222',
+      artist_id: '11111111-1111-4111-8111-111111111111', artistId: '22222222-2222-4222-8222-222222222222',
     } as unknown as QueryContractDto)).rejects.toMatchObject({ response: { code: 'CONTRACT_ALIAS_CONFLICT' } });
   });
 
@@ -411,12 +411,12 @@ describe('ContractsService.list — filtros canônicos e legados (Fase 5 / C1)',
     warnSpy.mockRestore();
   });
 
-  it('ausência de tipo/artista_id não adiciona filtro nenhum', async () => {
+  it('ausência de tipo/artist_id não adiciona filtro nenhum', async () => {
     const { svc, repo } = makeServiceC1([baseContractRow()]);
     await svc.list('tenant-1', {} as unknown as QueryContractDto);
     const calls = (repo._qb['andWhere'] as jest.Mock).mock.calls;
     expect(calls.some(([sql]) => String(sql).includes('c.tipo'))).toBe(false);
-    expect(calls.some(([sql]) => String(sql).includes('c.artista_id'))).toBe(false);
+    expect(calls.some(([sql]) => String(sql).includes('c.artist_id'))).toBe(false);
   });
 });
 
@@ -428,10 +428,10 @@ describe('ContractsService.findById — não afetado pelo C1 (regressão)', () =
 });
 
 describe('ContractsService.create — FK cross-tenant (P1)', () => {
-  it('rejeita artista_id que não pertence ao tenant (ou não existe)', async () => {
+  it('rejeita artist_id que não pertence ao tenant (ou não existe)', async () => {
     const { svc } = makeServiceC1([], jest.fn(async () => []));
     await expect(svc.create('tenant-1', 'user-1', {
-      titulo: 'X', tipo: 'gravacao', artista_id: '11111111-1111-4111-8111-111111111111',
+      titulo: 'X', tipo: 'gravacao', artist_id: '11111111-1111-4111-8111-111111111111',
     } as unknown as CreateContractDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -446,7 +446,7 @@ describe('ContractsService.create — FK cross-tenant (P1)', () => {
     const { svc } = makeServiceC1([], jest.fn(async () => [{ exists: 1 }]));
     await expect(svc.create('tenant-1', 'user-1', {
       titulo: 'X', tipo: 'gravacao',
-      artista_id: '11111111-1111-4111-8111-111111111111',
+      artist_id: '11111111-1111-4111-8111-111111111111',
       cliente_id: '22222222-2222-4222-8222-222222222222',
     } as unknown as CreateContractDto)).resolves.toBeDefined();
   });

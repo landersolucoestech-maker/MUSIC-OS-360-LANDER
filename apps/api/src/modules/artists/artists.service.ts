@@ -119,20 +119,20 @@ export class ArtistsService {
     const ATIVOS = `('ativo','assinado','vigente','vencendo')`;
     if (query.vinculo === 'exclusivo') {
       qb.andWhere(`EXISTS (
-        SELECT 1 FROM contracts c WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id
+        SELECT 1 FROM contracts c WHERE c.artist_id = a.id AND c.tenant_id = a.tenant_id
         AND c.deleted_at IS NULL AND LOWER(c.status) IN ${ATIVOS} AND c.exclusivo = true
       )`);
     } else if (query.vinculo === 'parceiro') {
       qb.andWhere(`EXISTS (
-        SELECT 1 FROM contracts c WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id
+        SELECT 1 FROM contracts c WHERE c.artist_id = a.id AND c.tenant_id = a.tenant_id
         AND c.deleted_at IS NULL AND LOWER(c.status) IN ${ATIVOS}
       )`).andWhere(`NOT EXISTS (
-        SELECT 1 FROM contracts c WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id
+        SELECT 1 FROM contracts c WHERE c.artist_id = a.id AND c.tenant_id = a.tenant_id
         AND c.deleted_at IS NULL AND LOWER(c.status) IN ${ATIVOS} AND c.exclusivo = true
       )`);
     } else if (query.vinculo === 'independente') {
       qb.andWhere(`NOT EXISTS (
-        SELECT 1 FROM contracts c WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id
+        SELECT 1 FROM contracts c WHERE c.artist_id = a.id AND c.tenant_id = a.tenant_id
         AND c.deleted_at IS NULL AND LOWER(c.status) IN ${ATIVOS}
       )`);
     }
@@ -154,18 +154,18 @@ export class ArtistsService {
    * atual — nunca o tenant inteiro) — mesma classificação de vinculoStats(). */
   private async vinculoByArtistIds(tenantId: string, artistIds: string[]): Promise<Record<string, 'exclusivo' | 'parceiro' | 'independente'>> {
     if (artistIds.length === 0) return {};
-    const rows = await this.ds!.query<Array<{ artista_id: string; exclusivo: boolean }>>(
+    const rows = await this.ds!.query<Array<{ artist_id: string; exclusivo: boolean }>>(
       `
-      SELECT DISTINCT ON (c.artista_id) c.artista_id, bool_or(c.exclusivo) OVER (PARTITION BY c.artista_id) AS exclusivo
+      SELECT DISTINCT ON (c.artist_id) c.artist_id, bool_or(c.exclusivo) OVER (PARTITION BY c.artist_id) AS exclusivo
       FROM contracts c
-      WHERE c.tenant_id = $1 AND c.deleted_at IS NULL AND c.artista_id = ANY($2::uuid[])
+      WHERE c.tenant_id = $1 AND c.deleted_at IS NULL AND c.artist_id = ANY($2::uuid[])
         AND LOWER(c.status) IN ('ativo','assinado','vigente','vencendo')
       `,
       [tenantId, artistIds],
     );
     const result: Record<string, 'exclusivo' | 'parceiro' | 'independente'> = {};
     for (const r of rows) {
-      result[r.artista_id] = r.exclusivo ? 'exclusivo' : 'parceiro';
+      result[r.artist_id] = r.exclusivo ? 'exclusivo' : 'parceiro';
     }
     return result;
   }
@@ -188,12 +188,12 @@ export class ArtistsService {
           CASE
             WHEN EXISTS (
               SELECT 1 FROM contracts c
-              WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id AND c.deleted_at IS NULL
+              WHERE c.artist_id = a.id AND c.tenant_id = a.tenant_id AND c.deleted_at IS NULL
                 AND LOWER(c.status) IN ('ativo','assinado','vigente','vencendo') AND c.exclusivo = true
             ) THEN 'exclusivo'
             WHEN EXISTS (
               SELECT 1 FROM contracts c
-              WHERE c.artista_id = a.id AND c.tenant_id = a.tenant_id AND c.deleted_at IS NULL
+              WHERE c.artist_id = a.id AND c.tenant_id = a.tenant_id AND c.deleted_at IS NULL
                 AND LOWER(c.status) IN ('ativo','assinado','vigente','vencendo')
             ) THEN 'parceiro'
             ELSE 'independente'

@@ -24,8 +24,8 @@ function createWrapper() {
 }
 
 // Regressão: QueryTransactionDto (apps/api) marca "artistId" como alias legado NUNCA lido pelo
-// service (Swagger deprecated: "não lido pelo service. Use artista_id") — o campo real é
-// "artista_id". Enviar "artistId" passava no whitelist do ValidationPipe (não dava 400) mas o
+// service (Swagger deprecated: "não lido pelo service. Use artist_id") — o campo real é
+// "artist_id". Enviar "artistId" passava no whitelist do ValidationPipe (não dava 400) mas o
 // filtro era silenciosamente ignorado: a API respondia 200 com TODAS as transações do tenant,
 // não só as do artista — pior que um 400, porque não havia nenhum sinal de erro. Isso quebrava
 // a aba Financeiro do modal Visão 360° do artista.
@@ -35,16 +35,16 @@ describe("useTransacoes", () => {
     mockedList.mockResolvedValue([]);
   });
 
-  it("filtra por artista_id (não artistId) ao buscar transações de um artista", async () => {
+  it("filtra por artist_id (não artistId) ao buscar transações de um artista", async () => {
     renderHook(() => useTransacoes(true, "artist-1"), { wrapper: createWrapper() });
 
     await waitFor(() => expect(mockedList).toHaveBeenCalled());
     const [, options] = mockedList.mock.calls[0]!;
-    expect(options?.filters).toEqual({ artista_id: "artist-1" });
+    expect(options?.filters).toEqual({ artist_id: "artist-1" });
     expect(options?.filters).not.toHaveProperty("artistId");
   });
 
-  it("sem artistaId, não aplica filtro de artista", async () => {
+  it("sem artistId, não aplica filtro de artista", async () => {
     renderHook(() => useTransacoes(true), { wrapper: createWrapper() });
 
     await waitFor(() => expect(mockedList).toHaveBeenCalled());

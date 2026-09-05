@@ -25,7 +25,7 @@ export function PerfilTab({
   const [artist, setArtist] = useState<TargetOption | null>(null);
 
   // Task J — catálogo do artista selecionado busca direto e escopado por
-  // artista_id (server-side), nunca mais filtrando sources.obras/fonogramas
+  // artist_id (server-side), nunca mais filtrando sources.obras/fonogramas
   // sem filtro (capadas aos primeiros 50 do tenant).
   const { entity: artistRecord } = useEntityById<Artista>("artistas", artist?.id);
   const { obras } = useObras(!!artist, artist?.id);

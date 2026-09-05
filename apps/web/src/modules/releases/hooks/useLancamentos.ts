@@ -11,31 +11,31 @@ import type {
 
 export type { Lancamento, LancamentoInsert, LancamentoUpdate, LancamentoWithRelations };
 
-export function useLancamentos(enabled = true, artistaId?: string) {
+export function useLancamentos(enabled = true, artistId?: string) {
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
 
   const result = useDataQuery<LancamentoWithRelations>({
-    queryKey: artistaId ? [...QUERY_KEYS.LANCAMENTOS, "by-artist", artistaId] : [...QUERY_KEYS.LANCAMENTOS],
+    queryKey: artistId ? [...QUERY_KEYS.LANCAMENTOS, "by-artist", artistId] : [...QUERY_KEYS.LANCAMENTOS],
     table: "lancamentos",
     select: "*, artistas(*)",
     orderBy: { column: "data_lancamento", ascending: false },
     enabled,
-    // Backend de releases usa "artistId" (camelCase), não "artista_id" — ver releases.dto.ts/releases.service.ts.
-    filters: artistaId ? { artistId: artistaId } : undefined,
+    // Backend de releases usa "artistId" (camelCase), não "artist_id" — ver releases.dto.ts/releases.service.ts.
+    filters: artistId ? { artistId: artistId } : undefined,
     onMutationSuccess: {
       onCreate: (l) =>
         emit(DomainEvents.RELEASE_CREATED, {
           id: (l as LancamentoWithRelations & { id: string }).id,
           titulo: l.titulo ?? "",
-          artista_id: l.artista_id ?? undefined,
+          artist_id: l.artist_id ?? undefined,
           org_id: orgId,
         }),
       onUpdate: (l) =>
         emit(DomainEvents.RELEASE_UPDATED, {
           id: (l as LancamentoWithRelations & { id: string }).id,
           titulo: l.titulo ?? "",
-          artista_id: l.artista_id ?? undefined,
+          artist_id: l.artist_id ?? undefined,
           org_id: orgId,
         }),
       onDelete: (id) =>

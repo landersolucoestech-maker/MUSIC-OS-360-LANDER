@@ -278,7 +278,7 @@ describe('EventsService — Estado P (pré-C3, comportamento atual documentado)'
     });
 
     // Documentação do bug pré-existente (dívida C3.5): o DTO declara type/artistId
-    // (EN), mas o service lê tipo/artista_id/dateFrom/dateTo — nenhum filtro
+    // (EN), mas o service lê tipo/artist_id/dateFrom/dateTo — nenhum filtro
     // desses funciona via HTTP real. NÃO corrigido no pré-requisito.
     it('filtro type (nome declarado no DTO) NÃO é aplicado pelo service', async () => {
       await service.list(TENANT, { type: 'show' } as never);
@@ -289,7 +289,7 @@ describe('EventsService — Estado P (pré-C3, comportamento atual documentado)'
     it('filtro artistId (nome declarado no DTO) NÃO é aplicado pelo service', async () => {
       await service.list(TENANT, { artistId: 'a-1' } as never);
       const calls = mockDs._repo._qb.andWhere.mock.calls.map((c: unknown[]) => c[0]);
-      expect(calls).not.toContain('e.artista_id = :artistaId');
+      expect(calls).not.toContain('e.artist_id = :artistId');
     });
 
     it('status (único filtro alinhado DTO↔service) é aplicado', async () => {

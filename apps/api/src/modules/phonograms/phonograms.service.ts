@@ -51,7 +51,7 @@ export class PhonogramsService {
 
     if (q['status'])    qb.andWhere('p.status = :status',       { status:    q['status'] });
     if (q['tipo'])      qb.andWhere('p.tipo = :tipo',           { tipo:      q['tipo'] });
-    if (resolvedQuery.artista_id) qb.andWhere('p.artista_id = :artistaId', { artistaId: resolvedQuery.artista_id });
+    if (resolvedQuery.artist_id) qb.andWhere('p.artist_id = :artistId', { artistId: resolvedQuery.artist_id });
     if (resolvedQuery.obra_id)    qb.andWhere('p.obra_id = :obraId',      { obraId:    resolvedQuery.obra_id });
     if (q['obra_vinculada'] === 'sem-obra') qb.andWhere('p.obra_id IS NULL');
     else if (q['obra_vinculada'] === 'com-obra') qb.andWhere('p.obra_id IS NOT NULL');
@@ -115,7 +115,7 @@ export class PhonogramsService {
 
   /**
    * Monta o payload final para persistência a partir dos campos canônicos já
-   * resolvidos (titulo/obra_id/artista_id — ver resolvePhonogramAliases()) e
+   * resolvidos (titulo/obra_id/artist_id — ver resolvePhonogramAliases()) e
    * dos demais campos não relacionados a aliases (21 campos físicos do
    * formulário, duration/duracao, metadata, status, ISRC etc.), que
    * continuam passando direto para a entity, inalterados.

@@ -56,7 +56,7 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
       categoria: 'Marketing',
       valor: '1500.00',
       contratoId: null,
-      artistaId: 'a1',
+      artistId: 'a1',
       createdBy: 'u1',
       ...overrides,
     },

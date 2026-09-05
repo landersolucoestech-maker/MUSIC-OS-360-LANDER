@@ -30,7 +30,7 @@ export class TakedownsService {
 
     if (query.status) qb.andWhere('t.status = :status', { status: query.status });
     if (query.plataforma) qb.andWhere('t.plataforma = :plataforma', { plataforma: query.plataforma });
-    if (query.artista_id) qb.andWhere('t.artista_id = :artistaId', { artistaId: query.artista_id });
+    if (query.artist_id) qb.andWhere('t.artist_id = :artistId', { artistId: query.artist_id });
     if (query.search) {
       qb.andWhere(
         '(t.titulo ILIKE :search OR t.obra_afetada ILIKE :search OR t.artista ILIKE :search OR t.motivo ILIKE :search)',
@@ -72,7 +72,7 @@ export class TakedownsService {
 
   async create(tenantId: string, userId: string, dto: CreateTakedownDto): Promise<TakedownEntity> {
     await assertSameTenantFk(this.ds!, 'works',   dto.obra_id,    tenantId, 'Obra');
-    await assertSameTenantFk(this.ds!, 'artists', dto.artista_id, tenantId, 'Artista');
+    await assertSameTenantFk(this.ds!, 'artists', dto.artist_id, tenantId, 'Artista');
 
     const entity = this.repository.create({
       tenant_id: tenantId,

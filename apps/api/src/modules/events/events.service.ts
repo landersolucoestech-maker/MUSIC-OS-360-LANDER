@@ -27,7 +27,7 @@ export class EventsService {
 
     if (q['status'])     qb.andWhere('e.status = :status',       { status:     q['status'] });
     if (q['tipo'])       qb.andWhere('e.tipo = :tipo',           { tipo:       q['tipo'] });
-    if (q['artista_id']) qb.andWhere('e.artista_id = :artistaId', { artistaId: q['artista_id'] });
+    if (q['artist_id']) qb.andWhere('e.artist_id = :artistId', { artistId: q['artist_id'] });
     if (q['dateFrom'])   qb.andWhere('e.data >= :dateFrom',      { dateFrom:   q['dateFrom'] });
     if (q['dateTo'])     qb.andWhere('e.data <= :dateTo',        { dateTo:     q['dateTo'] });
     if (q['search'])     qb.andWhere('e.titulo ILIKE :search',   { search: `%${q['search']}%` });
@@ -87,14 +87,14 @@ export class EventsService {
 
   /**
    * Maps CreateEventDto / UpdateEventDto (camelCase EN) → EventEntity columns (snake_case PT).
-   * Backend DTO usa title/type/startsAt/venue/artistId; tabela usa titulo/tipo/data/local/artista_id.
+   * Backend DTO usa title/type/startsAt/venue/artistId; tabela usa titulo/tipo/data/local/artist_id.
    */
   private dtoToEntity(dto: Partial<CreateEventDto & UpdateEventDto>): Partial<EventEntity> {
     const d = dto as Record<string, unknown>;
     const out: Record<string, unknown> = {};
     if (d['title']     != null) out['titulo']     = d['title'];
     if (d['type']      != null) out['tipo']       = d['type'];
-    if (d['artistId']  != null) out['artista_id'] = d['artistId'];
+    if (d['artistId']  != null) out['artist_id'] = d['artistId'];
     if (d['venue']     != null) out['local']      = d['venue'];
     if (d['startsAt']  != null) {
       // C3/E2 — dual-write: o MESMO objeto Date alimenta a coluna legada `data`
@@ -138,7 +138,7 @@ export class EventsService {
     await this.recordActivity(tenantId, userId, saved.id, 'created', `Evento "${saved.titulo}" criado`, {
       titulo: saved.titulo,
       tipo: saved.tipo,
-      artistaId: saved.artista_id,
+      artistId: saved.artist_id,
       data: saved.data,
     });
     return saved;

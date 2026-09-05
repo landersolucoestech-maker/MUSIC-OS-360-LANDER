@@ -29,7 +29,7 @@ export function loadReleaseContext(
     credits: pickReleaseString(releaseRecord, ["creditos", "credits", "ficha_tecnica", "compositores", "produtores"]),
     references: pickReleaseString(releaseRecord, ["referencias", "references", "press_release"]),
     artistHistory: sources.releases
-      .filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id)
+      .filter((item) => item.artist_id === artist.id || item.artistas?.id === artist.id)
       .map((item) => `${item.titulo}${item.data_lancamento ? ` (${item.data_lancamento})` : ""}`),
     relatedCampaigns: sources.campaigns.filter((item) => item.targetId === release.id || item.targetId === artist.id),
     relatedMetrics: sources.analytics ? [

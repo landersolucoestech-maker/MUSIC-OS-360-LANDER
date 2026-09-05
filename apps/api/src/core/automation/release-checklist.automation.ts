@@ -54,7 +54,7 @@ interface ReleaseRow {
   data_lancamento: string | Date | null;
   upc: string | null;
   capa_url: string | null;
-  artista_id: string | null;
+  artist_id: string | null;
   artist_name: string | null;
   metadata: Record<string, unknown> | null;
 }
@@ -109,11 +109,11 @@ export class ReleaseChecklistAutomation {
   ): Promise<ReleaseRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT r.titulo, r.tipo, r.data_lancamento, r.upc, r.capa_url, r.artista_id, r.metadata,
+      `SELECT r.titulo, r.tipo, r.data_lancamento, r.upc, r.capa_url, r.artist_id, r.metadata,
               a.nome_artistico AS artist_name
          FROM releases r
          LEFT JOIN artists a
-           ON a.id = r.artista_id AND a.tenant_id = r.tenant_id AND a.deleted_at IS NULL
+           ON a.id = r.artist_id AND a.tenant_id = r.tenant_id AND a.deleted_at IS NULL
         WHERE r.id = $1 AND r.tenant_id = $2 AND r.deleted_at IS NULL
         LIMIT 1`,
       [releaseId, tenantId],

@@ -12,7 +12,7 @@ export class CreateLicenseDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() obra_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) obra_musical?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() cliente_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) cliente?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) projeto?: string;

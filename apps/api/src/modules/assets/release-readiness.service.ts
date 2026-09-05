@@ -103,7 +103,7 @@ export class ReleaseReadinessService {
           blocking: true,
         });
 
-        const metaOk = !!(phonogram?.titulo && phonogram?.genero_musical && phonogram?.interpretes && phonogram?.artista_id);
+        const metaOk = !!(phonogram?.titulo && phonogram?.genero_musical && phonogram?.interpretes && phonogram?.artist_id);
         requirements.push({
           id: 'metadata',
           label: 'Metadados obrigatórios',

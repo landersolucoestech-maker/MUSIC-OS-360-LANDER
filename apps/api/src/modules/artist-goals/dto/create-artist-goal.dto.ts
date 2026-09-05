@@ -2,7 +2,7 @@ import { IsString, IsOptional, IsDateString } from 'class-validator';
 
 export class CreateArtistGoalDto {
   @IsString()
-  artista_id: string;
+  artist_id: string;
 
   @IsString()
   titulo: string;

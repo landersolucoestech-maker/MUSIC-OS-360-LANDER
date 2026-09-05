@@ -19,7 +19,7 @@ export class BriefingsService {
       .andWhere('b.deleted_at IS NULL');
 
     if ((query as any).status)     qb.andWhere('b.status = :status',       { status:     (query as any).status });
-    if ((query as any).artista_id) qb.andWhere('b.artista_id = :artistaId', { artistaId: (query as any).artista_id });
+    if ((query as any).artist_id) qb.andWhere('b.artist_id = :artistId', { artistId: (query as any).artist_id });
     if ((query as any).search)     qb.andWhere('b.titulo ILIKE :search',   { search: `%${(query as any).search}%` });
 
     qb.orderBy('b.created_at', (query as any).ascending ? 'ASC' : 'DESC')

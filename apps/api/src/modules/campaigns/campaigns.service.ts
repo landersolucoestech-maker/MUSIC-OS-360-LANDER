@@ -33,7 +33,7 @@ export class CampaignsService {
 
     if (q['status'])     qb.andWhere('c.status = :status',         { status:     q['status'] });
     if (q['tipo'])       qb.andWhere('c.tipo = :tipo',             { tipo:       q['tipo'] });
-    if (q['artista_id']) qb.andWhere('c.artista_id = :artistaId',  { artistaId:  q['artista_id'] });
+    if (q['artist_id']) qb.andWhere('c.artist_id = :artistId',  { artistId:  q['artist_id'] });
     if (q['search'])     qb.andWhere('c.nome ILIKE :search',       { search: `%${q['search']}%` });
 
     qb.orderBy('c.created_at', q['ascending'] ? 'ASC' : 'DESC')

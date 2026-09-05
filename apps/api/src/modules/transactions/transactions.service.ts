@@ -85,7 +85,7 @@ function buildPersistencePayload(
   if (dto.valor !== undefined) payload.valor = String(dto.valor);
   if (dto.dataTransacao !== undefined) payload.data = dto.dataTransacao;
   if (dto.status !== undefined) payload.status = dto.status;
-  if ((dto as AnyRecord).artistaVinculado !== undefined) payload.artista_id = (dto as AnyRecord).artistaVinculado || null;
+  if ((dto as AnyRecord).artistaVinculado !== undefined) payload.artist_id = (dto as AnyRecord).artistaVinculado || null;
   if ((dto as AnyRecord).contratoVinculado !== undefined) payload.contrato_id = (dto as AnyRecord).contratoVinculado || null;
   if ((dto as AnyRecord).projetoVinculado !== undefined) payload.projeto_id = (dto as AnyRecord).projetoVinculado || null;
   if ((dto as AnyRecord).anexoUrl !== undefined) payload.comprovante_url = (dto as AnyRecord).anexoUrl || null;
@@ -153,8 +153,8 @@ function toTransactionDetails(entity: TransactionEntity): TransactionDetailsDTO 
     labels: Array.isArray(metadata.labels) ? metadata.labels as string[] : [],
     attachments,
     artist: metadata.artist as Record<string, unknown> | null | undefined,
-    artista_id: entity.artista_id,
-    artistaVinculado: entity.artista_id,
+    artist_id: entity.artist_id,
+    artistaVinculado: entity.artist_id,
     project: metadata.project as Record<string, unknown> | null | undefined,
     projeto_id: entity.projeto_id,
     projetoVinculado: entity.projeto_id,
@@ -202,7 +202,7 @@ export class TransactionsService {
     if (q.status)     qb.andWhere('t.status = :status', { status: q.status });
     if (q.tipo)       qb.andWhere('t.tipo = :tipo', { tipo: q.tipo });
     if (q.categoria)  qb.andWhere('t.categoria = :categoria', { categoria: q.categoria });
-    if (q.artista_id) qb.andWhere('t.artista_id = :artistaId', { artistaId: q.artista_id });
+    if (q.artist_id) qb.andWhere('t.artist_id = :artistId', { artistId: q.artist_id });
     if (q.dateFrom)   qb.andWhere('t.data >= :dateFrom', { dateFrom: q.dateFrom });
     if (q.dateTo)     qb.andWhere('t.data <= :dateTo', { dateTo: q.dateTo });
     if (q.search)     qb.andWhere('t.descricao ILIKE :search', { search: `%${q.search}%` });
@@ -276,7 +276,7 @@ export class TransactionsService {
           categoria:     saved.categoria ?? (dto as AnyRecord).categoria as string ?? '',
           valor,
           contratoId:    saved.contrato_id ?? null,
-          artistaId:     saved.artista_id ?? null,
+          artistId:     saved.artist_id ?? null,
           createdBy:     userId,
         },
       });
@@ -457,7 +457,7 @@ export class TransactionsService {
             tipo:          after.tipo as string,
             valor,
             contratoId:    after.contrato_id ?? null,
-            artistaId:     after.artista_id  ?? null,
+            artistId:     after.artist_id  ?? null,
             paidBy:        userId,
             paidAt:        nowIso,
           },

@@ -259,17 +259,17 @@ export default function Contabilidade() {
   const plPorArtista = useMemo(() => {
     const porArtista = new Map<string, { id: string; nome: string; totalRec: number; totalDes: number }>();
     for (const t of filteredTransacoes as any[]) {
-      const artistaId = t.artista_id;
-      if (!artistaId) continue;
-      const entry = porArtista.get(artistaId) ?? {
-        id: artistaId,
+      const artistId = t.artist_id;
+      if (!artistId) continue;
+      const entry = porArtista.get(artistId) ?? {
+        id: artistId,
         nome: t.artistas?.nome_artistico ?? t.artistas?.nome ?? "—",
         totalRec: 0,
         totalDes: 0,
       };
       if (t.tipo === "receita") entry.totalRec += toNumber(t.valor);
       else if (t.tipo === "despesa") entry.totalDes += toNumber(t.valor);
-      porArtista.set(artistaId, entry);
+      porArtista.set(artistId, entry);
     }
     return Array.from(porArtista.values())
       .map((a) => ({ ...a, lucro: a.totalRec - a.totalDes, margem: a.totalRec > 0 ? ((a.totalRec - a.totalDes) / a.totalRec) * 100 : 0 }))

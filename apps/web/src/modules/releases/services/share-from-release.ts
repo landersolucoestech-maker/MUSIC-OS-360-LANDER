@@ -20,6 +20,6 @@ export function shareFlowFromReleaseUrl(releaseId: string): string {
  * Há participantes/créditos suficientes para sugerir o fluxo de shares?
  * Conservador: exige artista principal definido. Evita abrir o fluxo sem dados.
  */
-export function hasEnoughParticipantsForShares(release: Pick<Lancamento, "artista_id"> | null | undefined): boolean {
-  return Boolean(release?.artista_id);
+export function hasEnoughParticipantsForShares(release: Pick<Lancamento, "artist_id"> | null | undefined): boolean {
+  return Boolean(release?.artist_id);
 }

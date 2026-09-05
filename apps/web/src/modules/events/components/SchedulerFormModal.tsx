@@ -178,7 +178,7 @@ const getInitialFormData = (evento?: any) => {
       evento?.tipoEvento || evento?.tipo_evento || evento?.tipo || evento?.type,
       tipoEventoAliases,
     ),
-    artista: evento?.artista || evento?.artista_id || evento?.artistId || "",
+    artista: evento?.artista || evento?.artist_id || evento?.artistId || "",
     participantes: normalizeAgendaParticipants(evento?.participantes ?? meta["participants"]),
     status: normalizeSelectValue(evento?.status, statusAliases) || "agendado",
     dataInicio: normalizeEventDate(
@@ -232,7 +232,7 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
   // metadata.backend_type (ver lib/event-type.ts).
   const granularToBackendType = buildGranularToBackendTypeMap(getItemsByKind("event_type"));
   const [participantSearch, setParticipantSearch] = useState("");
-  const legacyArtistaId = evento?.artista || evento?.artista_id || evento?.artistId || null;
+  const legacyArtistaId = evento?.artista || evento?.artist_id || evento?.artistId || null;
   const { participants, getParticipantByKey, getArtistParticipantById, pendingArtist } = useAgendaParticipants(participantSearch, legacyArtistaId);
 
   const hydrateFormData = (currentEvento?: any) => {
