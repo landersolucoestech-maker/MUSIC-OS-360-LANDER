@@ -91,7 +91,7 @@ const CONFIGS: AuditConfig[] = [
       { key: "titulo", label: "Título", severity: "obrigatorio" },
       { key: "isrc", label: "ISRC", severity: "obrigatorio" },
       { key: "artist_id", label: "Artista vinculado", severity: "recomendado" },
-      { key: "obra_id", label: "Obra vinculada", severity: "recomendado" },
+      { key: "work_id", label: "Obra vinculada", severity: "recomendado" },
       { key: "genero_musical", label: "Gênero musical", severity: "recomendado" },
     ],
   },

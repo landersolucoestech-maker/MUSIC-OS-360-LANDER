@@ -113,8 +113,8 @@ export class ReleaseReadinessService {
         });
 
         // ── Registro de obra (condicional) ─────────────────────────────────────
-        if (phonogram?.obra_id && this.works) {
-          const work = await this.works.findOne({ where: { id: phonogram.obra_id, tenant_id: tenantId } });
+        if (phonogram?.work_id && this.works) {
+          const work = await this.works.findOne({ where: { id: phonogram.work_id, tenant_id: tenantId } });
           requirements.push({
             id: 'work',
             label: 'Registro de obra',

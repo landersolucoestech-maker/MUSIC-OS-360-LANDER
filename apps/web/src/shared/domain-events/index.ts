@@ -84,7 +84,7 @@ export interface ArtistCreatedPayload {
 }
 
 export interface MusicRegisteredPayload {
-  obra_id: string;
+  work_id: string;
   fonograma_id?: string;
   titulo: string;
   org_id: string;
@@ -132,10 +132,10 @@ export type DomainEventPayloads = {
   ARTIST_UPDATED:        Partial<ArtistCreatedPayload> & { id: string };
   ARTIST_DELETED:        { id: string; org_id: string };
   MUSIC_REGISTERED:      MusicRegisteredPayload;
-  MUSIC_UPDATED:         Partial<MusicRegisteredPayload> & { obra_id: string };
-  MUSIC_DELETED:         { obra_id: string; org_id: string };
-  PHONOGRAM_REGISTERED:  { id: string; obra_id: string; org_id: string };
-  PHONOGRAM_UPDATED:     { id: string; obra_id: string; org_id: string };
+  MUSIC_UPDATED:         Partial<MusicRegisteredPayload> & { work_id: string };
+  MUSIC_DELETED:         { work_id: string; org_id: string };
+  PHONOGRAM_REGISTERED:  { id: string; work_id: string; org_id: string };
+  PHONOGRAM_UPDATED:     { id: string; work_id: string; org_id: string };
   PHONOGRAM_DELETED:     { id: string; org_id: string };
   CONTRACT_CREATED:          ContractCreatedPayload;
   CONTRACT_UPDATED:          Partial<ContractCreatedPayload> & { id: string };
@@ -147,8 +147,8 @@ export type DomainEventPayloads = {
   RELEASE_CREATED:       ReleaseCreatedPayload;
   RELEASE_UPDATED:       Partial<ReleaseCreatedPayload> & { id: string };
   RELEASE_DELETED:       { id: string; org_id: string };
-  SHARE_CREATED:         { id: string; obra_id?: string; artist_id?: string; percentual?: number; org_id: string };
-  SHARE_UPDATED:         { id: string; obra_id?: string; artist_id?: string; percentual?: number; org_id: string };
+  SHARE_CREATED:         { id: string; work_id?: string; artist_id?: string; percentual?: number; org_id: string };
+  SHARE_UPDATED:         { id: string; work_id?: string; artist_id?: string; percentual?: number; org_id: string };
   SHARE_DELETED:         { id: string; org_id: string };
   LEAD_CAPTURED:         LeadCapturedPayload;
   LEAD_CONVERTED:        { id: string; artist_id?: string; org_id: string };

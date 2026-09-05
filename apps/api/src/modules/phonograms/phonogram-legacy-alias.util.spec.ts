@@ -91,7 +91,7 @@ describe('phonogram-legacy-alias.util', () => {
   });
 
   describe.each([
-    ['obra_id', 'workId', 'obra_id' as const],
+    ['work_id', 'workId', 'work_id' as const],
     ['artist_id', 'artistId', 'artist_id' as const],
   ])('resolvePhonogramAliases — %s/%s', (canonical, legacy, key) => {
     it('somente PT: retorna o valor, sem alias legado', () => {
@@ -165,25 +165,25 @@ describe('phonogram-legacy-alias.util', () => {
     });
   });
 
-  describe('resolvePhonogramQueryAliases — obra_id/workId e artist_id/artistId', () => {
-    it('obra_id sozinho: aceito', () => {
-      const { normalized } = resolvePhonogramQueryAliases({ obra_id: UUID_A });
-      expect(normalized.obra_id).toBe(UUID_A);
+  describe('resolvePhonogramQueryAliases — work_id/workId e artist_id/artistId', () => {
+    it('work_id sozinho: aceito', () => {
+      const { normalized } = resolvePhonogramQueryAliases({ work_id: UUID_A });
+      expect(normalized.work_id).toBe(UUID_A);
     });
 
     it('workId sozinho: aceito, alias registrado', () => {
       const { normalized, legacyAliasesUsed } = resolvePhonogramQueryAliases({ workId: UUID_A });
-      expect(normalized.obra_id).toBe(UUID_A);
+      expect(normalized.work_id).toBe(UUID_A);
       expect(legacyAliasesUsed).toContain('workId');
     });
 
-    it('obra_id e workId iguais: aceito', () => {
-      const { normalized } = resolvePhonogramQueryAliases({ obra_id: UUID_A, workId: UUID_A });
-      expect(normalized.obra_id).toBe(UUID_A);
+    it('work_id e workId iguais: aceito', () => {
+      const { normalized } = resolvePhonogramQueryAliases({ work_id: UUID_A, workId: UUID_A });
+      expect(normalized.work_id).toBe(UUID_A);
     });
 
-    it('obra_id e workId diferentes: 400', () => {
-      const body = errorBody(() => resolvePhonogramQueryAliases({ obra_id: UUID_A, workId: UUID_B }));
+    it('work_id e workId diferentes: 400', () => {
+      const body = errorBody(() => resolvePhonogramQueryAliases({ work_id: UUID_A, workId: UUID_B }));
       expect(body.code).toBe('PHONOGRAM_ALIAS_CONFLICT');
     });
 
@@ -210,7 +210,7 @@ describe('phonogram-legacy-alias.util', () => {
 
     it('ausência total: normalized vazio, sem aliases', () => {
       const { normalized, legacyAliasesUsed } = resolvePhonogramQueryAliases({});
-      expect(normalized.obra_id).toBeUndefined();
+      expect(normalized.work_id).toBeUndefined();
       expect(normalized.artist_id).toBeUndefined();
       expect(legacyAliasesUsed).toEqual([]);
     });

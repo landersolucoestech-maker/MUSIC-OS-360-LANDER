@@ -219,7 +219,7 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
   identityColumn: 'titulo',
   fields: [
     col('titulo'), col('status'), col('genero_musical'), col('isrc'),
-    col('duracao'), col('artist_id'), col('obra_id'),
+    col('duracao'), col('artist_id'), col('work_id'),
     // Campos do formulário de Fonograma (regra 2026-07-12: 1 coluna por campo, nome exato)
     col('cod_entidade'), col('cod_ecad'), col('agregadora'),
     col('isrc_pais'), col('isrc_registrante'), col('isrc_ano'), col('isrc_designacao'),
@@ -245,7 +245,7 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
     title: 'titulo',
     duration: 'duracao',
     artistId: 'artist_id',
-    workId: 'obra_id',
+    workId: 'work_id',
   },
 };
 
@@ -345,7 +345,7 @@ const CONTENT_DETECTIONS_CONTRACT: ReportFormContract = {
   identityColumn: 'titulo_detectado',
   fields: [
     ro('titulo_detectado'), ro('plataforma'), ro('tipo'), ro('status'),
-    ro('url'), ro('score'), ro('detectado_em'), ro('obra_id'), ro('artist_id'),
+    ro('url'), ro('score'), ro('detectado_em'), ro('work_id'), ro('artist_id'),
   ],
   excludedFormFields: {},
 };
@@ -359,7 +359,7 @@ const LICENSES_CONTRACT: ReportFormContract = {
   tableName: 'licenses',
   identityColumn: 'titulo',
   fields: [
-    col('titulo'), col('tipo'), col('obra_id'), col('obra_musical'), col('artista'),
+    col('titulo'), col('tipo'), col('work_id'), col('obra_musical'), col('artista'),
     col('cliente_id'), col('cliente'), col('projeto'), col('tipo_uso'),
     col('midia_destino'), col('territorio'), col('status'),
     col('data_inicio'), col('data_fim'), col('valor'), col('moeda'), col('observacoes'),
@@ -458,7 +458,7 @@ const SHARES_CONTRACT: ReportFormContract = {
     holderName: 'alias legado em inglês (registro ABRAMUS/ECAD) mapeado para titular_nome — não é a tela real de Shares',
     role: 'alias legado em inglês mapeado para papel — idem',
     percentage: 'alias legado em inglês mapeado para percentual — chave canônica já coberta por percentual',
-    workId: 'alias legado em inglês mapeado para obra_id — idem',
+    workId: 'alias legado em inglês mapeado para work_id — idem',
     trackId: 'alias legado em inglês mapeado para fonograma_id — idem',
     holderDoc: 'alias legado em inglês mapeado para titular_doc — idem',
     metadata: 'objeto jsonb interno bruto',

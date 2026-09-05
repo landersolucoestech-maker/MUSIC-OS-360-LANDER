@@ -28,7 +28,7 @@ const fullPhonogram = {
   genero_musical: 'Pop',
   interpretes: 'Artista X',
   artist_id: 'art-1',
-  obra_id: null,
+  work_id: null,
 };
 
 const goodAssets = [
@@ -60,8 +60,8 @@ describe('ReleaseReadinessService.evaluate', () => {
     expect(out.missing).toContain('isrc');
   });
 
-  it('obra obrigatória quando há obra_id: met se a obra existe', async () => {
-    const ph = { ...fullPhonogram, obra_id: 'work-1' };
+  it('obra obrigatória quando há work_id: met se a obra existe', async () => {
+    const ph = { ...fullPhonogram, work_id: 'work-1' };
     const svc = new ReleaseReadinessService(makeDs(ph, { id: 'work-1', tenant_id: 't1' }) as never, skillRuns() as never, assetLinking(goodAssets) as never);
     const out = await svc.evaluate('t1', { projectId: 'proj-1', phonogramId: 'ph-1' });
     expect(out.requirements.find((r) => r.id === 'work')?.status).toBe('met');

@@ -86,7 +86,7 @@ export function ECADViewModal({ open, onOpenChange, relatorio }: ECADViewModalPr
                 </div>
               ) : (
                 <p className="p-4 text-sm text-muted-foreground">
-                  {relatorio.obra_id ? `Obra ${relatorio.obra_id} não encontrada no catálogo.` : "Nenhuma obra vinculada a este relatório."}
+                  {relatorio.work_id ? `Obra ${relatorio.work_id} não encontrada no catálogo.` : "Nenhuma obra vinculada a este relatório."}
                 </p>
               )}
             </div>

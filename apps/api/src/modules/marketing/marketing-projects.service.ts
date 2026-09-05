@@ -215,7 +215,7 @@ export class MarketingProjectsService {
         title: item.titulo,
         status: item.status,
         isrc: item.isrc,
-        workId: item.obra_id,
+        workId: item.work_id,
       })),
       refreshedAt: new Date().toISOString(),
     };

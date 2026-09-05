@@ -564,7 +564,7 @@ export default function RegistroMusicas() {
                           </TableCell>
                           <TableCell className="py-3">
                             <span className="font-medium block truncate" data-testid={`text-fonograma-titulo-${fonograma.id}`}>{fonograma.titulo}</span>
-                            {!fonograma.obra_id && (
+                            {!fonograma.work_id && (
                               <Badge
                                 variant="warning"
                                 className="mt-1 text-xs gap-1"
@@ -756,7 +756,7 @@ export default function RegistroMusicas() {
                                   title={obra.status === "analise" ? "Obra em análise — aguarde a conclusão antes de registrar um fonograma" : undefined}
                                   onClick={() => {
                                     setActiveTab("fonogramas");
-                                    setFonogramaModal({ open: true, mode: "create", fonograma: { id: "", obra_id: obra.id } as Fonograma });
+                                    setFonogramaModal({ open: true, mode: "create", fonograma: { id: "", work_id: obra.id } as Fonograma });
                                   }}
                                 >
                                   <Disc className="h-4 w-4 mr-2" />

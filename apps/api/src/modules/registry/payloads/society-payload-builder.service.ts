@@ -93,7 +93,7 @@ export class SocietyPayloadBuilderService {
     const work = await this.works!.findOne({ where: { id: workId, tenant_id: tenantId } });
     if (!work || work.deleted_at) throw new NotFoundException('Obra não encontrada');
     // share_type IS NULL = elegibilidade transitória de registro (ver share-eligibility.util.ts).
-    const shares = (await this.shares!.find({ where: { tenant_id: tenantId, obra_id: workId, share_type: IsNull() } }))
+    const shares = (await this.shares!.find({ where: { tenant_id: tenantId, work_id: workId, share_type: IsNull() } }))
       .filter((s) => !s.deleted_at && isRegistryEligibleShare(s));
 
     const legacy: PayloadIdentifier[] = [];
@@ -154,7 +154,7 @@ export class SocietyPayloadBuilderService {
         copyright_owner: rec.copyright_owner ?? null,
         country_of_recording: rec.country_of_recording ?? null,
       },
-      linked_work: { id: rec.obra_id ?? null },
+      linked_work: { id: rec.work_id ?? null },
       main_artist: { id: rec.main_artist_id ?? rec.artist_id ?? null },
       phonographic_producer: { id: rec.phonographic_producer_id ?? null },
       contributors: shares.map(shareToParty),

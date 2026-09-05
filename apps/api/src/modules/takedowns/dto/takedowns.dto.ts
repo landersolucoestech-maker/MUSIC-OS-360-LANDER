@@ -31,7 +31,7 @@ export class CreateTakedownDto {
 
   // Relações opcionais preenchidas por fluxos internos, sem substituir os
   // campos legíveis exibidos no formulário.
-  @ApiPropertyOptional() @IsOptional() @IsUUID() obra_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() work_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, unknown>;
 }

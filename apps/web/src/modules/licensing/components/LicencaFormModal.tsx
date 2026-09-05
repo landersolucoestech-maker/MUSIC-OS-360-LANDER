@@ -41,7 +41,7 @@ const statusOptions = [
 const DEFAULT_VALUES: LicencaFormData = {
   titulo: "",
   tipoLicenca: "",
-  obraId: "",
+  workId: "",
   clienteId: "",
   projeto: "",
   midiaDestino: "",
@@ -75,9 +75,9 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
   // Artista é derivado da obra selecionada (read-only, não persistido) —
   // busca DIRETA por ID (GET /works/:id), não depende da obra estar entre
   // os primeiros 50 carregados por useObras() sem filtro (Task J).
-  const obraId = useWatch({ control, name: "obraId" });
+  const workId = useWatch({ control, name: "workId" });
   const remunerationType = useWatch({ control, name: "remunerationType" });
-  const { entity: obraSelecionada } = useEntityById<Obra>("obras", obraId || undefined);
+  const { entity: obraSelecionada } = useEntityById<Obra>("obras", workId || undefined);
   const artistaDerivado = useMemo(() => obraArtistaLabel(obraSelecionada), [obraSelecionada]);
   const showMonetary = remunerationType === "FIXED" || remunerationType === "FIXED_PLUS_PERCENTAGE";
   const showPercentage = remunerationType === "PERCENTAGE" || remunerationType === "FIXED_PLUS_PERCENTAGE";
@@ -88,7 +88,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
       reset({
         titulo: licenca.titulo || "",
         tipoLicenca: licenca.tipo || "",
-        obraId: licenca.obra_id || "",
+        workId: licenca.work_id || "",
         clienteId: licenca.cliente_id || "",
         projeto: licenca.projeto || "",
         midiaDestino: licenca.midia_destino || "",
@@ -116,7 +116,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
     return {
       titulo:            data.titulo,
       tipo:              data.tipoLicenca || undefined,
-      obra_id:           data.obraId,
+      work_id:           data.workId,
       cliente_id:        data.clienteId,
       projeto:           data.projeto || undefined,
       midia_destino:     data.midiaDestino || undefined,
@@ -209,7 +209,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
               <div className="space-y-2">
                 <Label>Obra Musical *</Label>
                 <Controller
-                  name="obraId"
+                  name="workId"
                   control={control}
                   render={({ field }) => (
                     <AsyncEntityCombobox<Obra>
@@ -220,12 +220,12 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
                       placeholder="Selecione a obra"
                       searchPlaceholder="Buscar obra…"
                       disabled={isViewMode}
-                      invalid={!!errors.obraId}
+                      invalid={!!errors.workId}
                       data-testid="select-obra-musical"
                     />
                   )}
                 />
-                <FieldError error={errors.obraId?.message} />
+                <FieldError error={errors.workId?.message} />
               </div>
               <div className="space-y-2">
                 <Label>Artista <span className="text-muted-foreground font-normal">(da obra)</span></Label>

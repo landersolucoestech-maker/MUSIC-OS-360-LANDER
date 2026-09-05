@@ -91,21 +91,21 @@ describe('SharesService — split budget invariant (P1)', () => {
       } as unknown as CreateShareDto)).resolves.toBeDefined();
     });
 
-    it('não valida orçamento quando não há obra_id nem fonograma_id (share sem contexto de registro)', async () => {
+    it('não valida orçamento quando não há work_id nem fonograma_id (share sem contexto de registro)', async () => {
       const { svc, repo } = makeService();
       await expect(svc.create('tenant-1', {
         holderName: 'Sem Obra', percentage: 50,
       } as unknown as CreateShareDto)).resolves.toBeDefined();
-      // A sum query never needed to run — no obra_id/fonograma_id to scope it.
+      // A sum query never needed to run — no work_id/fonograma_id to scope it.
       expect(repo.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 
   describe('update', () => {
-    it('rejeita quando a atualização faria a soma exceder 100%, herdando obra_id da linha atual', async () => {
+    it('rejeita quando a atualização faria a soma exceder 100%, herdando work_id da linha atual', async () => {
       const { svc } = makeService({
         existingSum: 70,
-        findByIdRow: { id: 'share-1', tenant_id: 'tenant-1', obra_id: 'work-1', percentual: 10, share_type: null },
+        findByIdRow: { id: 'share-1', tenant_id: 'tenant-1', work_id: 'work-1', percentual: 10, share_type: null },
       });
       await expect(svc.update('tenant-1', 'share-1', {
         percentage: 50,
@@ -115,7 +115,7 @@ describe('SharesService — split budget invariant (P1)', () => {
     it('exclui a própria linha da soma existente (não conta a si mesma duas vezes)', async () => {
       const { svc, repo } = makeService({
         existingSum: 30, // already excludes share-1 per the mocked query (asserted below)
-        findByIdRow: { id: 'share-1', tenant_id: 'tenant-1', obra_id: 'work-1', percentual: 30, share_type: null },
+        findByIdRow: { id: 'share-1', tenant_id: 'tenant-1', work_id: 'work-1', percentual: 30, share_type: null },
       });
       await expect(svc.update('tenant-1', 'share-1', { percentage: 40 } as unknown as UpdateShareDto))
         .resolves.toBeDefined();
@@ -130,7 +130,7 @@ describe('SharesService — split budget invariant (P1)', () => {
 });
 
 describe('SharesService.create — FK cross-tenant (P1)', () => {
-  it('rejeita obra_id (workId) de outro tenant (ou inexistente)', async () => {
+  it('rejeita work_id (workId) de outro tenant (ou inexistente)', async () => {
     const { svc } = makeService({}, jest.fn(async () => []));
     await expect(svc.create('tenant-1', {
       holderName: 'X', percentage: 10, workId: 'work-from-another-tenant',

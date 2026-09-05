@@ -25,13 +25,13 @@ export function useFonogramas(enabled = true, artistId?: string) {
       onCreate: (f) =>
         emit(DomainEvents.PHONOGRAM_REGISTERED, {
           id:      (f as FonogramaWithRelations & { id: string }).id,
-          obra_id: (f as FonogramaWithRelations & { obra_id?: string }).obra_id ?? "",
+          work_id: (f as FonogramaWithRelations & { work_id?: string }).work_id ?? "",
           org_id:  orgId,
         }),
       onUpdate: (f) =>
         emit(DomainEvents.PHONOGRAM_UPDATED, {
           id:      (f as FonogramaWithRelations & { id: string }).id,
-          obra_id: (f as FonogramaWithRelations & { obra_id?: string }).obra_id ?? "",
+          work_id: (f as FonogramaWithRelations & { work_id?: string }).work_id ?? "",
           org_id:  orgId,
         }),
       onDelete: (id) =>

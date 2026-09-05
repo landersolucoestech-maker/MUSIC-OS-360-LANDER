@@ -71,7 +71,7 @@ export class TakedownsService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateTakedownDto): Promise<TakedownEntity> {
-    await assertSameTenantFk(this.ds!, 'works',   dto.obra_id,    tenantId, 'Obra');
+    await assertSameTenantFk(this.ds!, 'works',   dto.work_id,    tenantId, 'Obra');
     await assertSameTenantFk(this.ds!, 'artists', dto.artist_id, tenantId, 'Artista');
 
     const entity = this.repository.create({

@@ -95,7 +95,7 @@ describe('WorkRegistryValidationService', () => {
 describe('RecordingRegistryValidationService', () => {
   const valid = (): Partial<PhonogramEntity> => ({
     titulo: 'Faixa',
-    obra_id: 'w1',
+    work_id: 'w1',
     duration_seconds: 180,
     artist_id: 'a1',
     phonographic_producer_id: 'p1',
@@ -107,7 +107,7 @@ describe('RecordingRegistryValidationService', () => {
   });
 
   it('requires a linked work', () => {
-    expect(codes(recording.validate(asRec({ ...valid(), obra_id: null }), []))).toContain('recording_work_required');
+    expect(codes(recording.validate(asRec({ ...valid(), work_id: null }), []))).toContain('recording_work_required');
   });
 
   it('requires a phonographic producer', () => {

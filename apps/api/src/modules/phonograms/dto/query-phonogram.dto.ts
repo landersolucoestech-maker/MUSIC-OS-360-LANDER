@@ -21,9 +21,9 @@ export class QueryPhonogramDto extends PaginationDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
-  obra_id?: string;
+  work_id?: string;
 
-  @ApiPropertyOptional({ deprecated: true, description: 'Alias legado. Use "obra_id".' })
+  @ApiPropertyOptional({ deprecated: true, description: 'Alias legado. Use "work_id".' })
   @IsOptional()
   @IsUUID()
   workId?: string;

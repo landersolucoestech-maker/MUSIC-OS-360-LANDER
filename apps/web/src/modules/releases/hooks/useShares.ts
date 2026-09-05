@@ -23,7 +23,7 @@ export function useShares() {
       onCreate: (s) =>
         emit(DomainEvents.SHARE_CREATED, {
           id:          (s as ShareWithRelations & { id: string }).id,
-          obra_id:     (s as ShareWithRelations & { obra_id?: string }).obra_id ?? undefined,
+          work_id:     (s as ShareWithRelations & { work_id?: string }).work_id ?? undefined,
           artist_id:  (s as ShareWithRelations & { artist_id?: string }).artist_id ?? undefined,
           percentual:  (s as ShareWithRelations & { percentual?: number }).percentual ?? undefined,
           org_id:      orgId,
@@ -31,7 +31,7 @@ export function useShares() {
       onUpdate: (s) =>
         emit(DomainEvents.SHARE_UPDATED, {
           id:          (s as ShareWithRelations & { id: string }).id,
-          obra_id:     (s as ShareWithRelations & { obra_id?: string }).obra_id ?? undefined,
+          work_id:     (s as ShareWithRelations & { work_id?: string }).work_id ?? undefined,
           artist_id:  (s as ShareWithRelations & { artist_id?: string }).artist_id ?? undefined,
           percentual:  (s as ShareWithRelations & { percentual?: number }).percentual ?? undefined,
           org_id:      orgId,

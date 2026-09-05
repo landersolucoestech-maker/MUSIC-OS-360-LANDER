@@ -106,11 +106,11 @@ describe('PhonogramsController — contrato HTTP real (C2)', () => {
       .expect(200);
   });
 
-  it('query obra_id/workId conflitantes → 400', async () => {
+  it('query work_id/workId conflitantes → 400', async () => {
     await request(app.getHttpServer())
       .get('/phonograms')
       .query({
-        obra_id: '123e4567-e89b-12d3-a456-426614174000',
+        work_id: '123e4567-e89b-12d3-a456-426614174000',
         workId: '223e4567-e89b-12d3-a456-426614174000',
       })
       .expect(400)
@@ -150,18 +150,18 @@ describe('Swagger/OpenAPI — metadados de depreciação dos aliases (C2)', () =
     }
   });
 
-  it('CreatePhonogramDto: titulo, obra_id e artist_id NÃO estão deprecated', () => {
+  it('CreatePhonogramDto: titulo, work_id e artist_id NÃO estão deprecated', () => {
     const props = schemas['CreatePhonogramDto'].properties!;
-    for (const field of ['titulo', 'obra_id', 'artist_id']) {
+    for (const field of ['titulo', 'work_id', 'artist_id']) {
       expect(props[field]?.deprecated).toBeUndefined();
     }
   });
 
-  it('QueryPhonogramDto: workId e artistId estão deprecated; obra_id e artist_id não (parâmetros de query em /phonograms)', () => {
+  it('QueryPhonogramDto: workId e artistId estão deprecated; work_id e artist_id não (parâmetros de query em /phonograms)', () => {
     const byName = Object.fromEntries(queryParams.map((p) => [p.name, p]));
     expect(byName['workId']?.deprecated).toBe(true);
     expect(byName['artistId']?.deprecated).toBe(true);
-    expect(byName['obra_id']?.deprecated).toBeFalsy();
+    expect(byName['work_id']?.deprecated).toBeFalsy();
     expect(byName['artist_id']?.deprecated).toBeFalsy();
   });
 });

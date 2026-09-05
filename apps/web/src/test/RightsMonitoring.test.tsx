@@ -4,7 +4,7 @@
 //
 // Covers:
 //  1. Clicking a row detail button opens ExecucaoDetailModal with compositor + cod_ecad
-//     from the catalog (enriched via obra_id lookup against useObras())
+//     from the catalog (enriched via work_id lookup against useObras())
 //  2. Clicking a detection with no matching/linked obra shows the orphan warning
 //  3. Divergências tab badge count reflects detections without a reconciled obra
 
@@ -22,13 +22,13 @@ vi.mock("@/shared/components/MainLayout", () => ({
 
 const DETECCOES = [
   {
-    id: "det-001", obra_id: "obra-001", artist_id: null,
+    id: "det-001", work_id: "obra-001", artist_id: null,
     plataforma: "YouTube", titulo_detectado: "Noite de Luz", url: "https://youtube.com/x",
     score: "0.92", status: "concluido", tipo: "uso_nao_autorizado",
     detectado_em: "2026-05-08T14:32:00", metadata: {}, created_at: "2026-05-08T14:32:00", updated_at: "2026-05-08T14:32:00",
   },
   {
-    id: "det-011", obra_id: null, artist_id: null,
+    id: "det-011", work_id: null, artist_id: null,
     plataforma: "TikTok", titulo_detectado: "Track Desconhecida", url: null,
     score: null, status: "pendente", tipo: "uso_nao_autorizado",
     detectado_em: "2026-05-02T11:20:00", metadata: {}, created_at: "2026-05-02T11:20:00", updated_at: "2026-05-02T11:20:00",
@@ -111,7 +111,7 @@ describe("RightsMonitoring page — detail modal with catalog data", () => {
 });
 
 describe("RightsMonitoring page — detail modal for orphan detection", () => {
-  it("clicking a detection with no obra_id shows 'Obra não encontrada no catálogo' warning", async () => {
+  it("clicking a detection with no work_id shows 'Obra não encontrada no catálogo' warning", async () => {
     renderPage();
 
     await waitFor(() => {
@@ -141,7 +141,7 @@ describe("RightsMonitoring page — Divergências tab badge", () => {
 
     const divTab = screen.getByTestId("tab-divergencias");
 
-    // Only det-011 (obra_id null) is unreconciled — det-001 has a matched obra
+    // Only det-011 (work_id null) is unreconciled — det-001 has a matched obra
     // with cod_ecad, but that match resolves asynchronously (GET /works/:id),
     // so wait for it to settle before reading the badge.
     await waitFor(() => {

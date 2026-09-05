@@ -72,7 +72,7 @@ export interface Lancamento {
   idioma?: string | null;
   gravadora?: string | null;
   copyright?: string | null;
-  obra_id?: string | null;
+  work_id?: string | null;
   fonograma_id?: string | null;
   codigo_upc?: string | null;
   // ── Separação status interno × status de plataforma ──────────────────────────
@@ -105,7 +105,7 @@ export interface Share {
   user_id?: string;
   /** Discriminador interno/externo. Quando ausente, derivar via `resolveShareType`. */
   share_type?: ShareType | string | null;
-  obra_id?: string | null;
+  work_id?: string | null;
   artist_id?: string | null;
   percentual?: number | null;
   tipo?: ShareTipo | string | null;

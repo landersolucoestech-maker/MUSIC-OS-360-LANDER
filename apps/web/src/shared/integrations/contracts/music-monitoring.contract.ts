@@ -59,7 +59,7 @@ export interface FingerprintMatch {
   /** Posição no trecho onde a música foi detectada (segundos) */
   offset_segundos?: number | null;
   /** ID local da obra/fonograma se cruzamento for bem-sucedido */
-  local_obra_id?: string | null;
+  local_work_id?: string | null;
   local_fonograma_id?: string | null;
 }
 
@@ -92,7 +92,7 @@ export interface PlayReport {
   external_reported_amount_cents?: number | null;
   /** ID local do fonograma se cruzamento for bem-sucedido */
   local_fonograma_id?: string | null;
-  local_obra_id?: string | null;
+  local_work_id?: string | null;
   status: "pending" | "confirmed" | "disputed" | "paid";
 }
 
@@ -146,7 +146,7 @@ export interface MonitoringAlert {
   detected_at: string;
   acknowledged: boolean;
   acknowledged_at?: string | null;
-  local_obra_id?: string | null;
+  local_work_id?: string | null;
   local_fonograma_id?: string | null;
 }
 

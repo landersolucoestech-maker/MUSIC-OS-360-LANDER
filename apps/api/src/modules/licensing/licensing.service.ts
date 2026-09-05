@@ -70,7 +70,7 @@ export class LicensingService {
       else if (statuses.length === 1) qb.andWhere('l.status = :status', { status: statuses[0] });
     }
     if (query.tipo) qb.andWhere('l.tipo = :tipo', { tipo: query.tipo });
-    if (query.obra_id) qb.andWhere('l.obra_id = :obraId', { obraId: query.obra_id });
+    if (query.work_id) qb.andWhere('l.work_id = :workId', { workId: query.work_id });
     if (query.cliente_id) qb.andWhere('l.cliente_id = :clienteId', { clienteId: query.cliente_id });
     if (query.midia_destino) qb.andWhere('l.midia_destino ILIKE :midia', { midia: `%${query.midia_destino}%` });
     if (query.search) {
@@ -120,7 +120,7 @@ export class LicensingService {
     dto: CreateLicenseDto,
   ): Promise<Record<string, unknown>> {
     const payload = this.normalizePayload(dto);
-    await assertSameTenantFk(this.ds!, 'works',   payload['obra_id']    as string | undefined, tenantId, 'Obra');
+    await assertSameTenantFk(this.ds!, 'works',   payload['work_id']    as string | undefined, tenantId, 'Obra');
     await assertSameTenantFk(this.ds!, 'artists', payload['artist_id'] as string | undefined, tenantId, 'Artista');
     await assertSameTenantFk(this.ds!, 'clients', payload['cliente_id'] as string | undefined, tenantId, 'Cliente');
 

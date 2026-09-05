@@ -61,7 +61,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
   // Resolução DIRETA por ID (GET /works/:id, GET /artists/:id) — não depende
   // de obra/artista estarem entre os primeiros 50 carregados por
   // useObras()/useArtistas() sem filtro (Task J).
-  const { entity: obraVinculada } = useEntityById<ObraWithRelations>("obras", open ? str("obra_id") || undefined : undefined);
+  const { entity: obraVinculada } = useEntityById<ObraWithRelations>("obras", open ? str("work_id") || undefined : undefined);
   const { entity: artistaResolved } = useEntityById<Artista>("artistas", open ? share?.artist_id ?? undefined : undefined);
   const vinculoArtistaId = str("artista_projeto_id") || share?.artist_id || undefined;
   const { entity: vinculoArtistaResolved } = useEntityById<Artista>("artistas", open ? vinculoArtistaId : undefined);
@@ -74,7 +74,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
 
   /**
    * Título da obra/lançamento/música — replica EXATAMENTE a origem da tabela
-   * (obra_id → lançamento_id → nome_musica), com fallbacks seguros adicionais.
+   * (work_id → lançamento_id → nome_musica), com fallbacks seguros adicionais.
    */
   const pickShareTitle = (): string | null => {
     const obraTitulo = obraVinculada?.titulo;

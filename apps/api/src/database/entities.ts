@@ -791,14 +791,14 @@ export class WorkParticipantEntity {
 // ─── Phonograms (fonogramas) ───────────────────────────────────────────────────
 @Entity('phonograms')
 @Index(['tenant_id'])
-@Index(['obra_id'])
+@Index(['work_id'])
 @Index(['artist_id'])
 @Index(['isrc'])
 export class PhonogramEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'varchar', length: 500 }) titulo: string;
-  @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) work_id: string | null;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) isrc: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) duracao: string | null;
@@ -870,7 +870,7 @@ export class PhonogramEntity {
   artist: Relation<ArtistEntity> | null;
 
   @ManyToOne(() => WorkEntity, (w) => w.phonograms, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'obra_id' })
+  @JoinColumn({ name: 'work_id' })
   work: Relation<WorkEntity> | null;
 }
 
@@ -1461,11 +1461,11 @@ export class ReleaseEntity {
 // ─── Shares (Participações) ───────────────────────────────────────────────────
 @Entity('shares')
 @Index(['tenant_id'])
-@Index(['obra_id'])
+@Index(['work_id'])
 export class ShareEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) work_id: string | null;
   @Column({ type: 'uuid', nullable: true }) fonograma_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) titular_nome: string | null;
   @Column({ type: 'varchar', length: 50, nullable: true }) titular_doc: string | null;
@@ -1515,7 +1515,7 @@ export class ShareEntity {
 
   // ── Relations ───────────────────────────────────────────────────────────────
   @ManyToOne(() => WorkEntity, (w) => w.shares, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'obra_id' })
+  @JoinColumn({ name: 'work_id' })
   work: Relation<WorkEntity> | null;
 }
 
@@ -1530,7 +1530,7 @@ export class TakedownEntity {
   @Column({ type: 'varchar', length: 100 }) plataforma: string;
   @Column({ type: 'text', nullable: true }) url: string | null;
   @Column({ type: 'varchar', length: 50, default: TakedownStatus.PENDENTE }) status: TakedownStatus;
-  @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) work_id: string | null;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'text', nullable: true }) motivo: string | null;
   @Column({ type: 'text', nullable: true }) resposta: string | null;
@@ -1857,7 +1857,7 @@ export class ArtistGoalEntity {
 export class ContentDetectionEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) work_id: string | null;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'varchar', length: 100 }) plataforma: string;
   @Column({ type: 'varchar', length: 500, nullable: true }) titulo_detectado: string | null;
@@ -1879,7 +1879,7 @@ export class ContentDetectionEntity {
 export class EcadReportEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) work_id: string | null;
   @Column({ type: 'varchar', length: 20 }) periodo: string;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_bruto: string | null;
@@ -2480,12 +2480,12 @@ export class InventoryItemEntity {
 // ─── Licensing ────────────────────────────────────────────────────────────────
 @Entity('licenses')
 @Index(['tenant_id', 'status'])
-@Index(['tenant_id', 'obra_id'])
+@Index(['tenant_id', 'work_id'])
 export class LicenseEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'varchar', length: 500 }) titulo: string;
-  @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) work_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) obra_musical: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) artista: string | null;
   @Column({ type: 'uuid', nullable: true }) cliente_id: string | null;

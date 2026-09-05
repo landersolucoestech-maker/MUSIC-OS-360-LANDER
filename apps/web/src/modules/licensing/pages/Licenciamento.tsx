@@ -93,7 +93,7 @@ export default function Licenciamento() {
   const [resolvedObras, setResolvedObras] = useState<Record<string, Obra>>({});
   const [resolvedClientes, setResolvedClientes] = useState<Record<string, { id: string; nome: string }>>({});
   const licencaObraIds = useMemo(
-    () => Array.from(new Set(pageItems.map((l: any) => l.obra_id).filter(Boolean))) as string[],
+    () => Array.from(new Set(pageItems.map((l: any) => l.work_id).filter(Boolean))) as string[],
     [pageItems],
   );
   const licencaClienteIds = useMemo(
@@ -127,8 +127,8 @@ export default function Licenciamento() {
     return () => { cancelled = true; };
   }, [licencaClienteIds]);
 
-  const obraTituloDe = (l: any) => (l.obra_id ? resolvedObras[l.obra_id]?.titulo ?? null : null);
-  const artistaDe = (l: any) => (l.obra_id ? obraArtistaLabel(resolvedObras[l.obra_id]) : "");
+  const obraTituloDe = (l: any) => (l.work_id ? resolvedObras[l.work_id]?.titulo ?? null : null);
+  const artistaDe = (l: any) => (l.work_id ? obraArtistaLabel(resolvedObras[l.work_id]) : "");
   const clienteNomeDe = (l: any) => (l.cliente_id ? resolvedClientes[l.cliente_id]?.nome ?? null : null);
 
   // KPIs: contagem + soma de valor por status SOBRE O TENANT INTEIRO (não a

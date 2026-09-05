@@ -6,7 +6,7 @@ export class CreateContentDetectionDto {
 
   @IsOptional()
   @IsString()
-  obra_id?: string;
+  work_id?: string;
 
   @IsOptional()
   @IsString()

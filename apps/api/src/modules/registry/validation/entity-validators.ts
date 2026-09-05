@@ -110,7 +110,7 @@ export class RecordingRegistryValidationService {
     // share_type IS NULL = elegibilidade transitória de registro (ver Fase 5 / C6).
     const eligible = active.filter(isRegistryEligibleShare);
 
-    if (!recording.obra_id) {
+    if (!recording.work_id) {
       issues.push(issue(E, 'recording_work_required', 'work_id', 'Fonograma deve estar vinculado a uma obra (work_id).'));
     }
     if (!recording.titulo || !recording.titulo.trim()) {

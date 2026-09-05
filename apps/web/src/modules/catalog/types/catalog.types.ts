@@ -44,7 +44,7 @@ export interface Fonograma {
   id: string;
   user_id?: string;
   titulo?: string | null;
-  obra_id?: string | null;
+  work_id?: string | null;
   artist_id?: string | null;
   isrc?: string | null;
   duracao?: string | null;

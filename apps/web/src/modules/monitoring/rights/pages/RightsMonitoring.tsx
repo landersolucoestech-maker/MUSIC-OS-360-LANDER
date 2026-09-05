@@ -70,20 +70,20 @@ export default function RightsMonitoring() {
   const { relatorios, isLoading: loadingEcad, refetch: refetchEcad } = useEcadReports();
   const queryClient = useQueryClient();
 
-  // Resolução de catálogo por obra_id — SEMPRE por ID (GET /works/:id), nunca
+  // Resolução de catálogo por work_id — SEMPRE por ID (GET /works/:id), nunca
   // varrendo a lista truncada de useObras() (guard no-unbounded-hook-as-picker:
   // detecções/relatórios podem referenciar mais obras do que os ~50 primeiros
   // do tenant). Conjunto de ids é o real vínculo presente nos dados, não uma
   // lista arbitrária.
-  const obraIds = useMemo(() => {
+  const workIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const d of deteccoes) if (d.obra_id) ids.add(d.obra_id);
-    for (const r of relatorios) if (r.obra_id) ids.add(r.obra_id);
+    for (const d of deteccoes) if (d.work_id) ids.add(d.work_id);
+    for (const r of relatorios) if (r.work_id) ids.add(r.work_id);
     return [...ids];
   }, [deteccoes, relatorios]);
 
   const obraQueries = useQueries({
-    queries: obraIds.map((id) => ({
+    queries: workIds.map((id) => ({
       queryKey: ["byId", "obras", id],
       queryFn: () => storage.findById<ObraWithRelations & { id: string }>("obras", id),
       staleTime: 30_000,
@@ -97,14 +97,14 @@ export default function RightsMonitoring() {
     queryClient.invalidateQueries({ queryKey: ["byId", "obras"] });
   }
 
-  // Índice de catálogo por id de obra — enriquecimento real (obra_id é o
+  // Índice de catálogo por id de obra — enriquecimento real (work_id é o
   // vínculo real de content_detections/ecad_reports; não há join server-side).
   const obraIndex = useMemo(() => {
     const map = new Map<string, CatalogObraRef>();
     obraQueries.forEach((q, i) => {
       const o = q.data;
       if (!o) return;
-      map.set(obraIds[i], {
+      map.set(workIds[i], {
         id: o.id,
         titulo: o.titulo,
         compositor: o.compositor ?? null,
@@ -121,7 +121,7 @@ export default function RightsMonitoring() {
       });
     });
     return map;
-  }, [obraQueries, obraIds]);
+  }, [obraQueries, workIds]);
 
   const artistaOptions = useMemo(() => {
     const names = new Set<string>();
@@ -132,12 +132,12 @@ export default function RightsMonitoring() {
   }, [obraIndex]);
 
   const enrichedDeteccoes: DetectionRow[] = useMemo(
-    () => deteccoes.map((det) => ({ ...det, obra: det.obra_id ? obraIndex.get(det.obra_id) : undefined })),
+    () => deteccoes.map((det) => ({ ...det, obra: det.work_id ? obraIndex.get(det.work_id) : undefined })),
     [deteccoes, obraIndex],
   );
 
   const enrichedRelatorios: EcadReportRow[] = useMemo(
-    () => relatorios.map((r) => ({ ...r, obra: r.obra_id ? obraIndex.get(r.obra_id) : undefined })),
+    () => relatorios.map((r) => ({ ...r, obra: r.work_id ? obraIndex.get(r.work_id) : undefined })),
     [relatorios, obraIndex],
   );
 
@@ -401,7 +401,7 @@ export default function RightsMonitoring() {
                         <FeatureGate key={r.id} feature="moduleMonitoring" featureName="Monitoramento">
                           <TableRow>
                             <TableCell className="font-semibold">{r.periodo}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground hidden md:table-cell">{r.obra?.titulo ?? r.obra_id ?? "—"}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground hidden md:table-cell">{r.obra?.titulo ?? r.work_id ?? "—"}</TableCell>
                             <TableCell className="text-sm text-muted-foreground hidden lg:table-cell">{formatRightsDate(r.created_at)}</TableCell>
                             <TableCell className="text-right">{fmtBRL(Number(r.valor_liquido ?? r.valor_bruto ?? 0))}</TableCell>
                             <TableCell><Badge variant={STATUS_VARIANT[r.status] ?? "neutral"}>{STATUS_ECAD_LABEL[r.status] ?? r.status}</Badge></TableCell>

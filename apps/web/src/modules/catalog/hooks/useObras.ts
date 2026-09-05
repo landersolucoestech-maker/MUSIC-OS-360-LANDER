@@ -23,18 +23,18 @@ export function useObras(enabled = true, artistId?: string) {
     onMutationSuccess: {
       onCreate: (o) =>
         emit(DomainEvents.MUSIC_REGISTERED, {
-          obra_id: (o as ObraWithRelations & { id: string }).id,
+          work_id: (o as ObraWithRelations & { id: string }).id,
           titulo: o.titulo ?? "",
           org_id: orgId,
         }),
       onUpdate: (o) =>
         emit(DomainEvents.MUSIC_UPDATED, {
-          obra_id: (o as ObraWithRelations & { id: string }).id,
+          work_id: (o as ObraWithRelations & { id: string }).id,
           titulo: o.titulo ?? "",
           org_id: orgId,
         }),
       onDelete: (id) =>
-        emit(DomainEvents.MUSIC_DELETED, { obra_id: id, org_id: orgId }),
+        emit(DomainEvents.MUSIC_DELETED, { work_id: id, org_id: orgId }),
     },
   }, {
     create: { success: "Obra criada com sucesso!", error: "Erro ao criar obra" },

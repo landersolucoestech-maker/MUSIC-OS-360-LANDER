@@ -8,7 +8,7 @@ export interface Takedown {
   user_id?: string;
   titulo?: string | null;
   tipo?: string | null;
-  obra_id?: string | null;
+  work_id?: string | null;
   obra_afetada?: string | null;
   artista?: string | null;
   fonograma_id?: string | null;

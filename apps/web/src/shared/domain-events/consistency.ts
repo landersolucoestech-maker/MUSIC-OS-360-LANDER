@@ -85,9 +85,9 @@ function initConsistencyHooks(): void {
   });
 
   // ── MUSIC_REGISTERED → Valida integridade do catálogo ───────────────────
-  subscribe(DomainEvents.MUSIC_REGISTERED, ({ obra_id, titulo }) => {
+  subscribe(DomainEvents.MUSIC_REGISTERED, ({ work_id, titulo }) => {
     if (IS_DEV) {
-      console.info(`[consistency] Música registrada: "${titulo}" (${obra_id})`);
+      console.info(`[consistency] Música registrada: "${titulo}" (${work_id})`);
     }
   });
 }

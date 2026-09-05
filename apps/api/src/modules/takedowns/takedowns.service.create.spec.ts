@@ -4,7 +4,7 @@ import { TakedownsService } from './takedowns.service';
 import type { CreateTakedownDto } from './dto/takedowns.dto';
 
 /**
- * P1: create() accepted obra_id/artist_id from the DTO with no check that
+ * P1: create() accepted work_id/artist_id from the DTO with no check that
  * the referenced row belongs to the same tenant.
  */
 function makeService(queryImpl: jest.Mock) {
@@ -17,10 +17,10 @@ function makeService(queryImpl: jest.Mock) {
 }
 
 describe('TakedownsService.create — FK cross-tenant (P1)', () => {
-  it('rejeita obra_id de outro tenant (ou inexistente)', async () => {
+  it('rejeita work_id de outro tenant (ou inexistente)', async () => {
     const svc = makeService(jest.fn(async () => []));
     await expect(svc.create('tenant-1', 'user-1', {
-      obra_id: 'work-from-another-tenant', titulo: 'X',
+      work_id: 'work-from-another-tenant', titulo: 'X',
     } as unknown as CreateTakedownDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -34,7 +34,7 @@ describe('TakedownsService.create — FK cross-tenant (P1)', () => {
   it('permite quando todas as referências pertencem ao tenant', async () => {
     const svc = makeService(jest.fn(async () => [{ exists: 1 }]));
     await expect(svc.create('tenant-1', 'user-1', {
-      obra_id: 'work-1', artist_id: 'artist-1', titulo: 'X',
+      work_id: 'work-1', artist_id: 'artist-1', titulo: 'X',
     } as unknown as CreateTakedownDto)).resolves.toBeDefined();
   });
 });

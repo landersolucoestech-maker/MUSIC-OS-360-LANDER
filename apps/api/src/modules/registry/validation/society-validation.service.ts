@@ -41,7 +41,7 @@ export class SocietyValidationService {
     this.assertDb();
     const work = await this.works!.findOne({ where: { id: workId, tenant_id: tenantId } });
     if (!work || work.deleted_at) throw new NotFoundException('Obra não encontrada');
-    const shares = await this.shares!.find({ where: { tenant_id: tenantId, obra_id: workId } });
+    const shares = await this.shares!.find({ where: { tenant_id: tenantId, work_id: workId } });
     return { work, shares };
   }
 

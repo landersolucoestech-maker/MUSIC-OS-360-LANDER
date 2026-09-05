@@ -427,7 +427,7 @@ export class ExternalDataExchangeService {
     // exclui shares financeiras/pendentes (Fase 5 / C6) da submissão à sociedade externa.
     const shares = works.length
       ? (await this.shares!.createQueryBuilder('s')
-        .where('s.tenant_id = :tenantId AND s.obra_id IN (:...ids) AND s.deleted_at IS NULL AND s.share_type IS NULL', { tenantId: input.tenantId, ids: works.map((w) => w.id) })
+        .where('s.tenant_id = :tenantId AND s.work_id IN (:...ids) AND s.deleted_at IS NULL AND s.share_type IS NULL', { tenantId: input.tenantId, ids: works.map((w) => w.id) })
         .getMany()).filter(isRegistryEligibleShare)
       : [];
 

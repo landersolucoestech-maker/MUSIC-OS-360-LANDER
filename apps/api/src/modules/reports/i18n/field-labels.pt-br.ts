@@ -134,7 +134,7 @@ export const FIELD_LABELS_PT_BR = {
   gravadoraResponsavelTelefone: 'Telefone do responsável na gravadora',
   clienteId: 'Cliente (ID)',
   lancamentoId: 'Lançamento (ID)',
-  obraId: 'Obra (ID)',
+  workId: 'Obra (ID)',
   autentiqueDocId: 'Documento Autentique (ID)',
   cpf: 'CPF',
 

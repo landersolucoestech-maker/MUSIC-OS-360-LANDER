@@ -24,7 +24,7 @@ export class SharesService {
       .where('s.tenant_id = :tenantId', { tenantId })
       .andWhere('s.deleted_at IS NULL');
 
-    if (q['obra_id'])      qb.andWhere('s.obra_id = :obraId',           { obraId:      q['obra_id'] });
+    if (q['work_id'])      qb.andWhere('s.work_id = :workId',           { workId:      q['work_id'] });
     if (q['fonograma_id']) qb.andWhere('s.fonograma_id = :fonogramaId', { fonogramaId: q['fonograma_id'] });
     if (q['papel'])        qb.andWhere('s.papel = :papel',              { papel:       q['papel'] });
     if (q['direcao'])      qb.andWhere('s.direcao = :direcao',          { direcao:     q['direcao'] });
@@ -92,7 +92,7 @@ export class SharesService {
     if (d['holderDoc']  !== undefined) out['titular_doc']  = d['holderDoc'];
     if (d['role']       !== undefined) out['papel']        = d['role'];
     if (d['percentage'] !== undefined) out['percentual']   = d['percentage'];
-    if (d['workId']     !== undefined) out['obra_id']      = d['workId'];
+    if (d['workId']     !== undefined) out['work_id']      = d['workId'];
     if (d['trackId']    !== undefined) out['fonograma_id'] = d['trackId'];
     for (const k of ['holderName', 'holderDoc', 'role', 'percentage', 'workId', 'trackId', 'expectedUpdatedAt']) delete out[k];
     Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
@@ -107,16 +107,16 @@ export class SharesService {
    * registry-submission check considers.
    */
   private async sumEligiblePercentual(
-    tenantId: string, obraId: string | null, fonogramaId: string | null, excludeId?: string,
+    tenantId: string, workId: string | null, fonogramaId: string | null, excludeId?: string,
   ): Promise<number> {
-    if (!obraId && !fonogramaId) return 0;
+    if (!workId && !fonogramaId) return 0;
     const qb = this.repo!
       .createQueryBuilder('s')
       .select('COALESCE(SUM(s.percentual), 0)', 'sum')
       .where('s.tenant_id = :tenantId', { tenantId })
       .andWhere('s.deleted_at IS NULL')
       .andWhere('s.share_type IS NULL');
-    if (obraId)      qb.andWhere('s.obra_id = :obraId', { obraId });
+    if (workId)      qb.andWhere('s.work_id = :workId', { workId });
     if (fonogramaId) qb.andWhere('s.fonograma_id = :fonogramaId', { fonogramaId });
     if (excludeId)   qb.andWhere('s.id != :excludeId', { excludeId });
     const row = await qb.getRawOne<{ sum: string }>();
@@ -134,13 +134,13 @@ export class SharesService {
     const isEligible = cols['share_type'] === undefined || cols['share_type'] === null;
     if (!isEligible || cols['percentual'] == null) return;
 
-    const obraId      = (cols['obra_id'] as string | undefined) ?? null;
+    const workId      = (cols['work_id'] as string | undefined) ?? null;
     const fonogramaId = (cols['fonograma_id'] as string | undefined) ?? null;
-    if (!obraId && !fonogramaId) return;
+    if (!workId && !fonogramaId) return;
 
     const percentual = Number(cols['percentual']);
-    const existingSum = await this.sumEligiblePercentual(tenantId, obraId, fonogramaId, excludeId);
-    assertSplitBudgetNotExceeded(existingSum, percentual, obraId ? `obra ${obraId}` : `fonograma ${fonogramaId}`);
+    const existingSum = await this.sumEligiblePercentual(tenantId, workId, fonogramaId, excludeId);
+    assertSplitBudgetNotExceeded(existingSum, percentual, workId ? `obra ${workId}` : `fonograma ${fonogramaId}`);
   }
 
   async create(tenantId: string, dto: CreateShareDto): Promise<ShareEntity> {
@@ -150,7 +150,7 @@ export class SharesService {
     // artista_externo/pagador/destinatario (campos do share financeiro —
     // conceito distinto, ver Fase 5 / C6) nem preenchidos com default artificial.
     const cols = this.toColumns(dto);
-    await assertSameTenantFk(this.ds!, 'works',      cols['obra_id']      as string | undefined, tenantId, 'Obra');
+    await assertSameTenantFk(this.ds!, 'works',      cols['work_id']      as string | undefined, tenantId, 'Obra');
     await assertSameTenantFk(this.ds!, 'phonograms', cols['fonograma_id'] as string | undefined, tenantId, 'Fonograma');
     await this.assertSplitBudget(tenantId, cols);
     const entity = this.repo!.create({ tenant_id: tenantId, ...cols } as any);
@@ -160,11 +160,11 @@ export class SharesService {
   async update(tenantId: string, id: string, dto: UpdateShareDto): Promise<ShareEntity> {
     const current = await this.findById(tenantId, id);
     const cols = this.toColumns(dto);
-    // Merge with the current row so an update that omits obra_id/fonograma_id/
+    // Merge with the current row so an update that omits work_id/fonograma_id/
     // share_type (unchanged) still validates against the right scope.
     await this.assertSplitBudget(tenantId, {
       share_type:   cols['share_type']   !== undefined ? cols['share_type']   : current.share_type,
-      obra_id:      cols['obra_id']      !== undefined ? cols['obra_id']      : current.obra_id,
+      work_id:      cols['work_id']      !== undefined ? cols['work_id']      : current.work_id,
       fonograma_id: cols['fonograma_id'] !== undefined ? cols['fonograma_id'] : current.fonograma_id,
       percentual:   cols['percentual']   !== undefined ? cols['percentual']   : current.percentual,
     }, id);

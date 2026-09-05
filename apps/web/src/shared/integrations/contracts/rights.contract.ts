@@ -105,7 +105,7 @@ export interface RegisterFonogramaInput {
   /** ISRC já existente (se disponível); senão será gerado pela entidade */
   isrc?: string;
   /** Obra vinculada (ISWC ou external_id) */
-  obra_id?: string;
+  work_id?: string;
   /** ID local do fonograma no catálogo */
   local_id: string;
 }
@@ -144,7 +144,7 @@ export interface RegistrationHistoryEntry {
 
 export interface GenerateISWCInput {
   /** ID local da obra no catálogo */
-  local_obra_id: string;
+  local_work_id: string;
   titulo: string;
   compositores: string[];
   /** Se já existe ISWC, retorna o existente */
@@ -153,7 +153,7 @@ export interface GenerateISWCInput {
 
 export interface GenerateISWCResult {
   iswc: string;
-  local_obra_id: string;
+  local_work_id: string;
   source: "existing" | "generated" | "assigned_by_entity";
   generated_at: string;
 }
@@ -192,7 +192,7 @@ export interface ArrecadacaoEntry {
   id: string;
   entity: RightsEntityId;
   tipo: ArrecadacaoTipo;
-  obra_id?: string | null;
+  work_id?: string | null;
   fonograma_id?: string | null;
   periodo: string;                // "YYYY-MM"
   valor_bruto_cents: number;

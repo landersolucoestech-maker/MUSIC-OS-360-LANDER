@@ -9,7 +9,7 @@ const REMUNERATION_TYPES = ['FIXED', 'PERCENTAGE', 'FIXED_PLUS_PERCENTAGE'] as c
 /** Contrato canônico do formulário LicencaFormModal. */
 export class CreateLicenseDto {
   @ApiProperty() @IsString() @MaxLength(500) titulo!: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() obra_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() work_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) obra_musical?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
@@ -49,7 +49,7 @@ export class QueryLicenseDto extends PaginationDto {
    * abrange dois status (Task H). */
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() obra_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() work_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() cliente_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() midia_destino?: string;

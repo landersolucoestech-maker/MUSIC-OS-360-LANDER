@@ -37,7 +37,7 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
   // Busca DIRETO por ID (GET /works/:id, GET /clients/:id) — não depende de
   // obra/cliente estarem entre os primeiros 50 carregados por useObras() /
   // uma listagem de clientes sem filtro (Task J).
-  const { entity: obra } = useEntityById<Obra>("obras", open ? licenca?.obra_id ?? undefined : undefined);
+  const { entity: obra } = useEntityById<Obra>("obras", open ? licenca?.work_id ?? undefined : undefined);
   const { entity: cliente } = useEntityById<ClienteOption>("clientes", open ? licenca?.cliente_id ?? undefined : undefined);
 
   if (!licenca) return null;

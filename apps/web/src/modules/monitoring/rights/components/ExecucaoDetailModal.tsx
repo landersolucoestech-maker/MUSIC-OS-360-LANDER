@@ -115,8 +115,8 @@ export function ExecucaoDetailModal({ exec, open, onOpenChange }: Props) {
                 <div>
                   <p className="text-sm font-semibold text-destructive">Obra não encontrada no catálogo</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {exec.obra_id
-                      ? <>Esta detecção referencia a obra <code className="font-sans">{exec.obra_id}</code>, que não foi localizada no catálogo interno.</>
+                    {exec.work_id
+                      ? <>Esta detecção referencia a obra <code className="font-sans">{exec.work_id}</code>, que não foi localizada no catálogo interno.</>
                       : "Esta detecção não possui obra vinculada. Associe-a a uma obra no Catálogo para habilitar a conciliação ECAD."}
                   </p>
                 </div>

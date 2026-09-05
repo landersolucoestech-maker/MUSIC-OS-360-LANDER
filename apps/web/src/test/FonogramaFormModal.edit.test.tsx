@@ -138,7 +138,7 @@ describe("FonogramaFormModal edit mode", () => {
   const baseFonograma = {
     id: "fono-1",
     titulo: "Canção Vinculada",
-    obra_id: "obra-1",
+    work_id: "obra-1",
     isrc: "BR-ABC-25-12345",
     duracao: "04:20",
     gravadora: "Gravadora X",
@@ -211,7 +211,7 @@ describe("FonogramaFormModal edit mode", () => {
 
     const callArg = updateFonogramaMock.mock.calls[0][0];
     expect(callArg.id).toBe("fono-1");
-    expect(callArg.obra_id).toBe("obra-1");
+    expect(callArg.work_id).toBe("obra-1");
     expect(callArg.isrc).toBe("BR-ABC-25-99999");
     expect(callArg.duracao).toBe("04:20");
     // The merged form persists Gravadora X via the agregadora field (mapped from gravadora)

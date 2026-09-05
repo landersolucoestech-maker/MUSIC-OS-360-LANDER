@@ -261,7 +261,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
   const [viewArtista, setViewArtista] = useState<Artista | null>(null);
 
   // Build initial obra vinculada from form-shape OR DB-shape (snake_case).
-  // Em registros que vêm do banco apenas com obra_id, a hidratação completa
+  // Em registros que vêm do banco apenas com work_id, a hidratação completa
   // acontece no useEffect abaixo a partir da lista de obras.
   const toObraVinculada = (o: ObraVinculadaInput | null | undefined): ObraVinculada | null => {
     if (!o) return null;
@@ -387,14 +387,14 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, fonograma]);
 
-  // Hidrata a obra vinculada a partir de fonograma.obra_id — busca DIRETO por
+  // Hidrata a obra vinculada a partir de fonograma.work_id — busca DIRETO por
   // ID (GET /works/:id via useEntityById), não depende da obra estar entre
   // os primeiros registros carregados por useObras() (Task I: antes a obra
   // ficava presa no placeholder "Obra vinculada" para sempre se estivesse
   // fora dos primeiros 50 do tenant).
   const hydratedObraId: string | undefined =
-    (fonograma?.obra_id as string | undefined) ??
-    (fonograma as { obraId?: string } | null | undefined)?.obraId;
+    (fonograma?.work_id as string | undefined) ??
+    (fonograma as { workId?: string } | null | undefined)?.workId;
   const { entity: hydratedObra } = useEntityById<ObraWithRelations>(
     "obras",
     open && !fonograma?.obraVinculada ? hydratedObraId : undefined,
@@ -580,7 +580,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
       status: normalizeStatusForDb(status),
       gravadora: gravadora || null,
       observacoes: observacoes || null,
-      obra_id: obraVinculada && typeof obraVinculada.id === "string" ? obraVinculada.id : null,
+      work_id: obraVinculada && typeof obraVinculada.id === "string" ? obraVinculada.id : null,
       participacao: participacao as unknown as Json,
       arquivo_audio: arquivoAudio as unknown as Json,
     };

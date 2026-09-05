@@ -19,7 +19,7 @@ export class EcadReportsService {
       .where('r.tenant_id = :tenantId', { tenantId })
       .andWhere('r.deleted_at IS NULL');
 
-    if (query.obra_id) qb.andWhere('r.obra_id = :obraId',    { obraId:  query.obra_id });
+    if (query.work_id) qb.andWhere('r.work_id = :workId',    { workId:  query.work_id });
     if (query.periodo) qb.andWhere('r.periodo = :periodo',   { periodo: query.periodo });
     if (query.status)  qb.andWhere('r.status = :status',     { status:  query.status });
 

@@ -11,7 +11,7 @@ export interface Licenca {
   user_id?: string;
   titulo: string;
   // Relações (fonte da verdade)
-  obra_id?: string | null;
+  work_id?: string | null;
   cliente_id?: string | null;
   projeto?: string | null;
   tipo?: LicencaTipo | string | null;

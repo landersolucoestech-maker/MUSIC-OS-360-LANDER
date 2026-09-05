@@ -104,8 +104,8 @@ export interface FonogramaViewData {
   // Composite
   obraVinculada?: ObraVinculadaView | null;
   obra?: ObraVinculadaView | null;
-  obra_id?: string | null;
-  obraId?: string | null;
+  work_id?: string | null;
+  workId?: string | null;
   participacao?: ParticipacaoView | null;
   arquivoAudio?: ArquivoAudioView | null;
   arquivo_audio?: ArquivoAudioView | null;
@@ -212,7 +212,7 @@ export function FonogramaViewModal({
   // objeto inline — não depende da obra estar entre os primeiros registros
   // carregados (Task J: antes usava useObras() sem filtro, truncado em 50).
   const inlineObra = fonograma?.obraVinculada ?? fonograma?.obra ?? null;
-  const lookupObraId = !inlineObra ? (fonograma?.obra_id ?? fonograma?.obraId) : undefined;
+  const lookupObraId = !inlineObra ? (fonograma?.work_id ?? fonograma?.workId) : undefined;
   const { entity: foundObra } = useEntityById<ObraWithRelations>("obras", open ? lookupObraId : undefined);
 
   if (!fonograma) return null;
@@ -227,7 +227,7 @@ export function FonogramaViewModal({
     return undefined;
   };
 
-  // Resolve obra vinculada: aceita objeto inline (legacy) ou resolve via obra_id.
+  // Resolve obra vinculada: aceita objeto inline (legacy) ou resolve via work_id.
   let obraVinculada: ObraVinculadaView | null = inlineObra;
   if (!obraVinculada && lookupObraId) {
     obraVinculada = foundObra

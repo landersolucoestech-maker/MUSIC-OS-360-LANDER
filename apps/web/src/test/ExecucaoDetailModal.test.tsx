@@ -14,7 +14,7 @@ import type { DetectionRow } from "@/modules/monitoring/rights/components/Execuc
 
 const BASE_EXEC: DetectionRow = {
   id: "det-001",
-  obra_id: "obra-001",
+  work_id: "obra-001",
   artist_id: null,
   plataforma: "YouTube",
   titulo_detectado: "Noite de Luz",
@@ -44,7 +44,7 @@ const BASE_EXEC: DetectionRow = {
 
 const ORPHAN_EXEC: DetectionRow = {
   id: "det-011",
-  obra_id: null,
+  work_id: null,
   artist_id: null,
   plataforma: "TikTok",
   titulo_detectado: "Track Desconhecida",

@@ -3,7 +3,7 @@
  * Espelham os campos reais de content_detections e ecad_reports
  * (apps/api/src/database/entities.ts) — nenhum campo aqui existe apenas em
  * mock. Enriquecimento de catálogo (compositor/editora/iswc/cod_ecad) é
- * resolvido em runtime via obra_id contra o catálogo real (useObras()).
+ * resolvido em runtime via work_id contra o catálogo real (useObras()).
  */
 
 export type DetectionStatus = "pendente" | "em_andamento" | "concluido" | "rejeitado" | "arquivado";
@@ -27,7 +27,7 @@ export interface CatalogObraRef {
 
 export interface ContentDetection {
   id: string;
-  obra_id: string | null;
+  work_id: string | null;
   artist_id: string | null;
   plataforma: string;
   titulo_detectado: string | null;
@@ -43,7 +43,7 @@ export interface ContentDetection {
 
 export interface EcadReport {
   id: string;
-  obra_id: string | null;
+  work_id: string | null;
   periodo: string;
   tipo: string;
   valor_bruto: string | null;
