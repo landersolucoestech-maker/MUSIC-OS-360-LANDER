@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseUUIDPipe
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }   from '../../core/decorators/current-user.decorator';
+import { CurrentMember } from '../../core/decorators/current-member.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
 import { UsersService } from './users.service';
@@ -18,8 +19,13 @@ export class UsersController {
   create(@CurrentTenant() t: { id: string }, @CurrentUser() u: { userId: string }, @Body() dto: CreateUserDto) { return this.svc.create(t.id, dto, u.userId); }
 
   @Post('invitations') @RequireRole('admin') @Audit('user.invited') @ApiOperation({ summary: 'Convidar utilizador por email' })
-  invite(@CurrentTenant() t: { id: string }, @CurrentUser() u: { userId: string; orgRole?: string }, @Body() dto: InviteUserDto) {
-    return this.svc.invite(t.id, dto.email, dto.roleId, u.userId, u.orgRole);
+  invite(
+    @CurrentTenant() t: { id: string },
+    @CurrentUser() u: { userId: string },
+    @CurrentMember() member: { role?: string } | undefined,
+    @Body() dto: InviteUserDto,
+  ) {
+    return this.svc.invite(t.id, dto.email, dto.roleId, u.userId, member?.role);
   }
 
   @Get('invitations') @RequireRole('admin') @ApiOperation({ summary: 'Listar convites do tenant' })
@@ -30,19 +36,20 @@ export class UsersController {
   @Post('invitations/:id/resend') @RequireRole('admin') @Audit('user.invitation_resent')
   resendInvitation(
     @CurrentTenant() t: { id: string },
-    @CurrentUser() u: { userId: string; orgRole?: string },
+    @CurrentUser() u: { userId: string },
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.svc.resendInvitation(t.id, id, u.userId, u.orgRole);
+    return this.svc.resendInvitation(t.id, id, u.userId, member?.role);
   }
 
   @Delete('invitations/:id') @RequireRole('admin') @Audit('user.invitation_cancelled')
   cancelInvitation(
     @CurrentTenant() t: { id: string },
-    @CurrentUser() u: { orgRole?: string },
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.svc.cancelInvitation(t.id, id, u.orgRole);
+    return this.svc.cancelInvitation(t.id, id, member?.role);
   }
 
   @Get(':id') @RequireRole('manager') @ApiOperation({ summary: 'Obter utilizador' })
@@ -56,10 +63,10 @@ export class UsersController {
   @Patch(':id/role') @RequireRole('admin') @Audit('user.role_changed') @ApiOperation({ summary: 'Alterar role do utilizador respeitando hierarquia' })
   assignRole(
     @CurrentTenant() t: { id: string },
-    @CurrentUser() u: { orgRole?: string },
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AssignRoleDto,
-  ) { return this.svc.assignRole(t.id, id, dto.role, u.orgRole, dto.expectedUpdatedAt); }
+  ) { return this.svc.assignRole(t.id, id, dto.role, member?.role, dto.expectedUpdatedAt); }
 
   @Patch(':id/status') @RequireRole('owner') @Audit('user.status_changed') @ApiOperation({ summary: 'Activar/desactivar/suspender utilizador (protege o último owner)' })
   setStatus(

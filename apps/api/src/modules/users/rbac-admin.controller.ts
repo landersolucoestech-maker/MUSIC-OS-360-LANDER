@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Audit } from '../../core/interceptors/audit.interceptor';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { CurrentMember } from '../../core/decorators/current-member.decorator';
 import { RequireRole } from '../../core/decorators/roles.decorator';
 import type { JwtAuth } from '../../core/guards/auth.guard';
 import {
@@ -55,9 +56,10 @@ export class RbacAdminController {
   createRole(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
+    @CurrentMember() member: { role?: string } | undefined,
     @Body() dto: CreateTenantRoleDto,
   ) {
-    return this.service.createRole(tenant.id, user.userId, user.orgRole ?? 'viewer', dto);
+    return this.service.createRole(tenant.id, user.userId, member?.role ?? 'viewer', dto);
   }
 
   @Patch('roles/:roleId')
@@ -65,10 +67,11 @@ export class RbacAdminController {
   updateRole(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('roleId', ParseUUIDPipe) roleId: string,
     @Body() dto: UpdateTenantRoleDto,
   ) {
-    return this.service.updateRole(tenant.id, user.userId, user.orgRole ?? 'viewer', roleId, dto);
+    return this.service.updateRole(tenant.id, user.userId, member?.role ?? 'viewer', roleId, dto);
   }
 
   @Post('roles/:roleId/duplicate')
@@ -76,10 +79,11 @@ export class RbacAdminController {
   duplicateRole(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('roleId', ParseUUIDPipe) roleId: string,
     @Body() dto: DuplicateTenantRoleDto,
   ) {
-    return this.service.duplicateRole(tenant.id, user.userId, user.orgRole ?? 'viewer', roleId, dto);
+    return this.service.duplicateRole(tenant.id, user.userId, member?.role ?? 'viewer', roleId, dto);
   }
 
   @Post('roles/:roleId/archive')
@@ -87,9 +91,10 @@ export class RbacAdminController {
   archiveRole(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('roleId', ParseUUIDPipe) roleId: string,
   ) {
-    return this.service.archiveRole(tenant.id, user.userId, user.orgRole ?? 'viewer', roleId);
+    return this.service.archiveRole(tenant.id, user.userId, member?.role ?? 'viewer', roleId);
   }
 
   @Post('roles/:roleId/restore')
@@ -97,9 +102,10 @@ export class RbacAdminController {
   restoreRole(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('roleId', ParseUUIDPipe) roleId: string,
   ) {
-    return this.service.restoreRole(tenant.id, user.userId, user.orgRole ?? 'viewer', roleId);
+    return this.service.restoreRole(tenant.id, user.userId, member?.role ?? 'viewer', roleId);
   }
 
   @Post('roles/:roleId/permissions/:permissionId')
@@ -107,13 +113,14 @@ export class RbacAdminController {
   grant(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('roleId', ParseUUIDPipe) roleId: string,
     @Param('permissionId', ParseUUIDPipe) permissionId: string,
   ) {
     return this.service.grant(
       tenant.id,
       user.userId,
-      user.orgRole ?? 'viewer',
+      member?.role ?? 'viewer',
       roleId,
       permissionId,
     );
@@ -124,13 +131,14 @@ export class RbacAdminController {
   revoke(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('roleId', ParseUUIDPipe) roleId: string,
     @Param('permissionId', ParseUUIDPipe) permissionId: string,
   ) {
     return this.service.revoke(
       tenant.id,
       user.userId,
-      user.orgRole ?? 'viewer',
+      member?.role ?? 'viewer',
       roleId,
       permissionId,
     );
@@ -141,10 +149,11 @@ export class RbacAdminController {
   addInheritance(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('roleId', ParseUUIDPipe) roleId: string,
     @Body() dto: RoleInheritanceDto,
   ) {
-    return this.service.addInheritance(tenant.id, user.userId, user.orgRole ?? 'viewer', roleId, dto.parentRoleId);
+    return this.service.addInheritance(tenant.id, user.userId, member?.role ?? 'viewer', roleId, dto.parentRoleId);
   }
 
   @Delete('roles/:roleId/inheritance/:parentRoleId')
@@ -152,9 +161,10 @@ export class RbacAdminController {
   removeInheritance(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: JwtAuth,
+    @CurrentMember() member: { role?: string } | undefined,
     @Param('roleId', ParseUUIDPipe) roleId: string,
     @Param('parentRoleId', ParseUUIDPipe) parentRoleId: string,
   ) {
-    return this.service.removeInheritance(tenant.id, user.userId, user.orgRole ?? 'viewer', roleId, parentRoleId);
+    return this.service.removeInheritance(tenant.id, user.userId, member?.role ?? 'viewer', roleId, parentRoleId);
   }
 }
