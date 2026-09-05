@@ -3,15 +3,18 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ShareEntity } from '../../database/entities';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
+import { assertSameTenantFk } from '../../common/persistence/assert-same-tenant-fk.util';
 import { assertSplitBudgetNotExceeded } from './share-split-invariant.util';
 import type { CreateShareDto, UpdateShareDto, QueryShareDto } from './dto/shares.dto';
 
 @Injectable()
 export class SharesService {
   private readonly repo: Repository<ShareEntity> | null = null;
+  private readonly ds: DataSource | null;
 
   constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
     if (ds) this.repo = ds.getRepository(ShareEntity);
+    this.ds = ds;
   }
 
   private baseQb(tenantId: string, query: QueryShareDto) {
@@ -147,6 +150,8 @@ export class SharesService {
     // artista_externo/pagador/destinatario (campos do share financeiro —
     // conceito distinto, ver Fase 5 / C6) nem preenchidos com default artificial.
     const cols = this.toColumns(dto);
+    await assertSameTenantFk(this.ds!, 'works',      cols['obra_id']      as string | undefined, tenantId, 'Obra');
+    await assertSameTenantFk(this.ds!, 'phonograms', cols['fonograma_id'] as string | undefined, tenantId, 'Fonograma');
     await this.assertSplitBudget(tenantId, cols);
     const entity = this.repo!.create({ tenant_id: tenantId, ...cols } as any);
     return this.repo!.save(entity as any) as any;

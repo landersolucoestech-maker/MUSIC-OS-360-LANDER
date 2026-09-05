@@ -4,14 +4,17 @@ import { DATA_SOURCE } from '../../database/database.module';
 import { LicenseEntity } from '../../database/entities';
 import { groupCount, type GroupStatsResult } from '../../common/stats/group-count.util';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
+import { assertSameTenantFk } from '../../common/persistence/assert-same-tenant-fk.util';
 import type { CreateLicenseDto, UpdateLicenseDto, QueryLicenseDto } from './dto/licensing.dto';
 
 @Injectable()
 export class LicensingService {
   private readonly repo: Repository<LicenseEntity> | null;
+  private readonly ds: DataSource | null;
 
   constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
     this.repo = ds?.getRepository(LicenseEntity) ?? null;
+    this.ds = ds;
   }
 
   private get repository(): Repository<LicenseEntity> {
@@ -116,9 +119,14 @@ export class LicensingService {
     userId: string,
     dto: CreateLicenseDto,
   ): Promise<Record<string, unknown>> {
+    const payload = this.normalizePayload(dto);
+    await assertSameTenantFk(this.ds!, 'works',   payload['obra_id']    as string | undefined, tenantId, 'Obra');
+    await assertSameTenantFk(this.ds!, 'artists', payload['artista_id'] as string | undefined, tenantId, 'Artista');
+    await assertSameTenantFk(this.ds!, 'clients', payload['cliente_id'] as string | undefined, tenantId, 'Cliente');
+
     const item = this.repository.create({
       tenant_id: tenantId,
-      ...this.normalizePayload(dto),
+      ...payload,
       created_by: userId,
       updated_by: userId,
     } as Partial<LicenseEntity>);

@@ -45,9 +45,15 @@ function makeRepo(opts: { existingSum?: number; findByIdRow?: Record<string, unk
   };
 }
 
-function makeService(opts: Parameters<typeof makeRepo>[0] = {}) {
+function makeService(
+  opts: Parameters<typeof makeRepo>[0] = {},
+  queryImpl = jest.fn(async () => [{ exists: 1 }]),
+) {
   const repo = makeRepo(opts);
-  const ds = { getRepository: jest.fn(() => repo) } as never;
+  // query() backs assertSameTenantFk's cross-tenant FK ownership check — a
+  // truthy row means "found, same tenant", so these split-budget-focused
+  // tests aren't coupled to that separate check.
+  const ds = { getRepository: jest.fn(() => repo), query: queryImpl } as never;
   const svc = new SharesService(ds);
   return { svc, repo };
 }
@@ -120,5 +126,28 @@ describe('SharesService — split budget invariant (P1)', () => {
       expect(sumQb).toBeDefined();
       expect(sumQb!['andWhere']).toHaveBeenCalledWith('s.id != :excludeId', { excludeId: 'share-1' });
     });
+  });
+});
+
+describe('SharesService.create — FK cross-tenant (P1)', () => {
+  it('rejeita obra_id (workId) de outro tenant (ou inexistente)', async () => {
+    const { svc } = makeService({}, jest.fn(async () => []));
+    await expect(svc.create('tenant-1', {
+      holderName: 'X', percentage: 10, workId: 'work-from-another-tenant',
+    } as unknown as CreateShareDto)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejeita fonograma_id (trackId) de outro tenant (ou inexistente)', async () => {
+    const { svc } = makeService({}, jest.fn(async () => []));
+    await expect(svc.create('tenant-1', {
+      holderName: 'X', percentage: 10, trackId: 'track-from-another-tenant',
+    } as unknown as CreateShareDto)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('permite quando a referência pertence ao tenant', async () => {
+    const { svc } = makeService({}, jest.fn(async () => [{ exists: 1 }]));
+    await expect(svc.create('tenant-1', {
+      holderName: 'X', percentage: 10, workId: 'work-1',
+    } as unknown as CreateShareDto)).resolves.toBeDefined();
   });
 });

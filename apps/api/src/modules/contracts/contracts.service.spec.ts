@@ -18,8 +18,11 @@ function makeRepo() {
   };
 }
 
-function makeService(repo = makeRepo()) {
-  const ds = { getRepository: jest.fn(() => repo) } as never;
+function makeService(repo = makeRepo(), queryImpl = jest.fn(async () => [{ exists: 1 }])) {
+  // query() backs assertSameTenantFk's cross-tenant FK ownership check — a
+  // truthy row by default means "found, same tenant", so these pre-existing
+  // create() tests (which aren't about that check) keep passing unchanged.
+  const ds = { getRepository: jest.fn(() => repo), query: queryImpl } as never;
   const workflowService = {} as never;
   const events = { emitTyped: jest.fn() } as never;
   const planLimit = { enforce: jest.fn(async () => undefined) } as never;
@@ -110,7 +113,7 @@ describe('ContractsService.create — template_id/signers/tipo default (pré-req
 // ── Fase 5 / C1: consolidação de aliases (novos testes; helpers próprios,
 //    não reutilizam makeRepo/makeService acima para não alterar o pré-requisito) ──
 
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import type { UpdateContractDto } from './dto/update-contract.dto';
 import type { QueryContractDto } from './dto/query-contract.dto';
 import { Logger } from '@nestjs/common';
@@ -140,9 +143,12 @@ function makeRepoC1(findRows: Record<string, unknown>[] = []) {
   };
 }
 
-function makeServiceC1(findRows: Record<string, unknown>[] = []) {
+function makeServiceC1(
+  findRows: Record<string, unknown>[] = [],
+  queryImpl = jest.fn(async () => [{ exists: 1 }]),
+) {
   const repo = makeRepoC1(findRows);
-  const ds = { getRepository: jest.fn(() => repo) } as never;
+  const ds = { getRepository: jest.fn(() => repo), query: queryImpl } as never;
   const workflowService = { getAllowedTransitions: jest.fn(() => []) } as never;
   const events = { emitTyped: jest.fn() } as never;
   const planLimit = { enforce: jest.fn(async () => undefined) } as never;
@@ -418,5 +424,30 @@ describe('ContractsService.findById — não afetado pelo C1 (regressão)', () =
   it('continua lançando NotFoundException quando o contrato não existe', async () => {
     const { svc } = makeServiceC1([]);
     await expect(svc.findById('tenant-1', 'inexistente')).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('ContractsService.create — FK cross-tenant (P1)', () => {
+  it('rejeita artista_id que não pertence ao tenant (ou não existe)', async () => {
+    const { svc } = makeServiceC1([], jest.fn(async () => []));
+    await expect(svc.create('tenant-1', 'user-1', {
+      titulo: 'X', tipo: 'gravacao', artista_id: '11111111-1111-4111-8111-111111111111',
+    } as unknown as CreateContractDto)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejeita cliente_id que não pertence ao tenant (ou não existe)', async () => {
+    const { svc } = makeServiceC1([], jest.fn(async () => []));
+    await expect(svc.create('tenant-1', 'user-1', {
+      titulo: 'X', tipo: 'gravacao', cliente_id: '22222222-2222-4222-8222-222222222222',
+    } as unknown as CreateContractDto)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('permite quando ambos pertencem ao tenant', async () => {
+    const { svc } = makeServiceC1([], jest.fn(async () => [{ exists: 1 }]));
+    await expect(svc.create('tenant-1', 'user-1', {
+      titulo: 'X', tipo: 'gravacao',
+      artista_id: '11111111-1111-4111-8111-111111111111',
+      cliente_id: '22222222-2222-4222-8222-222222222222',
+    } as unknown as CreateContractDto)).resolves.toBeDefined();
   });
 });

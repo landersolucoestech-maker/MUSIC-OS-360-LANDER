@@ -5,13 +5,16 @@ import { TakedownEntity } from '../../database/entities';
 import { groupCount, type GroupStatsResult } from '../../common/stats/group-count.util';
 import type { CreateTakedownDto, UpdateTakedownDto, QueryTakedownDto } from './dto/takedowns.dto';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
+import { assertSameTenantFk } from '../../common/persistence/assert-same-tenant-fk.util';
 
 @Injectable()
 export class TakedownsService {
   private readonly repo: Repository<TakedownEntity> | null;
+  private readonly ds: DataSource | null;
 
   constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
     this.repo = ds?.getRepository(TakedownEntity) ?? null;
+    this.ds = ds;
   }
 
   private get repository(): Repository<TakedownEntity> {
@@ -68,6 +71,9 @@ export class TakedownsService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateTakedownDto): Promise<TakedownEntity> {
+    await assertSameTenantFk(this.ds!, 'works',   dto.obra_id,    tenantId, 'Obra');
+    await assertSameTenantFk(this.ds!, 'artists', dto.artista_id, tenantId, 'Artista');
+
     const entity = this.repository.create({
       tenant_id: tenantId,
       ...dto,

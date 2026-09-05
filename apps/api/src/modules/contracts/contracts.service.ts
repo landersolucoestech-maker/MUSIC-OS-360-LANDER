@@ -4,6 +4,7 @@ import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialE
 import { DATA_SOURCE } from '../../database/database.module';
 import { ContractEntity, ArtistEntity, ClientEntity } from '../../database/entities';
 import { casUpdate } from '../../common/persistence/optimistic-update.util';
+import { assertSameTenantFk } from '../../common/persistence/assert-same-tenant-fk.util';
 import { groupCount, type GroupStatsResult } from '../../common/stats/group-count.util';
 import type { CreateContractDto } from './dto/create-contract.dto';
 import type { UpdateContractDto } from './dto/update-contract.dto';
@@ -186,6 +187,9 @@ export class ContractsService {
     const normalized = this.buildEntityPayload(rest, resolved);
     // contracts.tipo é NOT NULL; o wizard pode não ter tipo de serviço definido.
     if (normalized['tipo'] == null) normalized['tipo'] = 'outro';
+
+    await assertSameTenantFk(this.ds!, 'artists', normalized['artista_id'] as string | undefined, tenantId, 'Artista');
+    await assertSameTenantFk(this.ds!, 'clients', normalized['cliente_id'] as string | undefined, tenantId, 'Cliente');
 
     const entity = this.repo!.create({
       tenant_id:  tenantId,
