@@ -40,14 +40,6 @@ export class ContractExpiryScheduler implements OnApplicationBootstrap {
   onApplicationBootstrap(): void {
     if (!this.repo || !this.events) return;
 
-    // Parte 66: on Vercel, this class has no long-lived process to hold a
-    // setInterval — the same run() is now triggered externally by Vercel
-    // Cron via POST /internal/cron/contract-expiry (see
-    // contract-expiry-cron.controller.ts). `VERCEL` is set automatically by
-    // the platform on every deployment; self-hosted/Docker deployments keep
-    // the original in-process schedule below unchanged.
-    if (process.env['VERCEL']) return;
-
     this.runCheck().catch((err: unknown) =>
       this.logger.warn(`ContractExpiryScheduler initial run failed: ${String(err)}`),
     );

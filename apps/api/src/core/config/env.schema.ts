@@ -491,20 +491,6 @@ export const envSchema = z.object({
   // honestamente indisponível (503) em vez de fingir que enviou.
   PLATFORM_CONTACT_RECIPIENT_EMAIL: z.string().email().optional(),
 
-  // Parte 66: authenticates Vercel Cron requests to the /internal/cron/*
-  // endpoints (CronAuthGuard) — replaces the setInterval-based schedulers
-  // that ran inside the long-lived Node process, which Vercel Functions
-  // cannot host. Vercel automatically sends `Authorization: Bearer
-  // <CRON_SECRET>` on requests it triggers when this env var is configured
-  // on the project.
-  CRON_SECRET: z
-    .string()
-    .optional()
-    .refine(
-      (val) => process.env['NODE_ENV'] !== 'production' || !!val,
-      { message: 'CRON_SECRET is required in production to authenticate /internal/cron/* endpoints' },
-    ),
-
   SENTRY_DSN: z
     .string()
     .url({ message: 'SENTRY_DSN must be a valid URL' })

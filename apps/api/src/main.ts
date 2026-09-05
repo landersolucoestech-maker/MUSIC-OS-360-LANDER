@@ -66,9 +66,7 @@ process.on('unhandledRejection', (reason: unknown) => {
 });
 
 /**
- * Traditional long-running server entrypoint — Docker/self-hosted
- * deployments only. Vercel Functions use api/index.ts instead, which calls
- * createApp() directly and never reaches app.listen().
+ * Long-running server entrypoint — Docker/self-hosted deployment.
  */
 async function bootstrap() {
   const logger = new Logger('Bootstrap');

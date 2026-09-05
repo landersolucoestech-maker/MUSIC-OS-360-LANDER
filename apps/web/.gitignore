@@ -1,4 +1,3 @@
-.vercel
 .env*
 # .env.staging/.env.production are placeholder-only templates, safe to
 # version — same exception pattern as the root .gitignore. .env.development

@@ -2,18 +2,14 @@
  * create-app.ts
  *
  * Shared Nest application setup — extracted from main.ts's bootstrap() so
- * the traditional long-running server (main.ts, Docker/self-hosted) and the
- * Vercel serverless entrypoint (api/index.ts) apply the EXACT same
- * middleware, pipes, filters, interceptors, CORS, and env validation.
- * Duplicating this between two entrypoints would risk one of them silently
- * missing a security header or validation rule added to the other later.
+ * app creation (middleware, pipes, filters, interceptors, CORS, and env
+ * validation) has a single source of truth, testable independently of
+ * actually starting the HTTP listener.
  *
- * Does NOT call app.listen() — that's the caller's job, and Vercel Functions
- * must never call it (Vercel owns the HTTP listener; see api/index.ts).
+ * Does NOT call app.listen() — that's the caller's (main.ts's) job.
  */
 
 import { NestFactory } from '@nestjs/core';
-import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe, Logger, RequestMethod, INestApplication, LogLevel } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -21,7 +17,6 @@ import helmet from 'helmet';
 // import quebra em runtime sob ts-node (esModuleInterop off). Funciona sob tsx e ts-node.
 import compression = require('compression');
 import * as express from 'express';
-import type { Express } from 'express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
@@ -30,8 +25,7 @@ import { collectSupabaseEnvErrors } from './core/config/env.schema';
 import { isProdLike } from './core/config/runtime-environment';
 
 /** Same fail-closed checks main.ts's bootstrap() always ran before creating
- * the app — moved here so the Vercel entrypoint gets them too, for free,
- * instead of needing its own copy that could drift out of sync. */
+ * the app — kept separate so it stays testable on its own. */
 export function assertApiRuntimeEnv(logger: Logger): void {
   const nodeEnv = process.env.NODE_ENV ?? 'development';
   const prodLike = isProdLike(nodeEnv);
@@ -52,13 +46,7 @@ export function assertApiRuntimeEnv(logger: Logger): void {
   }
 }
 
-/**
- * @param expressInstance When provided, Nest attaches to this existing
- *   Express app instead of creating its own — required for the Vercel
- *   entrypoint, which needs a direct handle to call `server(req, res)`
- *   itself rather than an internal instance it can't reach.
- */
-export async function createApp(expressInstance?: Express): Promise<INestApplication> {
+export async function createApp(): Promise<INestApplication> {
   const logger = new Logger('Bootstrap');
   assertApiRuntimeEnv(logger);
 
@@ -78,9 +66,7 @@ export async function createApp(expressInstance?: Express): Promise<INestApplica
     rawBody: true,
   };
 
-  const app = expressInstance
-    ? await NestFactory.create(AppModule, new ExpressAdapter(expressInstance), nestOptions)
-    : await NestFactory.create(AppModule, nestOptions);
+  const app = await NestFactory.create(AppModule, nestOptions);
 
   // ── Segurança ──────────────────────────────────────────────────────────────
   app.use(
@@ -173,11 +159,6 @@ export async function createApp(expressInstance?: Express): Promise<INestApplica
       { path: 'metrics', method: RequestMethod.GET },
       { path: 'admin/queues', method: RequestMethod.ALL },
       { path: 'admin/queues/(.*)', method: RequestMethod.ALL },
-      // Vercel Cron hits these directly (see vercel.json's `crons`) with a
-      // GET request — Vercel Cron always invokes via GET, never POST —
-      // keeping them unprefixed means the cron config doesn't need to know
-      // about api/v1, matching Vercel's own docs examples.
-      { path: 'internal/cron/(.*)', method: RequestMethod.GET },
     ],
   });
 

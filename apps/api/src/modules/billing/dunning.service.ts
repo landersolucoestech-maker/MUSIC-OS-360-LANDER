@@ -46,10 +46,6 @@ export class DunningService implements OnApplicationBootstrap {
     // Run once at startup, then every 24h. Only runs when DB is available.
     if (!this.ds) return;
 
-    // Parte 66: see ContractExpiryScheduler's identical guard — Vercel Cron
-    // now triggers this via POST /internal/cron/dunning instead.
-    if (process.env['VERCEL']) return;
-
     this.runDunningCycle().catch((err: unknown) =>
       this.logger.warn(`Dunning initial run falhou: ${String(err)}`),
     );

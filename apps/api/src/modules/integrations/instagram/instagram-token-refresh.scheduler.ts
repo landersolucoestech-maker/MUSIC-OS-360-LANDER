@@ -29,10 +29,6 @@ export class InstagramTokenRefreshScheduler implements OnApplicationBootstrap {
 
   onApplicationBootstrap(): void {
     if (!this.repo) return;
-    // Na Vercel não há processo de longa duração para um setInterval — o
-    // Vercel Cron invoca runCheck() via GET /internal/cron/instagram-token-refresh
-    // (ver instagram-token-refresh-cron.controller.ts + vercel.json `crons`).
-    if (process.env['VERCEL']) return;
 
     this.runCheck().catch((err: unknown) =>
       this.logger.warn(`InstagramTokenRefreshScheduler initial run failed: ${String(err)}`),

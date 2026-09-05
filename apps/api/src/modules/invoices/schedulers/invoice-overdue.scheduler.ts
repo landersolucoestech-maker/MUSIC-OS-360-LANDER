@@ -36,10 +36,6 @@ export class InvoiceOverdueScheduler implements OnApplicationBootstrap {
   onApplicationBootstrap(): void {
     if (!this.repo || !this.events) return;
 
-    // Parte 66: see ContractExpiryScheduler's identical guard — Vercel Cron
-    // now triggers this via POST /internal/cron/invoice-overdue instead.
-    if (process.env['VERCEL']) return;
-
     this.runCheck().catch((err: unknown) =>
       this.logger.warn(`InvoiceOverdueScheduler initial run failed: ${String(err)}`),
     );

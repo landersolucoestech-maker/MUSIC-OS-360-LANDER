@@ -1,1 +1,0 @@
-This directory is intentionally empty — this project has no static frontend, only serverless functions under api/. It exists so Vercel's build step has an outputDirectory to find.
