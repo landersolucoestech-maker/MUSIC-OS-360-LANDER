@@ -171,7 +171,7 @@ const baseContractRow = (overrides: Record<string, unknown> = {}) => ({
   tipo: 'gravacao',
   status: 'rascunho',
   artist_id: null,
-  cliente_id: null,
+  client_id: null,
   valor: null,
   data_inicio: null,
   data_fim: null,
@@ -435,10 +435,10 @@ describe('ContractsService.create — FK cross-tenant (P1)', () => {
     } as unknown as CreateContractDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('rejeita cliente_id que não pertence ao tenant (ou não existe)', async () => {
+  it('rejeita client_id que não pertence ao tenant (ou não existe)', async () => {
     const { svc } = makeServiceC1([], jest.fn(async () => []));
     await expect(svc.create('tenant-1', 'user-1', {
-      titulo: 'X', tipo: 'gravacao', cliente_id: '22222222-2222-4222-8222-222222222222',
+      titulo: 'X', tipo: 'gravacao', client_id: '22222222-2222-4222-8222-222222222222',
     } as unknown as CreateContractDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -447,7 +447,7 @@ describe('ContractsService.create — FK cross-tenant (P1)', () => {
     await expect(svc.create('tenant-1', 'user-1', {
       titulo: 'X', tipo: 'gravacao',
       artist_id: '11111111-1111-4111-8111-111111111111',
-      cliente_id: '22222222-2222-4222-8222-222222222222',
+      client_id: '22222222-2222-4222-8222-222222222222',
     } as unknown as CreateContractDto)).resolves.toBeDefined();
   });
 });

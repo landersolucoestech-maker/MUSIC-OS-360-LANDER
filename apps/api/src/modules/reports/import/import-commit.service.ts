@@ -42,10 +42,10 @@ interface RowGroup {
 const MULTI_VALUE_SEPARATOR = ' | ';
 const RELATION_TARGETS: Record<string, string> = {
   artist_id: 'artists',
-  projeto_id: 'projects',
+  project_id: 'projects',
   release_id: 'releases',
   contrato_id: 'contracts',
-  cliente_id: 'clients',
+  client_id: 'clients',
   campaign_id: 'campaigns',
 };
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;

@@ -844,8 +844,8 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                                 // DIRETA por ID (Task J: antes escaneava o array `projetos`
                                 // de useProjetos() sem filtro, truncado em 50 por tenant).
                                 let musicosArr: Participante[] = [];
-                                if ((fullObra.projeto_id as string | null | undefined)) {
-                                  const projeto = await storage.findById<ProjetoWithRelations>("projetos", fullObra.projeto_id as string);
+                                if ((fullObra.project_id as string | null | undefined)) {
+                                  const projeto = await storage.findById<ProjetoWithRelations>("projetos", fullObra.project_id as string);
                                   if (projeto?.descricao) {
                                     try {
                                       const normT = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();

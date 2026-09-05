@@ -54,14 +54,14 @@ export default function GestaoShares() {
   const [shareTypeFilter, setShareTypeFilter] = useState("todos");
   const [viewModal, setViewModal] = useState<{ open: boolean; share?: any }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; share?: any }>({ open: false });
-  const [formModal, setFormModal] = useState<{ open: boolean; share?: any; initialLancamentoId?: string }>({ open: false });
+  const [formModal, setFormModal] = useState<{ open: boolean; share?: any; initialReleaseId?: string }>({ open: false });
 
   // Abre o form com um release pré-selecionado quando vindo do fluxo de Lançamentos.
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const relId = searchParams.get(SHARE_FOR_RELEASE_PARAM);
     if (!relId) return;
-    setFormModal({ open: true, initialLancamentoId: relId });
+    setFormModal({ open: true, initialReleaseId: relId });
     setSearchParams((prev) => { prev.delete(SHARE_FOR_RELEASE_PARAM); return prev; }, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -396,7 +396,7 @@ export default function GestaoShares() {
                 <TableBody>
                   {sharesPg.pageItems.map((share: any) => {
                     const obra = share.work_id ? resolvedObras[share.work_id] : undefined;
-                    const lancamento = lancamentos.find((l: any) => l.id === share.lancamento_id);
+                    const lancamento = lancamentos.find((l: any) => l.id === share.release_id);
                     const artista = share.artist_id ? resolvedArtistas[share.artist_id] : undefined;
                     const nomeDetentor = artista?.nome_artistico || share.detentor || "—";
                     const sType = resolveShareType(share as Share & Record<string, unknown>);
@@ -541,7 +541,7 @@ export default function GestaoShares() {
         open={formModal.open}
         onOpenChange={(open) => setFormModal({ ...formModal, open })}
         share={formModal.share}
-        initialLancamentoId={formModal.initialLancamentoId}
+        initialReleaseId={formModal.initialReleaseId}
       />
     </>
   );

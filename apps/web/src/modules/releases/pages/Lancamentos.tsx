@@ -325,7 +325,7 @@ export default function Lancamentos() {
   };
 
   const ensureInitialShare = useCallback(async (release: Lancamento) => {
-    if (!release.id || shares.some((share) => share.lancamento_id === release.id)) return;
+    if (!release.id || shares.some((share) => share.release_id === release.id)) return;
     // Busca DIRETO por ID — o release recém-criado pode não estar (ainda)
     // no batch resolvido para a página atual (Task J).
     const artista = release.artist_id
@@ -334,7 +334,7 @@ export default function Lancamentos() {
 
     await addShare.mutateAsync({
       share_type: "internal_release",
-      lancamento_id: release.id,
+      release_id: release.id,
       artist_id: release.artist_id ?? null,
       nome_musica: release.titulo ?? null,
       detentor: artista?.nome_artistico ?? release.titulo ?? "Lancamento",

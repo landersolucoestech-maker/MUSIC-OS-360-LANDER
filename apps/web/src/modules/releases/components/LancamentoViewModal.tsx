@@ -146,7 +146,7 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
   }, [open, fonogramaIds]);
 
   const shareArtistaIds = useMemo(
-    () => Array.from(new Set(shares.filter((s) => (s as Record<string, unknown>)["lancamento_id"] === lancamento?.id && s.artist_id).map((s) => s.artist_id as string))),
+    () => Array.from(new Set(shares.filter((s) => (s as Record<string, unknown>)["release_id"] === lancamento?.id && s.artist_id).map((s) => s.artist_id as string))),
     [shares, lancamento?.id],
   );
   const [resolvedShareArtistas, setResolvedShareArtistas] = useState<Record<string, Artista>>({});
@@ -218,7 +218,7 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
 
   // Shares vinculados a este lançamento
   const linkedShares = shares.filter(
-    (s) => (s as Record<string, unknown>)["lancamento_id"] === lancamento.id,
+    (s) => (s as Record<string, unknown>)["release_id"] === lancamento.id,
   );
 
   return (

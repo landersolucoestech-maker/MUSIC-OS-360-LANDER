@@ -67,7 +67,7 @@ describe('Colunas dedicadas de formulário sempre expostas no DTO correspondente
     const block = entityBlock('InvoiceEntity');
     const dto = source('../modules/invoices/dto/invoices.dto.ts');
     const fields = [
-      'numero', 'serie', 'tipo_nota', 'cliente_id', 'natureza_operacao',
+      'numero', 'serie', 'tipo_nota', 'client_id', 'natureza_operacao',
       'codigo_servico_municipal', 'codigo_municipio', 'cfop',
       'descricao_servicos', 'data_emissao', 'vencimento', 'status',
       'tomador_cnpj', 'tomador_razao_social', 'tomador_inscricao_estadual',

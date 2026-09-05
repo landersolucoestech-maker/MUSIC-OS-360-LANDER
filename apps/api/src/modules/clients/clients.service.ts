@@ -180,7 +180,7 @@ export class ClientsService {
   }
 
   // ── Contratos vinculados (Parte 80) ──────────────────────────────────────────
-  // Reaproveita a relação física já existente (contracts.cliente_id) — sem
+  // Reaproveita a relação física já existente (contracts.client_id) — sem
   // tabela de junção nova.
 
   async getContracts(tenantId: string, id: string) {
@@ -188,7 +188,7 @@ export class ClientsService {
     return this.repo!.manager.query(
       `SELECT id, titulo, tipo, status, valor, data_inicio, data_fim, created_at
          FROM contracts
-        WHERE tenant_id = $1 AND cliente_id = $2 AND deleted_at IS NULL
+        WHERE tenant_id = $1 AND client_id = $2 AND deleted_at IS NULL
         ORDER BY created_at DESC`,
       [tenantId, id],
     );

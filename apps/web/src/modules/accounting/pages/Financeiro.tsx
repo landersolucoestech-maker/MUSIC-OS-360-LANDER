@@ -103,12 +103,12 @@ export default function Financeiro() {
   const parseOFXContent = (content: string): Array<{
     descricao: string; valor: number; data: string; tipo: string;
     categoria: string; status: string; artist_id: string | null;
-    cliente_id: string | null; origem: any; venda_id: string | null;
+    client_id: string | null; origem: any; venda_id: string | null;
   }> => {
     const transactions: Array<{
       descricao: string; valor: number; data: string; tipo: string;
       categoria: string; status: string; artist_id: string | null;
-      cliente_id: string | null; origem: any; venda_id: string | null;
+      client_id: string | null; origem: any; venda_id: string | null;
     }> = [];
     const stmttrnRegex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
     let match;
@@ -128,7 +128,7 @@ export default function Financeiro() {
           data: `${year}-${month}-${day}`,
           tipo: valor >= 0 ? "receita" : "despesa",
           categoria: "outros", status: "pago",
-          artist_id: null, cliente_id: null,
+          artist_id: null, client_id: null,
           origem: "manual" as any, venda_id: null,
         });
       }

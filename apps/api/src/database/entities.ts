@@ -744,7 +744,7 @@ export class WorkEntity {
   // `participantes` normalizado em work_participants (migration
   // WorkParticipantsNormalization20260718000011) — não é mais coluna jsonb.
   @Column({ type: 'jsonb', nullable: true }) letristas: unknown[] | null;
-  @Column({ type: 'uuid', nullable: true }) projeto_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) project_id: string | null;
   @Column({ type: 'varchar', length: 50, nullable: true }) tipo_obra: string | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
@@ -887,8 +887,8 @@ export class ContractEntity {
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ContractStatus.RASCUNHO }) status: ContractStatus;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
-  @Column({ type: 'uuid', nullable: true }) cliente_id: string | null;
-  @Column({ type: 'uuid', nullable: true }) lancamento_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) client_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) release_id: string | null;
   @Column({ type: 'timestamp', nullable: true }) data_inicio: Date | null;
   @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor: string | null;
@@ -991,7 +991,7 @@ export class TransactionEntity {
   @Column({ type: 'varchar', length: 50, default: TransactionStatus.PENDENTE }) status: TransactionStatus;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'uuid', nullable: true }) contrato_id: string | null;
-  @Column({ type: 'uuid', nullable: true }) projeto_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) project_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) referencia: string | null;
   @Column({ type: 'text', nullable: true }) comprovante_url: string | null;
   // Categorização financeira (tabela financial_categories). Referência lógica
@@ -1060,7 +1060,7 @@ export class InvoiceEntity {
   // ── Campos do formulário de Nota Fiscal (1 coluna por campo — nome exato) ────
   @Column({ type: 'varchar', length: 20, nullable: true }) serie: string | null;
   @Column({ type: 'varchar', length: 30, nullable: true }) tipo_nota: string | null;
-  @Column({ type: 'uuid', nullable: true }) cliente_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) client_id: string | null;
   @Column({ type: 'uuid', nullable: true }) venda_id: string | null;
   @Column({ type: 'text', nullable: true }) url_pdf: string | null;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
@@ -1173,11 +1173,11 @@ export class ClientAttachmentEntity {
 @Entity('leads')
 @Index(['tenant_id'])
 @Index(['tenant_id', 'status'])
-@Index(['cliente_id'])
+@Index(['client_id'])
 export class LeadEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid', nullable: true }) cliente_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) client_id: string | null;
   @Column({ type: 'varchar', length: 255 }) nome: string;
   @Column({ type: 'text', nullable: true }) email_encrypted: string | null;
   @Column({ type: 'text', nullable: true }) telefone_encrypted: string | null;
@@ -1284,7 +1284,7 @@ export class BriefingEntity {
   @Column({ type: 'varchar', length: 255 }) titulo: string;
   @Column({ type: 'text', nullable: true }) descricao: string | null;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
-  @Column({ type: 'uuid', nullable: true }) campanha_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) campaign_id: string | null;
   @Column({ type: 'varchar', length: 50, default: BriefingStatus.RASCUNHO }) status: BriefingStatus;
   @Column({ type: 'timestamp', nullable: true }) prazo: Date | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
@@ -1295,7 +1295,7 @@ export class BriefingEntity {
 
   // ── Relations ───────────────────────────────────────────────────────────────
   @ManyToOne(() => CampaignEntity, (c) => c.briefings, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'campanha_id' })
+  @JoinColumn({ name: 'campaign_id' })
   campaign: Relation<CampaignEntity> | null;
 }
 
@@ -1492,13 +1492,13 @@ export class ShareEntity {
   // ── Campos do formulário de Share (1 coluna por campo — nome exato) ──────────
   @Column({ type: 'varchar', length: 30, nullable: true }) share_type: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) direcao: string | null;
-  @Column({ type: 'uuid', nullable: true }) lancamento_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) release_id: string | null;
   @Column({ type: 'varchar', length: 500, nullable: true }) nome_musica: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) detentor: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) destinatario: string | null;
   @Column({ type: 'varchar', length: 100, nullable: true }) tipo: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) artista_externo: string | null;
-  @Column({ type: 'uuid', nullable: true }) artista_projeto_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artista_project_id: string | null;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) pagador: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) pagador_contato: string | null;
@@ -2488,7 +2488,7 @@ export class LicenseEntity {
   @Column({ type: 'uuid', nullable: true }) work_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) obra_musical: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) artista: string | null;
-  @Column({ type: 'uuid', nullable: true }) cliente_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) client_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) cliente: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) projeto: string | null;
   @Column({ type: 'varchar', length: 100, nullable: true }) tipo: string | null;

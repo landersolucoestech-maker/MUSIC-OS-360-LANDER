@@ -13,7 +13,7 @@ export interface NfFormData {
   numero: string;
   serie: string;
   tipo_nota: string;
-  cliente_id: string;
+  client_id: string;
   natureza_operacao: string;
   codigo_servico_municipal: string;
   codigo_municipio: string;
@@ -62,7 +62,7 @@ export const INITIAL_FORM_DATA: NfFormData = {
   numero: "",
   serie: "001",
   tipo_nota: "nfse",
-  cliente_id: "",
+  client_id: "",
   natureza_operacao: "Prestação de Serviços Artísticos",
   codigo_servico_municipal: "12.07",
   codigo_municipio: "3550308",

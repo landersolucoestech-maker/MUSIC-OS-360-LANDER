@@ -21,7 +21,7 @@ export class QueryWorkDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'ID do projeto, ou "sem-projeto" para obras sem projeto vinculado.' })
   @IsOptional()
   @IsString()
-  projeto_id?: string;
+  project_id?: string;
 
   @ApiPropertyOptional({ enum: ['com-ecad', 'sem-ecad'] })
   @IsOptional()

@@ -38,8 +38,8 @@ export interface Contrato {
   tipo?: ContratoTipo | string | null;
   status?: ContratoStatus | string | null;
   artist_id?: string | null;
-  cliente_id?: string | null;
-  lancamento_id?: string | null;
+  client_id?: string | null;
+  release_id?: string | null;
   data_inicio?: string | null;
   data_fim?: string | null;
   valor?: number | null;

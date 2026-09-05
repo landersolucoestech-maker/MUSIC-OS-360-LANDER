@@ -115,7 +115,7 @@ export interface TransactionCreatedPayload {
   tipo: "receita" | "despesa";
   valor: number;
   artist_id?: string;
-  projeto_id?: string;
+  project_id?: string;
   org_id: string;
 }
 
@@ -156,15 +156,15 @@ export type DomainEventPayloads = {
   TRANSACTION_UPDATED:   Partial<TransactionCreatedPayload> & { id: string };
   TRANSACTION_DELETED:   { id: string; org_id: string };
   FINANCE_CALCULATED:    { artist_id: string; valor: number; org_id: string };
-  INVOICE_CREATED:       { id: string; numero?: string; cliente_id?: string; valor?: number; org_id: string };
-  INVOICE_UPDATED:       { id: string; numero?: string; cliente_id?: string; valor?: number; org_id: string };
+  INVOICE_CREATED:       { id: string; numero?: string; client_id?: string; valor?: number; org_id: string };
+  INVOICE_UPDATED:       { id: string; numero?: string; client_id?: string; valor?: number; org_id: string };
   INVOICE_DELETED:       { id: string; org_id: string };
   AUDIT_ENTRY_CREATED:   AuditEntryCreatedPayload;
   "user.invited":               { tenantId: string; email: string; role: string };
   "contrato.sent_for_signing":  { contratoId: string; signers: unknown[]; org_id?: string };
   "contrato.signing_cancelled": { contratoId: string; reason?: string; org_id?: string };
-  "lancamento.approved":        { lancamentoId: string; reason?: string };
-  "lancamento.rejected":        { lancamentoId: string; reason?: string };
+  "lancamento.approved":        { releaseId: string; reason?: string };
+  "lancamento.rejected":        { releaseId: string; reason?: string };
 };
 
 // ─── Event Bus ───────────────────────────────────────────────────────────────

@@ -29,13 +29,13 @@ export class CreateShareDto {
   @ApiPropertyOptional() @IsOptional() @IsString() acordo_url?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) direcao?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() lancamento_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() release_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) nome_musica?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) detentor?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) destinatario?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) tipo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista_externo?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_projeto_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_project_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) pagador?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) pagador_contato?: string;

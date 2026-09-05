@@ -276,7 +276,7 @@ function briefingFromApi(row: RecordRow): MarketingBriefing {
     deadline: iso(row.prazo ?? row.dueAt),
     owners: meta.owners ?? [],
     projectId: meta.projectId,
-    campaignId: row.campanha_id ?? row.campaignId,
+    campaignId: row.campaign_id ?? row.campaignId,
     files: meta.files ?? [],
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),

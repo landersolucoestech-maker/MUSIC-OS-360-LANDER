@@ -27,7 +27,7 @@ export const contratoSchema = z.object({
   ]).default("rascunho"),
   arquivo_url: z.string().optional(),
   notas_versao: z.string().optional(),
-  lancamento_id: z.string().optional(),
+  release_id: z.string().optional(),
   start_date: z.date({ required_error: "Data de início é obrigatória" }),
   end_date: z.date().optional(),
   registry_office: z.boolean().optional(),

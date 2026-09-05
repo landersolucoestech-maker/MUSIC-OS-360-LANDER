@@ -26,21 +26,21 @@ interface SharePendenteFormModalProps {
   onOpenChange: (open: boolean) => void;
   share?: Share;
   /** Pré-seleciona um lançamento (ex.: vindo do fluxo de release). */
-  initialLancamentoId?: string;
+  initialReleaseId?: string;
   onSuccess?: () => void;
 }
 
 interface ShareFormState {
   share_type: ShareType;
   // interno
-  lancamento_id: string;
+  release_id: string;
   detentor: string;       // participante
   destinatario: string;
   funcao: string;
   // externo
   nome_musica: string;
   artista_externo: string;
-  artista_projeto_id: string;
+  artista_project_id: string;
   pagador: string;
   pagador_contato: string;
   origem_acordo: string;
@@ -77,13 +77,13 @@ const STATUS_OPTIONS = [
 
 const EMPTY: ShareFormState = {
   share_type: "internal_release",
-  lancamento_id: "",
+  release_id: "",
   detentor: "",
   destinatario: "",
   funcao: "interprete",
   nome_musica: "",
   artista_externo: "",
-  artista_projeto_id: "",
+  artista_project_id: "",
   pagador: "",
   pagador_contato: "",
   origem_acordo: "",
@@ -104,13 +104,13 @@ function shareToForm(share: Share & Record<string, unknown>): ShareFormState {
   };
   return {
     share_type: resolveShareType(share),
-    lancamento_id: s("lancamento_id"),
+    release_id: s("release_id"),
     detentor: s("detentor"),
     destinatario: s("destinatario"),
     funcao: s("tipo") || "interprete",
     nome_musica: s("nome_musica") || s("titulo_obra"),
     artista_externo: s("artista_externo"),
-    artista_projeto_id: s("artista_projeto_id") || s("artist_id"),
+    artista_project_id: s("artista_project_id") || s("artist_id"),
     pagador: s("pagador"),
     pagador_contato: s("pagador_contato"),
     origem_acordo: s("origem_acordo"),
@@ -125,7 +125,7 @@ function shareToForm(share: Share & Record<string, unknown>): ShareFormState {
   };
 }
 
-export function SharePendenteFormModal({ open, onOpenChange, share, initialLancamentoId, onSuccess }: SharePendenteFormModalProps) {
+export function SharePendenteFormModal({ open, onOpenChange, share, initialReleaseId, onSuccess }: SharePendenteFormModalProps) {
   const { addShare, updateShare, shares } = useShares();
   const { lancamentos } = useLancamentos();
   const [formData, setFormData] = useState<ShareFormState>(EMPTY);
@@ -149,10 +149,10 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
     } else {
       setFormData({
         ...EMPTY,
-        ...(initialLancamentoId ? { lancamento_id: initialLancamentoId, share_type: "internal_release" } : {}),
+        ...(initialReleaseId ? { release_id: initialReleaseId, share_type: "internal_release" } : {}),
       });
     }
-  }, [open, share, initialLancamentoId]);
+  }, [open, share, initialReleaseId]);
 
   const handleChange = (field: keyof ShareFormState, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -160,13 +160,13 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
   const handleSubmit = async () => {
     const validation = shareSchema.safeParse({
       share_type: formData.share_type,
-      lancamento_id: formData.lancamento_id,
+      release_id: formData.release_id,
       detentor: formData.detentor,
       destinatario: formData.destinatario,
       funcao: formData.funcao as ShareFormState["funcao"],
       nome_musica: formData.nome_musica,
       artista_externo: formData.artista_externo,
-      artista_projeto_id: formData.artista_projeto_id,
+      artista_project_id: formData.artista_project_id,
       pagador: formData.pagador,
       pagador_contato: formData.pagador_contato,
       origem_acordo: formData.origem_acordo,
@@ -189,7 +189,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
       const dup = shares.find(
         (s) =>
           s.id !== share?.id &&
-          (s as Record<string, unknown>)["lancamento_id"] === formData.lancamento_id &&
+          (s as Record<string, unknown>)["release_id"] === formData.release_id &&
           (s.detentor ?? "") === formData.detentor &&
           ((s as Record<string, unknown>)["destinatario"] ?? "") === formData.destinatario,
       );
@@ -203,7 +203,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
     const valorTotalNum = formData.valor_total ? parseFloat(formData.valor_total) : null;
     setIsSubmitting(true);
     try {
-      const selectedRelease = lancamentosDistribuidos.find((l) => l.id === formData.lancamento_id);
+      const selectedRelease = lancamentosDistribuidos.find((l) => l.id === formData.release_id);
       const common = {
         share_type: formData.share_type,
         percentual: percentualNum,
@@ -218,7 +218,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
             ...common,
             // direcao mantém semântica de fluxo de caixa (compat KPIs)
             direcao: "a_enviar",
-            lancamento_id: formData.lancamento_id || null,
+            release_id: formData.release_id || null,
             nome_musica: selectedRelease?.titulo ?? null,
             detentor: formData.detentor.trim() || null,
             destinatario: formData.destinatario.trim() || null,
@@ -229,8 +229,8 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
             direcao: "a_receber",
             nome_musica: formData.nome_musica.trim() || null,
             artista_externo: formData.artista_externo.trim() || null,
-            artista_projeto_id: formData.artista_projeto_id || null,
-            artist_id: formData.artista_projeto_id || null,
+            artista_project_id: formData.artista_project_id || null,
+            artist_id: formData.artista_project_id || null,
             pagador: formData.pagador.trim() || null,
             pagador_contato: formData.pagador_contato.trim() || null,
             origem_acordo: formData.origem_acordo.trim() || null,
@@ -302,7 +302,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
             <>
               <div className="space-y-2">
                 <Label>Lançamento</Label>
-                <Select value={formData.lancamento_id} onValueChange={(v) => handleChange("lancamento_id", v)}>
+                <Select value={formData.release_id} onValueChange={(v) => handleChange("release_id", v)}>
                   <SelectTrigger data-testid="select-lancamento-distribuido">
                     <SelectValue placeholder="Selecione o lançamento" />
                   </SelectTrigger>
@@ -361,8 +361,8 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialLanca
                 <AsyncEntityCombobox<Artista>
                   table="artistas"
                   getLabel={(a) => a.nome_artistico ?? ""}
-                  value={formData.artista_projeto_id || null}
-                  onChange={(id) => handleChange("artista_projeto_id", id)}
+                  value={formData.artista_project_id || null}
+                  onChange={(id) => handleChange("artista_project_id", id)}
                   placeholder="Selecione o vínculo"
                   searchPlaceholder="Buscar artista..."
                   data-testid="select-artista-projeto"

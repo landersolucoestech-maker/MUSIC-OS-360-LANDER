@@ -581,7 +581,7 @@ export function LancamentoFormModal({
   // são resolvidos por busca direta (storage.findById / busca por título),
   // nunca varrendo useArtistas()/useFonogramas() sem filtro.
   const handleSelectProjeto = async (projeto: ProjetoWithRelations) => {
-    const projetoId = projeto.id;
+    const projectId = projeto.id;
     const seed = projetoToLancamentoSeed(projeto);
     const linkedArtista = projeto.artist_id
       ? await storage.findById<Artista>("artistas", projeto.artist_id as string)
@@ -592,7 +592,7 @@ export function LancamentoFormModal({
       : undefined;
     setFormData((prev) => ({
       ...prev,
-      projetoSeed: projetoId,
+      projetoSeed: projectId,
       titulo: !prev.titulo.trim() ? (seed.titulo ?? "") : prev.titulo,
       artist_id: !prev.artist_id.trim()
         ? (seed.artist_id ?? "")
@@ -1112,7 +1112,7 @@ export function LancamentoFormModal({
                             {/* ponytail: subtítulo com nome do artista removido — a API real
                                 não embute o artista no /projects (sem join), e resolvê-lo por
                                 linha exigiria N lookups por página de resultados. O valor
-                                selecionado (projetoId) continua correto independentemente
+                                selecionado (projectId) continua correto independentemente
                                 deste subtítulo. Upgrade path: endpoint dedicado que devolva
                                 id+titulo+nome_artistico já agregados, se a UX exigir. */}
                           </div>

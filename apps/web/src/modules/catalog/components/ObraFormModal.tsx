@@ -296,18 +296,18 @@ export function ObraFormModal({
     setAceitaTermos(false);
   }, [open, obra]);
 
-  // Hidrata o projeto vinculado a partir de obra.projeto_id — busca DIRETO por
+  // Hidrata o projeto vinculado a partir de obra.project_id — busca DIRETO por
   // ID (GET /projects/:id), não depende do projeto estar entre os primeiros
   // registros carregados (Task J: antes usava useProjetos() sem filtro, que
   // truncava em 50 projetos por tenant).
-  const linkedProjetoId: string | undefined = obra?.projeto_id ?? obra?.projetoId;
+  const linkedProjectId: string | undefined = obra?.project_id ?? obra?.projectId;
   const { entity: linkedProjeto } = useEntityById<ProjetoWithRelations>(
     "projetos",
-    open ? linkedProjetoId : undefined,
+    open ? linkedProjectId : undefined,
   );
   useEffect(() => {
     if (!open) return;
-    if (!linkedProjetoId) {
+    if (!linkedProjectId) {
       setProjetoSelecionado(null);
       return;
     }
@@ -319,9 +319,9 @@ export function ObraFormModal({
       });
     } else {
       // Ainda carregando — mantém ID com placeholder até a busca por ID resolver.
-      setProjetoSelecionado({ id: linkedProjetoId, nome: "Projeto vinculado" });
+      setProjetoSelecionado({ id: linkedProjectId, nome: "Projeto vinculado" });
     }
-  }, [open, linkedProjetoId, linkedProjeto]);
+  }, [open, linkedProjectId, linkedProjeto]);
 
   // Busca server-side de projetos concluídos (Task J) — antes filtrava
   // localmente só os primeiros 50 projetos do tenant carregados via
@@ -483,7 +483,7 @@ export function ObraFormModal({
       letraCompleta,
       participantes,
       situacao,
-      projetoId: projetoSelecionado?.id ?? null,
+      projectId: projetoSelecionado?.id ?? null,
       artistId: null,
       tipoObra,
       orgId: orgId as string,

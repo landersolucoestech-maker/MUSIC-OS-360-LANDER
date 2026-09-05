@@ -87,7 +87,7 @@ function buildPersistencePayload(
   if (dto.status !== undefined) payload.status = dto.status;
   if ((dto as AnyRecord).artistaVinculado !== undefined) payload.artist_id = (dto as AnyRecord).artistaVinculado || null;
   if ((dto as AnyRecord).contratoVinculado !== undefined) payload.contrato_id = (dto as AnyRecord).contratoVinculado || null;
-  if ((dto as AnyRecord).projetoVinculado !== undefined) payload.projeto_id = (dto as AnyRecord).projetoVinculado || null;
+  if ((dto as AnyRecord).projetoVinculado !== undefined) payload.project_id = (dto as AnyRecord).projetoVinculado || null;
   if ((dto as AnyRecord).anexoUrl !== undefined) payload.comprovante_url = (dto as AnyRecord).anexoUrl || null;
   if ((dto as AnyRecord).observacao !== undefined) payload.referencia = (dto as AnyRecord).observacao || null;
   return payload;
@@ -156,8 +156,8 @@ function toTransactionDetails(entity: TransactionEntity): TransactionDetailsDTO 
     artist_id: entity.artist_id,
     artistaVinculado: entity.artist_id,
     project: metadata.project as Record<string, unknown> | null | undefined,
-    projeto_id: entity.projeto_id,
-    projetoVinculado: entity.projeto_id,
+    project_id: entity.project_id,
+    projetoVinculado: entity.project_id,
     campaign: metadata.campaign as Record<string, unknown> | null | undefined,
     contract: metadata.contract as Record<string, unknown> | null | undefined,
     contrato_id: entity.contrato_id,

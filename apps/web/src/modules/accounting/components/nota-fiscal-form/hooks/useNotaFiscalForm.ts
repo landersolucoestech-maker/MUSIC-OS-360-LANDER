@@ -57,7 +57,7 @@ export interface UseNotaFiscalFormReturn {
   isSubmitting: boolean;
   setTipoOperacao: (t: TipoOperacaoNF) => void;
   updateField: <K extends keyof NfFormData>(field: K, value: NfFormData[K]) => void;
-  handleClienteChange: (clienteId: string, cliente?: NfClienteLookup) => void;
+  handleClienteChange: (clientId: string, cliente?: NfClienteLookup) => void;
   updateItem: (index: number, field: keyof ItemNota, value: any) => void;
   addItem: () => void;
   removeItem: (index: number) => void;
@@ -163,10 +163,10 @@ export function useNotaFiscalForm({
     });
   }, []);
 
-  const handleClienteChange = useCallback((clienteId: string, cliente?: NfClienteLookup) => {
+  const handleClienteChange = useCallback((clientId: string, cliente?: NfClienteLookup) => {
     setFormData((prev) => cliente ? ({
       ...prev,
-      cliente_id: clienteId,
+      client_id: clientId,
       tomador_cnpj: cliente.document || "",
       tomador_razao_social: cliente.nome || "",
       tomador_email: cliente.email || "",
@@ -174,7 +174,7 @@ export function useNotaFiscalForm({
       tomador_cidade: cliente.cidade || "",
       tomador_uf: cliente.estado || "SP",
       tomador_cep: cliente.cep || "",
-    }) : ({ ...prev, cliente_id: clienteId }));
+    }) : ({ ...prev, client_id: clientId }));
   }, []);
 
   const updateItem = useCallback((index: number, field: keyof ItemNota, value: any) => {
@@ -218,7 +218,7 @@ export function useNotaFiscalForm({
       ...formData,
       numero: formData.numero || "",
       serie: formData.serie || "",
-      cliente_id: formData.cliente_id || "",
+      client_id: formData.client_id || "",
       data_emissao: formData.data_emissao,
       vencimento: formData.vencimento,
       valor_servicos: Number(formData.valor_servicos) || 0,
@@ -250,7 +250,7 @@ export function useNotaFiscalForm({
       numero: formData.numero.trim(),
       serie: formData.serie?.trim() || null,
       tipo_nota: formData.tipo_nota,
-      cliente_id: formData.cliente_id || null,
+      client_id: formData.client_id || null,
       venda_id: null,
       valor: valorServicos,
       data_emissao: formData.data_emissao ? format(formData.data_emissao, "yyyy-MM-dd") : null,

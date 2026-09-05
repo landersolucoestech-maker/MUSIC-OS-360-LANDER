@@ -115,12 +115,12 @@ export interface Share {
   valor_liquidado?: number | null;
   detentor?: string | null;
   // ── Fluxo interno (release) ──────────────────────────────────────────────────
-  lancamento_id?: string | null;
+  release_id?: string | null;
   // ── Fluxo externo (recebível) ────────────────────────────────────────────────
   nome_musica?: string | null;
   artista_externo?: string | null;
   /** Artista/projeto da empresa vinculado ao recebível externo. */
-  artista_projeto_id?: string | null;
+  artista_project_id?: string | null;
   pagador?: string | null;
   pagador_contato?: string | null;
   origem_acordo?: string | null;

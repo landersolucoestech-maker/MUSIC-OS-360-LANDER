@@ -12,7 +12,7 @@ export interface Licenca {
   titulo: string;
   // Relações (fonte da verdade)
   work_id?: string | null;
-  cliente_id?: string | null;
+  client_id?: string | null;
   projeto?: string | null;
   tipo?: LicencaTipo | string | null;
   tipo_uso?: string | null;

@@ -132,8 +132,7 @@ export const FIELD_LABELS_PT_BR = {
   gravadoraResponsavelNome: 'Responsável na gravadora',
   gravadoraResponsavelEmail: 'E-mail do responsável na gravadora',
   gravadoraResponsavelTelefone: 'Telefone do responsável na gravadora',
-  clienteId: 'Cliente (ID)',
-  lancamentoId: 'Lançamento (ID)',
+  clientId: 'Cliente (ID)',
   workId: 'Obra (ID)',
   autentiqueDocId: 'Documento Autentique (ID)',
   cpf: 'CPF',
@@ -421,7 +420,6 @@ export const FIELD_LABELS_PT_BR = {
   letraCompleta: 'Letra completa',
   participantes: 'Participantes',
   letristas: 'Letristas',
-  projetoId: 'Projeto vinculado',
   tipoObra: 'Tipo de obra',
   // ── Campos do formulário de Fonograma (regra 2026-07-12) ─────────────────────
   agregadora: 'Agregadora',
@@ -577,7 +575,7 @@ export const FIELD_LABELS_PT_BR = {
   detentor: 'Detentor',
   destinatario: 'Destinatário',
   artistaExterno: 'Artista externo',
-  artistaProjetoId: 'Artista/projeto vinculado',
+  artistaProjectId: 'Artista/projeto vinculado',
   pagador: 'Responsável pagador',
   pagadorContato: 'Contato do pagador',
   origemAcordo: 'Origem do acordo',
@@ -610,7 +608,6 @@ export const FIELD_LABELS_PT_BR = {
   campaignId: 'Campanha',
 
   // ── Parte 89 — Briefing ──────────────────────────────────────────────────────
-  campanhaId: 'Campanha vinculada',
   owners: 'Responsáveis',
   audience: 'Público-alvo / personas',
   positioning: 'Posicionamento',

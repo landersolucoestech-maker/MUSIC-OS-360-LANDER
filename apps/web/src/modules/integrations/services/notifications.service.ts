@@ -40,7 +40,7 @@ export interface SendContratoExpiryAlertInput {
 }
 
 export interface SendLancamentoStatusInput {
-  lancamentoId:    string;
+  releaseId:    string;
   lancamentoTitle: string;
   status:          "approved" | "rejected";
   reason?:         string;
@@ -88,7 +88,7 @@ export const notificationsService = {
   },
 
   async sendLancamentoStatus(input: SendLancamentoStatusInput): Promise<void> {
-    const { lancamentoId, lancamentoTitle, status, reason, to } = input;
+    const { releaseId, lancamentoTitle, status, reason, to } = input;
 
     await emailAdapter.send({
       to,
@@ -97,10 +97,10 @@ export const notificationsService = {
       template_vars: { lancamento_title: lancamentoTitle, reason: reason ?? "" },
     });
 
-    analyticsAdapter.track(`lancamento.${status}`, { lancamento_id: lancamentoId });
+    analyticsAdapter.track(`lancamento.${status}`, { release_id: releaseId });
 
     emit(status === "approved" ? "lancamento.approved" : "lancamento.rejected", {
-      lancamentoId,
+      releaseId,
       reason,
     });
   },

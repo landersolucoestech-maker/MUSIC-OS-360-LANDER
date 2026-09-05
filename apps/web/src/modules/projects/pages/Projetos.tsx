@@ -69,20 +69,20 @@ export default function Projetos() {
   const [generoFilter, setGeneroFilter] = useState("all");
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const projetoIdParam = searchParams.get("projeto");
+  const projectIdParam = searchParams.get("projeto");
 
   // Auto-open the view modal when arriving with ?projeto=:id (e.g. from an
   // Obra link) — busca DIRETO por ID (GET /projects/:id), não depende do
   // projeto estar entre os primeiros 50 carregados por useProjetos() sem
   // filtro (Task J).
-  const { entity: deepLinkProjeto } = useEntityById<ProjetoWithRelationsExtended>("projetos", projetoIdParam ?? undefined);
+  const { entity: deepLinkProjeto } = useEntityById<ProjetoWithRelationsExtended>("projetos", projectIdParam ?? undefined);
   useEffect(() => {
-    if (!projetoIdParam || !deepLinkProjeto) return;
+    if (!projectIdParam || !deepLinkProjeto) return;
     setViewModal({ open: true, projeto: deepLinkProjeto });
     const next = new URLSearchParams(searchParams);
     next.delete("projeto");
     setSearchParams(next, { replace: true });
-  }, [searchParams, projetoIdParam, deepLinkProjeto, setSearchParams]);
+  }, [searchParams, projectIdParam, deepLinkProjeto, setSearchParams]);
 
   // Canonical genre resolver: direct field wins; fallback to first track only.
   // Usado só para popular o dropdown de gêneros (lista completa) — a

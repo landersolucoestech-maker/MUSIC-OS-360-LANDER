@@ -81,10 +81,10 @@ export class LeadEventsHandler {
           try {
             await leadRepo.update(
               { id: leadId, tenant_id: tenantId },
-              { cliente_id: clientId, status: 'convertido' as any },
+              { client_id: clientId, status: 'convertido' as any },
             );
             this.logger.log(
-              `LeadEventsHandler: lead "${leadId}" -> status=convertido, cliente_id="${clientId}"`,
+              `LeadEventsHandler: lead "${leadId}" -> status=convertido, client_id="${clientId}"`,
             );
           } catch (err) {
             this.logger.error(

@@ -43,7 +43,7 @@ function baseInput(participantes: ParticipanteForm[] = []) {
     letraCompleta: "",
     participantes,
     situacao: "analise",
-    projetoId: null,
+    projectId: null,
     artistId: null,
     tipoObra: "original",
     orgId: "tenant-test",

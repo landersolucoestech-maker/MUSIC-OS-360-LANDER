@@ -63,7 +63,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
   // useObras()/useArtistas() sem filtro (Task J).
   const { entity: obraVinculada } = useEntityById<ObraWithRelations>("obras", open ? str("work_id") || undefined : undefined);
   const { entity: artistaResolved } = useEntityById<Artista>("artistas", open ? share?.artist_id ?? undefined : undefined);
-  const vinculoArtistaId = str("artista_projeto_id") || share?.artist_id || undefined;
+  const vinculoArtistaId = str("artista_project_id") || share?.artist_id || undefined;
   const { entity: vinculoArtistaResolved } = useEntityById<Artista>("artistas", open ? vinculoArtistaId : undefined);
 
   if (!share) return null;
@@ -78,7 +78,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
    */
   const pickShareTitle = (): string | null => {
     const obraTitulo = obraVinculada?.titulo;
-    const lancTitulo = lancamentos.find((l) => l.id === str("lancamento_id"))?.titulo;
+    const lancTitulo = lancamentos.find((l) => l.id === str("release_id"))?.titulo;
     return (
       obraTitulo ||
       lancTitulo ||

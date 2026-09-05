@@ -136,7 +136,7 @@ export default function RegistroMusicas() {
     tipoObra: undefined,
   });
   const [obraTipoSelectorOpen, setObraTipoSelectorOpen] = useState(false);
-  const [pendingProjetoId, setPendingProjetoId] = useState<string | null>(null);
+  const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
   const [obraViewModal, setObraViewModal] = useState<{ open: boolean; obra?: Obra }>({ open: false });
   const [fonogramaModal, setFonogramaModal] = useState<{ open: boolean; mode: "create" | "edit"; fonograma?: Fonograma }>({
     open: false,
@@ -177,7 +177,7 @@ export default function RegistroMusicas() {
     if (newObraParam) {
       setActiveTab("obras");
       setProjetoFilter(newObraParam);
-      setPendingProjetoId(newObraParam);
+      setPendingProjectId(newObraParam);
       setObraTipoSelectorOpen(true);
       next.delete("newObra");
       consumed = true;
@@ -258,7 +258,7 @@ export default function RegistroMusicas() {
     status: statusFilter !== "all-status" ? statusFilter : undefined,
     tipoObra: tipoObraFilter !== "all-tipos" ? tipoObraFilter : undefined,
     genero: genreFilter !== "all-genre" ? genreFilter : undefined,
-    projetoId: projetoFilter !== "all-projetos" ? projetoFilter : undefined,
+    projectId: projetoFilter !== "all-projetos" ? projetoFilter : undefined,
     ecad: ecadFilter !== "all-ecad" ? (ecadFilter as "com-ecad" | "sem-ecad") : undefined,
     enabled: activeTab === "obras",
   });
@@ -805,23 +805,23 @@ export default function RegistroMusicas() {
       {/* Modals */}
       <ObraTipoSelectorModal
         open={obraTipoSelectorOpen}
-        onOpenChange={(v) => { setObraTipoSelectorOpen(v); if (!v) setPendingProjetoId(null); }}
+        onOpenChange={(v) => { setObraTipoSelectorOpen(v); if (!v) setPendingProjectId(null); }}
         onSelect={async (tipo) => {
           let obraSeed: Record<string, unknown> | undefined;
-          if (pendingProjetoId) {
+          if (pendingProjectId) {
             // Busca DIRETO por ID (GET /projects/:id) — não depende do projeto
             // estar entre os primeiros 50 carregados por useProjetos() sem
             // filtro (Task J).
-            const projeto = await storage.findById<ProjetoWithRelations>("projetos", pendingProjetoId);
+            const projeto = await storage.findById<ProjetoWithRelations>("projetos", pendingProjectId);
             if (projeto) {
               const musicas = parseMusicasFromProjeto(projeto);
               obraSeed = projetoToObraSeed(projeto, musicas[0] ?? null);
             } else {
-              obraSeed = { projeto_id: pendingProjetoId };
+              obraSeed = { project_id: pendingProjectId };
             }
           }
           setObraModal({ open: true, mode: "create", obra: obraSeed as Obra | undefined, tipoObra: tipo });
-          setPendingProjetoId(null);
+          setPendingProjectId(null);
         }}
       />
     </MainLayout>

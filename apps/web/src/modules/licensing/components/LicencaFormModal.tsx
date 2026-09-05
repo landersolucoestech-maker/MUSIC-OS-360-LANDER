@@ -42,7 +42,7 @@ const DEFAULT_VALUES: LicencaFormData = {
   titulo: "",
   tipoLicenca: "",
   workId: "",
-  clienteId: "",
+  clientId: "",
   projeto: "",
   midiaDestino: "",
   territorio: "",
@@ -89,7 +89,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
         titulo: licenca.titulo || "",
         tipoLicenca: licenca.tipo || "",
         workId: licenca.work_id || "",
-        clienteId: licenca.cliente_id || "",
+        clientId: licenca.client_id || "",
         projeto: licenca.projeto || "",
         midiaDestino: licenca.midia_destino || "",
         territorio: licenca.territorio || "",
@@ -117,7 +117,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
       titulo:            data.titulo,
       tipo:              data.tipoLicenca || undefined,
       work_id:           data.workId,
-      cliente_id:        data.clienteId,
+      client_id:        data.clientId,
       projeto:           data.projeto || undefined,
       midia_destino:     data.midiaDestino || undefined,
       territorio:        data.territorio || undefined,
@@ -250,7 +250,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
               <div className="space-y-2">
                 <Label>Cliente *</Label>
                 <Controller
-                  name="clienteId"
+                  name="clientId"
                   control={control}
                   render={({ field }) => (
                     <AsyncEntityCombobox<ClienteOption>
@@ -261,12 +261,12 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
                       placeholder="Selecione o cliente"
                       searchPlaceholder="Buscar cliente…"
                       disabled={isViewMode}
-                      invalid={!!errors.clienteId}
+                      invalid={!!errors.clientId}
                       data-testid="select-cliente"
                     />
                   )}
                 />
-                <FieldError error={errors.clienteId?.message} />
+                <FieldError error={errors.clientId?.message} />
               </div>
               <div className="space-y-2">
                 <Label>Projeto</Label>

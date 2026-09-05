@@ -17,9 +17,19 @@ const migrationSrc = fs.readFileSync(
 );
 const entitiesSrc = fs.readFileSync(path.resolve(__dirname, 'entities.ts'), 'utf8');
 
+// Colunas renomeadas por migrations POSTERIORES à reconstrução canônica
+// (naming-normalization mandate, 2026-09-05): a migration histórica nunca é
+// editada, então seu texto ainda diz o nome antigo — mapeamos aqui para o
+// nome físico atual real.
+const POST_REBUILD_RENAMES: Record<string, string> = {
+  cliente_id: 'client_id',
+};
+
 function extractMigrationColumns(): string[] {
   const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
-  return [...block.matchAll(/^\s*"?([A-Za-z_]+)"?\s+\w/gm)].map((m) => m[1]);
+  return [...block.matchAll(/^\s*"?([A-Za-z_]+)"?\s+\w/gm)].map(
+    (m) => POST_REBUILD_RENAMES[m[1]] ?? m[1],
+  );
 }
 
 function extractEntityColumns(): string[] {

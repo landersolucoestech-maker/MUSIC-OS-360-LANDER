@@ -44,7 +44,7 @@ export class ClientsController {
   }
 
   // ── Contratos vinculados ─────────────────────────────────────────────────
-  @Get(':id/contracts') @RequireRole('viewer') @RequirePermission('client:read') @ApiOperation({ summary: 'Contratos vinculados ao cliente (contracts.cliente_id)' })
+  @Get(':id/contracts') @RequireRole('viewer') @RequirePermission('client:read') @ApiOperation({ summary: 'Contratos vinculados ao cliente (contracts.client_id)' })
   getContracts(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.getContracts(t.id, id);
   }

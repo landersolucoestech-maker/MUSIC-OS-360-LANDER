@@ -11,7 +11,7 @@ export const notaFiscalSchema = z.object({
   numero: z.string().optional().or(z.literal("")),
   serie: z.string().optional().or(z.literal("")),
   tipo_nota: z.enum(["nfse", "nfe", "nfce"]).default("nfse"),
-  cliente_id: z.string().optional().or(z.literal("")),
+  client_id: z.string().optional().or(z.literal("")),
   natureza_operacao: z.string().max(200, "Natureza da operação deve ter no máximo 200 caracteres").optional().or(z.literal("")),
   codigo_servico_municipal: z.string().optional().or(z.literal("")),
   codigo_municipio: z.string().optional().or(z.literal("")),

@@ -60,8 +60,8 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
   const vinculadoDoc = allDocuments.find((d) => d.contract_id === contrato.id);
   const contratoSigners = Array.isArray(contrato.signers) ? contrato.signers : [];
 
-  const lancamentoVinculado: LancamentoWithRelations | undefined = contrato.lancamento_id
-    ? lancamentos.find((l) => l.id === contrato.lancamento_id)
+  const lancamentoVinculado: LancamentoWithRelations | undefined = contrato.release_id
+    ? lancamentos.find((l) => l.id === contrato.release_id)
     : undefined;
 
   const versoes: ContratoVersao[] = Array.isArray(contrato.versoes)

@@ -105,9 +105,9 @@ export class WorksService {
     if (q['status'])     qb.andWhere('w.status = :status', { status: q['status'] });
     if (q['tipo_obra'])  qb.andWhere('w.tipo_obra = :tipoObra', { tipoObra: q['tipo_obra'] });
     if (q['genero'])     qb.andWhere('LOWER(w.genero) = LOWER(:genero)', { genero: q['genero'] });
-    if (q['projeto_id']) {
-      if (q['projeto_id'] === 'no-projeto') qb.andWhere('w.projeto_id IS NULL');
-      else qb.andWhere('w.projeto_id = :projetoId', { projetoId: q['projeto_id'] });
+    if (q['project_id']) {
+      if (q['project_id'] === 'no-projeto') qb.andWhere('w.project_id IS NULL');
+      else qb.andWhere('w.project_id = :projectId', { projectId: q['project_id'] });
     }
     if (q['ecad'] === 'com-ecad')      qb.andWhere("w.cod_ecad IS NOT NULL AND w.cod_ecad <> ''");
     else if (q['ecad'] === 'sem-ecad') qb.andWhere("(w.cod_ecad IS NULL OR w.cod_ecad = '')");

@@ -180,7 +180,7 @@ describe('P2-9 event handlers context propagation', () => {
     expect(manager.getRepository).toHaveBeenCalledWith(ClientEntity);
     expect(repos.get(LeadEntity).update).toHaveBeenCalledWith(
       { id: 'l1', tenant_id: 't1' },
-      expect.objectContaining({ cliente_id: 'client-1' }),
+      expect.objectContaining({ client_id: 'client-1' }),
     );
   });
 

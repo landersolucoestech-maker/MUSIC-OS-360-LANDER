@@ -12,7 +12,7 @@ import type { LeadConvertedPayload } from '../../../core/events/domain-events.ty
  * migration 20260719000010 (mesma causa raiz do bug de exportação de
  * clientes). Como o catch silencioso só loga o erro, toda conversão de lead
  * em cliente falhava sem nenhum sinal visível: nenhum cliente era criado,
- * `lead.cliente_id` nunca era vinculado. Não havia spec algum para este
+ * `lead.client_id` nunca era vinculado. Não havia spec algum para este
  * handler antes desta Parte.
  */
 function makeRepo() {
@@ -66,7 +66,7 @@ describe('LeadEventsHandler.onLeadConverted', () => {
     expect(clientRepo.save).toHaveBeenCalledTimes(1);
   });
 
-  it('vincula lead.cliente_id após criar o cliente com sucesso', async () => {
+  it('vincula lead.client_id após criar o cliente com sucesso', async () => {
     const clientRepo = makeRepo();
     const leadRepo = makeRepo();
     const artistRepo = makeRepo();
@@ -83,7 +83,7 @@ describe('LeadEventsHandler.onLeadConverted', () => {
 
     expect(leadRepo.update).toHaveBeenCalledWith(
       { id: 'lead-1', tenant_id: 'tenant-1' },
-      expect.objectContaining({ cliente_id: expect.any(String), status: 'convertido' }),
+      expect.objectContaining({ client_id: expect.any(String), status: 'convertido' }),
     );
   });
 });

@@ -38,7 +38,7 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
   // obra/cliente estarem entre os primeiros 50 carregados por useObras() /
   // uma listagem de clientes sem filtro (Task J).
   const { entity: obra } = useEntityById<Obra>("obras", open ? licenca?.work_id ?? undefined : undefined);
-  const { entity: cliente } = useEntityById<ClienteOption>("clientes", open ? licenca?.cliente_id ?? undefined : undefined);
+  const { entity: cliente } = useEntityById<ClienteOption>("clientes", open ? licenca?.client_id ?? undefined : undefined);
 
   if (!licenca) return null;
 

@@ -78,9 +78,9 @@ describe('ImportCommitService — commit transacional', () => {
     expect(duplicated.qr.rollbackTransaction).toHaveBeenCalled();
     expect(duplicateResult.errors.some((e) => /já existe/i.test(e))).toBe(true);
 
-    const def = { ...DEF, importableColumns: ['nome_artistico', 'cliente_id'] };
+    const def = { ...DEF, importableColumns: ['nome_artistico', 'client_id'] };
     const validation = validResult(1);
-    validation.rows[0].data = { nome_artistico: 'A', cliente_id: 'c-x' };
+    validation.rows[0].data = { nome_artistico: 'A', client_id: 'c-x' };
     const invalidRelation = makeSvc({ def, validation, queryImpl: () => [] });
     const relationResult = await invalidRelation.svc.commit('artists', file, 't', 'u');
     expect(relationResult.errors.some((e) => /relacionamento inválido/i.test(e))).toBe(true);

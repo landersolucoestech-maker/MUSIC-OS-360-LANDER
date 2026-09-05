@@ -5,7 +5,7 @@ export const licencaSchema = z
     titulo: z.string().min(1, "Título é obrigatório").max(200, "Título deve ter no máximo 200 caracteres").trim(),
     tipoLicenca: z.string().optional().or(z.literal("")),
     workId: z.string().min(1, "Obra musical é obrigatória"),
-    clienteId: z.string().min(1, "Cliente é obrigatório"),
+    clientId: z.string().min(1, "Cliente é obrigatório"),
     projeto: z.string().max(200, "Nome do projeto deve ter no máximo 200 caracteres").optional().or(z.literal("")),
     midiaDestino: z.string().max(150).optional().or(z.literal("")),
     territorio: z.string().max(150).optional().or(z.literal("")),

@@ -157,7 +157,7 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
     col('titulo'), col('tipo'), col('status'), col('valor'),
     col('data_inicio'), col('data_fim'), col('exclusivo'), col('observacoes'),
     col('arquivo_url'), col('signing_platform'),
-    col('artist_id'), col('cliente_id'), col('lancamento_id'),
+    col('artist_id'), col('client_id'), col('release_id'),
     col('template_id'), // campo do wizard (regra 2026-07-12: coluna própria)
     ro('autentique_doc_id'), // estado técnico da integração de assinatura
     ro('versoes'),           // histórico de versões (gerado pelo fluxo de assinatura)
@@ -194,7 +194,7 @@ const WORKS_CONTRACT: ReportFormContract = {
     col('instrumental'), col('criada_por_ia'), col('tipo_ia'),
     col('ia_harmonia'), col('ia_melodia'), col('ia_letra'),
     col('outros_titulos'), col('referencias_conexas'), col('letra_completa'),
-    col('letristas'), col('projeto_id'),
+    col('letristas'), col('project_id'),
     col('artist_id'), col('tipo_obra'),
     // Somente leitura: registro/sociedades e enriquecimento (não são do form de criação)
     ro('duration_seconds'),
@@ -360,7 +360,7 @@ const LICENSES_CONTRACT: ReportFormContract = {
   identityColumn: 'titulo',
   fields: [
     col('titulo'), col('tipo'), col('work_id'), col('obra_musical'), col('artista'),
-    col('cliente_id'), col('cliente'), col('projeto'), col('tipo_uso'),
+    col('client_id'), col('cliente'), col('projeto'), col('tipo_uso'),
     col('midia_destino'), col('territorio'), col('status'),
     col('data_inicio'), col('data_fim'), col('valor'), col('moeda'), col('observacoes'),
   ],
@@ -447,8 +447,8 @@ const SHARES_CONTRACT: ReportFormContract = {
   identityColumn: 'nome_musica',
   fields: [
     col('share_type'), col('percentual'), col('status'), col('direcao'),
-    col('lancamento_id'), col('nome_musica'), col('detentor'), col('destinatario'),
-    col('tipo'), col('artista_externo'), col('artista_projeto_id'), col('artist_id'),
+    col('release_id'), col('nome_musica'), col('detentor'), col('destinatario'),
+    col('tipo'), col('artista_externo'), col('artista_project_id'), col('artist_id'),
     col('pagador'), col('pagador_contato'), col('origem_acordo'), col('data_prevista'),
     col('documentos'), col('acordo_notas'), col('acordo_url'), col('observacoes'),
     col('valor_total'), col('valor_liquidado'),
@@ -516,7 +516,7 @@ const TRANSACTIONS_CONTRACT: ReportFormContract = {
   fields: [
     col('tipo_transacao', 'tipo'), col('tipo_cliente'), col('categoria'), col('subcategoria'),
     col('descricao'), col('valor'), col('data_transacao', 'data'), col('status'),
-    col('artist_id'), col('projeto_id'), col('contrato_id'), col('evento_id'),
+    col('artist_id'), col('project_id'), col('contrato_id'), col('evento_id'),
     col('fornecedor_cliente'), col('orgao_arrecadador'), col('centro_custo'), col('competencia'),
     col('conta_origem'), col('conta_destino'), col('item_investimento'), col('motivo_viagem'),
     col('nome_publicidade'), col('forma_pagamento'), col('tipo_pagamento'),
@@ -540,7 +540,7 @@ const INVOICES_CONTRACT: ReportFormContract = {
   fields: [
     col('numero'), col('serie'), col('tipo_nota'), col('data_emissao'), col('status'),
     col('natureza_operacao'), col('cfop'), col('codigo_servico_municipal'), col('codigo_municipio'),
-    col('cliente_id'), col('tomador_cnpj'), col('tomador_razao_social'),
+    col('client_id'), col('tomador_cnpj'), col('tomador_razao_social'),
     col('tomador_inscricao_estadual'), col('tomador_inscricao_municipal'), col('tomador_email'),
     col('tomador_endereco'), col('tomador_cidade'), col('tomador_uf'), col('tomador_cep'),
     col('descricao_servicos'), col('valor_servicos'), col('valor_deducoes'), col('base_calculo'),
@@ -709,7 +709,7 @@ const MARKETING_CONTENT_POSTS_CONTRACT: ReportFormContract = {
 // ─── Briefing (genérico, marketing) ──────────────────────────────────────────
 // Correção Parte 89 (briefings.service.ts): o DTO usava nomes em inglês
 // (title/content/campaignId/dueAt) que nunca chegavam às colunas físicas reais
-// (titulo/descricao/campanha_id/prazo) — bug de mapeamento corrigido para que
+// (titulo/descricao/campaign_id/prazo) — bug de mapeamento corrigido para que
 // este contrato seja utilizável. Os campos "avançados" (objetivo, contexto,
 // público-alvo etc., presentes só no Editar) vivem na coluna `metadata`
 // genérica.
@@ -717,7 +717,7 @@ const BRIEFINGS_CONTRACT: ReportFormContract = {
   tableName: 'briefings',
   identityColumn: 'titulo',
   fields: [
-    col('titulo'), col('descricao'), col('campanha_id'), col('prazo'), col('status'),
+    col('titulo'), col('descricao'), col('campaign_id'), col('prazo'), col('status'),
     meta('type'), meta('owners'), meta('objective'), meta('context'), meta('audience'),
     meta('positioning'), meta('tone'), meta('requirements'), meta('creativeDirection'),
     meta('references'), meta('visualGuidelines'), meta('textGuidelines'), meta('market'),
@@ -732,7 +732,7 @@ const BRIEFINGS_CONTRACT: ReportFormContract = {
   formFieldAliases: {
     title: 'titulo',
     content: 'descricao',
-    campaignId: 'campanha_id',
+    campaignId: 'campaign_id',
     dueAt: 'prazo',
   },
 };

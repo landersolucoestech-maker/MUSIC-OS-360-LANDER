@@ -98,11 +98,11 @@ export class CreateContractDto {
 
   @ApiPropertyOptional()
   @IsOptional() @IsUUID()
-  cliente_id?: string;
+  client_id?: string;
 
   @ApiPropertyOptional()
   @IsOptional() @IsUUID()
-  lancamento_id?: string;
+  release_id?: string;
 
   @ApiPropertyOptional({ example: '2024-01-01' })
   @IsOptional() @IsDateString()

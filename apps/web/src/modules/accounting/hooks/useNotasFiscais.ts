@@ -35,7 +35,7 @@ export function useNotasFiscais() {
         emit(DomainEvents.INVOICE_CREATED, {
           id: (nf as NotaFiscalWithRelations & { id: string }).id,
           numero: (nf as NotaFiscalWithRelations & { numero?: string }).numero ?? undefined,
-          cliente_id: (nf as NotaFiscalWithRelations & { cliente_id?: string }).cliente_id ?? undefined,
+          client_id: (nf as NotaFiscalWithRelations & { client_id?: string }).client_id ?? undefined,
           valor: invoiceValue(nf),
           org_id: orgId,
         }),
@@ -43,7 +43,7 @@ export function useNotasFiscais() {
         emit(DomainEvents.INVOICE_UPDATED, {
           id: (nf as NotaFiscalWithRelations & { id: string }).id,
           numero: (nf as NotaFiscalWithRelations & { numero?: string }).numero ?? undefined,
-          cliente_id: (nf as NotaFiscalWithRelations & { cliente_id?: string }).cliente_id ?? undefined,
+          client_id: (nf as NotaFiscalWithRelations & { client_id?: string }).client_id ?? undefined,
           valor: invoiceValue(nf),
           org_id: orgId,
         }),

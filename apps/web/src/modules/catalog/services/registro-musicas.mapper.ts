@@ -347,7 +347,7 @@ export interface FormToObraInput {
   letraCompleta: string;
   participantes: ParticipanteForm[];
   situacao: string;
-  projetoId: string | null;
+  projectId: string | null;
   artistId: string | null;
   tipoObra: string;
   orgId: string;
@@ -394,7 +394,7 @@ export function formToObraPayload(input: FormToObraInput): Record<string, unknow
     status: normalizeStatusForDb(input.situacao),
     compositores,
     letristas,
-    projeto_id: input.projetoId ?? null,
+    project_id: input.projectId ?? null,
     artist_id: input.artistId ?? null,
     tipo_obra: input.tipoObra,
   };
@@ -515,7 +515,7 @@ export function projetoToObraSeed(
   const genero = ((musica?.genero || projeto.genero || "").toLowerCase()) || null;
 
   return {
-    projeto_id: projeto.id,
+    project_id: projeto.id,
     artist_id: projeto.artist_id ?? null,
     titulo: musica?.nome?.trim() || projeto.titulo?.trim() || "",
     genero,

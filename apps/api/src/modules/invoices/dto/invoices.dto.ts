@@ -29,7 +29,7 @@ export class CreateInvoiceDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) numero?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) serie?: string;
   @ApiPropertyOptional({ enum: TIPOS_NOTA }) @IsOptional() @IsIn(TIPOS_NOTA) tipo_nota?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() cliente_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() client_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() venda_id?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) natureza_operacao?: string;
@@ -87,7 +87,7 @@ export class UpdateInvoiceDto extends PartialType(CreateInvoiceDto) {
 export class QueryInvoiceDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional({ enum: TIPOS_NOTA }) @IsOptional() @IsIn(TIPOS_NOTA) tipo_nota?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() cliente_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() client_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
 
   // Aliases legados mantidos somente para clientes antigos; o service deve

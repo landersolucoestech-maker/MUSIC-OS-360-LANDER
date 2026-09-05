@@ -25,7 +25,7 @@ export interface Obra {
   origem_externa?: string | null;
   origem_externa_id?: string | null;
   origem_externa_sincronizado_em?: string | null;
-  projeto_id?: string | null;
+  project_id?: string | null;
   artist_id?: string | null;
   created_at?: string;
   updated_at?: string;

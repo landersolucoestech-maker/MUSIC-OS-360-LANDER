@@ -117,7 +117,7 @@ describe("ObraFormModal edit mode", () => {
     status: "analise",
     compositores: ["Alice", "Bob"],
     letristas: ["Carol"],
-    projeto_id: null,
+    project_id: null,
     org_id: "org-1",
   };
 

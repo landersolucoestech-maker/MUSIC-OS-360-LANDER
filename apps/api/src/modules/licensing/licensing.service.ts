@@ -71,7 +71,7 @@ export class LicensingService {
     }
     if (query.tipo) qb.andWhere('l.tipo = :tipo', { tipo: query.tipo });
     if (query.work_id) qb.andWhere('l.work_id = :workId', { workId: query.work_id });
-    if (query.cliente_id) qb.andWhere('l.cliente_id = :clienteId', { clienteId: query.cliente_id });
+    if (query.client_id) qb.andWhere('l.client_id = :clientId', { clientId: query.client_id });
     if (query.midia_destino) qb.andWhere('l.midia_destino ILIKE :midia', { midia: `%${query.midia_destino}%` });
     if (query.search) {
       qb.andWhere(
@@ -122,7 +122,7 @@ export class LicensingService {
     const payload = this.normalizePayload(dto);
     await assertSameTenantFk(this.ds!, 'works',   payload['work_id']    as string | undefined, tenantId, 'Obra');
     await assertSameTenantFk(this.ds!, 'artists', payload['artist_id'] as string | undefined, tenantId, 'Artista');
-    await assertSameTenantFk(this.ds!, 'clients', payload['cliente_id'] as string | undefined, tenantId, 'Cliente');
+    await assertSameTenantFk(this.ds!, 'clients', payload['client_id'] as string | undefined, tenantId, 'Cliente');
 
     const item = this.repository.create({
       tenant_id: tenantId,

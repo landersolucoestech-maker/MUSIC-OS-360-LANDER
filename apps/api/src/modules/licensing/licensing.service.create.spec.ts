@@ -4,7 +4,7 @@ import { LicensingService } from './licensing.service';
 import type { CreateLicenseDto } from './dto/licensing.dto';
 
 /**
- * P1: create() accepted work_id/artist_id/cliente_id from the DTO with no
+ * P1: create() accepted work_id/artist_id/client_id from the DTO with no
  * check that the referenced row belongs to the same tenant. No read-side
  * leak (every list/get still filters by the license's own tenant_id), but
  * a tenant could create a license dangling-referencing another tenant's
@@ -34,17 +34,17 @@ describe('LicensingService.create — FK cross-tenant (P1)', () => {
     } as unknown as CreateLicenseDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('rejeita cliente_id de outro tenant (ou inexistente)', async () => {
+  it('rejeita client_id de outro tenant (ou inexistente)', async () => {
     const svc = makeService(jest.fn(async () => []));
     await expect(svc.create('tenant-1', 'user-1', {
-      cliente_id: 'client-from-another-tenant', titulo: 'X',
+      client_id: 'client-from-another-tenant', titulo: 'X',
     } as unknown as CreateLicenseDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('permite quando todas as referências pertencem ao tenant', async () => {
     const svc = makeService(jest.fn(async () => [{ exists: 1 }]));
     await expect(svc.create('tenant-1', 'user-1', {
-      work_id: 'work-1', artist_id: 'artist-1', cliente_id: 'client-1', titulo: 'X',
+      work_id: 'work-1', artist_id: 'artist-1', client_id: 'client-1', titulo: 'X',
     } as unknown as CreateLicenseDto)).resolves.toBeDefined();
   });
 

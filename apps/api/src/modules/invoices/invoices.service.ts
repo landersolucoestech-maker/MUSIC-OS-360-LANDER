@@ -80,7 +80,7 @@ export class InvoicesService {
     if (tipoNota) {
       qb.andWhere('(i.tipo_nota = :tipoNota OR i.tipo = :tipoNota)', { tipoNota });
     }
-    if (query.cliente_id) qb.andWhere('i.cliente_id = :clienteId', { clienteId: query.cliente_id });
+    if (query.client_id) qb.andWhere('i.client_id = :clientId', { clientId: query.client_id });
     if (query.artistId) qb.andWhere('i.prestador_id = :prestadorId', { prestadorId: query.artistId });
     if (query.search) {
       qb.andWhere(

@@ -28,14 +28,14 @@ export const shareSchema = z
   .object({
     share_type: z.enum(["internal_release", "external_receivable"]).default("internal_release"),
     // Interno
-    lancamento_id: z.string().optional().or(z.literal("")),
+    release_id: z.string().optional().or(z.literal("")),
     detentor: z.string().max(150, "Detentor deve ter no máximo 150 caracteres").optional().or(z.literal("")),
     destinatario: z.string().max(150).optional().or(z.literal("")),
     funcao: z.enum(["compositor", "interprete", "produtor", "editora", "gravadora", "empresario", "outro"]).optional(),
     // Externo
     nome_musica: z.string().max(200, "Nome deve ter no máximo 200 caracteres").optional().or(z.literal("")),
     artista_externo: z.string().max(150).optional().or(z.literal("")),
-    artista_projeto_id: z.string().optional().or(z.literal("")),
+    artista_project_id: z.string().optional().or(z.literal("")),
     pagador: z.string().max(150).optional().or(z.literal("")),
     pagador_contato: z.string().max(200).optional().or(z.literal("")),
     origem_acordo: z.string().max(300).optional().or(z.literal("")),
@@ -55,11 +55,11 @@ export const shareSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["percentual"], message: "Percentual é obrigatório" });
     }
     if (data.share_type === "internal_release") {
-      if (!data.lancamento_id) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["lancamento_id"], message: "Selecione o lançamento" });
+      if (!data.release_id) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["release_id"], message: "Selecione o lançamento" });
       if (!data.detentor) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["detentor"], message: "Informe o participante" });
     } else {
       if (!data.nome_musica) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["nome_musica"], message: "Informe o nome da música" });
-      if (!data.artista_projeto_id) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["artista_projeto_id"], message: "Vincule um artista/projeto da empresa" });
+      if (!data.artista_project_id) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["artista_project_id"], message: "Vincule um artista/projeto da empresa" });
     }
   });
 

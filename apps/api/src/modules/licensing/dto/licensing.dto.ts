@@ -13,7 +13,7 @@ export class CreateLicenseDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) obra_musical?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() cliente_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() client_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) cliente?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) projeto?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) tipo?: string;
@@ -50,7 +50,7 @@ export class QueryLicenseDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() work_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() cliente_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() client_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() midia_destino?: string;
 }

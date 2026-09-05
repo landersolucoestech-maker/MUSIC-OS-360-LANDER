@@ -25,7 +25,7 @@ export interface TransacaoEntity {
   data:        string;
   status:      "pendente" | "conciliado" | "cancelado";
   referencia?: string;
-  projetoId?:  string;
+  projectId?:  string;
   artistId?:  string;
   tags?:       string[];
   createdAt:   string;

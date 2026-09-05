@@ -44,7 +44,7 @@ interface DetailsSectionProps {
   disabled: boolean;
   companySettings: any;
   updateField: <K extends keyof NfFormData>(field: K, value: NfFormData[K]) => void;
-  handleClienteChange: (clienteId: string, cliente?: NfClienteLookup) => void;
+  handleClienteChange: (clientId: string, cliente?: NfClienteLookup) => void;
 }
 
 export function DetailsSection({
@@ -244,7 +244,7 @@ export function DetailsSection({
           <AsyncEntityCombobox<NfClienteLookup>
             table="clientes"
             getLabel={(c) => c.nome}
-            value={formData.cliente_id}
+            value={formData.client_id}
             onChange={handleClienteChange}
             placeholder="Selecione um cliente"
             searchPlaceholder="Buscar cliente…"

@@ -403,8 +403,8 @@ const ContractForm = ({
           <div className="space-y-2">
             <Label>Lançamento Vinculado (opcional)</Label>
             <Select
-              value={form.watch("lancamento_id") || "none"}
-              onValueChange={(value) => form.setValue("lancamento_id", value === "none" ? undefined : value)}
+              value={form.watch("release_id") || "none"}
+              onValueChange={(value) => form.setValue("release_id", value === "none" ? undefined : value)}
             >
               <SelectTrigger data-testid="select-lancamento-id">
                 <SelectValue placeholder="Selecionar lançamento" />
@@ -572,7 +572,7 @@ function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormSubmi
     service_type: serviceType,
     status:       status ?? "rascunho",
     arquivo_url:  c.arquivo_url ?? undefined,
-    lancamento_id: c.lancamento_id ?? undefined,
+    release_id: c.release_id ?? undefined,
     start_date:   c.data_inicio ? new Date(c.data_inicio) : undefined,
     end_date:     c.data_fim    ? new Date(c.data_fim)    : undefined,
     fixed_value:  c.valor ?? undefined,
@@ -605,21 +605,21 @@ export const ContratoFormModal = ({
   const handleSubmit = async (data: ContratoFormSubmitData) => {
     const {
       title, service_type, status,
-      arquivo_url, notas_versao, lancamento_id,
+      arquivo_url, notas_versao, release_id,
       start_date, end_date, fixed_value,
       external_rights_percentage, advance_payment, financial_support, observations,
       signers, documentos,
     } = data;
 
     const resolvedArquivoUrl = arquivo_url || (mode === "edit" && contrato ? (contrato.arquivo_url ?? null) : null);
-    const resolvedLancamentoId = lancamento_id || (mode === "edit" && contrato ? (contrato.lancamento_id ?? null) : null);
+    const resolvedReleaseId = release_id || (mode === "edit" && contrato ? (contrato.release_id ?? null) : null);
 
     const payload: Record<string, unknown> = {
       titulo: title,
       tipo: service_type,
       status: status || "rascunho",
       arquivo_url: resolvedArquivoUrl,
-      lancamento_id: resolvedLancamentoId,
+      release_id: resolvedReleaseId,
       data_inicio: start_date ? (start_date as Date).toISOString().split("T")[0] : null,
       data_fim: end_date ? (end_date as Date).toISOString().split("T")[0] : null,
       valor: fixed_value || null,

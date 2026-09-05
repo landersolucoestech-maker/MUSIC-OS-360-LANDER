@@ -96,8 +96,8 @@ export default function Licenciamento() {
     () => Array.from(new Set(pageItems.map((l: any) => l.work_id).filter(Boolean))) as string[],
     [pageItems],
   );
-  const licencaClienteIds = useMemo(
-    () => Array.from(new Set(pageItems.map((l: any) => l.cliente_id).filter(Boolean))) as string[],
+  const licencaClientIds = useMemo(
+    () => Array.from(new Set(pageItems.map((l: any) => l.client_id).filter(Boolean))) as string[],
     [pageItems],
   );
   useEffect(() => {
@@ -114,22 +114,22 @@ export default function Licenciamento() {
     return () => { cancelled = true; };
   }, [licencaObraIds]);
   useEffect(() => {
-    if (licencaClienteIds.length === 0) return;
+    if (licencaClientIds.length === 0) return;
     let cancelled = false;
-    Promise.all(licencaClienteIds.map((id) => storage.findById<{ id: string; nome: string }>("clientes", id)))
+    Promise.all(licencaClientIds.map((id) => storage.findById<{ id: string; nome: string }>("clientes", id)))
       .then((results) => {
         if (cancelled) return;
         const map: Record<string, { id: string; nome: string }> = {};
-        results.forEach((c, i) => { if (c) map[licencaClienteIds[i]] = c; });
+        results.forEach((c, i) => { if (c) map[licencaClientIds[i]] = c; });
         setResolvedClientes((prev) => ({ ...prev, ...map }));
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [licencaClienteIds]);
+  }, [licencaClientIds]);
 
   const obraTituloDe = (l: any) => (l.work_id ? resolvedObras[l.work_id]?.titulo ?? null : null);
   const artistaDe = (l: any) => (l.work_id ? obraArtistaLabel(resolvedObras[l.work_id]) : "");
-  const clienteNomeDe = (l: any) => (l.cliente_id ? resolvedClientes[l.cliente_id]?.nome ?? null : null);
+  const clienteNomeDe = (l: any) => (l.client_id ? resolvedClientes[l.client_id]?.nome ?? null : null);
 
   // KPIs: contagem + soma de valor por status SOBRE O TENANT INTEIRO (não a
   // página atual) — GET /licenses/stats, agregado no banco.

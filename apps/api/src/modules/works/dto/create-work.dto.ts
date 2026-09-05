@@ -84,7 +84,7 @@ export class CreateWorkDto {
   @ApiPropertyOptional() @IsOptional() @IsString() letra_completa?: string;
   @ApiPropertyOptional() @IsOptional() @IsArray() participantes?: unknown[];
   @ApiPropertyOptional() @IsOptional() @IsArray() letristas?: unknown[];
-  @ApiPropertyOptional() @IsOptional() @IsUUID() projeto_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() project_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) tipo_obra?: string;
 }

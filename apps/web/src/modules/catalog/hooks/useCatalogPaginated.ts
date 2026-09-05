@@ -21,19 +21,19 @@ export interface UseObrasPaginatedParams {
   status?: string;
   tipoObra?: string;
   genero?: string;
-  projetoId?: string;
+  projectId?: string;
   ecad?: "com-ecad" | "sem-ecad";
   enabled?: boolean;
 }
 
 export function useObrasPaginated({
-  page, pageSize, search, status, tipoObra, genero, projetoId, ecad, enabled = true,
+  page, pageSize, search, status, tipoObra, genero, projectId, ecad, enabled = true,
 }: UseObrasPaginatedParams) {
   const filters: Record<string, unknown> = {};
   if (status) filters.status = status;
   if (tipoObra) filters.tipo_obra = tipoObra;
   if (genero) filters.genero = genero;
-  if (projetoId) filters.projeto_id = projetoId;
+  if (projectId) filters.project_id = projectId;
   if (ecad) filters.ecad = ecad;
 
   const result = usePaginatedDataQuery<Obra>({
@@ -57,7 +57,7 @@ export function useObrasPaginated({
   };
 }
 
-export function useObrasStats(query: { status?: string; tipoObra?: string; genero?: string; projetoId?: string; ecad?: string } = {}) {
+export function useObrasStats(query: { status?: string; tipoObra?: string; genero?: string; projectId?: string; ecad?: string } = {}) {
   const q = useQuery<GroupStatsResult>({
     queryKey: [...QUERY_KEYS.OBRAS, "stats", query],
     queryFn: ({ signal }) => {
@@ -65,7 +65,7 @@ export function useObrasStats(query: { status?: string; tipoObra?: string; gener
       if (query.status) params.set("status", query.status);
       if (query.tipoObra) params.set("tipo_obra", query.tipoObra);
       if (query.genero) params.set("genero", query.genero);
-      if (query.projetoId) params.set("projeto_id", query.projetoId);
+      if (query.projectId) params.set("project_id", query.projectId);
       if (query.ecad) params.set("ecad", query.ecad);
       const qs = params.toString();
       return api.get<GroupStatsResult>(`/works/stats${qs ? `?${qs}` : ""}`, { signal });

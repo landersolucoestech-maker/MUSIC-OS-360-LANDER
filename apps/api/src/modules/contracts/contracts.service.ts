@@ -68,7 +68,7 @@ export class ContractsService {
         'c.clientes',
         ClientEntity,
         'clientes',
-        'clientes.id = c.cliente_id AND clientes.tenant_id = c.tenant_id AND clientes.deleted_at IS NULL',
+        'clientes.id = c.client_id AND clientes.tenant_id = c.tenant_id AND clientes.deleted_at IS NULL',
       )
       .where('c.tenant_id = :tenantId', { tenantId })
       .andWhere('c.deleted_at IS NULL');
@@ -127,7 +127,7 @@ export class ContractsService {
         'c.clientes',
         ClientEntity,
         'clientes',
-        'clientes.id = c.cliente_id AND clientes.tenant_id = c.tenant_id AND clientes.deleted_at IS NULL',
+        'clientes.id = c.client_id AND clientes.tenant_id = c.tenant_id AND clientes.deleted_at IS NULL',
       )
       .where('c.id = :id AND c.tenant_id = :tenantId AND c.deleted_at IS NULL', { id, tenantId })
       .getOne();
@@ -145,8 +145,8 @@ export class ContractsService {
   private buildEntityPayload(dto: Record<string, unknown>, resolved: ResolvedContractWriteFields): Record<string, unknown> {
     const out: Record<string, unknown> = { ...resolved };
 
-    out.cliente_id    = dto['cliente_id']    ?? null;
-    out.lancamento_id = dto['lancamento_id'] ?? null;
+    out.client_id    = dto['client_id']    ?? null;
+    out.release_id = dto['release_id'] ?? null;
     out.exclusivo     = dto['exclusivo']     ?? false;
     out.observacoes   = dto['observacoes']   ?? null;
     out.autentique_doc_id = dto['autentique_doc_id'] ?? null;
@@ -189,7 +189,7 @@ export class ContractsService {
     if (normalized['tipo'] == null) normalized['tipo'] = 'outro';
 
     await assertSameTenantFk(this.ds!, 'artists', normalized['artist_id'] as string | undefined, tenantId, 'Artista');
-    await assertSameTenantFk(this.ds!, 'clients', normalized['cliente_id'] as string | undefined, tenantId, 'Cliente');
+    await assertSameTenantFk(this.ds!, 'clients', normalized['client_id'] as string | undefined, tenantId, 'Cliente');
 
     const entity = this.repo!.create({
       tenant_id:  tenantId,

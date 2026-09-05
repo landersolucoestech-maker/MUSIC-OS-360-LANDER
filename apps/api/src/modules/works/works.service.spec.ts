@@ -146,19 +146,19 @@ describe('WorksService', () => {
       status: 'pendente',
       compositores: ['Fulano'],
       letristas: null,
-      projeto_id: '123e4567-e89b-12d3-a456-426614174000',
+      project_id: '123e4567-e89b-12d3-a456-426614174000',
       artist_id: null,
       tipo_obra: 'musica',
     };
 
-    it('aceita o payload real do frontend (formToObraPayload), incluindo projeto_id', async () => {
+    it('aceita o payload real do frontend (formToObraPayload), incluindo project_id', async () => {
       const errors = await validateDto(realFormPayload);
       expect(errors).toEqual([]);
     });
 
-    it('rejeita projeto_id com UUID inválido', async () => {
-      const errors = await validateDto({ ...realFormPayload, projeto_id: 'nao-e-uuid' });
-      expect(errors.some((e) => e.property === 'projeto_id')).toBe(true);
+    it('rejeita project_id com UUID inválido', async () => {
+      const errors = await validateDto({ ...realFormPayload, project_id: 'nao-e-uuid' });
+      expect(errors.some((e) => e.property === 'project_id')).toBe(true);
     });
 
     it('rejeita campo desconhecido (whitelist)', async () => {

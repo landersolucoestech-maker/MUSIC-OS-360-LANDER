@@ -47,7 +47,7 @@ export interface TransactionDetailsDTO {
   artist_id?: string | null;
   artistaVinculado?: string | null;
   project?: Record<string, unknown> | null;
-  projeto_id?: string | null;
+  project_id?: string | null;
   projetoVinculado?: string | null;
   campaign?: Record<string, unknown> | null;
   contract?: Record<string, unknown> | null;

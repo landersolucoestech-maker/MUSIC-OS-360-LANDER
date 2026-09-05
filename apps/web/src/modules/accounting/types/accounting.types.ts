@@ -39,7 +39,7 @@ export interface Transacao {
   data: string;
   status?: TransacaoStatus | string | null;
   artist_id?: string | null;
-  cliente_id?: string | null;
+  client_id?: string | null;
   venda_id?: string | null;
   /** Vínculos gerenciais obrigatórios para consolidação no P&L (≥1). */
   entityLinks?: TransactionEntityLink[];
@@ -76,7 +76,7 @@ export interface NotaFiscal {
   data_emissao?: string | null;
   data_vencimento?: string | null;
   descricao_servico?: string | null;
-  cliente_id?: string | null;
+  client_id?: string | null;
   venda_id?: string | null;
   created_at?: string;
   updated_at?: string;

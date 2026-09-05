@@ -22,7 +22,7 @@ interface ProjetoFormModalProps {
   onOpenChange: (open: boolean) => void;
   projeto?: any;
   mode: "create" | "edit" | "view";
-  onConcluido?: (projetoId: string) => void;
+  onConcluido?: (projectId: string) => void;
 }
 
 interface MusicaData {

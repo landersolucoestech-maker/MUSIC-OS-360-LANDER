@@ -142,7 +142,7 @@ export const clientsService = {
     return api.post<ClientTimelineEntry>(`/clients/${clientId}/timeline`, data);
   },
 
-  // ── Contratos vinculados (relação real contracts.cliente_id) ──────────────
+  // ── Contratos vinculados (relação real contracts.client_id) ──────────────
   async getContracts(clientId: string): Promise<ClientContractSummary[]> {
     return api.get<ClientContractSummary[]>(`/clients/${clientId}/contracts`);
   },
