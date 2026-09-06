@@ -941,8 +941,8 @@ export default function RH() {
                       <TableCell className="text-muted-foreground">
                         {fa.type ? fa.type.charAt(0).toUpperCase() + fa.type.slice(1) : "—"}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(fa.data_inicio)}</TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(fa.data_fim)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(fa.start_date)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(fa.end_date)}</TableCell>
                       <TableCell className="text-center">{fa.dias_totais ?? "—"}</TableCell>
                       <TableCell>
                         <Badge variant={STATUS_VARIANT_AUSENCIA[fa.status || "pendente"] || "neutral"}>

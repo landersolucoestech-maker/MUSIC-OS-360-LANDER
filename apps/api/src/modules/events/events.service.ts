@@ -104,7 +104,7 @@ export class EventsService {
       out['data']      = startValue;
       out['starts_at'] = startValue;
     }
-    if (d['endsAt']    != null) out['data_fim']   = new Date(d['endsAt'] as string | Date);
+    if (d['endsAt']    != null) out['end_date']   = new Date(d['endsAt'] as string | Date);
     if (d['status']    != null) out['status']     = d['status'];
     if (d['metadata']  != null) out['metadata']   = d['metadata'];
     // Campos do formulário (regra 2026-07-12: coluna própria, sem metadata)

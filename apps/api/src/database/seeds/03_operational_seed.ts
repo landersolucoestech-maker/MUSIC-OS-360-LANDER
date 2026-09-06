@@ -82,7 +82,7 @@ export async function seedOperational(ds: DataSource, tenant: SeedResult): Promi
   end.setMonth(end.getMonth() + 1);
 
   await ds.query(`
-    INSERT INTO campaigns (id, tenant_id, nome, type, status, objetivo, artist_id, data_inicio, data_fim, created_by)
+    INSERT INTO campaigns (id, tenant_id, nome, type, status, objetivo, artist_id, start_date, end_date, created_by)
     VALUES ($1, $2, 'Lancamento Verao Demo', 'digital', 'rascunho', 'Lancar single de verao', $3, $4, $5, $6)
     ON CONFLICT (id) DO NOTHING
   `, [campaignId, tenantId, artistId, now, end, effectiveAdminSub]);

@@ -1,7 +1,7 @@
 /**
  * date-time.test.ts
  *
- * Task S — guarda permanente: o calendário da Agenda lia `evento.data_inicio`
+ * Task S — guarda permanente: o calendário da Agenda lia `evento.start_date`
  * (campo que nunca existiu no backend — a coluna real é `data`, timestamp
  * completo) para montar cada evento, então TODO evento caía no fallback
  * "agora" e aparecia sempre na data errada, para qualquer tenant. splitDateTime/

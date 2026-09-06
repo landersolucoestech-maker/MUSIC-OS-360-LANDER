@@ -46,8 +46,8 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
   const artista = obraArtistaLabel(obra) || null;
   const clienteNome = cliente?.nome ?? null;
 
-  const inicio = formatLicensingDate(licenca.data_inicio);
-  const fim = formatLicensingDate(licenca.data_fim);
+  const inicio = formatLicensingDate(licenca.start_date);
+  const fim = formatLicensingDate(licenca.end_date);
   const vigencia = inicio || fim ? `${inicio ?? "—"} até ${fim ?? "—"}` : null;
 
   return (

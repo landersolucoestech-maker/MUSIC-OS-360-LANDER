@@ -6,7 +6,7 @@ export type ContratoSituacao = "ativo" | "vencendo" | "sem_contrato" | "em_negoc
 
 type ContratoLike = MockRow & {
   status?: string | null;
-  data_fim?: string | null;
+  end_date?: string | null;
 };
 
 const ATIVO_STATUSES = new Set(["ativo", "assinado", "vigente"]);
@@ -38,9 +38,9 @@ export function getContratoSituacao(contratos: ContratoLike[] | undefined | null
 
     temAtivo = true;
 
-    if (c.data_fim) {
+    if (c.end_date) {
       try {
-        const dias = differenceInDays(parseISO(c.data_fim), hoje);
+        const dias = differenceInDays(parseISO(c.end_date), hoje);
         if (dias >= 0 && dias <= 30) temVencendo = true;
       } catch {
         /* ignore parse errors */
@@ -61,9 +61,9 @@ function getDiasVencendo(contratos: ContratoLike[] | undefined | null): number |
   for (const c of contratos) {
     const status = (c.status || "").toLowerCase();
     if (!ATIVO_STATUSES.has(status) && status !== "vencendo") continue;
-    if (!c.data_fim) continue;
+    if (!c.end_date) continue;
     try {
-      const dias = differenceInDays(parseISO(c.data_fim), hoje);
+      const dias = differenceInDays(parseISO(c.end_date), hoje);
       if (dias >= 0 && dias <= 30) {
         if (menor === null || dias < menor) menor = dias;
       }

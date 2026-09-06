@@ -47,8 +47,8 @@ const DEFAULT_VALUES: LicencaFormData = {
   midiaDestino: "",
   territorio: "",
   status: "negociacao",
-  dataInicio: "",
-  dataFim: "",
+  startDate: "",
+  endDate: "",
   remunerationType: "FIXED",
   currency: "BRL",
   amount: "",
@@ -94,8 +94,8 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
         midiaDestino: licenca.midia_destino || "",
         territorio: licenca.territorio || "",
         status: licenca.status || "negociacao",
-        dataInicio: licenca.data_inicio || "",
-        dataFim: licenca.data_fim || "",
+        startDate: licenca.start_date || "",
+        endDate: licenca.end_date || "",
         remunerationType: licenca.remuneration_type || "FIXED",
         currency: licenca.currency || "BRL",
         amount: (licenca.amount ?? licenca.valor) != null ? String(licenca.amount ?? licenca.valor) : "",
@@ -122,8 +122,8 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
       midia_destino:     data.midiaDestino || undefined,
       territorio:        data.territorio || undefined,
       status:            data.status || "negociacao",
-      data_inicio:       data.dataInicio || undefined,
-      data_fim:          data.dataFim || undefined,
+      start_date:       data.startDate || undefined,
+      end_date:          data.endDate || undefined,
       remuneration_type: data.remunerationType,
       currency:          isFixed || isBoth ? data.currency : null,
       amount:            isFixed || isBoth ? amountNum : null,
@@ -351,7 +351,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
               <div className="space-y-2">
                 <Label>Data Início</Label>
                 <Controller
-                  name="dataInicio"
+                  name="startDate"
                   control={control}
                   render={({ field }) => (
                     <DatePickerField value={field.value ?? ""} onChange={field.onChange} disabled={isViewMode} placeholder="Selecione a data" displayFormat="dd/MM/yyyy" data-testid="datepicker-data-inicio" />
@@ -361,7 +361,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
               <div className="space-y-2">
                 <Label>Data Fim</Label>
                 <Controller
-                  name="dataFim"
+                  name="endDate"
                   control={control}
                   render={({ field }) => (
                     <DatePickerField value={field.value ?? ""} onChange={field.onChange} disabled={isViewMode} placeholder="Selecione a data" displayFormat="dd/MM/yyyy" data-testid="datepicker-data-fim" />

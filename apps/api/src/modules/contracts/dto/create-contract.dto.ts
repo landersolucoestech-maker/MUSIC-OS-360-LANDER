@@ -7,14 +7,16 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 /**
  * CreateContractDto aceita BOTH English camelCase e pt-BR snake_case.
  *
- * Fase 5 / C1: pt-BR é o contrato canônico para artistId/value/
- * startsAt/expiresAt/fileUrl — os aliases EN correspondentes estão em
- * depreciação temporária, ainda aceitos, resolvidos e validados por
- * contract-legacy-alias.util.ts, mas marcados `deprecated` no Swagger.
- * Exceção: `title`/`type` passaram a ser os campos canônicos (normalização
- * de nomenclatura, 2026-09-05) — `titulo`/`tipo` (pt-BR) são os aliases
- * legados agora.
- * Conflitos entre o par PT/EN são rejeitados com 400
+ * Fase 5 / C1: pt-BR é o contrato canônico para artistId/value/fileUrl —
+ * os aliases EN correspondentes estão em depreciação temporária, ainda
+ * aceitos, resolvidos e validados por contract-legacy-alias.util.ts, mas
+ * marcados `deprecated` no Swagger.
+ * Exceção: `title`/`type`/`start_date`/`end_date` passaram a ser os campos
+ * canônicos (normalização de nomenclatura, 2026-09-05) — `titulo`/`tipo`
+ * (pt-BR) e, para as datas, tanto `data_inicio`/`data_fim` (pt-BR) quanto
+ * `startsAt`/`expiresAt` (o alias EN já existente antes desta migração)
+ * são aceitos como aliases legados agora — três nomes por campo.
+ * Conflitos entre quaisquer dos nomes aceitos são rejeitados com 400
  * (CONTRACT_ALIAS_CONFLICT). currency/signedAt/parties não fazem parte
  * desta depreciação (ver C1.1 — dívida separada, fora deste escopo).
  */
@@ -56,12 +58,22 @@ export class CreateContractDto {
   @MaxLength(3)
   currency?: string = 'BRL';
 
-  @ApiPropertyOptional({ example: '2024-01-01T00:00:00.000Z', deprecated: true, description: 'Use "data_inicio".' })
+  @ApiPropertyOptional({ example: '2024-01-01T00:00:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  start_date?: string;
+
+  @ApiPropertyOptional({ example: '2025-01-01T00:00:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  end_date?: string;
+
+  @ApiPropertyOptional({ example: '2024-01-01T00:00:00.000Z', deprecated: true, description: 'Use "start_date".' })
   @IsOptional()
   @IsDateString()
   startsAt?: string;
 
-  @ApiPropertyOptional({ example: '2025-01-01T00:00:00.000Z', deprecated: true, description: 'Use "data_fim".' })
+  @ApiPropertyOptional({ example: '2025-01-01T00:00:00.000Z', deprecated: true, description: 'Use "end_date".' })
   @IsOptional()
   @IsDateString()
   expiresAt?: string;
@@ -107,11 +119,11 @@ export class CreateContractDto {
   @IsOptional() @IsUUID()
   release_id?: string;
 
-  @ApiPropertyOptional({ example: '2024-01-01' })
+  @ApiPropertyOptional({ example: '2024-01-01', deprecated: true, description: 'Use "start_date".' })
   @IsOptional() @IsDateString()
   data_inicio?: string;
 
-  @ApiPropertyOptional({ example: '2025-12-31' })
+  @ApiPropertyOptional({ example: '2025-12-31', deprecated: true, description: 'Use "end_date".' })
   @IsOptional() @IsDateString()
   data_fim?: string;
 

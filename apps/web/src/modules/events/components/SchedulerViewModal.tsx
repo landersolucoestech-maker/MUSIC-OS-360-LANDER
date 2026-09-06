@@ -101,8 +101,8 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Field label="Data Início" value={formatDate(evento.data)} />
               <Field label="Horário Início" value={evento.data ? new Date(evento.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null} />
-              <Field label="Data Fim" value={evento.data_fim ? formatDate(evento.data_fim) : null} />
-              <Field label="Horário Fim" value={evento.data_fim ? new Date(evento.data_fim).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null} />
+              <Field label="Data Fim" value={evento.end_date ? formatDate(evento.end_date) : null} />
+              <Field label="Horário Fim" value={evento.end_date ? new Date(evento.end_date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null} />
             </div>
           </Section>
 

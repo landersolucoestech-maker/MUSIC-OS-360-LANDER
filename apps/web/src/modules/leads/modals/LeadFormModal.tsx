@@ -122,8 +122,8 @@ type CondicionalEventoPayload = {
 type CondicionalCampanhaPayload = {
   nome_campanha: string;
   tipo_campanha: string;
-  data_inicio: string;
-  data_fim: string;
+  start_date: string;
+  end_date: string;
   cidade: string;
   estado: string;
   nome_artista_banda: string;
@@ -199,7 +199,7 @@ const EVENTO_DEFAULT: CondicionalEventoPayload = {
 
 const CAMPANHA_DEFAULT: CondicionalCampanhaPayload = {
   nome_campanha: "", tipo_campanha: "",
-  data_inicio: "", data_fim: "",
+  start_date: "", end_date: "",
   cidade: "", estado: "",
   nome_artista_banda: "", necessidades_adicionais: "",
 };
@@ -869,16 +869,16 @@ export function LeadFormModal({
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Data de Início">
                   <DatePickerField
-                    value={values.campanha!.data_inicio}
-                    onChange={(v) => setCampanha("data_inicio", v)}
+                    value={values.campanha!.start_date}
+                    onChange={(v) => setCampanha("start_date", v)}
                     placeholder="Selecione a data"
                     data-testid="datepicker-campanha-inicio"
                   />
                 </Field>
                 <Field label="Data de Fim">
                   <DatePickerField
-                    value={values.campanha!.data_fim}
-                    onChange={(v) => setCampanha("data_fim", v)}
+                    value={values.campanha!.end_date}
+                    onChange={(v) => setCampanha("end_date", v)}
                     placeholder="Selecione a data"
                     data-testid="datepicker-campanha-fim"
                   />

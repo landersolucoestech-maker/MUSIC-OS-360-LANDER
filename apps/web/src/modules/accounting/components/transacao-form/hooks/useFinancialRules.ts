@@ -12,7 +12,7 @@ import {
 } from "@/modules/accounting/components/transacao-form/rules/financial-form-rules";
 import { getStoredOverrides, buildKey } from "./useRuleOverrides";
 
-interface Evento  { id: string; artist_id?: string | null; title: string; data_inicio?: string | null }
+interface Evento  { id: string; artist_id?: string | null; title: string; start_date?: string | null }
 
 export interface FinancialRulesResult extends FinancialFormRules {
   categorias:          { value: string; label: string }[];

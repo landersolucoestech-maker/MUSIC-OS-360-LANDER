@@ -202,15 +202,15 @@ export default function Agenda() {
 
     const exportData = allEventos.map(e => {
       const inicio = splitDateTime(e.data);
-      const fim = splitDateTime(e.data_fim);
+      const fim = splitDateTime(e.end_date);
       return {
         title: e.title,
         type: getBackendEventTypeLabel(e.type),
         status: e.status,
         participantes: summarizeAgendaParticipants(getEventoParticipants(e)),
-        data_inicio: inicio.date,
+        start_date: inicio.date,
         horario_inicio: inicio.time,
-        data_fim: fim.date,
+        end_date: fim.date,
         horario_fim: fim.time,
         local: e.local || "",
         publico_esperado: e.publico_esperado ?? "",
@@ -254,24 +254,24 @@ export default function Agenda() {
         const title = row.title || row.Title || row.TITULO || row.Título;
         if (!title) continue;
 
-        const dataInicio = row.data_inicio || row.data || row.Data || new Date().toISOString().split("T")[0];
+        const startDate = row.start_date || row.data || row.Data || new Date().toISOString().split("T")[0];
         const horarioInicio = row.horario_inicio || row.horario || row.Horario || null;
-        const dataFim = row.data_fim || row["Data Fim"] || null;
+        const endDate = row.end_date || row["Data Fim"] || null;
         const horarioFim = row.horario_fim || row["Horário Fim"] || null;
         const tipoRaw = String(row.tipo_evento || row.type || row.Tipo || "").toLowerCase();
         const valorCache = row.valor_cache || row["Valor Cachê"];
         const publicoEsperado = row.publico_esperado || row["Público Esperado"] || row.capacidade || row["Capacidade"];
 
         // Payload no formato do CreateEventDto real (title/type/startsAt/
-        // endsAt/venue — não title/type/data_inicio, que não existem no DTO;
+        // endsAt/venue — não title/type/start_date, que não existem no DTO;
         // status é omitido pois CreateEventDto não o aceita, só UpdateEventDto).
         const payload: Record<string, unknown> = {
           title: title,
           type: normalizeToBackendType(tipoRaw, granularToBackendType),
         };
-        const startsAt = combineDateTime(dataInicio, horarioInicio);
+        const startsAt = combineDateTime(startDate, horarioInicio);
         if (startsAt) payload.startsAt = startsAt;
-        const endsAt = combineDateTime(dataFim, horarioFim);
+        const endsAt = combineDateTime(endDate, horarioFim);
         if (endsAt) payload.endsAt = endsAt;
         if (row.local || row.Local) payload.venue = row.local || row.Local;
         if (valorCache) payload.valor_cache = Number(valorCache);
@@ -305,12 +305,12 @@ export default function Agenda() {
   }, [scopedEventos, searchTerm, getEventoParticipants]);
 
   const schedulerEvents = useMemo(() => filteredEventos.map((evento) => {
-    // events.data/data_fim são os únicos campos reais de data+hora (coluna
-    // NOT NULL, sempre presente) — data_inicio/horario_inicio/horario_fim
+    // events.data/end_date são os únicos campos reais de data+hora (coluna
+    // NOT NULL, sempre presente) — start_date/horario_inicio/horario_fim
     // nunca existiram no backend, então essa leitura sempre caía no fallback
     // "agora" e todo evento aparecia na data errada no calendário.
     const start = evento.data ? new Date(evento.data) : new Date();
-    const end = evento.data_fim ? new Date(evento.data_fim) : undefined;
+    const end = evento.end_date ? new Date(evento.end_date) : undefined;
     const isMidnight = start.getHours() === 0 && start.getMinutes() === 0;
 
     return {

@@ -35,8 +35,8 @@ export interface ResolvedContractWriteFields {
   title?: string;
   type?: string | null;
   artist_id?: string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
   arquivo_url?: string | null;
   valor?: string | null;
 }
@@ -100,7 +100,14 @@ function throwInvalid(code: ContractAliasErrorCode, canonical: string, field: st
 
 interface PairSpec {
   canonical: string;
-  legacy: string;
+  /**
+   * Um ou mais aliases legados aceitos. Array usado quando um campo já teve
+   * mais de um nome legado historicamente aceito simultaneamente (ex.:
+   * data_inicio -> start_date manteve tanto o nome PT antigo quanto o alias
+   * EN `startsAt` já existente — nenhum dos dois pode deixar de ser aceito
+   * sem quebrar chamadores reais).
+   */
+  legacy: string | string[];
   invalidCode?: ContractAliasErrorCode;
   /** true se o valor não-null é aceitável; ausente = qualquer valor é aceito. */
   validate?: (v: unknown) => boolean;
@@ -111,48 +118,45 @@ interface PairSpec {
 }
 
 function resolvePair(input: Record<string, unknown>, spec: PairSpec, legacyUsed: Set<string>): unknown {
-  const ptAbsent = isAbsent(input, spec.canonical);
-  const enAbsent = isAbsent(input, spec.legacy);
+  const legacyKeys = Array.isArray(spec.legacy) ? spec.legacy : [spec.legacy];
+  const allKeys = [spec.canonical, ...legacyKeys];
+  const present = allKeys.filter((k) => !isAbsent(input, k));
 
-  if (ptAbsent && enAbsent) return undefined;
+  if (present.length === 0) return undefined;
 
-  if (!ptAbsent && enAbsent) {
-    const v = input[spec.canonical];
+  if (present.length === 1) {
+    const key = present[0];
+    if (key !== spec.canonical) legacyUsed.add(key);
+    const v = input[key];
     if (v === null) return null;
-    if (spec.validate && !spec.validate(v)) throwInvalid(spec.invalidCode!, spec.canonical, spec.canonical);
+    if (spec.validate && !spec.validate(v)) throwInvalid(spec.invalidCode!, spec.canonical, key);
     return spec.transform(v);
   }
 
-  if (ptAbsent && !enAbsent) {
-    legacyUsed.add(spec.legacy);
-    const v = input[spec.legacy];
-    if (v === null) return null;
-    if (spec.validate && !spec.validate(v)) throwInvalid(spec.invalidCode!, spec.canonical, spec.legacy);
-    return spec.transform(v);
-  }
+  // 2+ chaves presentes
+  const values = present.map((k) => input[k]);
+  const firstLegacyPresent = present.find((k) => k !== spec.canonical)!;
 
-  // ambos presentes
-  const ptV = input[spec.canonical];
-  const enV = input[spec.legacy];
-
-  if (ptV === null && enV === null) {
-    legacyUsed.add(spec.legacy);
+  if (values.every((v) => v === null)) {
+    for (const k of present) if (k !== spec.canonical) legacyUsed.add(k);
     return null;
   }
-  if (ptV === null || enV === null) {
-    throwConflict(spec.canonical, spec.legacy);
+  if (values.some((v) => v === null)) {
+    throwConflict(spec.canonical, firstLegacyPresent);
   }
 
   if (spec.validate) {
-    if (!spec.validate(ptV)) throwInvalid(spec.invalidCode!, spec.canonical, spec.canonical);
-    if (!spec.validate(enV)) throwInvalid(spec.invalidCode!, spec.canonical, spec.legacy);
+    present.forEach((k, i) => {
+      if (!spec.validate!(values[i])) throwInvalid(spec.invalidCode!, spec.canonical, k);
+    });
   }
 
-  if (spec.isEquivalent(ptV, enV)) {
-    legacyUsed.add(spec.legacy);
-    return spec.transform(ptV);
+  if (values.every((v) => spec.isEquivalent(v, values[0]))) {
+    for (const k of present) if (k !== spec.canonical) legacyUsed.add(k);
+    const preferred = present.includes(spec.canonical) ? input[spec.canonical] : values[0];
+    return spec.transform(preferred);
   }
-  throwConflict(spec.canonical, spec.legacy);
+  throwConflict(spec.canonical, firstLegacyPresent);
 }
 
 const TYPE_SPEC: PairSpec = {
@@ -171,18 +175,23 @@ const ARTIST_ID_SPEC: PairSpec = {
   transform: (v) => v,
 };
 
-const DATA_INICIO_SPEC: PairSpec = {
-  canonical: 'data_inicio',
-  legacy: 'startsAt',
+// Normalização de nomenclatura (2026-09-05): a coluna física passou de
+// data_inicio/data_fim para start_date/end_date. Ambos os aliases legados
+// pré-existentes (o nome PT antigo e o alias EN `startsAt`/`expiresAt` já
+// aceito antes da migração física) continuam aceitos — nenhum caller real
+// pode deixar de ser reconhecido só porque o nome canônico mudou de novo.
+const START_DATE_SPEC: PairSpec = {
+  canonical: 'start_date',
+  legacy: ['data_inicio', 'startsAt'],
   invalidCode: 'CONTRACT_DATE_INVALID',
   validate: (v) => parseStrictDate(v) !== 'invalid',
   isEquivalent: (a, b) => parseStrictDate(a) === parseStrictDate(b),
   transform: (v) => v, // persiste o valor original, não o ISO normalizado
 };
 
-const DATA_FIM_SPEC: PairSpec = {
-  canonical: 'data_fim',
-  legacy: 'expiresAt',
+const END_DATE_SPEC: PairSpec = {
+  canonical: 'end_date',
+  legacy: ['data_fim', 'expiresAt'],
   invalidCode: 'CONTRACT_DATE_INVALID',
   validate: (v) => parseStrictDate(v) !== 'invalid',
   isEquivalent: (a, b) => parseStrictDate(a) === parseStrictDate(b),
@@ -266,11 +275,11 @@ export function resolveContractAliases(input: Record<string, unknown>): Contract
   const artistId = resolvePair(input, ARTIST_ID_SPEC, legacyUsed);
   if (artistId !== undefined) normalized.artist_id = artistId as string | null;
 
-  const dataInicio = resolvePair(input, DATA_INICIO_SPEC, legacyUsed);
-  if (dataInicio !== undefined) normalized.data_inicio = dataInicio as string | null;
+  const startDate = resolvePair(input, START_DATE_SPEC, legacyUsed);
+  if (startDate !== undefined) normalized.start_date = startDate as string | null;
 
-  const dataFim = resolvePair(input, DATA_FIM_SPEC, legacyUsed);
-  if (dataFim !== undefined) normalized.data_fim = dataFim as string | null;
+  const endDate = resolvePair(input, END_DATE_SPEC, legacyUsed);
+  if (endDate !== undefined) normalized.end_date = endDate as string | null;
 
   const arquivoUrl = resolvePair(input, ARQUIVO_URL_SPEC, legacyUsed);
   if (arquivoUrl !== undefined) normalized.arquivo_url = arquivoUrl as string | null;

@@ -181,12 +181,12 @@ const getInitialFormData = (evento?: any) => {
     artista: evento?.artista || evento?.artist_id || evento?.artistId || "",
     participantes: normalizeAgendaParticipants(evento?.participantes ?? meta["participants"]),
     status: normalizeSelectValue(evento?.status, statusAliases) || "agendado",
-    dataInicio: normalizeEventDate(
-      evento?.dataInicio || evento?.data_inicio || evento?.data || evento?.startsAt,
+    startDate: normalizeEventDate(
+      evento?.startDate || evento?.start_date || evento?.data || evento?.startsAt,
     ),
     horarioInicio: normalizeTimeValue(evento?.horarioInicio || evento?.horario_inicio),
-    dataFim: normalizeEventDate(
-      evento?.dataFim || evento?.data_fim || evento?.endsAt,
+    endDate: normalizeEventDate(
+      evento?.endDate || evento?.end_date || evento?.endsAt,
     ),
     horarioFim: normalizeTimeValue(evento?.horarioFim || evento?.horario_fim),
     nomeLocal: evento?.nomeLocal || evento?.local || evento?.venue || "",
@@ -213,9 +213,9 @@ type SchedulerFormData = ReturnType<typeof getInitialFormData>;
 const validationFieldLabels: Record<string, string> = {
   title: "Título do Evento",
   tipoEvento: "Tipo de Evento",
-  dataInicio: "Data de Início",
+  startDate: "Data de Início",
   horarioInicio: "Horário de Início",
-  dataFim: "Data de Fim",
+  endDate: "Data de Fim",
   horarioFim: "Horário de Fim",
   nomeLocal: "Nome do Local",
   endereco: "Endereço Completo",
@@ -321,8 +321,8 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
     title: String(formData.title || evento?.title || "").trim(),
     tipoEvento: normalizeSelectValue(formData.tipoEvento || evento?.tipoEvento || evento?.tipo_evento, tipoEventoAliases),
     status: normalizeSelectValue(formData.status || evento?.status, statusAliases) || "agendado",
-    dataInicio: normalizeDate(formData.dataInicio) ?? normalizeEventDate(evento?.dataInicio || evento?.data_inicio || evento?.data),
-    dataFim: normalizeDate(formData.dataFim) ?? normalizeEventDate(evento?.dataFim || evento?.data_fim),
+    startDate: normalizeDate(formData.startDate) ?? normalizeEventDate(evento?.startDate || evento?.start_date || evento?.data),
+    endDate: normalizeDate(formData.endDate) ?? normalizeEventDate(evento?.endDate || evento?.end_date),
     horarioInicio: normalizeTimeValue(formData.horarioInicio || evento?.horarioInicio || evento?.horario_inicio),
     horarioFim: normalizeTimeValue(formData.horarioFim || evento?.horarioFim || evento?.horario_fim),
   });
@@ -335,9 +335,9 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
       tipoEvento: normalizedFormData.tipoEvento,
       artista: normalizedFormData.artista,
       status: normalizedFormData.status,
-      dataInicio: normalizedFormData.dataInicio,
+      startDate: normalizedFormData.startDate,
       horarioInicio: normalizedFormData.horarioInicio,
-      dataFim: normalizedFormData.dataFim,
+      endDate: normalizedFormData.endDate,
       horarioFim: normalizedFormData.horarioFim,
       nomeLocal: normalizedFormData.nomeLocal,
       endereco: normalizedFormData.endereco,
@@ -465,11 +465,11 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
    *                  proibido em CreateEventDto).
    */
   const buildPayload = (data: SchedulerFormData, forUpdate = false) => {
-    const dataInicio = normalizeEventDate(data.dataInicio);
-    const dataFim    = normalizeEventDate(data.dataFim);
+    const startDate = normalizeEventDate(data.startDate);
+    const endDate    = normalizeEventDate(data.endDate);
 
-    const startsAt = combineDateAndTime(dataInicio, data.horarioInicio);
-    const endsAt   = combineDateAndTime(dataFim, data.horarioFim);
+    const startsAt = combineDateAndTime(startDate, data.horarioInicio);
+    const endsAt   = combineDateAndTime(endDate, data.horarioFim);
 
     const payload: Record<string, unknown> = {
       title: String(data.title || "").trim(),
@@ -666,14 +666,14 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
             <div className="space-y-2">
               <Label>Data de Início *</Label>
               <DatePickerField
-                value={formData.dataInicio ? format(formData.dataInicio, "yyyy-MM-dd") : ""}
-                onChange={(iso) => setFormData({ ...formData, dataInicio: iso ? parseISO(iso) : undefined })}
+                value={formData.startDate ? format(formData.startDate, "yyyy-MM-dd") : ""}
+                onChange={(iso) => setFormData({ ...formData, startDate: iso ? parseISO(iso) : undefined })}
                 disabled={isViewMode}
                 placeholder="Selecione a data"
-                className={errors.dataInicio ? "border-destructive" : ""}
+                className={errors.startDate ? "border-destructive" : ""}
                 data-testid="datepicker-data-inicio"
               />
-              <FieldError error={errors.dataInicio} />
+              <FieldError error={errors.startDate} />
             </div>
 
             {/* Horário de Início */}
@@ -695,8 +695,8 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
             <div className="space-y-2">
               <Label>Data de Fim</Label>
               <DatePickerField
-                value={formData.dataFim ? format(formData.dataFim, "yyyy-MM-dd") : ""}
-                onChange={(iso) => setFormData({ ...formData, dataFim: iso ? parseISO(iso) : undefined })}
+                value={formData.endDate ? format(formData.endDate, "yyyy-MM-dd") : ""}
+                onChange={(iso) => setFormData({ ...formData, endDate: iso ? parseISO(iso) : undefined })}
                 disabled={isViewMode}
                 placeholder="Selecione a data (opcional)"
                 data-testid="datepicker-data-fim"

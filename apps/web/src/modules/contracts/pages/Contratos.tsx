@@ -338,7 +338,7 @@ export default function Contratos() {
                 </TableHeader>
                 <TableBody>
                   {pageItems.map((contrato) => {
-                    const end = contrato.data_fim ? new Date(contrato.data_fim) : null;
+                    const end = contrato.end_date ? new Date(contrato.end_date) : null;
                     const diff = end ? Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
                     const nearExpiry = diff !== null && diff >= 0 && diff <= 30;
                     return (
@@ -366,7 +366,7 @@ export default function Contratos() {
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                          {formatDateDashes(contrato.data_inicio)} – {formatDateDashes(contrato.data_fim)}
+                          {formatDateDashes(contrato.start_date)} – {formatDateDashes(contrato.end_date)}
                         </TableCell>
                         <TableCell className={`text-sm ${getMonetarySemanticClass("neutral")}`}>
                           {contrato.valor ? formatCurrency(contrato.valor) : "—"}

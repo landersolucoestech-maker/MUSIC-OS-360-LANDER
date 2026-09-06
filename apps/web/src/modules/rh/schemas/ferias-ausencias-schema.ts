@@ -5,9 +5,9 @@ export const feriasAusenciasSchema = z.object({
     .min(1, "Funcionário é obrigatório"),
   type: z.string()
     .min(1, "Tipo de ausência é obrigatório"),
-  dataInicio: z.string()
+  startDate: z.string()
     .min(1, "Data de início é obrigatória"),
-  dataFim: z.string()
+  endDate: z.string()
     .min(1, "Data de fim é obrigatória"),
   status: z.enum(["pendente", "aprovado", "rejeitado", "em_andamento", "concluido"]).default("pendente"),
   aprovadoPor: z.string().max(150, "Nome deve ter no máximo 150 caracteres").optional().or(z.literal("")),

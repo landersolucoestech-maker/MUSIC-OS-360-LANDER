@@ -155,7 +155,7 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
   identityColumn: 'title',
   fields: [
     col('title'), col('type'), col('status'), col('valor'),
-    col('data_inicio'), col('data_fim'), col('exclusivo'), col('observacoes'),
+    col('start_date'), col('end_date'), col('exclusivo'), col('observacoes'),
     col('arquivo_url'), col('signing_platform'),
     col('artist_id'), col('client_id'), col('release_id'),
     col('template_id'), // campo do wizard (regra 2026-07-12: coluna própria)
@@ -175,8 +175,10 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
     tipo: 'type',
     value: 'valor',
     fileUrl: 'arquivo_url',
-    startsAt: 'data_inicio',
-    expiresAt: 'data_fim',
+    data_inicio: 'start_date',
+    startsAt: 'start_date',
+    data_fim: 'end_date',
+    expiresAt: 'end_date',
     artistId: 'artist_id',
   },
 };
@@ -362,7 +364,7 @@ const LICENSES_CONTRACT: ReportFormContract = {
     col('title'), col('type'), col('work_id'), col('obra_musical'), col('artista'),
     col('client_id'), col('cliente'), col('projeto'), col('tipo_uso'),
     col('midia_destino'), col('territorio'), col('status'),
-    col('data_inicio'), col('data_fim'), col('valor'), col('moeda'), col('observacoes'),
+    col('start_date'), col('end_date'), col('valor'), col('moeda'), col('observacoes'),
   ],
   excludedFormFields: {},
   filterableColumns: ['status', 'type', 'territorio'],
@@ -564,7 +566,7 @@ const EVENTS_CONTRACT: ReportFormContract = {
   tableName: 'events',
   identityColumn: 'title',
   fields: [
-    col('title'), col('type'), col('data'), col('data_fim'), col('local'),
+    col('title'), col('type'), col('data'), col('end_date'), col('local'),
     col('contato_local'), col('endereco'), col('valor_cache'), col('publico_esperado'),
     col('descricao'), col('observacoes'), col('status'),
   ],
@@ -582,7 +584,7 @@ const EVENTS_CONTRACT: ReportFormContract = {
     type: 'type',
     venue: 'local',
     startsAt: 'data',
-    endsAt: 'data_fim',
+    endsAt: 'end_date',
   },
   repeatingGroup: {
       key: 'participantes',

@@ -70,8 +70,8 @@ interface WizardSigner {
 interface WizardMeta {
   title: string;
   status: string;
-  data_inicio: string;
-  data_fim: string;
+  start_date: string;
+  end_date: string;
   observations: string;
 }
 
@@ -146,7 +146,7 @@ const STATUS_LABELS: Record<string, string> = {
 const EMPTY_PARTY: PartyData = { type: "pf", origin: "manual" };
 
 const EMPTY_META: WizardMeta = {
-  title: "", status: "rascunho", data_inicio: "", data_fim: "", observations: "",
+  title: "", status: "rascunho", start_date: "", end_date: "", observations: "",
 };
 
 const EMPTY_WIZARD: WizardState = {
@@ -863,8 +863,8 @@ function ReviewStep({ state, onMeta }: { state: WizardState; onMeta: (m: WizardM
           <div className="space-y-1.5">
             <Label>Data de Início *</Label>
             <DatePickerField
-              value={m.data_inicio}
-              onChange={(v) => setMeta({ data_inicio: v || "" })}
+              value={m.start_date}
+              onChange={(v) => setMeta({ start_date: v || "" })}
               placeholder="Selecione"
               data-testid="datepicker-wizard-inicio"
             />
@@ -872,8 +872,8 @@ function ReviewStep({ state, onMeta }: { state: WizardState; onMeta: (m: WizardM
           <div className="space-y-1.5">
             <Label>Data de Término</Label>
             <DatePickerField
-              value={m.data_fim}
-              onChange={(v) => setMeta({ data_fim: v || "" })}
+              value={m.end_date}
+              onChange={(v) => setMeta({ end_date: v || "" })}
               placeholder="Selecione"
               data-testid="datepicker-wizard-fim"
             />
@@ -944,8 +944,8 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
       const baseMeta: WizardMeta = {
         title:       contrato.title || "",
         status:       String(contrato.status || "rascunho"),
-        data_inicio:  contrato.data_inicio || "",
-        data_fim:     contrato.data_fim || "",
+        start_date:  contrato.start_date || "",
+        end_date:     contrato.end_date || "",
         observations: "",
       };
 
@@ -1072,7 +1072,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
 
   const canAdvance = useMemo(() => {
     if (step === 1) return !!state.templateId;
-    if (step === 6) return !!state.meta.title.trim() && !!state.meta.data_inicio;
+    if (step === 6) return !!state.meta.title.trim() && !!state.meta.start_date;
     return true;
   }, [step, state]);
 
@@ -1082,7 +1082,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
 
   async function handleSave(sendForSignature: boolean) {
     if (!state.meta.title.trim()) { toast.error("Preencha o título do contrato"); return; }
-    if (!state.meta.data_inicio)  { toast.error("Preencha a data de início");      return; }
+    if (!state.meta.start_date)  { toast.error("Preencha a data de início");      return; }
 
     setIsSaving(true);
     try {
@@ -1107,8 +1107,8 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
         template_id:      state.templateId || null,
         type:             state.templateTipoServico || state.templateNome || null,
         status:           resolvedStatus,
-        data_inicio:      state.meta.data_inicio || null,
-        data_fim:         state.meta.data_fim    || null,
+        start_date:      state.meta.start_date || null,
+        end_date:         state.meta.end_date    || null,
         observacoes:      wizardBlob,
         signing_platform: provider,
         // Deliberately map WizardSigner to the persisted WizardSignerRecord shape

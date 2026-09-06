@@ -173,8 +173,8 @@ const baseContractRow = (overrides: Record<string, unknown> = {}) => ({
   artist_id: null,
   client_id: null,
   valor: null,
-  data_inicio: null,
-  data_fim: null,
+  start_date: null,
+  end_date: null,
   arquivo_url: null,
   metadata: {},
   ...overrides,
@@ -185,7 +185,7 @@ describe('ContractsService.create — consolidação de aliases (Fase 5 / C1)', 
     const { svc, repo } = makeServiceC1();
     await svc.create('tenant-1', 'user-1', {
       title: 'Contrato X', type: 'gravacao', artist_id: '11111111-1111-4111-8111-111111111111',
-      data_inicio: '2026-01-01T00:00:00.000Z', arquivo_url: 'https://a.com/x.pdf', valor: 10,
+      start_date: '2026-01-01T00:00:00.000Z', arquivo_url: 'https://a.com/x.pdf', valor: 10,
     } as unknown as CreateContractDto);
 
     const row = createdC1(repo);

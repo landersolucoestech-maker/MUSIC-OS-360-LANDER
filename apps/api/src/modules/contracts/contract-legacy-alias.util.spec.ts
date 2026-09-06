@@ -160,33 +160,47 @@ describe('resolveContractAliases — artist_id/artistId (UUID, case-insensitive 
   });
 });
 
-describe('resolveContractAliases — data_inicio/startsAt e data_fim/expiresAt', () => {
-  it('mesmo instante em representações ISO diferentes → equivalente', () => {
-    const { normalized } = resolveContractAliases({
+describe('resolveContractAliases — start_date/data_inicio/startsAt e end_date/data_fim/expiresAt (3 nomes aceitos por campo)', () => {
+  it('mesmo instante em representações ISO diferentes (canônico + 2 legados) → equivalente, valor do canônico vence', () => {
+    const { normalized, legacyAliasesUsed } = resolveContractAliases({
       title: 'X',
-      data_inicio: '2026-01-01T00:00:00.000Z',
+      start_date: '2026-01-01T00:00:00.000Z',
+      data_inicio: '2026-01-01T00:00:00Z',
       startsAt: '2026-01-01T00:00:00Z',
     });
-    expect(normalized.data_inicio).toBe('2026-01-01T00:00:00.000Z'); // valor original PT, não normalizado
+    expect(normalized.start_date).toBe('2026-01-01T00:00:00.000Z');
+    expect(legacyAliasesUsed).toEqual(expect.arrayContaining(['data_inicio', 'startsAt']));
   });
 
-  it('instantes diferentes → conflito', () => {
+  it('somente o alias legado pt-BR (data_inicio) → aceito, resolvido para start_date', () => {
+    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', data_inicio: '2026-01-01T00:00:00.000Z' });
+    expect(normalized.start_date).toBe('2026-01-01T00:00:00.000Z');
+    expect(legacyAliasesUsed).toContain('data_inicio');
+  });
+
+  it('somente o alias legado EN (startsAt) → aceito, resolvido para start_date', () => {
+    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', startsAt: '2026-01-01T00:00:00.000Z' });
+    expect(normalized.start_date).toBe('2026-01-01T00:00:00.000Z');
+    expect(legacyAliasesUsed).toContain('startsAt');
+  });
+
+  it('data_inicio e startsAt (os 2 legados, sem o canônico) instantes diferentes → conflito', () => {
     expect(getBody(() => resolveContractAliases({
       title: 'X', data_inicio: '2026-01-01T00:00:00.000Z', startsAt: '2026-01-02T00:00:00.000Z',
     })).code).toBe('CONTRACT_ALIAS_CONFLICT');
   });
 
-  it('data inválida (só PT) → CONTRACT_DATE_INVALID, não lança RangeError', () => {
+  it('data inválida (só data_inicio) → CONTRACT_DATE_INVALID, não lança RangeError', () => {
     expect(getBody(() => resolveContractAliases({ title: 'X', data_inicio: 'not-a-date' })).code).toBe('CONTRACT_DATE_INVALID');
   });
 
-  it('data inválida (só EN) → CONTRACT_DATE_INVALID', () => {
+  it('data inválida (só expiresAt) → CONTRACT_DATE_INVALID', () => {
     expect(getBody(() => resolveContractAliases({ title: 'X', expiresAt: 'not-a-date' })).code).toBe('CONTRACT_DATE_INVALID');
   });
 
-  it('null/null → equivalente, retorna null (não vira epoch 1970)', () => {
+  it('null/null (data_fim/expiresAt) → equivalente, retorna null (não vira epoch 1970)', () => {
     const { normalized } = resolveContractAliases({ title: 'X', data_fim: null, expiresAt: null });
-    expect(normalized.data_fim).toBeNull();
+    expect(normalized.end_date).toBeNull();
   });
 
   it('null/data válida → conflito', () => {
@@ -197,11 +211,11 @@ describe('resolveContractAliases — data_inicio/startsAt e data_fim/expiresAt',
 
   it('undefined representa propriedade ausente (não conflita)', () => {
     const { normalized } = resolveContractAliases({ title: 'X', data_fim: '2026-01-01T00:00:00.000Z', expiresAt: undefined });
-    expect(normalized.data_fim).toBe('2026-01-01T00:00:00.000Z');
+    expect(normalized.end_date).toBe('2026-01-01T00:00:00.000Z');
   });
 
   it('ausência total → undefined', () => {
-    expect(resolveContractAliases({ title: 'X' }).normalized.data_inicio).toBeUndefined();
+    expect(resolveContractAliases({ title: 'X' }).normalized.start_date).toBeUndefined();
   });
 });
 
@@ -346,7 +360,7 @@ describe('resolveContractQueryAliases — apenas type/tipo e artist_id/artistId'
     const { normalized } = resolveContractQueryAliases({ title: 'X', value: '10', startsAt: '2026-01-01T00:00:00.000Z' } as never);
     expect(normalized).not.toHaveProperty('title');
     expect(normalized).not.toHaveProperty('valor');
-    expect(normalized).not.toHaveProperty('data_inicio');
+    expect(normalized).not.toHaveProperty('start_date');
     expect(Object.keys(normalized)).toEqual([]);
   });
 });

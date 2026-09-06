@@ -10,8 +10,8 @@ export interface Evento {
   tipo_evento?: EventoTipo | string | null;
   status?: EventoStatus | string | null;
   artist_id?: string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
   horario_inicio?: string | null;
   horario_fim?: string | null;
   local?: string | null;

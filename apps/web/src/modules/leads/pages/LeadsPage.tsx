@@ -211,8 +211,8 @@ function leadToFormInitial(lead: Lead): Partial<LeadFormPayload> {
     campanha: isCampanha ? {
       nome_campanha:           str("nome_campanha"),
       tipo_campanha:           str("tipo_campanha"),
-      data_inicio:             str("data_inicio"),
-      data_fim:                str("data_fim"),
+      start_date:             str("start_date"),
+      end_date:                str("end_date"),
       cidade:                  str("cidade"),
       estado:                  str("estado"),
       nome_artista_banda:      str("nome_artista_banda"),

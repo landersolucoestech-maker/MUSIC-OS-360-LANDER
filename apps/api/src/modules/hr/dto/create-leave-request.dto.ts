@@ -8,10 +8,10 @@ export class CreateLeaveRequestDto {
   type: string;
 
   @IsDateString()
-  data_inicio: string;
+  start_date: string;
 
   @IsDateString()
-  data_fim: string;
+  end_date: string;
 
   @IsOptional()
   @IsString()

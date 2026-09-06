@@ -59,8 +59,8 @@ export function FeriasAusenciasFormModal({
 
   const [funcionarioId, setFuncionarioId] = useState("");
   const [type, setTipo] = useState("");
-  const [dataInicio, setDataInicio] = useState("");
-  const [dataFim, setDataFim] = useState("");
+  const [startDate, setDataInicio] = useState("");
+  const [endDate, setDataFim] = useState("");
   const [status, setStatus] = useState("pendente");
   const [aprovadoPor, setAprovadoPor] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -68,14 +68,14 @@ export function FeriasAusenciasFormModal({
 
   const isViewMode = mode === "view";
 
-  const diasTotais = useMemo(() => calcDias(dataInicio, dataFim), [dataInicio, dataFim]);
+  const diasTotais = useMemo(() => calcDias(startDate, endDate), [startDate, endDate]);
 
   useEffect(() => {
     if (open && mode === "edit" && ausencia) {
       setFuncionarioId((ausencia.funcionario_id as string) || "");
       setTipo((ausencia.type as string) || "");
-      setDataInicio((ausencia.data_inicio as string) || "");
-      setDataFim((ausencia.data_fim as string) || "");
+      setDataInicio((ausencia.start_date as string) || "");
+      setDataFim((ausencia.end_date as string) || "");
       setStatus((ausencia.status as string) || "pendente");
       setAprovadoPor((ausencia.aprovado_por as string) || "");
       setObservacoes((ausencia.observacoes as string) || "");
@@ -83,8 +83,8 @@ export function FeriasAusenciasFormModal({
     } else if (open && mode === "view" && ausencia) {
       setFuncionarioId((ausencia.funcionario_id as string) || "");
       setTipo((ausencia.type as string) || "");
-      setDataInicio((ausencia.data_inicio as string) || "");
-      setDataFim((ausencia.data_fim as string) || "");
+      setDataInicio((ausencia.start_date as string) || "");
+      setDataFim((ausencia.end_date as string) || "");
       setStatus((ausencia.status as string) || "pendente");
       setAprovadoPor((ausencia.aprovado_por as string) || "");
       setObservacoes((ausencia.observacoes as string) || "");
@@ -115,8 +115,8 @@ export function FeriasAusenciasFormModal({
     const result = feriasAusenciasSchema.safeParse({
       funcionarioId,
       type,
-      dataInicio,
-      dataFim,
+      startDate,
+      endDate,
       status: status as "pendente" | "aprovado" | "rejeitado" | "em_andamento" | "concluido",
       aprovadoPor: aprovadoPor || "",
       observacoes: observacoes || "",
@@ -132,15 +132,15 @@ export function FeriasAusenciasFormModal({
       });
       // Map schema field names back to the original error keys
       if (newErrors.funcionarioId) newErrors.funcionario_id = newErrors.funcionarioId;
-      if (newErrors.dataInicio) newErrors.data_inicio = newErrors.dataInicio;
-      if (newErrors.dataFim) newErrors.data_fim = newErrors.dataFim;
+      if (newErrors.startDate) newErrors.start_date = newErrors.startDate;
+      if (newErrors.endDate) newErrors.end_date = newErrors.endDate;
       setErrors(newErrors);
       return false;
     }
 
     // Extra date range check not covered by schema
-    if (dataInicio && dataFim && new Date(dataFim) < new Date(dataInicio)) {
-      setErrors({ data_fim: "Data fim deve ser igual ou posterior à data início" });
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      setErrors({ end_date: "Data fim deve ser igual ou posterior à data início" });
       return false;
     }
 
@@ -157,8 +157,8 @@ export function FeriasAusenciasFormModal({
     const data: FeriasAusenciaInsert = {
       funcionario_id: funcionarioId,
       type: type || null,
-      data_inicio: dataInicio,
-      data_fim: dataFim,
+      start_date: startDate,
+      end_date: endDate,
       dias_totais: diasTotais,
       status,
       aprovado_por: aprovadoPor.trim() || null,
@@ -262,29 +262,29 @@ export function FeriasAusenciasFormModal({
             <div className="space-y-2">
               <Label>Data Início *</Label>
               <DatePickerField
-                value={dataInicio}
-                onChange={(iso) => { setDataInicio(iso); clearError("data_inicio"); }}
+                value={startDate}
+                onChange={(iso) => { setDataInicio(iso); clearError("start_date"); }}
                 disabled={isViewMode}
                 placeholder="Selecione a data"
-                className={errors.data_inicio ? "border-destructive" : ""}
+                className={errors.start_date ? "border-destructive" : ""}
                 data-testid="datepicker-data-inicio"
               />
-              {errors.data_inicio && (
-                <p className="text-sm text-destructive">{errors.data_inicio}</p>
+              {errors.start_date && (
+                <p className="text-sm text-destructive">{errors.start_date}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label>Data Fim *</Label>
               <DatePickerField
-                value={dataFim}
-                onChange={(iso) => { setDataFim(iso); clearError("data_fim"); }}
+                value={endDate}
+                onChange={(iso) => { setDataFim(iso); clearError("end_date"); }}
                 disabled={isViewMode}
                 placeholder="Selecione a data"
-                className={errors.data_fim ? "border-destructive" : ""}
+                className={errors.end_date ? "border-destructive" : ""}
                 data-testid="datepicker-data-fim"
               />
-              {errors.data_fim && (
-                <p className="text-sm text-destructive">{errors.data_fim}</p>
+              {errors.end_date && (
+                <p className="text-sm text-destructive">{errors.end_date}</p>
               )}
             </div>
           </div>

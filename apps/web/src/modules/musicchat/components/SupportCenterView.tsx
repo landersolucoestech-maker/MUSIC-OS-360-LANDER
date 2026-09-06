@@ -341,7 +341,7 @@ function buildEventInitialValue(conversation: SupportConversation) {
     tipoEvento: "reunioes",
     tipo_evento: "reunioes",
     status: "agendado",
-    dataInicio: new Date(),
+    startDate: new Date(),
     horarioInicio: "",
     nomeLocal: conversation.originLabel,
     contatoLocal: conversation.phone || conversation.handle,

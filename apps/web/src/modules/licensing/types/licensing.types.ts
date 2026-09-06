@@ -19,8 +19,8 @@ export interface Licenca {
   midia_destino?: string | null;
   territorio?: string | null;
   status?: LicencaStatus | string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
   // Remuneração estruturada
   remuneration_type?: RemunerationType | null;
   currency?: Currency | null;

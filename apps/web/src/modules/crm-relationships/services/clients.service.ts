@@ -91,8 +91,8 @@ export interface ClientContractSummary {
   type: string;
   status: string;
   valor: string | null;
-  data_inicio: string | null;
-  data_fim: string | null;
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
 }
 

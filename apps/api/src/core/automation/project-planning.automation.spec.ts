@@ -66,7 +66,7 @@ const PROJECT_ROW = {
   type: 'lancamento',
   descricao: 'Lançamento do single Aurora',
   artist_id: null,
-  data_fim: null,
+  end_date: null,
   metadata: {},
 };
 

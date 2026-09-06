@@ -243,8 +243,8 @@ export class ContractEventsHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, title, artistId, dataFim, daysLeft } = event.payload;
-    this.logger.warn(`Contract expiring soon: "${title}" (${contractId}) in ${daysLeft} days (${dataFim})`);
+    const { contractId, title, artistId, endDate, daysLeft } = event.payload;
+    this.logger.warn(`Contract expiring soon: "${title}" (${contractId}) in ${daysLeft} days (${endDate})`);
 
     if (!this.activityLogs) return;
     try {
@@ -253,8 +253,8 @@ export class ContractEventsHandler {
           entity_type: 'contract',
           entity_id: contractId,
           action: 'expiring_soon',
-          description: `Contrato "${title}" vence em ${daysLeft} dias (${dataFim})`,
-          metadata: { dataFim, daysLeft, artistId: artistId ?? null },
+          description: `Contrato "${title}" vence em ${daysLeft} dias (${endDate})`,
+          metadata: { endDate, daysLeft, artistId: artistId ?? null },
         });
       });
     } catch (err) {

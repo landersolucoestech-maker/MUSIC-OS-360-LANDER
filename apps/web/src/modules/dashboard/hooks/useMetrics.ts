@@ -129,11 +129,11 @@ export function useMetrics(): UseMetricsReturn {
     const inicioMes = startOfMonth(hoje);
     const fimMes = endOfMonth(hoje);
 
-    // Backend retorna timestamp na coluna `data`; mock usa `data_inicio`.
+    // Backend retorna timestamp na coluna `data`; mock usa `start_date`.
     // Aceita os dois para evitar contagem zerada em HTTP mode.
     const readEventoData = (e: Record<string, unknown>): string | null => {
       const v =
-        (e["data_inicio"] as string | null | undefined) ??
+        (e["start_date"] as string | null | undefined) ??
         (e["data"]        as string | null | undefined) ??
         null;
       return v ?? null;

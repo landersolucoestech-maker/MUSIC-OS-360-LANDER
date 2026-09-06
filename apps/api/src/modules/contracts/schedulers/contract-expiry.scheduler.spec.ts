@@ -12,7 +12,7 @@ const TENANT_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 function contract(tenantId: string, id: string) {
   return {
     id, tenant_id: tenantId, title: `c-${id}`, artist_id: null,
-    data_fim: new Date(Date.now() + 5 * 86400000), metadata: {},
+    end_date: new Date(Date.now() + 5 * 86400000), metadata: {},
   };
 }
 

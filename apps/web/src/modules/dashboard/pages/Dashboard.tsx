@@ -517,9 +517,9 @@ export default function Dashboard() {
     const agora = Date.now();
     return eventos
       .map((evento) => {
-        // Frontend usa `data_inicio`; backend retorna `data` na coluna timestamp.
+        // Frontend usa `start_date`; backend retorna `data` na coluna timestamp.
         const raw =
-          (evento.data_inicio as string | null | undefined) ??
+          (evento.start_date as string | null | undefined) ??
           ((evento as { data?: string | null }).data ?? null);
         return { evento, quando: compromissoDataHora(raw, evento.horario_inicio) };
       })

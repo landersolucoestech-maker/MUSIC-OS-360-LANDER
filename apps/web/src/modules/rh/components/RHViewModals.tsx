@@ -215,8 +215,8 @@ export function FeriasAusenciasViewModal({
         <Row label="Tipo" value={humanize(ausencia.type as string)} />
       </Section>
       <Section title="Período">
-        <Row label="Data de início" value={formatDateDashes(ausencia.data_inicio)} />
-        <Row label="Data de término" value={formatDateDashes(ausencia.data_fim)} />
+        <Row label="Data de início" value={formatDateDashes(ausencia.start_date)} />
+        <Row label="Data de término" value={formatDateDashes(ausencia.end_date)} />
         <Row label="Dias totais" value={ausencia.dias_totais != null ? String(ausencia.dias_totais) : "—"} />
         <Row
           label="Status"

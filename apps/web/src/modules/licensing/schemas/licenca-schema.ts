@@ -10,8 +10,8 @@ export const licencaSchema = z
     midiaDestino: z.string().max(150).optional().or(z.literal("")),
     territorio: z.string().max(150).optional().or(z.literal("")),
     status: z.string().optional().or(z.literal("")),
-    dataInicio: z.string().optional().or(z.literal("")),
-    dataFim: z.string().optional().or(z.literal("")),
+    startDate: z.string().optional().or(z.literal("")),
+    endDate: z.string().optional().or(z.literal("")),
     // Remuneração
     remunerationType: z.enum(["FIXED", "PERCENTAGE", "FIXED_PLUS_PERCENTAGE"]).default("FIXED"),
     currency: z.enum(["BRL", "USD", "EUR"]).default("BRL"),

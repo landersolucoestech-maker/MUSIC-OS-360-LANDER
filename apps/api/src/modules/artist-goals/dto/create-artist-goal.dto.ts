@@ -28,11 +28,11 @@ export class CreateArtistGoalDto {
 
   @IsOptional()
   @IsDateString()
-  data_inicio?: string;
+  start_date?: string;
 
   @IsOptional()
   @IsDateString()
-  data_fim?: string;
+  end_date?: string;
 
   @IsOptional()
   metadata?: Record<string, unknown>;

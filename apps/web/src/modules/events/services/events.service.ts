@@ -2,7 +2,7 @@ import { storage } from "@/shared/lib/storage";
 
 export const eventService = {
   async list() {
-    return storage.list("eventos", { orderBy: { column: "data_inicio", ascending: true } });
+    return storage.list("eventos", { orderBy: { column: "start_date", ascending: true } });
   },
   async findById(id: string) { return storage.findById("eventos", id); },
   async create(data: Record<string, unknown>) { return storage.create("eventos", data as never); },

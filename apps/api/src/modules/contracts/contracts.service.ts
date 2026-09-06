@@ -138,7 +138,7 @@ export class ContractsService {
 
   /**
    * Monta o payload final para persistência a partir dos campos canônicos já
-   * resolvidos (title/type/artist_id/data_inicio/data_fim/arquivo_url/valor
+   * resolvidos (title/type/artist_id/start_date/end_date/arquivo_url/valor
    * — ver resolveContractAliases()) e dos demais campos não relacionados a
    * aliases, que continuam passando direto para a entity.
    */

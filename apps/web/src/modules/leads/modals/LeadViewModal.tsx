@@ -268,8 +268,8 @@ export function LeadViewModal({
             <Section title="Detalhes da Campanha">
               <Row icon={Sparkles} label="Nome da Campanha"        value={str("nome_campanha")}         />
               <Row icon={Tag}      label="Tipo da Campanha"        value={str("tipo_campanha")}         />
-              <Row icon={Calendar} label="Data de Início"          value={fmtDate(str("data_inicio"))}  />
-              <Row icon={Calendar} label="Data de Fim"             value={fmtDate(str("data_fim"))}     />
+              <Row icon={Calendar} label="Data de Início"          value={fmtDate(str("start_date"))}  />
+              <Row icon={Calendar} label="Data de Fim"             value={fmtDate(str("end_date"))}     />
               <Row icon={MapPin}   label="Cidade"                  value={cidadeDisplay}                />
               <Row icon={Hash}     label="Estado"                  value={estadoDisplay}                />
               <Row icon={Music}    label="Nome do Artista / Banda" value={str("nome_artista_banda")}    />

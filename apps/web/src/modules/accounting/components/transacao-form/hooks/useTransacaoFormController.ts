@@ -27,7 +27,7 @@ interface Evento {
   id: string;
   artist_id?: string | null;
   title: string;
-  data_inicio?: string | null;
+  start_date?: string | null;
 }
 
 export interface UseTransacaoFormControllerOptions {

@@ -83,7 +83,7 @@ export interface ContractExpiringSoonPayload {
   tenantId:   string;
   title:     string;
   artistId:   string | null;
-  dataFim:    string;
+  endDate:    string;
   daysLeft:   number;
 }
 

@@ -40,9 +40,9 @@ export const contractsService = {
   async listExpiringSoon(days = 30) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() + days);
-    const all = await storage.list<{ id: string; data_fim: string; status: string }>("contratos");
+    const all = await storage.list<{ id: string; end_date: string; status: string }>("contratos");
     return all.filter(
-      (c) => c.status === "vigente" && new Date(c.data_fim) <= cutoff,
+      (c) => c.status === "vigente" && new Date(c.end_date) <= cutoff,
     );
   },
 

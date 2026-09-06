@@ -1,5 +1,5 @@
 /**
- * events.data/data_fim são timestamps completos (data + hora) — não existem
+ * events.data/end_date são timestamps completos (data + hora) — não existem
  * colunas separadas de horário. Para export/import em planilha (mais legível
  * como duas colunas), separa data (YYYY-MM-DD) e hora (HH:mm) de um
  * Date/ISO-string; e o inverso, recombina as duas colunas de volta num

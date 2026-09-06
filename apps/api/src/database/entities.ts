@@ -879,7 +879,7 @@ export class PhonogramEntity {
 @Index(['tenant_id'])
 @Index(['tenant_id', 'status'])
 @Index(['artist_id'])
-@Index(['data_fim'])
+@Index(['end_date'])
 export class ContractEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
@@ -889,8 +889,8 @@ export class ContractEntity {
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'uuid', nullable: true }) client_id: string | null;
   @Column({ type: 'uuid', nullable: true }) release_id: string | null;
-  @Column({ type: 'timestamp', nullable: true }) data_inicio: Date | null;
-  @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) start_date: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) end_date: Date | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor: string | null;
   @Column({ type: 'boolean', default: false }) exclusivo: boolean;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
@@ -1260,8 +1260,8 @@ export class CampaignEntity {
   @Column({ type: 'varchar', length: 50, default: CampaignStatus.RASCUNHO }) status: CampaignStatus;
   @Column({ type: 'text', nullable: true }) objetivo: string | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) orcamento: string | null;
-  @Column({ type: 'timestamp', nullable: true }) data_inicio: Date | null;
-  @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) start_date: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) end_date: Date | null;
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
@@ -1317,7 +1317,7 @@ export class EventEntity {
   @Column({ type: 'uuid', nullable: true }) artist_id: string | null;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
   // ── Campos do formulário de Evento (1 coluna por campo — nome exato) ─────────
-  @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) end_date: Date | null;
   @Column({ type: 'varchar', length: 300, nullable: true }) endereco: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) contato_local: string | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_cache: string | null;
@@ -1841,8 +1841,8 @@ export class ArtistGoalEntity {
   @Column({ type: 'decimal', precision: 15, scale: 2, default: '0' }) valor_atual: string;
   @Column({ type: 'varchar', length: 50, default: ArtistGoalStatus.EM_ANDAMENTO }) status: ArtistGoalStatus;
   @Column({ type: 'varchar', length: 50, default: 'mensal' }) periodo: string;
-  @Column({ type: 'timestamp', nullable: true }) data_inicio: Date | null;
-  @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) start_date: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) end_date: Date | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
@@ -1965,8 +1965,8 @@ export class LeaveRequestEntity {
   @Column({ type: 'uuid' }) employee_id: string;
   @Column({ type: 'varchar', length: 100 }) type: string;
   @Column({ type: 'varchar', length: 50, default: LeaveRequestStatus.PENDENTE }) status: LeaveRequestStatus;
-  @Column({ type: 'timestamp' }) data_inicio: Date;
-  @Column({ type: 'timestamp' }) data_fim: Date;
+  @Column({ type: 'timestamp' }) start_date: Date;
+  @Column({ type: 'timestamp' }) end_date: Date;
   @Column({ type: 'text', nullable: true }) motivo: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) aprovado_por: string | null;
   @Column({ type: 'text', nullable: true }) documento_url: string | null;
@@ -2496,8 +2496,8 @@ export class LicenseEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) midia_destino: string | null;
   @Column({ type: 'varchar', length: 150, nullable: true }) territorio: string | null;
   @Column({ type: 'varchar', length: 50, default: 'pendente' }) status: string;
-  @Column({ type: 'date', nullable: true }) data_inicio: string | null;
-  @Column({ type: 'date', nullable: true }) data_fim: string | null;
+  @Column({ type: 'date', nullable: true }) start_date: string | null;
+  @Column({ type: 'date', nullable: true }) end_date: string | null;
   @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true }) valor: string | null;
   @Column({ type: 'varchar', length: 10, default: 'BRL' }) moeda: string;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;

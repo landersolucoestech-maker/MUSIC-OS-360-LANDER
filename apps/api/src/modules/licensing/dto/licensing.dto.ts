@@ -21,8 +21,8 @@ export class CreateLicenseDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) midia_destino?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(150) territorio?: string;
   @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() data_inicio?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() data_fim?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() start_date?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() end_date?: string;
 
   @ApiPropertyOptional({ enum: REMUNERATION_TYPES })
   @IsOptional() @IsIn(REMUNERATION_TYPES)

@@ -375,6 +375,7 @@ export const FIELD_LABELS_PT_BR = {
   stage: 'Estágio',
   stageHistory: 'Histórico de estágios',
   startDate: 'Data de início',
+  endDate: 'Data de fim',
   statusCadastro: 'Situação do cadastro',
   subject: 'Assunto',
   submissionCount: 'Total de envios',

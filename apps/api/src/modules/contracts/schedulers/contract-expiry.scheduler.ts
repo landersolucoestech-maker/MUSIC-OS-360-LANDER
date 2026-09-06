@@ -84,9 +84,9 @@ export class ContractExpiryScheduler implements OnApplicationBootstrap {
     const rows = await enumRepo
       .createQueryBuilder('c')
       .select('DISTINCT c.tenant_id', 'tenant_id')
-      .where('c.data_fim IS NOT NULL')
-      .andWhere('c.data_fim >= :now', { now })
-      .andWhere('c.data_fim <= :horizon', { horizon })
+      .where('c.end_date IS NOT NULL')
+      .andWhere('c.end_date >= :now', { now })
+      .andWhere('c.end_date <= :horizon', { horizon })
       .andWhere('c.status IN (:...statuses)', { statuses: ALERT_STATUSES })
       .andWhere('c.deleted_at IS NULL')
       .andWhere('c.tenant_id IS NOT NULL')
@@ -117,9 +117,9 @@ export class ContractExpiryScheduler implements OnApplicationBootstrap {
     const contracts = await repo
       .createQueryBuilder('c')
       .where('c.tenant_id = :tenantId', { tenantId })
-      .andWhere('c.data_fim IS NOT NULL')
-      .andWhere('c.data_fim >= :now', { now })
-      .andWhere('c.data_fim <= :horizon', { horizon })
+      .andWhere('c.end_date IS NOT NULL')
+      .andWhere('c.end_date >= :now', { now })
+      .andWhere('c.end_date <= :horizon', { horizon })
       .andWhere('c.status IN (:...statuses)', { statuses: ALERT_STATUSES })
       .andWhere('c.deleted_at IS NULL')
       .getMany();
@@ -128,8 +128,8 @@ export class ContractExpiryScheduler implements OnApplicationBootstrap {
       const lastNotified = contract.metadata?.['expiry_notified_at'] as string | undefined;
       if (lastNotified && new Date(lastNotified) > dedupCutoff) continue;
 
-      const dataFim  = contract.data_fim!;
-      const daysLeft = Math.ceil((dataFim.getTime() - now.getTime()) / DAY_MS);
+      const endDate  = contract.end_date!;
+      const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / DAY_MS);
 
       this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_EXPIRING_SOON, {
         tenantId:      contract.tenant_id,
@@ -141,7 +141,7 @@ export class ContractExpiryScheduler implements OnApplicationBootstrap {
           tenantId:   contract.tenant_id,
           title:     contract.title,
           artistId:   contract.artist_id,
-          dataFim:    dataFim.toISOString(),
+          endDate:    endDate.toISOString(),
           daysLeft,
         },
       });

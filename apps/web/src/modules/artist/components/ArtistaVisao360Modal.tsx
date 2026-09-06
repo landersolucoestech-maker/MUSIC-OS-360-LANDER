@@ -178,8 +178,8 @@ interface Meta {
   valorMeta: number;
   valorAtual: number;
   unidade: string;
-  dataInicio: string;
-  dataFim: string;
+  startDate: string;
+  endDate: string;
   status: "em_progresso" | "concluida" | "pausada" | "cancelada";
 }
 
@@ -479,8 +479,8 @@ export function ArtistaVisao360Modal({
     ATIVOS_STATUS.includes(c.status ?? ""),
   ).length;
   const contratosVencendo = contratosReais.filter((c) => {
-    if (!c.data_fim || !ATIVOS_STATUS.includes(c.status ?? "")) return false;
-    const fim = new Date(c.data_fim);
+    if (!c.end_date || !ATIVOS_STATUS.includes(c.status ?? "")) return false;
+    const fim = new Date(c.end_date);
     return fim > today && fim <= in60Days;
   }).length;
   const contratosFiltrados = contratosReais.filter((c) => {
@@ -588,8 +588,8 @@ export function ArtistaVisao360Modal({
     valorMeta: "",
     valorAtual: "",
     unidade: "",
-    dataInicio: "",
-    dataFim: "",
+    startDate: "",
+    endDate: "",
     status: "em_progresso" as Meta["status"],
   });
 
@@ -604,8 +604,8 @@ export function ArtistaVisao360Modal({
       valorMeta: "",
       valorAtual: "",
       unidade: "",
-      dataInicio: "",
-      dataFim: "",
+      startDate: "",
+      endDate: "",
       status: "em_progresso",
     });
     setEditingMeta(null);
@@ -623,8 +623,8 @@ export function ArtistaVisao360Modal({
       valor_meta: Number(metaForm.valorMeta),
       valor_atual: Number(metaForm.valorAtual) || 0,
       unidade: metaForm.unidade,
-      data_inicio: metaForm.dataInicio || null,
-      data_fim: metaForm.dataFim || null,
+      start_date: metaForm.startDate || null,
+      end_date: metaForm.endDate || null,
       status: metaForm.status,
     };
     if (editingMeta) {
@@ -644,8 +644,8 @@ export function ArtistaVisao360Modal({
       valorMeta: String(meta.valor_meta ?? meta.valorMeta ?? ""),
       valorAtual: String(meta.valor_atual ?? meta.valorAtual ?? ""),
       unidade: meta.unidade || "",
-      dataInicio: meta.data_inicio || meta.dataInicio || "",
-      dataFim: meta.data_fim || meta.dataFim || "",
+      startDate: meta.start_date || meta.startDate || "",
+      endDate: meta.end_date || meta.endDate || "",
       status: (meta.status as Meta["status"]) || "em_progresso",
     });
     setEditingMeta(meta);
@@ -2279,14 +2279,14 @@ export function ArtistaVisao360Modal({
                         today.setHours(0, 0, 0, 0);
                         const in30Days = new Date(today);
                         in30Days.setDate(in30Days.getDate() + 30);
-                        const dataFim = contrato.data_fim
-                          ? new Date(contrato.data_fim)
+                        const endDate = contrato.end_date
+                          ? new Date(contrato.end_date)
                           : null;
                         const expirando =
-                          dataFim && dataFim >= today && dataFim <= in30Days;
-                        const diasRestantes = dataFim
+                          endDate && endDate >= today && endDate <= in30Days;
+                        const diasRestantes = endDate
                           ? Math.ceil(
-                              (dataFim.getTime() - today.getTime()) /
+                              (endDate.getTime() - today.getTime()) /
                                 (1000 * 60 * 60 * 24),
                             )
                           : null;
@@ -2309,15 +2309,15 @@ export function ArtistaVisao360Modal({
                                 )}
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                {contrato.data_inicio
+                                {contrato.start_date
                                   ? new Date(
-                                      contrato.data_inicio,
+                                      contrato.start_date,
                                     ).toLocaleDateString("pt-BR")
                                   : "—"}
                                 {" → "}
-                                {contrato.data_fim
+                                {contrato.end_date
                                   ? new Date(
-                                      contrato.data_fim,
+                                      contrato.end_date,
                                     ).toLocaleDateString("pt-BR")
                                   : "Indeterminado"}
                               </p>
@@ -2518,9 +2518,9 @@ export function ArtistaVisao360Modal({
                         const tipoMeta =
                           (meta as any).tipo_meta || (meta as any).type;
                         const categoria = (meta as any).categoria;
-                        const dataInicio =
-                          meta.data_inicio || (meta as any).dataInicio;
-                        const dataFim = meta.data_fim || (meta as any).dataFim;
+                        const startDate =
+                          meta.start_date || (meta as any).startDate;
+                        const endDate = meta.end_date || (meta as any).endDate;
                         return (
                           <Card key={meta.id} className="bg-background/50">
                             <CardContent className="p-4">
@@ -2581,13 +2581,13 @@ export function ArtistaVisao360Modal({
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {dataInicio && dataFim && (
+                                  {startDate && endDate && (
                                     <span>
-                                      {new Date(dataInicio).toLocaleDateString(
+                                      {new Date(startDate).toLocaleDateString(
                                         "pt-BR",
                                       )}{" "}
                                       -{" "}
-                                      {new Date(dataFim).toLocaleDateString(
+                                      {new Date(endDate).toLocaleDateString(
                                         "pt-BR",
                                       )}
                                     </span>
@@ -3022,8 +3022,8 @@ export function ArtistaVisao360Modal({
               <div>
                 <Label>Data de Início</Label>
                 <DatePickerField
-                  value={metaForm.dataInicio}
-                  onChange={(iso) => setMetaForm({ ...metaForm, dataInicio: iso })}
+                  value={metaForm.startDate}
+                  onChange={(iso) => setMetaForm({ ...metaForm, startDate: iso })}
                   placeholder="Selecione a data"
                   data-testid="datepicker-meta-data-inicio"
                 />
@@ -3032,8 +3032,8 @@ export function ArtistaVisao360Modal({
               <div>
                 <Label>Data de Fim</Label>
                 <DatePickerField
-                  value={metaForm.dataFim}
-                  onChange={(iso) => setMetaForm({ ...metaForm, dataFim: iso })}
+                  value={metaForm.endDate}
+                  onChange={(iso) => setMetaForm({ ...metaForm, endDate: iso })}
                   placeholder="Selecione a data"
                   data-testid="datepicker-meta-data-fim"
                 />

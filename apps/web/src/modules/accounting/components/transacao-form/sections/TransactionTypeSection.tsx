@@ -21,7 +21,7 @@ import {
 
 interface Artista { id: string; nome_artistico: string }
 interface Projeto { id: string; title: string }
-interface Evento { id: string; title: string; data_inicio?: string | null }
+interface Evento { id: string; title: string; start_date?: string | null }
 
 interface TransactionTypeSectionProps {
   formData: TransacaoFormData;
@@ -200,7 +200,7 @@ export function TransactionTypeSection({
               onChange={(value) => updateField("eventoVinculado", value)}
               options={(formData.artistaVinculado ? eventosFiltrados : eventosFiltrados).map((evento) => ({
                 value: evento.id,
-                label: evento.data_inicio ? `${evento.title} (${evento.data_inicio})` : evento.title,
+                label: evento.start_date ? `${evento.title} (${evento.start_date})` : evento.title,
               }))}
               placeholder={eventosFiltrados.length === 0 ? "Nenhum evento encontrado" : "Selecione o evento"}
               error={errors.eventoVinculado}

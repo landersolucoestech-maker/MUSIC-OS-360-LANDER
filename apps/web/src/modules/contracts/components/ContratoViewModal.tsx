@@ -73,10 +73,10 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
   today.setHours(0, 0, 0, 0);
   const in30Days = new Date(today);
   in30Days.setDate(in30Days.getDate() + 30);
-  const dataFim = contrato.data_fim ? new Date(contrato.data_fim) : null;
-  const expirando = dataFim && dataFim >= today && dataFim <= in30Days;
-  const diasRestantes = dataFim
-    ? Math.ceil((dataFim.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  const endDate = contrato.end_date ? new Date(contrato.end_date) : null;
+  const expirando = endDate && endDate >= today && endDate <= in30Days;
+  const diasRestantes = endDate
+    ? Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
   const alreadySent = vinculadoDoc !== undefined;
@@ -153,8 +153,8 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                   {[
                     { label: "Artista / Cliente", value: contrato.artistas?.nome_artistico || contrato.clientes?.nome || "—" },
                     { label: "Tipo", value: contrato.type ? formatCategoryLabel(contrato.type) : "—" },
-                    { label: "Início", value: formatDateDashes(contrato.data_inicio) },
-                    { label: "Término", value: contrato.data_fim ? formatDateDashes(contrato.data_fim) : "Indeterminado" },
+                    { label: "Início", value: formatDateDashes(contrato.start_date) },
+                    { label: "Término", value: contrato.end_date ? formatDateDashes(contrato.end_date) : "Indeterminado" },
                     { label: "Valor", value: contrato.valor != null ? <span className={getMonetarySemanticClass("neutral")}>{formatCurrency(contrato.valor)}</span> : "—" },
                     { label: "Assinado em", value: formatDateDashes(contrato.assinado_em) },
                   ].map(({ label, value }) => (

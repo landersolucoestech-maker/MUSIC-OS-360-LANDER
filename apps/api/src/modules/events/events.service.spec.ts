@@ -113,14 +113,14 @@ describe('EventsService — Estado P (pré-C3, comportamento atual documentado)'
       );
     });
 
-    it('endsAt persiste na coluna data_fim', async () => {
+    it('endsAt persiste na coluna end_date', async () => {
       await service.create(TENANT, 'u1', {
         title: 'Show', type: 'show',
         startsAt: new Date('2026-08-01T20:00:00Z'),
         endsAt: new Date('2026-08-01T23:00:00Z'),
       } as never);
       expect(mockDs._repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data_fim: new Date('2026-08-01T23:00:00Z') }),
+        expect.objectContaining({ end_date: new Date('2026-08-01T23:00:00Z') }),
       );
     });
 
@@ -160,7 +160,7 @@ describe('EventsService — Estado P (pré-C3, comportamento atual documentado)'
       expect(saved).toHaveProperty('data');
       expect(saved).toHaveProperty('starts_at');
       expect(saved.starts_at.getTime()).toBe(saved.data.getTime());
-      expect(saved).not.toHaveProperty('data_inicio');
+      expect(saved).not.toHaveProperty('start_date');
       expect(saved).not.toHaveProperty('startsAt');
     });
   });
@@ -181,10 +181,10 @@ describe('EventsService — Estado P (pré-C3, comportamento atual documentado)'
       expect(created.starts_at).toBe(created.data);
     });
 
-    it('endsAt continua indo somente para data_fim — não alimenta starts_at', async () => {
+    it('endsAt continua indo somente para end_date — não alimenta starts_at', async () => {
       await service.update(TENANT, 'u1', EVENT_ID, { endsAt: new Date('2026-08-01T23:00:00Z') } as never);
       const updateCall = mockDs._repo.update.mock.calls[0];
-      expect(updateCall[1]).toMatchObject({ data_fim: new Date('2026-08-01T23:00:00Z') });
+      expect(updateCall[1]).toMatchObject({ end_date: new Date('2026-08-01T23:00:00Z') });
       expect(updateCall[1]).not.toHaveProperty('starts_at');
       expect(updateCall[1]).not.toHaveProperty('data');
     });
@@ -239,10 +239,10 @@ describe('EventsService — Estado P (pré-C3, comportamento atual documentado)'
       expect(updateCall[1]).not.toHaveProperty('data');
     });
 
-    it('PATCH sem endsAt não altera data_fim', async () => {
+    it('PATCH sem endsAt não altera end_date', async () => {
       await service.update(TENANT, 'u1', EVENT_ID, { venue: 'Novo Local' } as never);
       const updateCall = mockDs._repo.update.mock.calls[0];
-      expect(updateCall[1]).not.toHaveProperty('data_fim');
+      expect(updateCall[1]).not.toHaveProperty('end_date');
     });
 
     it('startsAt no PATCH atualiza data', async () => {
@@ -251,10 +251,10 @@ describe('EventsService — Estado P (pré-C3, comportamento atual documentado)'
       expect(updateCall[1]).toMatchObject({ data: new Date('2026-09-01T20:00:00Z') });
     });
 
-    it('endsAt no PATCH atualiza data_fim', async () => {
+    it('endsAt no PATCH atualiza end_date', async () => {
       await service.update(TENANT, 'u1', EVENT_ID, { endsAt: new Date('2026-09-01T23:00:00Z') } as never);
       const updateCall = mockDs._repo.update.mock.calls[0];
-      expect(updateCall[1]).toMatchObject({ data_fim: new Date('2026-09-01T23:00:00Z') });
+      expect(updateCall[1]).toMatchObject({ end_date: new Date('2026-09-01T23:00:00Z') });
     });
 
     it('campos do formulário são atualizáveis', async () => {

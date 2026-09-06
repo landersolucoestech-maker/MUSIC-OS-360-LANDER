@@ -102,7 +102,7 @@ async function computeFromMockStorage(): Promise<OperationalDashboard> {
 
   const contracts_expiring_soon_count = contratos.filter((c) => {
     if (String(c["status"] ?? "").toLowerCase() !== "ativo" && String(c["status"] ?? "").toLowerCase() !== "vigente") return false;
-    const fim = tryParseDate(c["data_fim"]);
+    const fim = tryParseDate(c["end_date"]);
     if (!fim) return false;
     const dias = differenceInDays(fim, now);
     return dias >= 0 && dias <= 30;

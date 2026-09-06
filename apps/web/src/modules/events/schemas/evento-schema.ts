@@ -10,7 +10,7 @@ export const eventoSchema = z.object({
     .min(1, "Tipo de evento é obrigatório"),
   artista: z.string().optional().or(z.literal("")),
   status: z.string().optional().or(z.literal("")),
-  dataInicio: z.preprocess((val) => {
+  startDate: z.preprocess((val) => {
     if (typeof val === "string" && val !== "") {
       const d = parseISO(val as string);
       return isValid(d) ? d : val;
@@ -18,7 +18,7 @@ export const eventoSchema = z.object({
     return val;
   }, z.date({ required_error: "Data de início é obrigatória" })),
   horarioInicio: z.string().optional().or(z.literal("")),
-  dataFim: z.preprocess((val) => {
+  endDate: z.preprocess((val) => {
     if (typeof val === "string" && val !== "") {
       const d = parseISO(val as string);
       return isValid(d) ? d : val;

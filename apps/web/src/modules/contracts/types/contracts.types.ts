@@ -40,8 +40,8 @@ export interface Contrato {
   artist_id?: string | null;
   client_id?: string | null;
   release_id?: string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
   valor?: number | null;
   exclusivo?: boolean | null;
   observacoes?: string | null;

@@ -135,7 +135,7 @@ export class AnalyticsService {
         [tenantId],
       ),
       this.ds.query<[{ cnt: string }]>(
-        `SELECT COUNT(*)::int AS cnt FROM contracts WHERE tenant_id = $1 AND data_fim BETWEEN NOW() AND NOW() + INTERVAL '30 days' AND deleted_at IS NULL`,
+        `SELECT COUNT(*)::int AS cnt FROM contracts WHERE tenant_id = $1 AND end_date BETWEEN NOW() AND NOW() + INTERVAL '30 days' AND deleted_at IS NULL`,
         [tenantId],
       ),
       this.countTable('leads', tenantId),

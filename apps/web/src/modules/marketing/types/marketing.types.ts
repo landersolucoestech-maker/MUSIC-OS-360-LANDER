@@ -842,8 +842,8 @@ export interface Meta {
   valor_atual?: number;
   unidade: string;
   prazo: string;
-  data_inicio?: string | null;
-  data_fim?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
   artist_id?: string | number | null;
   status: MetaStatus;
   progresso: number;
@@ -867,8 +867,8 @@ export interface CreateMetaInput {
   valor_atual?: number;
   unidade: string;
   prazo?: string;
-  data_inicio?: string | null;
-  data_fim?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
   artist_id?: string | number | null;
   status?: MetaStatus;
   responsavel?: string;
