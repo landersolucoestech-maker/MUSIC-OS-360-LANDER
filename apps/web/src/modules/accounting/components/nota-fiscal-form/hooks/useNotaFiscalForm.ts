@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
 import { getExpectedUpdatedAt, handleConcurrencyConflict } from "@/shared/hooks/useConcurrencyConflict";
 import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings";
-import { parseTipoOperacao, serializeTipoOperacao } from "@/modules/accounting/lib/nota-fiscal-tipo";
+import { parseTipoOperacao, serializeTipoOperacao } from "@/modules/accounting/lib/nota-fiscal-type";
 import { notaFiscalSchema } from "@/modules/accounting/lib/nota-fiscal-schema";
 import { validateNfForm, type NfValidationErrors } from "@/modules/accounting/components/nota-fiscal-form/validation/nf-form-validation";
 import { applyResets } from "@/modules/accounting/components/nota-fiscal-form/rules/nf-reset-rules";
@@ -86,12 +86,12 @@ export function useNotaFiscalForm({
 
   useEffect(() => {
     if (notaFiscal && (mode === "edit" || mode === "view")) {
-      const { tipo, observacoesLimpas } = parseTipoOperacao(notaFiscal.observacoes);
+      const { type, observacoesLimpas } = parseTipoOperacao(notaFiscal.observacoes);
       const valorServicos = numberValue(notaFiscal.valor_servicos, notaFiscal.valor, notaFiscal.valor_total) ?? 0;
       const valorLiquido = numberValue(notaFiscal.valor_liquido, notaFiscal.valor_servicos, notaFiscal.valor, notaFiscal.valor_total) ?? 0;
       const descricaoServicos = notaFiscal.descricao_servicos ?? notaFiscal.descricao_servico ?? "";
       const tomadorRazaoSocial = notaFiscal.tomador_razao_social ?? notaFiscal.tomador_nome ?? notaFiscal.clientes?.nome ?? "";
-      setTipoOperacao(tipo);
+      setTipoOperacao(type);
       setFormData({
         ...INITIAL_FORM_DATA,
         ...notaFiscal,

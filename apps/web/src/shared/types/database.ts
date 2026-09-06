@@ -6,7 +6,7 @@
  * concretos em sua própria interface usando interseção com esses aliases
  * (ex: `Tables<"artistas"> & { nome_artistico?: string }`).
  *
- * `Tables<T>` é um tipo base vazio (`object`) que, ao ser intersectado
+ * `Tables<T>` é um type base vazio (`object`) que, ao ser intersectado
  * com os campos específicos do hook, resulta exatamente nesses campos
  * sem vazar `unknown` para os acessos. Isso elimina a necessidade de
  * `any` e mantém segurança de tipos nos componentes consumidores.

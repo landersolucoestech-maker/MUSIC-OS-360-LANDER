@@ -20,7 +20,7 @@ export class ArtistGoalsService {
 
     if (query.artist_id) qb.andWhere('g.artist_id = :artistId', { artistId: query.artist_id });
     if (query.status)     qb.andWhere('g.status = :status',        { status:    query.status });
-    if (query.tipo)       qb.andWhere('g.tipo = :tipo',            { tipo:      query.tipo });
+    if (query.type)       qb.andWhere('g.type = :type',            { type:      query.type });
 
     qb.orderBy('g.created_at', query.ascending ? 'ASC' : 'DESC')
       .skip(query.offset ?? 0)

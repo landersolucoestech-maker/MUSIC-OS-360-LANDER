@@ -6,7 +6,7 @@
  * que já agrega via `SUM(t.valor::numeric)` no SQL). `0 + "500.00"` faz
  * concatenação de string (JS só soma numericamente quando os dois operandos
  * já são number), então somar `t.valor` bruto em cadeia produz uma string
- * tipo "0500.00100.0010.00" — múltiplos pontos decimais, que vira NaN ao
+ * type "0500.00100.0010.00" — múltiplos pontos decimais, que vira NaN ao
  * passar por `Number()` em formatCurrency. `toNumber` normaliza qualquer
  * valor numérico/string-numérica para number antes de qualquer soma; um
  * valor que não é um número válido vira 0 explicitamente (nunca propaga

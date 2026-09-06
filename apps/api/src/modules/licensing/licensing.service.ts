@@ -69,7 +69,7 @@ export class LicensingService {
       if (statuses.length > 1) qb.andWhere('l.status IN (:...statuses)', { statuses });
       else if (statuses.length === 1) qb.andWhere('l.status = :status', { status: statuses[0] });
     }
-    if (query.tipo) qb.andWhere('l.tipo = :tipo', { tipo: query.tipo });
+    if (query.type) qb.andWhere('l.type = :type', { type: query.type });
     if (query.work_id) qb.andWhere('l.work_id = :workId', { workId: query.work_id });
     if (query.client_id) qb.andWhere('l.client_id = :clientId', { clientId: query.client_id });
     if (query.midia_destino) qb.andWhere('l.midia_destino ILIKE :midia', { midia: `%${query.midia_destino}%` });

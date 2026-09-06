@@ -50,7 +50,7 @@ export class PhonogramsService {
       .andWhere('p.deleted_at IS NULL');
 
     if (q['status'])    qb.andWhere('p.status = :status',       { status:    q['status'] });
-    if (q['tipo'])      qb.andWhere('p.tipo = :tipo',           { tipo:      q['tipo'] });
+    if (q['type'])      qb.andWhere('p.type = :type',           { type:      q['type'] });
     if (resolvedQuery.artist_id) qb.andWhere('p.artist_id = :artistId', { artistId: resolvedQuery.artist_id });
     if (resolvedQuery.work_id)    qb.andWhere('p.work_id = :workId',      { workId:    resolvedQuery.work_id });
     if (q['obra_vinculada'] === 'sem-obra') qb.andWhere('p.work_id IS NULL');
@@ -128,9 +128,9 @@ export class PhonogramsService {
 
     // duration/duracao: fora do escopo do C2 (C2.2) — comportamento inalterado.
     out['duration_seconds'] = input['duration_seconds'] ?? input['duration'];
-    // tipo: default apenas quando explicitamente ausente no CREATE (ver create());
-    // num PATCH sem tipo, não sobrescrever o valor persistido.
-    if (input['tipo'] !== undefined) out['tipo'] = input['tipo'];
+    // type: default apenas quando explicitamente ausente no CREATE (ver create());
+    // num PATCH sem type, não sobrescrever o valor persistido.
+    if (input['type'] !== undefined) out['type'] = input['type'];
 
     delete out['titulo'];
     delete out['workId'];
@@ -160,7 +160,7 @@ export class PhonogramsService {
     const normalized = this.buildEntityPayload(input, resolved);
     const entity = this.repo!.create({
       tenant_id: tenantId,
-      tipo: 'master',
+      type: 'master',
       ...normalized,
       created_by: userId,
       updated_by: userId,

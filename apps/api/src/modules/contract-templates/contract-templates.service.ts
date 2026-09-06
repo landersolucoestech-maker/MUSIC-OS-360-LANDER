@@ -20,7 +20,7 @@ export class ContractTemplatesService {
       .where('t.tenant_id = :tenantId', { tenantId })
       .andWhere('t.deleted_at IS NULL');
 
-    if (query.tipo)   qb.andWhere('t.tipo_servico = :tipo', { tipo:   query.tipo });
+    if (query.type)   qb.andWhere('t.tipo_servico = :type', { type:   query.type });
     if (query.ativo !== undefined) qb.andWhere('t.ativo = :ativo', { ativo: query.ativo });
     if (query.search) qb.andWhere('t.nome ILIKE :search',   { search: `%${query.search}%` });
 

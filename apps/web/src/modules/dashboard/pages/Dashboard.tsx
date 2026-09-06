@@ -40,7 +40,7 @@ const MAX_ITEMS = 30;
 
 // ─── Próximos Compromissos (Agenda) ─────────────────────────────────────────
 // Categorias oficiais do módulo Agenda (SchedulerFormModal). Normaliza tanto os
-// events.tipo só guarda o enum coarse do backend — ver
+// events.type só guarda o enum coarse do backend — ver
 // modules/events/lib/event-type.ts para os rótulos pt-BR reais.
 
 // Status que removem o evento da lista de próximos compromissos (passado/encerrado).
@@ -53,8 +53,8 @@ function normalizarSlug(value: unknown): string {
   return value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-function categoriaCompromissoLabel(tipo: unknown): string {
-  return getBackendEventTypeLabel(typeof tipo === "string" ? tipo : undefined);
+function categoriaCompromissoLabel(type: unknown): string {
+  return getBackendEventTypeLabel(typeof type === "string" ? type : undefined);
 }
 
 // Combina data (date-only ou ISO) + horário "HH:mm" num Date comparável.
@@ -420,7 +420,7 @@ export default function Dashboard() {
     push({ icon: <UserCheck className="h-3.5 w-3.5" />, label: "Lead convertido", description: "Lead virou artista/cliente", badge: "CRM", badgeVariant: "default" }),
   );
   useWsEvent("finance.transaction.created", (d) =>
-    push({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Transação registrada", description: `${(d as { tipo?: string }).tipo ?? "transação"}`, badge: "Accounting", badgeVariant: "default" }),
+    push({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Transação registrada", description: `${(d as { type?: string }).type ?? "transação"}`, badge: "Accounting", badgeVariant: "default" }),
   );
   useWsEvent("finance.transaction.updated", () =>
     push({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Transação atualizada", description: "Alterações salvas", badge: "Accounting", badgeVariant: "secondary" }),
@@ -487,8 +487,8 @@ export default function Dashboard() {
       {
         event: "musicos360:TRANSACTION_CREATED",
         fn: (e) => {
-          const d = (e as CustomEvent).detail as { tipo?: string; descricao?: string };
-          pushRef.current({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Transação registrada", description: d.descricao ?? d.tipo ?? "transação", badge: "Accounting", badgeVariant: "default" });
+          const d = (e as CustomEvent).detail as { type?: string; descricao?: string };
+          pushRef.current({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Transação registrada", description: d.descricao ?? d.type ?? "transação", badge: "Accounting", badgeVariant: "default" });
         },
       },
       {
@@ -723,7 +723,7 @@ export default function Dashboard() {
                           variant="outline"
                           className="mt-1.5 px-1.5 py-0 text-[10px] border-border text-muted-foreground"
                         >
-                          {categoriaCompromissoLabel(evento.tipo)}
+                          {categoriaCompromissoLabel(evento.type)}
                         </Badge>
                       </div>
                     </li>

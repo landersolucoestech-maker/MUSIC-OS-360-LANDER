@@ -42,7 +42,7 @@ export function isMetricKey(value: string): value is MetricKey {
  * Métrica primária (a mesma exibida no card de plataforma da UI) por
  * plataforma — reaproveitada pelos engines de Fase 3 (Career Stage/
  * Benchmark) para ler o valor atual de `SocialPlatformProfileSnapshot` sem
- * duplicar o mapeamento. Sem entrada de tipo string genérica: usar a chave
+ * duplicar o mapeamento. Sem entrada de type string genérica: usar a chave
  * exata de `SocialPlatform` (social-platform-sync.types.ts) evita string
  * solta — replicada aqui como literal em vez de importada para não criar
  * dependência circular com esse arquivo.

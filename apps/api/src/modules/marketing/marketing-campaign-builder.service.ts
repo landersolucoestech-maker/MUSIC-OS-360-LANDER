@@ -68,7 +68,7 @@ export class MarketingCampaignBuilderService {
   async list(tenantId: string): Promise<StoredCampaign[]> {
     const rows = await this.repo.createQueryBuilder('campaign')
       .where('campaign.tenant_id = :tenantId', { tenantId })
-      .andWhere('campaign.tipo = :type', { type: 'marketing_builder' })
+      .andWhere('campaign.type = :type', { type: 'marketing_builder' })
       .andWhere('campaign.deleted_at IS NULL')
       .orderBy('campaign.updated_at', 'DESC')
       .getMany();
@@ -80,7 +80,7 @@ export class MarketingCampaignBuilderService {
       where: {
         id,
         tenant_id: tenantId,
-        tipo: 'marketing_builder',
+        type: 'marketing_builder',
         deleted_at: null,
       } as never,
     });
@@ -97,7 +97,7 @@ export class MarketingCampaignBuilderService {
     const row = this.repo.create({
       tenant_id: tenantId,
       nome: payload.name?.trim() || 'Campanha sem título',
-      tipo: 'marketing_builder',
+      type: 'marketing_builder',
       status: 'DRAFT' as never,
       objetivo: payload.objective ?? null,
       orcamento: this.budget(payload),

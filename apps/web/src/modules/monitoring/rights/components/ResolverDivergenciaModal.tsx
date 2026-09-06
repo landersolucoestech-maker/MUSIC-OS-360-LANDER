@@ -80,7 +80,7 @@ export function ResolverDivergenciaModal({ divergencia, open, onOpenChange, onSu
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="modal-resolver-divergencia">
         <DialogHeader>
           <DialogTitle className="text-base leading-snug">Resolver Divergência</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">{divergencia.tipo}</DialogDescription>
+          <DialogDescription className="text-xs text-muted-foreground">{divergencia.type}</DialogDescription>
         </DialogHeader>
 
         <div className="mt-1 space-y-4">
@@ -88,7 +88,7 @@ export function ResolverDivergenciaModal({ divergencia, open, onOpenChange, onSu
           <div>
             <p className="text-xs font-semibold tracking-wide text-muted-foreground mb-2">Identificação</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-              <Row icon={<Tag className="h-3.5 w-3.5" />} label="Tipo" value={divergencia.tipo} />
+              <Row icon={<Tag className="h-3.5 w-3.5" />} label="Tipo" value={divergencia.type} />
               <Row icon={<Gauge className="h-3.5 w-3.5" />} label="Severidade / Risco" value={
                 <div className="flex items-center gap-2">
                   <Badge variant={sev.variant}>{sev.label}</Badge>

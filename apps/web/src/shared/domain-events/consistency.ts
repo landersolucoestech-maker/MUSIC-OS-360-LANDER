@@ -53,7 +53,7 @@ function initConsistencyHooks(): void {
   });
 
   // ── TRANSACTION_CREATED → Sinaliza recálculo financeiro pendente ─────────
-  subscribe(DomainEvents.TRANSACTION_CREATED, ({ artist_id, tipo, valor }) => {
+  subscribe(DomainEvents.TRANSACTION_CREATED, ({ artist_id, type, valor }) => {
     try {
       const orgId = getCurrentOrgId();
       // Marca que o P&L deste artista está desatualizado (flag para UI)
@@ -67,7 +67,7 @@ function initConsistencyHooks(): void {
 
       if (IS_DEV) {
         console.info(
-          `[consistency] Transação criada: ${tipo} R$${valor?.toFixed(2)} → P&L marcado como desatualizado`,
+          `[consistency] Transação criada: ${type} R$${valor?.toFixed(2)} → P&L marcado como desatualizado`,
         );
       }
     } catch {

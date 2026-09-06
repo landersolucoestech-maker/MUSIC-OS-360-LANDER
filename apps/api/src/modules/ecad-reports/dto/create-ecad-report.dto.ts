@@ -5,7 +5,7 @@ export class CreateEcadReportDto {
   periodo: string;
 
   @IsString()
-  tipo: string;
+  type: string;
 
   @IsOptional()
   @IsString()

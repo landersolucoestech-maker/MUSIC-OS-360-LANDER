@@ -54,7 +54,7 @@ export interface Lancamento {
   id: string;
   user_id?: string;
   title: string;
-  tipo?: LancamentoTipo | string | null;
+  type?: LancamentoTipo | string | null;
   status?: LancamentoStatus | string | null;
   artist_id?: string | null;
   data_lancamento?: string | null;
@@ -108,7 +108,7 @@ export interface Share {
   work_id?: string | null;
   artist_id?: string | null;
   percentual?: number | null;
-  tipo?: ShareTipo | string | null;
+  type?: ShareTipo | string | null;
   direcao?: ShareDirecao | string | null;
   status?: ShareStatus | string | null;
   valor_total?: number | null;

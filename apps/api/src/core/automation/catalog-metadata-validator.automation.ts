@@ -6,7 +6,7 @@
  *   catalog.recording.created → catalog-metadata-validator (type=recording) → phonograms.metadata.aiCatalogValidation
  *
  * Um único handler trata os dois eventos, mantendo entityType/eventName/idempotencyKey
- * próprios de cada tipo. Toda a orquestração comum (idempotência metadata + skill_runs,
+ * próprios de cada type. Toda a orquestração comum (idempotência metadata + skill_runs,
  * auditoria, envelope, persistência, fail-safe) vive em `runNativeSkillAutomation`.
  *
  * Garantias herdadas do runner: execução não-bloqueante, falha da IA nunca reverte a

@@ -244,7 +244,7 @@ export const FLOW_LANCAMENTO_MUSICAL: OperationalFlow = {
   successCriteria: [
     "Lançamento com status 'publicado'",
     "Todos os fonogramas com ISRC",
-    "Shares definidos (soma = 100% por tipo)",
+    "Shares definidos (soma = 100% por type)",
     "Campanha de marketing activa",
   ],
   futureIntegrations: [

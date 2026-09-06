@@ -3,7 +3,7 @@ import { z } from "zod";
 export const feriasAusenciasSchema = z.object({
   funcionarioId: z.string()
     .min(1, "Funcionário é obrigatório"),
-  tipo: z.string()
+  type: z.string()
     .min(1, "Tipo de ausência é obrigatório"),
   dataInicio: z.string()
     .min(1, "Data de início é obrigatória"),

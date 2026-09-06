@@ -176,6 +176,7 @@ import { RenameArtistaIdToArtistId20260905000003 } from './20260905000003_Rename
 import { RenameObraIdToWorkId20260905000004 } from './20260905000004_RenameObraIdToWorkId';
 import { RenameClientProjectCampaignReleaseFks20260905000005 } from './20260905000005_RenameClientProjectCampaignReleaseFks';
 import { RenameTituloToTitle20260905000006 } from './20260905000006_RenameTituloToTitle';
+import { RenameTipoToType20260905000007 } from './20260905000007_RenameTipoToType';
 import { FixDefaultPrivilegesCreatorRole20260803000002 } from './20260803000002_FixDefaultPrivilegesCreatorRole';
 import { CreateContractServiceTypes20260803000003 } from './20260803000003_CreateContractServiceTypes';
 import { AddLicensePercentage20260804000001 } from './20260804000001_AddLicensePercentage';
@@ -368,4 +369,5 @@ export const ALL_MIGRATIONS = [
   RenameObraIdToWorkId20260905000004,
   RenameClientProjectCampaignReleaseFks20260905000005,
   RenameTituloToTitle20260905000006,
+  RenameTipoToType20260905000007,
 ] as const;

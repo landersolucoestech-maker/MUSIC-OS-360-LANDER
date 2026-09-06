@@ -10,7 +10,7 @@ export interface LancamentoFormFields {
   projetoSeed: string;
   title: string;
   artist_id: string;
-  tipo: string;
+  type: string;
   codigoUPC: string;
   genero: string;
   idioma: string;
@@ -74,7 +74,7 @@ export function lancamentoToFormFields(l: Lancamento | null | undefined): Lancam
     projetoSeed:               "",
     title:                    ps(l?.title ?? r?.["title"]),
     artist_id:                ps(l?.artist_id ?? r?.["artistId"]),
-    tipo:                      ps(l?.tipo ?? r?.["type"]),
+    type:                      ps(l?.type ?? r?.["type"]),
     codigoUPC:                 ps(l?.codigo_upc ?? l?.upc ?? r?.["upc"]),
     genero:                    ps(l?.genero ?? meta["genero"]),
     idioma:                    ps(l?.idioma ?? meta["idioma"]),
@@ -102,7 +102,7 @@ export function lancamentoToFormFields(l: Lancamento | null | undefined): Lancam
 
 export function emptyLancamentoFormFields(): LancamentoFormFields {
   return {
-    projetoSeed: "", title: "", artist_id: "", tipo: "",
+    projetoSeed: "", title: "", artist_id: "", type: "",
     codigoUPC: "", genero: "", idioma: "", dataLancamento: "",
     status: "analise", gravadora: "", copyright: "",
     distribuidora: "onerpm", notasDistribuicao: "",

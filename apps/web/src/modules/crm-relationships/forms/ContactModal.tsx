@@ -257,7 +257,7 @@ export function ContatoFormModal({ open, onOpenChange, mode, initialValue, onSub
 
   // Interações
   const addInteracao = () => {
-    const nova: Interacao = { id: newId(), tipo: "whatsapp", data: todayISO(), horario: nowHorario(), descricao: "" };
+    const nova: Interacao = { id: newId(), type: "whatsapp", data: todayISO(), horario: nowHorario(), descricao: "" };
     setState((prev) => ({ ...prev, interacoes: [...prev.interacoes, nova] }));
   };
   const updateInteracao = <K extends keyof Interacao>(id: string, field: K, value: Interacao[K]) => {
@@ -312,7 +312,7 @@ export function ContatoFormModal({ open, onOpenChange, mode, initialValue, onSub
                 "rounded-md border p-3 text-left transition-colors " +
                 (isPF ? "border-primary bg-primary/10" : "border-border hover:border-muted-foreground/40")
               }
-              data-testid="tipo-pessoa-fisica"
+              data-testid="type-pessoa-fisica"
             >
               <p className="text-sm font-medium">Pessoa Física</p>
               <p className="text-xs text-muted-foreground">CPF, função, foto</p>
@@ -324,7 +324,7 @@ export function ContatoFormModal({ open, onOpenChange, mode, initialValue, onSub
                 "rounded-md border p-3 text-left transition-colors " +
                 (isPJ ? "border-primary bg-primary/10" : "border-border hover:border-muted-foreground/40")
               }
-              data-testid="tipo-pessoa-juridica"
+              data-testid="type-pessoa-juridica"
             >
               <p className="text-sm font-medium">Pessoa Jurídica</p>
               <p className="text-xs text-muted-foreground">CNPJ, razão social, cargo</p>
@@ -649,8 +649,8 @@ export function ContatoFormModal({ open, onOpenChange, mode, initialValue, onSub
 
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Tipo">
-                  <Select value={it.tipo} onValueChange={(v) => updateInteracao(it.id, "tipo", v)}>
-                    <SelectTrigger data-testid={`select-interacao-tipo-${it.id}`}>
+                  <Select value={it.type} onValueChange={(v) => updateInteracao(it.id, "type", v)}>
+                    <SelectTrigger data-testid={`select-interacao-type-${it.id}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

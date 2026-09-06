@@ -283,7 +283,7 @@ export default function Takedowns() {
                         />
                       </TableCell>
                       <TableCell className="font-medium">{n.title || "—"}</TableCell>
-                      <TableCell>{tipoBadge(n.tipo)}</TableCell>
+                      <TableCell>{tipoBadge(n.type)}</TableCell>
                       <TableCell>{n.plataforma ? <Badge variant="neutral">{n.plataforma}</Badge> : "—"}</TableCell>
                       <TableCell>{n.motivo || "—"}</TableCell>
                       <TableCell>{formatTakedownDate(n.data) ?? "—"}</TableCell>

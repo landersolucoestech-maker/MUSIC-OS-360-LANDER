@@ -795,7 +795,7 @@ export class BillingService {
     if (!tenantId || !this.ds) return;
     await this.ds.query(
       `INSERT INTO invoices (
-         tenant_id, stripe_invoice_id, numero, tipo, status, amount_due, amount_paid, currency,
+         tenant_id, stripe_invoice_id, numero, type, status, amount_due, amount_paid, currency,
          valor, due_date, hosted_invoice_url, invoice_pdf, attempt_count, metadata, created_by
        )
        VALUES ($1, $2, $2, 'stripe_subscription', COALESCE($3, 'open'), $4, $5, $6, ($4::numeric / 100.0),

@@ -44,8 +44,8 @@ export class ContractEventsHandler {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
 
-    const { contractId, title, tipo, artistId, createdBy } = event.payload;
-    this.logger.log(`Contract created: "${title}" (${contractId}) tipo=${tipo} artist=${artistId ?? 'none'}`);
+    const { contractId, title, type, artistId, createdBy } = event.payload;
+    this.logger.log(`Contract created: "${title}" (${contractId}) type=${type} artist=${artistId ?? 'none'}`);
 
     if (!this.activityLogs || !createdBy) return;
     try {
@@ -55,7 +55,7 @@ export class ContractEventsHandler {
           entity_id: contractId,
           action: 'created',
           description: `Contrato "${title}" criado`,
-          metadata: { title, tipo, artistId, correlationId: event.correlationId ?? null },
+          metadata: { title, type, artistId, correlationId: event.correlationId ?? null },
         });
       });
     } catch (err) {
@@ -147,7 +147,7 @@ export class ContractEventsHandler {
             if (contractValor > 0) {
               const provisional = transactionRepo.create({
                 tenant_id: tenantId,
-                tipo: 'receita' as any,
+                type: 'receita' as any,
                 categoria: 'contratos',
                 descricao: `Receita prevista - contrato "${title}"`,
                 valor: String(contractValor),
@@ -171,7 +171,7 @@ export class ContractEventsHandler {
                   payload: {
                     transactionId: savedTx.id,
                     tenantId,
-                    tipo: 'receita',
+                    type: 'receita',
                     categoria: 'contratos',
                     valor: String(contractValor),
                     contratoId: contractId,

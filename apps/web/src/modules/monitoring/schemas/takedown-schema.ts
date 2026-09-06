@@ -5,7 +5,7 @@ export const takedownSchema = z.object({
     .min(1, "Título é obrigatório")
     .max(200, "Título deve ter no máximo 200 caracteres")
     .trim(),
-  tipo: z.string().optional().or(z.literal("")),
+  type: z.string().optional().or(z.literal("")),
   obraAfetada: z.string().max(200, "Nome da obra deve ter no máximo 200 caracteres").optional().or(z.literal("")),
   artista: z.string().max(150, "Nome do artista deve ter no máximo 150 caracteres").optional().or(z.literal("")),
   plataforma: z.string()

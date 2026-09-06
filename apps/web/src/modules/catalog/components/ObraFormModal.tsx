@@ -151,19 +151,19 @@ function ArtistNameInput({ value, onChange, onSelect, placeholder, disabled }: A
 }
 
 export const ObraTipoBadge = ({
-  tipo,
+  type,
 }: {
-  tipo?: TipoObra | string | null;
+  type?: TipoObra | string | null;
 }) => {
-  if (tipo === "autoral") {
+  if (type === "autoral") {
     return (
-      <Badge variant="info" data-testid="badge-tipo-obra-autoral">
+      <Badge variant="info" data-testid="badge-type-obra-autoral">
         Obra Autoral
       </Badge>
     );
   }
   return (
-    <Badge variant="warning" data-testid="badge-tipo-obra-referencia">
+    <Badge variant="warning" data-testid="badge-type-obra-referencia">
       Obra por Referência
     </Badge>
   );
@@ -225,7 +225,7 @@ export function ObraFormModal({
   const { addObra, updateObra } = useObras();
   const { orgId } = useCurrentOrgId();
 
-  // Resolução do tipo da obra. Em criação vem do seletor (prop). Em
+  // Resolução do type da obra. Em criação vem do seletor (prop). Em
   // edição/visualização vem do próprio registro. Default = referencia.
   const tipoObra: TipoObra = (tipoObraProp ??
     (obra?.tipo_obra as TipoObra | undefined) ??
@@ -532,7 +532,7 @@ export function ObraFormModal({
         <DialogHeader>
           <div className="flex items-center justify-between gap-3 pr-6">
             <DialogTitle>{title}</DialogTitle>
-            <ObraTipoBadge tipo={tipoObra} />
+            <ObraTipoBadge type={tipoObra} />
           </div>
         </DialogHeader>
 

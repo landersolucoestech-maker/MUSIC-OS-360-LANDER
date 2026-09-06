@@ -46,7 +46,7 @@ export interface ContractCreatedPayload {
   contractId: string;
   tenantId:   string;
   title:     string;
-  tipo:       string;
+  type:       string;
   artistId:   string | null;
   createdBy:  string;
 }
@@ -253,7 +253,7 @@ export interface DistributorStatusUpdatedPayload {
 export interface TransactionCreatedPayload {
   transactionId: string;
   tenantId:      string;
-  tipo:          string;
+  type:          string;
   categoria:     string;
   valor:         string;
   contratoId:    string | null;
@@ -268,7 +268,7 @@ export interface TransactionCreatedPayload {
 export interface TransactionStatusChangedPayload {
   transactionId:  string;
   tenantId:       string;
-  tipo:           string;
+  type:           string;
   valor:          string;
   previousStatus: string;
   newStatus:      string;
@@ -278,7 +278,7 @@ export interface TransactionStatusChangedPayload {
 export interface TransactionPaidPayload {
   transactionId: string;
   tenantId:      string;
-  tipo:          string;
+  type:          string;
   valor:         string;
   contratoId:    string | null;
   artistId:     string | null;
@@ -289,7 +289,7 @@ export interface TransactionPaidPayload {
 export interface TransactionCancelledPayload {
   transactionId: string;
   tenantId:      string;
-  tipo:          string;
+  type:          string;
   valor:         string;
   cancelledBy:   string;
   cancelledAt:   string;
@@ -300,7 +300,7 @@ export interface TransactionCancelledPayload {
 export interface InvoiceCreatedPayload {
   invoiceId:    string;
   tenantId:     string;
-  tipo:         string;
+  type:         string;
   valor:        string;
   numero:       string | null;
   prestadorId:  string | null;
@@ -319,7 +319,7 @@ export interface InvoiceStatusChangedPayload {
 export interface InvoiceIssuedPayload {
   invoiceId:  string;
   tenantId:   string;
-  tipo:       string;
+  type:       string;
   valor:      string;
   numero:     string | null;
   issuedBy:   string;
@@ -353,7 +353,7 @@ export interface ReleaseCreatedPayload {
   releaseId:  string;
   tenantId:   string;
   title:     string;
-  tipo:       string;
+  type:       string;
   artistId:   string | null;
   createdBy:  string;
   createdAt:  string;

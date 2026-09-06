@@ -3,11 +3,13 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 /**
- * Fase 5 / C1: tipo/artist_id são os filtros canônicos (corrige o bug em
+ * Fase 5 / C1: type/artist_id são os filtros canônicos (corrige o bug em
  * que ContractsService.list() lia esses nomes pt-BR enquanto o DTO só
- * declarava type/artistId — o filtro nunca funcionava). type/artistId
+ * declarava type/artistId — o filtro nunca funcionava). tipo/artistId
  * seguem aceitos temporariamente, resolvidos via
- * resolveContractQueryAliases(), marcados deprecated no Swagger.
+ * resolveContractQueryAliases(), marcados deprecated no Swagger. `type`
+ * passou de nome legado a canônico na normalização de nomenclatura
+ * (2026-09-05).
  */
 export class QueryContractDto extends PaginationDto {
   @ApiPropertyOptional({ example: 'active' })
@@ -18,12 +20,12 @@ export class QueryContractDto extends PaginationDto {
   @ApiPropertyOptional({ example: 'gravacao' })
   @IsOptional()
   @IsString()
-  tipo?: string;
+  type?: string;
 
-  @ApiPropertyOptional({ example: 'recording', deprecated: true, description: 'Use "tipo".' })
+  @ApiPropertyOptional({ example: 'recording', deprecated: true, description: 'Use "type".' })
   @IsOptional()
   @IsString()
-  type?: string;
+  tipo?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

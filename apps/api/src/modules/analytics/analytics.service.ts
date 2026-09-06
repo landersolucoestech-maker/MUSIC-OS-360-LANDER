@@ -147,8 +147,8 @@ export class AnalyticsService {
       // Revenue and expenses this calendar month
       this.ds.query<[{ receitas: string; despesas: string }]>(`
         SELECT
-          COALESCE(SUM(CASE WHEN tipo = 'receita' AND status NOT IN ('cancelado','cancelled') THEN valor::numeric ELSE 0 END), 0)::numeric AS receitas,
-          COALESCE(SUM(CASE WHEN tipo = 'despesa' AND status NOT IN ('cancelado','cancelled') THEN valor::numeric ELSE 0 END), 0)::numeric AS despesas
+          COALESCE(SUM(CASE WHEN type = 'receita' AND status NOT IN ('cancelado','cancelled') THEN valor::numeric ELSE 0 END), 0)::numeric AS receitas,
+          COALESCE(SUM(CASE WHEN type = 'despesa' AND status NOT IN ('cancelado','cancelled') THEN valor::numeric ELSE 0 END), 0)::numeric AS despesas
         FROM transactions
         WHERE tenant_id = $1 AND deleted_at IS NULL AND data >= $2
       `, [tenantId, monthStart]),
@@ -156,7 +156,7 @@ export class AnalyticsService {
       this.ds.query<[{ total: string }]>(`
         SELECT COALESCE(SUM(valor::numeric), 0)::numeric AS total
         FROM transactions
-        WHERE tenant_id = $1 AND tipo = 'receita' AND status IN ('pendente','agendado') AND deleted_at IS NULL
+        WHERE tenant_id = $1 AND type = 'receita' AND status IN ('pendente','agendado') AND deleted_at IS NULL
       `, [tenantId]),
       // Overdue invoices count
       this.ds.query<[{ cnt: string }]>(`
@@ -183,9 +183,9 @@ export class AnalyticsService {
         `SELECT status, COUNT(*)::int AS cnt FROM transactions WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY status`,
         [tenantId],
       ),
-      // Transactions by tipo
-      this.ds.query<Array<{ tipo: string; cnt: string }>>(
-        `SELECT tipo, COUNT(*)::int AS cnt FROM transactions WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY tipo`,
+      // Transactions by type
+      this.ds.query<Array<{ type: string; cnt: string }>>(
+        `SELECT type, COUNT(*)::int AS cnt FROM transactions WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY type`,
         [tenantId],
       ),
       hasOperationalTasks
@@ -217,7 +217,7 @@ export class AnalyticsService {
     const contractStatusMap = Object.fromEntries(contractsByStatus.map((r) => [r.status, parseInt(r.cnt)]));
     const invoiceStatusMap  = Object.fromEntries(invoicesByStatus.map((r)  => [r.status, parseInt(r.cnt)]));
     const txStatusMap       = Object.fromEntries(txByStatus.map((r)        => [r.status, parseInt(r.cnt)]));
-    const txTipoMap         = Object.fromEntries(txByTipo.map((r)          => [r.tipo,   parseInt(r.cnt)]));
+    const txTipoMap         = Object.fromEntries(txByTipo.map((r)          => [r.type,   parseInt(r.cnt)]));
 
     const receitas = parseFloat(financialCurrentMonth[0]?.receitas ?? '0');
     const despesas = parseFloat(financialCurrentMonth[0]?.despesas ?? '0');
@@ -270,8 +270,8 @@ export class AnalyticsService {
     }>>(`
       SELECT
         DATE_TRUNC('month', data)::date AS month,
-        SUM(CASE WHEN tipo = 'receita' THEN valor::numeric ELSE 0 END) AS receitas,
-        SUM(CASE WHEN tipo = 'despesa' THEN valor::numeric ELSE 0 END) AS despesas
+        SUM(CASE WHEN type = 'receita' THEN valor::numeric ELSE 0 END) AS receitas,
+        SUM(CASE WHEN type = 'despesa' THEN valor::numeric ELSE 0 END) AS despesas
       FROM transactions
       WHERE tenant_id = $1
         AND deleted_at IS NULL

@@ -80,7 +80,7 @@ function buildPersistencePayload(
   } else if (dto.categoria !== undefined) {
     payload.categoria = dto.categoria || 'outros';
   }
-  if (dto.tipoTransacao !== undefined) payload.tipo = dto.tipoTransacao;
+  if (dto.tipoTransacao !== undefined) payload.type = dto.tipoTransacao;
   if (dto.descricao !== undefined) payload.descricao = dto.descricao;
   if (dto.valor !== undefined) payload.valor = String(dto.valor);
   if (dto.dataTransacao !== undefined) payload.data = dto.dataTransacao;
@@ -109,9 +109,9 @@ function toTransactionDetails(entity: TransactionEntity): TransactionDetailsDTO 
 
   return {
     id: entity.id,
-    type: entity.tipo,
-    tipo: entity.tipo,
-    tipoTransacao: entity.tipo,
+    type: entity.type,
+    tipo: entity.type,
+    tipoTransacao: entity.type,
     status: entity.status,
     description: entity.descricao,
     descricao: entity.descricao,
@@ -200,7 +200,7 @@ export class TransactionsService {
       .andWhere('t.deleted_at IS NULL');
 
     if (q.status)     qb.andWhere('t.status = :status', { status: q.status });
-    if (q.tipo)       qb.andWhere('t.tipo = :tipo', { tipo: q.tipo });
+    if (q.type)       qb.andWhere('t.type = :type', { type: q.type });
     if (q.categoria)  qb.andWhere('t.categoria = :categoria', { categoria: q.categoria });
     if (q.artist_id) qb.andWhere('t.artist_id = :artistId', { artistId: q.artist_id });
     if (q.dateFrom)   qb.andWhere('t.data >= :dateFrom', { dateFrom: q.dateFrom });
@@ -223,23 +223,23 @@ export class TransactionsService {
   }
 
   /**
-   * Distribuição exata tipo×status + soma de valor (tenant inteiro, ignora
+   * Distribuição exata type×status + soma de valor (tenant inteiro, ignora
    * os filtros de data/busca da tabela — os KPIs sempre refletem o total
    * real, nunca a página ou o intervalo de datas atualmente visível).
    */
-  async stats(tenantId: string): Promise<Array<{ tipo: string; status: string; cnt: number; sum: number }>> {
+  async stats(tenantId: string): Promise<Array<{ type: string; status: string; cnt: number; sum: number }>> {
     const qb = this.repo!
       .createQueryBuilder('t')
       .where('t.tenant_id = :tenantId', { tenantId })
       .andWhere('t.deleted_at IS NULL')
-      .select('t.tipo', 'tipo')
+      .select('t.type', 'type')
       .addSelect('t.status', 'status')
       .addSelect('COUNT(*)::int', 'cnt')
       .addSelect('COALESCE(SUM(t.valor::numeric), 0)', 'sum')
-      .groupBy('t.tipo')
+      .groupBy('t.type')
       .addGroupBy('t.status');
-    const rows = await qb.getRawMany<{ tipo: string; status: string; cnt: string; sum: string }>();
-    return rows.map((r) => ({ tipo: r.tipo, status: r.status, cnt: parseInt(r.cnt, 10) || 0, sum: parseFloat(r.sum) || 0 }));
+    const rows = await qb.getRawMany<{ type: string; status: string; cnt: string; sum: string }>();
+    return rows.map((r) => ({ type: r.type, status: r.status, cnt: parseInt(r.cnt, 10) || 0, sum: parseFloat(r.sum) || 0 }));
   }
 
   private async findEntityById(tenantId: string, id: string): Promise<TransactionEntity> {
@@ -272,7 +272,7 @@ export class TransactionsService {
         payload: {
           transactionId: saved.id,
           tenantId,
-          tipo:          saved.tipo ?? (dto as AnyRecord).tipoTransacao as string ?? '',
+          type:          saved.type ?? (dto as AnyRecord).tipoTransacao as string ?? '',
           categoria:     saved.categoria ?? (dto as AnyRecord).categoria as string ?? '',
           valor,
           contratoId:    saved.contrato_id ?? null,
@@ -288,8 +288,8 @@ export class TransactionsService {
           entity_type:  'transaction',
           entity_id:    saved.id,
           action:       'created',
-          description:  `Transacção ${saved.tipo} R$${valor} criada`,
-          metadata:     { tipo: saved.tipo, categoria: saved.categoria, valor },
+          description:  `Transacção ${saved.type} R$${valor} criada`,
+          metadata:     { type: saved.type, categoria: saved.categoria, valor },
         });
       } catch { /* non-critical */ }
     }
@@ -353,7 +353,7 @@ export class TransactionsService {
         payload: {
           transactionId: id,
           tenantId,
-          tipo:          existing.tipo as string,
+          type:          existing.type as string,
           valor:         String(existing.valor),
           cancelledBy:   userId,
           cancelledAt,
@@ -368,7 +368,7 @@ export class TransactionsService {
           entity_id:    id,
           action:       'cancelled',
           description:  `Transacção R$${existing.valor} cancelada`,
-          metadata:     { tipo: existing.tipo, valor: String(existing.valor), cancelledAt },
+          metadata:     { type: existing.type, valor: String(existing.valor), cancelledAt },
         });
       } catch { /* non-critical */ }
     }
@@ -437,7 +437,7 @@ export class TransactionsService {
         payload: {
           transactionId:  after.id,
           tenantId,
-          tipo:           after.tipo as string,
+          type:           after.type as string,
           valor,
           previousStatus: before.status as string,
           newStatus:      requestedStatus,
@@ -454,7 +454,7 @@ export class TransactionsService {
           payload: {
             transactionId: after.id,
             tenantId,
-            tipo:          after.tipo as string,
+            type:          after.type as string,
             valor,
             contratoId:    after.contrato_id ?? null,
             artistId:     after.artist_id  ?? null,
@@ -473,7 +473,7 @@ export class TransactionsService {
           payload: {
             transactionId: after.id,
             tenantId,
-            tipo:          after.tipo as string,
+            type:          after.type as string,
             valor,
             cancelledBy:   userId,
             cancelledAt:   nowIso,

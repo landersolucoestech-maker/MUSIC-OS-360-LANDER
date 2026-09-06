@@ -1,6 +1,6 @@
 import type { OperationalListItem } from "@/modules/settings/hooks/useOperationalSettings";
 
-/** Enum realmente persistido em events.tipo (CreateEventDto.type no backend). */
+/** Enum realmente persistido em events.type (CreateEventDto.type no backend). */
 export const BACKEND_EVENT_TYPES = ["show", "festival", "recording", "meeting", "interview", "tour", "other"] as const;
 export type BackendEventType = (typeof BACKEND_EVENT_TYPES)[number];
 
@@ -22,7 +22,7 @@ function isBackendEventType(value: string): value is BackendEventType {
 /**
  * A categoria de evento configurável em Configurações → Operacional é
  * granular (ex.: slug "sessoes_estudio", "ensaios") mas a coluna real
- * `events.tipo` só guarda o enum coarse do backend — não existe coluna para
+ * `events.type` só guarda o enum coarse do backend — não existe coluna para
  * a distinção granular. Cada item operacional carrega essa correspondência
  * em `metadata.backend_type` (ver useOperationalSettings.ts,
  * DEFAULT_EVENT_TYPES) — este helper lê exatamente essa fonte de verdade em
@@ -51,7 +51,7 @@ export function normalizeToBackendType(
 }
 
 /** Label pt-BR para o valor coarse real de um evento já persistido. */
-export function getBackendEventTypeLabel(tipo: string | null | undefined): string {
-  if (!tipo) return "Evento";
-  return backendEventTypeLabels[tipo as BackendEventType] ?? tipo;
+export function getBackendEventTypeLabel(type: string | null | undefined): string {
+  if (!type) return "Evento";
+  return backendEventTypeLabels[type as BackendEventType] ?? type;
 }

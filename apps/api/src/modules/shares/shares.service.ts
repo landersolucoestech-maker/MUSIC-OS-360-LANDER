@@ -29,7 +29,7 @@ export class SharesService {
     if (q['papel'])        qb.andWhere('s.papel = :papel',              { papel:       q['papel'] });
     if (q['direcao'])      qb.andWhere('s.direcao = :direcao',          { direcao:     q['direcao'] });
     if (q['status'])       qb.andWhere('s.status = :status',            { status:      q['status'] });
-    if (q['tipo'])         qb.andWhere('s.tipo = :tipo',                { tipo:        q['tipo'] });
+    if (q['type'])         qb.andWhere('s.type = :type',                { type:        q['type'] });
     if (q['share_type'])   qb.andWhere('s.share_type = :shareType',     { shareType:   q['share_type'] });
     if (q['search']) {
       qb.andWhere('(s.nome_musica ILIKE :search OR s.detentor ILIKE :search)', { search: `%${q['search']}%` });

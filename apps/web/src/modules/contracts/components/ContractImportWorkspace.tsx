@@ -375,7 +375,7 @@ export function ContractImportWorkspace({
   useEffect(() => {
     if (!template) return;
     setNome(template.nome ?? "");
-    setCategoria(template.tipo_servico || (template as Record<string, unknown>)["tipo"] as string || "");
+    setCategoria(template.tipo_servico || (template as Record<string, unknown>)["type"] as string || "");
     setText(template.conteudo ?? "");
     setSearch("");
     setAiSuggestions([]);

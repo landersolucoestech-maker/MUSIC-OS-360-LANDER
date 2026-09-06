@@ -36,7 +36,7 @@ export class FinancialRulesService {
       .where('r.tenant_id = :tenantId', { tenantId })
       .andWhere('r.deleted_at IS NULL');
 
-    if (query.tipo)     qb.andWhere('r.tipo = :tipo',           { tipo: query.tipo });
+    if (query.type)     qb.andWhere('r.type = :type',           { type: query.type });
     if (query.categoria) qb.andWhere('r.categoria = :categoria', { categoria: query.categoria });
     if (query.ativo !== undefined) qb.andWhere('r.ativo = :ativo', { ativo: query.ativo });
     if (query.search)   qb.andWhere('r.nome ILIKE :search',     { search: `%${query.search}%` });
@@ -94,7 +94,7 @@ export class FinancialRulesService {
       entityType: string | null;
       valor?:     number;
       categoria?: string;
-      tipo?:      string;
+      type?:      string;
     },
   ): Promise<void> {
     if (!this.events) return;
@@ -121,7 +121,7 @@ export class FinancialRulesService {
       if (rule.categoria && context.categoria && rule.categoria !== context.categoria) continue;
 
       // Tipo filter
-      if (conds['tipo'] && context.tipo && conds['tipo'] !== context.tipo) continue;
+      if (conds['type'] && context.type && conds['type'] !== context.type) continue;
 
       // Compute result
       const valor  = context.valor ?? 0;
@@ -152,7 +152,7 @@ export class FinancialRulesService {
             ruleId:     rule.id,
             tenantId,
             ruleName:   rule.nome,
-            ruleType:   rule.tipo,
+            ruleType:   rule.type,
             trigger,
             entityId:   context.entityId,
             entityType: context.entityType,

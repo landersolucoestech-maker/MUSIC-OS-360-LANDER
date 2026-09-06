@@ -511,7 +511,7 @@ export function LancamentoFormModal({
   const TIPOS_MUSICAIS = ["album", "ep", "single"];
   // Task J: busca server-side (debounced internamente) — antes filtrava só
   // os primeiros 50 projetos do tenant carregados via useProjetos() sem
-  // filtro. O filtro por tipo (album/ep/single) continua client-side sobre
+  // filtro. O filtro por type (album/ep/single) continua client-side sobre
   // os resultados já buscados — o backend só suporta um único `type=` por
   // vez, não uma lista (ver QueryProjectDto), então filtrar os 3 tipos
   // musicais aqui é a mesma concessão já aceita em outras migrações desta
@@ -522,7 +522,7 @@ export function LancamentoFormModal({
     enabled: projetoOpen,
   });
   const projetosFiltrados = projetosBusca.filter(
-    (p) => !p.tipo || TIPOS_MUSICAIS.includes(String(p.tipo).toLowerCase()),
+    (p) => !p.type || TIPOS_MUSICAIS.includes(String(p.type).toLowerCase()),
   );
   // Task I: busca server-side (debounced internamente) — antes filtrava só
   // os primeiros 50 artistas do tenant carregados via useArtistas() sem filtro.
@@ -598,7 +598,7 @@ export function LancamentoFormModal({
         ? (seed.artist_id ?? "")
         : prev.artist_id,
       genero: !prev.genero.trim() ? matchGenero(rawGenero) : prev.genero,
-      tipo: !prev.tipo.trim() ? (seed.tipo ?? "") : prev.tipo,
+      type: !prev.type.trim() ? (seed.type ?? "") : prev.type,
       isrcGlobal: !prev.isrcGlobal.trim()
         ? (fonoDosProjeto?.isrc ?? "")
         : prev.isrcGlobal,
@@ -1161,8 +1161,8 @@ export function LancamentoFormModal({
           <div className="space-y-2">
             <Label>Tipo de Lançamento *</Label>
             <Select
-              value={formData.tipo}
-              onValueChange={(v) => setFormData({ ...formData, tipo: v })}
+              value={formData.type}
+              onValueChange={(v) => setFormData({ ...formData, type: v })}
               disabled={isViewMode}
             >
               <SelectTrigger className="w-48">
@@ -2058,7 +2058,7 @@ export function LancamentoFormModal({
                 </li>
                 <li>
                   A capa <strong>não pode conter</strong> logotipos, URLs, datas
-                  de lançamento ou anúncios de qualquer tipo.
+                  de lançamento ou anúncios de qualquer type.
                 </li>
               </ul>
             </div>
@@ -2469,7 +2469,7 @@ export function LancamentoFormModal({
                 <div>
                   <h3 className="text-xl font-bold">
                     {formData.title || "—"}
-                    {formData.tipo ? ` — ${formData.tipo.toUpperCase()}` : ""}
+                    {formData.type ? ` — ${formData.type.toUpperCase()}` : ""}
                   </h3>
                   <p className="text-muted-foreground">por {artistaNome}</p>
                 </div>

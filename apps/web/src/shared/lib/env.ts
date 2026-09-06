@@ -17,7 +17,7 @@ import { isProdLike } from "@music-os-360/config/environment";
 // AUTH_DISABLED=true in the API to bypass auth temporarily during development.
 // Set the flags to false or remove them to restore the original auth flow.
 /**
- * Modo mock foi REMOVIDO: literal false (tipo 'false') para que todo braço
+ * Modo mock foi REMOVIDO: literal false (type 'false') para que todo braço
  * 'if (MOCK_MODE)' remanescente seja código provadamente morto, eliminado do
  * bundle por dead-code-elimination. Não lê env var nenhuma — impossível ligar.
  * Remoção física dos braços restantes: ver relatório no-mock.

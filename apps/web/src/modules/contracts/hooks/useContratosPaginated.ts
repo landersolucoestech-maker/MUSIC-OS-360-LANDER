@@ -10,14 +10,14 @@ export interface UseContratosPaginatedParams {
   pageSize: number;
   search?: string;
   status?: string;
-  tipo?: string;
+  type?: string;
   signingPlatform?: string;
 }
 
-export function useContratosPaginated({ page, pageSize, search, status, tipo, signingPlatform }: UseContratosPaginatedParams) {
+export function useContratosPaginated({ page, pageSize, search, status, type, signingPlatform }: UseContratosPaginatedParams) {
   const filters: Record<string, unknown> = {};
   if (status) filters.status = status;
-  if (tipo) filters.tipo = tipo;
+  if (type) filters.type = type;
   if (signingPlatform) filters.signing_platform = signingPlatform;
 
   const result = usePaginatedDataQuery<ContratoWithRelations>({

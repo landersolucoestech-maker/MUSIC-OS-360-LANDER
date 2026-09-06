@@ -10,13 +10,13 @@ export function projetoToLancamentoSeed(projeto: {
   title?: string | null;
   artist_id?: string | null;
   genero?: string | null;
-  tipo?: string | null;
+  type?: string | null;
 }): Partial<LancamentoFormFields> {
   return {
     projetoSeed: projeto.id,
     title:      projeto.title?.trim() ?? "",
     artist_id:  projeto.artist_id ?? "",
     genero:      projeto.genero ?? "",
-    tipo:        projeto.tipo ?? "single",
+    type:        projeto.type ?? "single",
   };
 }

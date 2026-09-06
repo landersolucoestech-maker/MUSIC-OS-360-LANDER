@@ -37,7 +37,7 @@ const EVENT_LABELS: Record<string, (p: Record<string, unknown>) => string> = {
   [DOMAIN_EVENTS.LEAD_CONVERTED]: (p) => `Lead convertido: ${p['nome'] ?? ''}`,
   [DOMAIN_EVENTS.TICKET_RESOLVED]: (p) => `Ticket resolvido: ${p['title'] ?? ''}`,
   [DOMAIN_EVENTS.WORKFLOW_TRANSITIONED]: (p) => `Transicao: ${p['entityType'] ?? ''} -> ${p['toStatus'] ?? ''}`,
-  [DOMAIN_EVENTS.TRANSACTION_CREATED]: (p) => `Transaccao criada: ${p['tipo'] ?? ''} R$${p['valor'] ?? ''}`,
+  [DOMAIN_EVENTS.TRANSACTION_CREATED]: (p) => `Transaccao criada: ${p['type'] ?? ''} R$${p['valor'] ?? ''}`,
   [DOMAIN_EVENTS.TRANSACTION_STATUS_CHANGED]: (p) => `Transaccao "${p['transactionId'] ?? ''}" -> ${p['newStatus'] ?? ''}`,
   [DOMAIN_EVENTS.TRANSACTION_PAID]: (p) => `Pagamento baixado: R$${p['valor'] ?? ''}`,
   [DOMAIN_EVENTS.TRANSACTION_CANCELLED]: (p) => `Transaccao cancelada: R$${p['valor'] ?? ''}`,

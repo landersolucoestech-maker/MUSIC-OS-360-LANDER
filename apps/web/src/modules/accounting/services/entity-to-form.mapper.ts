@@ -10,7 +10,7 @@ export interface TransacaoFormEntity {
   id?: string;
   updated_at?: unknown;
   updatedAt?: unknown;
-  tipo?: unknown;
+  type?: unknown;
   tipoTransacao?: unknown;
   tipo_transacao?: unknown;
   tipoCliente?: unknown;
@@ -73,7 +73,7 @@ export function transacaoToFormFields(t: TransacaoFormEntity | null | undefined)
   return {
     ...initialFormData,
     entityLinks: Array.isArray(t.entityLinks) ? (t.entityLinks as TransacaoFormData["entityLinks"]) : [],
-    tipoTransacao:       str(t.tipoTransacao      ?? t.tipo_transacao ?? t.tipo),
+    tipoTransacao:       str(t.tipoTransacao      ?? t.tipo_transacao ?? t.type),
     tipoCliente:         str(t.tipoCliente        ?? t.tipo_cliente),
     categoria:           str(t.categoria),
     subcategoria:        str(t.subcategoria),

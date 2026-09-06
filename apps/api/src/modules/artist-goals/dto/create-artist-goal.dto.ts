@@ -8,7 +8,7 @@ export class CreateArtistGoalDto {
   title: string;
 
   @IsString()
-  tipo: string;
+  type: string;
 
   @IsOptional()
   @IsString()

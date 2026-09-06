@@ -939,7 +939,7 @@ export default function RH() {
                       </TableCell>
                       <TableCell className="font-medium"><FuncionarioNomeCell id={fa.funcionario_id ?? null} /></TableCell>
                       <TableCell className="text-muted-foreground">
-                        {fa.tipo ? fa.tipo.charAt(0).toUpperCase() + fa.tipo.slice(1) : "—"}
+                        {fa.type ? fa.type.charAt(0).toUpperCase() + fa.type.slice(1) : "—"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(fa.data_inicio)}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(fa.data_fim)}</TableCell>
@@ -1032,7 +1032,7 @@ export default function RH() {
                       <div className="space-y-2">
                         <Label>Tipo de Documento</Label>
                         <Select value={docTipoDocumento} onValueChange={setDocTipoDocumento}>
-                          <SelectTrigger data-testid="select-tipo-documento">
+                          <SelectTrigger data-testid="select-type-documento">
                             <SelectValue placeholder="Selecione o tipo" />
                           </SelectTrigger>
                           <SelectContent>

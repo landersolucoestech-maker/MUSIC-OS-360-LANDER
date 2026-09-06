@@ -23,7 +23,7 @@ export const LEAD_INTERACTION_TYPE_LABELS: Record<LeadInteractionType, string> =
 export interface LeadInteractionRecord {
   id: string;
   leadId: string;
-  tipo: LeadInteractionType;
+  type: LeadInteractionType;
   descricao: string | null;
   data: string;
   createdBy: string | null;
@@ -32,7 +32,7 @@ export interface LeadInteractionRecord {
 interface RawLeadInteraction {
   id: string;
   lead_id: string;
-  tipo: string;
+  type: string;
   descricao: string | null;
   data: string;
   created_by: string | null;
@@ -42,7 +42,7 @@ function fromApi(r: RawLeadInteraction): LeadInteractionRecord {
   return {
     id: r.id,
     leadId: r.lead_id,
-    tipo: r.tipo as LeadInteractionType,
+    type: r.type as LeadInteractionType,
     descricao: r.descricao,
     data: r.data,
     createdBy: r.created_by,
@@ -55,8 +55,8 @@ export const leadInteractionsService = {
     return (res.data ?? []).map(fromApi);
   },
 
-  async create(leadId: string, tipo: LeadInteractionType, notes?: string): Promise<LeadInteractionRecord> {
-    const created = await api.post<RawLeadInteraction>("/lead-interactions", { leadId, type: tipo, notes });
+  async create(leadId: string, type: LeadInteractionType, notes?: string): Promise<LeadInteractionRecord> {
+    const created = await api.post<RawLeadInteraction>("/lead-interactions", { leadId, type: type, notes });
     return fromApi(created);
   },
 };

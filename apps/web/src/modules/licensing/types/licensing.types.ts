@@ -14,7 +14,7 @@ export interface Licenca {
   work_id?: string | null;
   client_id?: string | null;
   projeto?: string | null;
-  tipo?: LicencaTipo | string | null;
+  type?: LicencaTipo | string | null;
   tipo_uso?: string | null;
   midia_destino?: string | null;
   territorio?: string | null;

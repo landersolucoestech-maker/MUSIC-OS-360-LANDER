@@ -55,7 +55,7 @@ export interface FeriasAusencia {
   id: string;
   user_id?: string;
   funcionario_id?: string | null;
-  tipo?: FeriasAusenciaTipo | string | null;
+  type?: FeriasAusenciaTipo | string | null;
   data_inicio?: string | null;
   data_fim?: string | null;
   dias_totais?: number | null;

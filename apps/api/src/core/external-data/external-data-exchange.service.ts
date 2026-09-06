@@ -388,7 +388,7 @@ export class ExternalDataExchangeService {
         release: release ? {
           id: release.id,
           title: release.title,
-          type: release.tipo,
+          type: release.type,
           status: release.status,
           distributor: release.distribuidora,
           upc: release.upc,

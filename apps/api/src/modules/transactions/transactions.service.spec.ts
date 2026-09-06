@@ -24,7 +24,7 @@ const NOW    = new Date('2026-08-14T12:00:00.000Z');
 const mockTx = {
   id: TX_ID,
   tenant_id: TENANT,
-  tipo: 'receita',
+  type: 'receita',
   categoria: 'outros',
   status: 'pendente',
   valor: '100',
@@ -206,7 +206,7 @@ describe('TransactionsService.create — auto-categorização por regras (Task W
     expect(suggestFn).toHaveBeenCalledWith(otherTenant, 'DESPESA', 'Pagamento Spotify');
   });
 
-  it('tipo transferencia: nunca aciona o matcher (finance-category-rules só cobre RECEITA/DESPESA)', async () => {
+  it('type transferencia: nunca aciona o matcher (finance-category-rules só cobre RECEITA/DESPESA)', async () => {
     const { service, suggestFn } = await buildServiceWithMatcher({ categoryId: 'c', categoryName: 's', ruleId: 'r' });
 
     const saved = await service.create(TENANT, 'u1', {

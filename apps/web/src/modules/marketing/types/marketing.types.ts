@@ -830,8 +830,8 @@ export interface Meta {
   /** Legacy artist-360 label. Prefer nome in new marketing code. */
   title?: string;
   descricao: string;
-  tipo: MetaTipo;
-  /** Legacy artist-360 type. Prefer tipo in new marketing code. */
+  type: MetaTipo;
+  /** Legacy artist-360 type. Prefer type in new marketing code. */
   tipo_meta?: string;
   categoria: string;
   valorAlvo: number;
@@ -858,7 +858,7 @@ export interface CreateMetaInput {
   nome?: string;
   title?: string;
   descricao: string;
-  tipo?: MetaTipo | string;
+  type?: MetaTipo | string;
   tipo_meta?: string;
   categoria: string;
   valorAlvo?: number;

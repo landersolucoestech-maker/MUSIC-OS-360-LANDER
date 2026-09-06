@@ -63,7 +63,7 @@ function makeEvent(type = 'lancamento') {
 
 const PROJECT_ROW = {
   nome: 'Single Aurora',
-  tipo: 'lancamento',
+  type: 'lancamento',
   descricao: 'Lançamento do single Aurora',
   artist_id: null,
   data_fim: null,

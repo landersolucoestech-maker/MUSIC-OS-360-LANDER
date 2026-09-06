@@ -15,7 +15,7 @@ export type TipoInteracao = (typeof TIPO_INTERACAO_OPTIONS)[number]["value"];
 
 export type Interacao = {
   id: string;
-  tipo: string;
+  type: string;
   data: string;
   horario: string;
   descricao: string;

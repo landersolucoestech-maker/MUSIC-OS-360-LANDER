@@ -157,7 +157,7 @@ export function ObraViewModal({
                 <h2 className="text-lg font-bold">{obra.title || "—"}</h2>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <StatusBadge status={obra.status} />
-                  <ObraTipoBadge tipo={obra.tipo_obra} />
+                  <ObraTipoBadge type={obra.tipo_obra} />
                 </div>
                 {obra.created_at && (
                   <p className="text-xs text-muted-foreground mt-1">

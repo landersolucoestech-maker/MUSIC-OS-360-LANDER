@@ -178,7 +178,7 @@ export function useContractServiceTypes(filterByClientType?: ClientType | null) 
         const inUse = contratos.some(
           (c: StorageRow) =>
             c["service_type"] === typeToArchive.slug ||
-            c["tipo"] === typeToArchive.slug,
+            c["type"] === typeToArchive.slug,
         );
         if (inUse) {
           throw new Error(
@@ -202,7 +202,7 @@ export function useContractServiceTypes(filterByClientType?: ClientType | null) 
   }
 
   function isSlugInUse(slug: string, contratos: Array<Record<string, unknown>>): boolean {
-    return contratos.some((c) => c.service_type === slug || c.tipo === slug);
+    return contratos.some((c) => c.service_type === slug || c.type === slug);
   }
 
   return {

@@ -83,7 +83,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                   <h2 className="text-lg font-bold">{projeto.title}</h2>
                   <div className="flex items-center gap-2 mt-1">
                     {getStatusBadge(projeto.status)}
-                    <Badge variant="outline">{capitalize(projeto.tipo) || "Single"}</Badge>
+                    <Badge variant="outline">{capitalize(projeto.type) || "Single"}</Badge>
                   </div>
                   {allowedTransitions.length > 0 && (
                     <WorkflowTransitionPanel

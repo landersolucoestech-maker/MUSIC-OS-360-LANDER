@@ -36,12 +36,12 @@ import { runNativeSkillAutomation } from './native-skill-automation.runner';
 
 const SKILL_NAME = 'release-checklist';
 
-/** Tipos de lançamento aceitos pela skill (alinha o varchar livre de releases.tipo). */
+/** Tipos de lançamento aceitos pela skill (alinha o varchar livre de releases.type). */
 const KNOWN_RELEASE_TYPES: readonly ReleaseType[] = ['single', 'ep', 'album', 'mixtape', 'video', 'other'];
 
-/** Mapeia o `tipo` livre do release para o enum da skill; cai em "other" se desconhecido. */
-function mapReleaseType(tipo: string | null | undefined): ReleaseType {
-  const t = (tipo ?? '').trim().toLowerCase();
+/** Mapeia o `type` livre do release para o enum da skill; cai em "other" se desconhecido. */
+function mapReleaseType(type: string | null | undefined): ReleaseType {
+  const t = (type ?? '').trim().toLowerCase();
   if ((KNOWN_RELEASE_TYPES as readonly string[]).includes(t)) return t as ReleaseType;
   if (t === 'álbum' || t === 'lp') return 'album';
   if (t === 'clipe' || t === 'vídeo' || t === 'videoclipe') return 'video';
@@ -50,7 +50,7 @@ function mapReleaseType(tipo: string | null | undefined): ReleaseType {
 
 interface ReleaseRow {
   title: string;
-  tipo: string | null;
+  type: string | null;
   data_lancamento: string | Date | null;
   upc: string | null;
   capa_url: string | null;
@@ -109,7 +109,7 @@ export class ReleaseChecklistAutomation {
   ): Promise<ReleaseRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT r.title, r.tipo, r.data_lancamento, r.upc, r.capa_url, r.artist_id, r.metadata,
+      `SELECT r.title, r.type, r.data_lancamento, r.upc, r.capa_url, r.artist_id, r.metadata,
               a.nome_artistico AS artist_name
          FROM releases r
          LEFT JOIN artists a
@@ -144,7 +144,7 @@ export class ReleaseChecklistAutomation {
     const input: ReleaseChecklistInput = {
       releaseTitle: release.title,
       artistName: release.artist_name?.trim() || 'Artista não identificado',
-      releaseType: mapReleaseType(release.tipo),
+      releaseType: mapReleaseType(release.type),
       hasCover: release.capa_url != null,
       hasISRC: flag('hasISRC'),
       hasUPC: release.upc != null,

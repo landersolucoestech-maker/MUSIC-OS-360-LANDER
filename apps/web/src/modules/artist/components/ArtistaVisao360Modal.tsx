@@ -119,7 +119,7 @@ const NATUREZA_BUCKETS: Array<{ label: string; keywords: string[] }> = [
   { label: "Distribuição", keywords: ["distrib", "streaming"] },
 ];
 
-// ── Contratos: filtros por tipo ────────────────────────────────────────────
+// ── Contratos: filtros por type ────────────────────────────────────────────
 const CONTRATO_FILTERS: Array<{ key: string; label: string; tipos?: string[] }> = [
   { key: "todos", label: "Todos" },
   { key: "empresarial", label: "Empresarial", tipos: ["exclusivo", "nao_exclusivo", "gestao", "representacao"] },
@@ -132,7 +132,7 @@ const CONTRATO_FILTERS: Array<{ key: string; label: string; tipos?: string[] }> 
 ];
 
 // ── Agenda: rótulos e filtros ──────────────────────────────────────────────
-// events.tipo só guarda o enum coarse do backend (show/festival/recording/
+// events.type só guarda o enum coarse do backend (show/festival/recording/
 // meeting/interview/tour/other) — ver modules/events/lib/event-type.ts para
 // os rótulos reais. "Ensaios" e "Gravações" viram um único filtro porque a
 // coluna real não distingue as duas (ambas coarseiam para "recording").
@@ -173,7 +173,7 @@ interface Meta {
   id: number;
   title: string;
   descricao: string;
-  tipo: string;
+  type: string;
   categoria: string;
   valorMeta: number;
   valorAtual: number;
@@ -189,8 +189,8 @@ interface ArtistaVisao360ModalProps {
   artista?: any;
 }
 
-const getHistoricoIcon = (tipo: string) => {
-  switch (tipo) {
+const getHistoricoIcon = (type: string) => {
+  switch (type) {
     case "criacao":
       return <Plus className="h-4 w-4" />;
     case "edicao":
@@ -210,8 +210,8 @@ const getHistoricoIcon = (tipo: string) => {
   }
 };
 
-const getHistoricoBadge = (tipo: string) => {
-  switch (tipo) {
+const getHistoricoBadge = (type: string) => {
+  switch (type) {
     case "criacao":
       return <Badge variant="success">Criação</Badge>;
     case "edicao":
@@ -349,7 +349,7 @@ export function ArtistaVisao360Modal({
   const agendaFiltrada = (eventosReais as any[]).filter((e) => {
     const cfg = AGENDA_FILTERS.find((f) => f.key === agendaFilter);
     if (!cfg || !cfg.tipos) return true;
-    return cfg.tipos.includes(String(e.tipo ?? "").toLowerCase());
+    return cfg.tipos.includes(String(e.type ?? "").toLowerCase());
   });
 
   // ── Conteúdos (marketing contents do artista) ──────────────────────────
@@ -370,35 +370,35 @@ export function ArtistaVisao360Modal({
   // ── Movimentação (timeline operacional derivada dos dados do artista) ──
   const movimentacaoItems: {
     id: string;
-    tipo: string;
+    type: string;
     descricao: string;
     data: string;
     responsavel: string;
   }[] = [];
   contratosReais.forEach((c) => {
     const d = (c as { created_at?: string }).created_at;
-    if (d) movimentacaoItems.push({ id: `mv-ctr-${c.id}`, tipo: "Jurídico", descricao: `Contrato: ${c.title}`, data: d, responsavel: "Admin" });
+    if (d) movimentacaoItems.push({ id: `mv-ctr-${c.id}`, type: "Jurídico", descricao: `Contrato: ${c.title}`, data: d, responsavel: "Admin" });
   });
   transacoesArtista.forEach((t) => {
     const d = (t as { created_at?: string; data?: string }).created_at ?? (t as { data?: string }).data;
-    if (d) movimentacaoItems.push({ id: `mv-txn-${t.id}`, tipo: "Financeiro", descricao: t.descricao ?? (t.tipo === "receita" ? "Pagamento recebido" : "Despesa registrada"), data: d, responsavel: "Financeiro" });
+    if (d) movimentacaoItems.push({ id: `mv-txn-${t.id}`, type: "Financeiro", descricao: t.descricao ?? (t.type === "receita" ? "Pagamento recebido" : "Despesa registrada"), data: d, responsavel: "Financeiro" });
   });
   eventosReais.forEach((e) => {
-    const ev = e as { data?: string; tipo?: string; created_at?: string };
+    const ev = e as { data?: string; type?: string; created_at?: string };
     const d = ev.data ?? ev.created_at;
-    if (d) movimentacaoItems.push({ id: `mv-evt-${e.id}`, tipo: "Agenda", descricao: `${getBackendEventTypeLabel(ev.tipo)}: ${e.title}`, data: d, responsavel: "—" });
+    if (d) movimentacaoItems.push({ id: `mv-evt-${e.id}`, type: "Agenda", descricao: `${getBackendEventTypeLabel(ev.type)}: ${e.title}`, data: d, responsavel: "—" });
   });
   lancamentosReais.forEach((l: any) => {
     const d = l.created_at ?? l.data_lancamento;
-    if (d) movimentacaoItems.push({ id: `mv-lan-${l.id}`, tipo: "Produção", descricao: `Lançamento: ${l.title ?? ""}`, data: d, responsavel: "Admin" });
+    if (d) movimentacaoItems.push({ id: `mv-lan-${l.id}`, type: "Produção", descricao: `Lançamento: ${l.title ?? ""}`, data: d, responsavel: "Admin" });
   });
   campanhasReais.forEach((c) => {
     const d = c.startDate ?? c.createdAt;
-    if (d) movimentacaoItems.push({ id: `mv-cmp-${c.id}`, tipo: "Marketing", descricao: `Campanha: ${c.name}`, data: d, responsavel: c.owner || "—" });
+    if (d) movimentacaoItems.push({ id: `mv-cmp-${c.id}`, type: "Marketing", descricao: `Campanha: ${c.name}`, data: d, responsavel: c.owner || "—" });
   });
   conteudosReais.forEach((c) => {
     const d = c.publishDate ?? c.createdAt;
-    if (d) movimentacaoItems.push({ id: `mv-cnt-${c.id}`, tipo: "Marketing", descricao: `Conteúdo: ${c.title}`, data: d, responsavel: c.owner || "—" });
+    if (d) movimentacaoItems.push({ id: `mv-cnt-${c.id}`, type: "Marketing", descricao: `Conteúdo: ${c.title}`, data: d, responsavel: c.owner || "—" });
   });
   movimentacaoItems.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
@@ -406,7 +406,7 @@ export function ArtistaVisao360Modal({
   const nowTs = Date.now();
   const showsConfirmados = (eventosReais as any[]).filter(
     (e) =>
-      ["show", "festival"].includes(String(e.tipo ?? "").toLowerCase()) &&
+      ["show", "festival"].includes(String(e.type ?? "").toLowerCase()) &&
       ["confirmado", "realizado", "concluido"].includes(String(e.status ?? "").toLowerCase()),
   ).length;
   const lancamentosAtivos = lancamentosReais.length;
@@ -419,7 +419,7 @@ export function ArtistaVisao360Modal({
   const proximoShow = (eventosReais as any[])
     .filter(
       (e) =>
-        ["show", "festival"].includes(String(e.tipo ?? "").toLowerCase()) &&
+        ["show", "festival"].includes(String(e.type ?? "").toLowerCase()) &&
         e.data &&
         new Date(e.data).getTime() >= nowTs,
     )
@@ -436,7 +436,7 @@ export function ArtistaVisao360Modal({
     .sort((a, b) => new Date(a.created_at ?? a.data_lancamento).getTime() - new Date(b.created_at ?? b.data_lancamento).getTime())[0];
   if (primeiroLanc) marcosEvolucao.push({ id: "m-lan", label: "Primeiro Lançamento", descricao: primeiroLanc.title ?? "Lançamento", data: primeiroLanc.created_at ?? primeiroLanc.data_lancamento });
   const primeiroShow = (eventosReais as any[])
-    .filter((e) => ["show", "festival"].includes(String(e.tipo ?? "").toLowerCase()) && e.data)
+    .filter((e) => ["show", "festival"].includes(String(e.type ?? "").toLowerCase()) && e.data)
     .sort((a, b) => new Date(a.data!).getTime() - new Date(b.data!).getTime())[0];
   if (primeiroShow) marcosEvolucao.push({ id: "m-show", label: "Primeira Turnê/Show", descricao: primeiroShow.title, data: primeiroShow.data! });
   const primeiroContrato = (contratosReais as any[])
@@ -447,16 +447,16 @@ export function ArtistaVisao360Modal({
 
   // ── Financeiro real ──────────────────────────────────────────────────
   const receitasTotal = transacoesArtista
-    .filter((t) => t.tipo === "receita" && t.status === "pago")
+    .filter((t) => t.type === "receita" && t.status === "pago")
     .reduce((sum, t) => sum + (t.valor ?? 0), 0);
   const despesasTotal = transacoesArtista
-    .filter((t) => t.tipo === "despesa" && t.status === "pago")
+    .filter((t) => t.type === "despesa" && t.status === "pago")
     .reduce((sum, t) => sum + (t.valor ?? 0), 0);
   const saldoTotal = receitasTotal - despesasTotal;
   const roiGeral = despesasTotal > 0 ? saldoTotal / despesasTotal : null;
   const margemGeral = receitasTotal > 0 ? saldoTotal / receitasTotal : null;
   const receitasPagas = transacoesArtista.filter(
-    (t) => t.tipo === "receita" && t.status === "pago",
+    (t) => t.type === "receita" && t.status === "pago",
   );
   const receitasNatureza = NATUREZA_BUCKETS.map((b) => ({
     label: b.label,
@@ -486,13 +486,13 @@ export function ArtistaVisao360Modal({
   const contratosFiltrados = contratosReais.filter((c) => {
     const cfg = CONTRATO_FILTERS.find((f) => f.key === contratoFilter);
     if (!cfg || !cfg.tipos) return true;
-    return cfg.tipos.includes(String(c.tipo ?? "").toLowerCase());
+    return cfg.tipos.includes(String(c.type ?? "").toLowerCase());
   });
 
   // ── Histórico derivado de dados reais ────────────────────────────────
   const historicoReal: {
     id: string;
-    tipo: string;
+    type: string;
     descricao: string;
     data: string;
     usuario: string;
@@ -500,7 +500,7 @@ export function ArtistaVisao360Modal({
   if (artista?.created_at) {
     historicoReal.push({
       id: "criacao",
-      tipo: "criacao",
+      type: "criacao",
       descricao: "Artista cadastrado no sistema",
       data: artista.created_at,
       usuario: "Admin",
@@ -510,7 +510,7 @@ export function ArtistaVisao360Modal({
     if (c.created_at)
       historicoReal.push({
         id: `ctr-${c.id}`,
-        tipo: "contrato",
+        type: "contrato",
         descricao: `Contrato assinado: ${c.title}`,
         data: c.created_at,
         usuario: "Admin",
@@ -520,7 +520,7 @@ export function ArtistaVisao360Modal({
     if (o.created_at)
       historicoReal.push({
         id: `obra-${o.id}`,
-        tipo: "obra",
+        type: "obra",
         descricao: `Obra registrada: ${o.title}`,
         data: o.created_at,
         usuario: "Produtor",
@@ -530,7 +530,7 @@ export function ArtistaVisao360Modal({
     if (l.created_at)
       historicoReal.push({
         id: `lanc-${l.id}`,
-        tipo: "obra",
+        type: "obra",
         descricao: `Lançamento registrado: ${l.title}`,
         data: l.created_at,
         usuario: "Admin",
@@ -540,7 +540,7 @@ export function ArtistaVisao360Modal({
     if (t.created_at)
       historicoReal.push({
         id: `txn-${t.id}`,
-        tipo: "financeiro",
+        type: "financeiro",
         descricao: t.descricao,
         data: t.created_at,
         usuario: "Financeiro",
@@ -564,7 +564,7 @@ export function ArtistaVisao360Modal({
       `Status alterado para: ${artista.status}`;
     historicoReal.push({
       id: `status-${artista.status}`,
-      tipo: "status",
+      type: "status",
       descricao: label,
       data: artista.updated_at,
       usuario: "Admin",
@@ -583,7 +583,7 @@ export function ArtistaVisao360Modal({
   const [metaForm, setMetaForm] = useState({
     title: "",
     descricao: "",
-    tipo: "",
+    type: "",
     categoria: "",
     valorMeta: "",
     valorAtual: "",
@@ -599,7 +599,7 @@ export function ArtistaVisao360Modal({
     setMetaForm({
       title: "",
       descricao: "",
-      tipo: "",
+      type: "",
       categoria: "",
       valorMeta: "",
       valorAtual: "",
@@ -613,12 +613,12 @@ export function ArtistaVisao360Modal({
   };
 
   const handleSaveMeta = async () => {
-    if (!metaForm.title || !metaForm.tipo || !metaForm.valorMeta) return;
+    if (!metaForm.title || !metaForm.type || !metaForm.valorMeta) return;
     const payload = {
       artist_id: artistId,
       title: metaForm.title,
       descricao: metaForm.descricao,
-      tipo_meta: metaForm.tipo,
+      tipo_meta: metaForm.type,
       categoria: metaForm.categoria,
       valor_meta: Number(metaForm.valorMeta),
       valor_atual: Number(metaForm.valorAtual) || 0,
@@ -639,7 +639,7 @@ export function ArtistaVisao360Modal({
     setMetaForm({
       title: meta.title || meta.tipo_meta || "",
       descricao: meta.descricao || "",
-      tipo: meta.tipo_meta || meta.tipo || "",
+      type: meta.tipo_meta || meta.type || "",
       categoria: meta.categoria || "",
       valorMeta: String(meta.valor_meta ?? meta.valorMeta ?? ""),
       valorAtual: String(meta.valor_atual ?? meta.valorAtual ?? ""),
@@ -2204,10 +2204,10 @@ export function ArtistaVisao360Modal({
                           </div>
                           <div className="ml-4 text-right">
                             <p
-                              className={`text-sm font-bold ${t.tipo === "receita" ? "text-success" : "text-destructive"}`}
+                              className={`text-sm font-bold ${t.type === "receita" ? "text-success" : "text-destructive"}`}
                             >
-                              {t.tipo === "receita" ? "+" : ""}
-                              {formatCurrency(t.tipo === "receita" ? t.valor : -t.valor)}
+                              {t.type === "receita" ? "+" : ""}
+                              {formatCurrency(t.type === "receita" ? t.valor : -t.valor)}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
                               {t.status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) ?? "—"}
@@ -2252,7 +2252,7 @@ export function ArtistaVisao360Modal({
                 </Card>
               </div>
 
-              {/* Filtros por tipo */}
+              {/* Filtros por type */}
               <div className="flex flex-wrap gap-2">
                 {CONTRATO_FILTERS.map((f) => (
                   <Button
@@ -2516,7 +2516,7 @@ export function ArtistaVisao360Modal({
                           meta.descricao ||
                           "Meta";
                         const tipoMeta =
-                          (meta as any).tipo_meta || (meta as any).tipo;
+                          (meta as any).tipo_meta || (meta as any).type;
                         const categoria = (meta as any).categoria;
                         const dataInicio =
                           meta.data_inicio || (meta as any).dataInicio;
@@ -2701,7 +2701,7 @@ export function ArtistaVisao360Modal({
                             <span className="text-muted-foreground">
                               {e.data ? new Date(e.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
                             </span>
-                            <span className="truncate">{getBackendEventTypeLabel(e.tipo)}</span>
+                            <span className="truncate">{getBackendEventTypeLabel(e.type)}</span>
                             <span className="truncate font-medium">{e.title}</span>
                             <span className="truncate text-muted-foreground">{e.local || e.cidade || "—"}</span>
                             <span>
@@ -2822,7 +2822,7 @@ export function ArtistaVisao360Modal({
                           >
                             <span className="text-muted-foreground">{formatDateDMY(m.data)}</span>
                             <span>
-                              <Badge variant="outline" className="text-xs">{m.tipo}</Badge>
+                              <Badge variant="outline" className="text-xs">{m.type}</Badge>
                             </span>
                             <span className="truncate">{m.descricao}</span>
                             <span className="truncate text-muted-foreground">{m.responsavel}</span>
@@ -2866,9 +2866,9 @@ export function ArtistaVisao360Modal({
                                 <User className="h-3 w-3 text-muted-foreground shrink-0" />
                                 {item.usuario}
                               </span>
-                              <span>{getHistoricoBadge(item.tipo)}</span>
+                              <span>{getHistoricoBadge(item.type)}</span>
                               <span className="flex items-center gap-2 truncate">
-                                <span className="text-muted-foreground shrink-0">{getHistoricoIcon(item.tipo)}</span>
+                                <span className="text-muted-foreground shrink-0">{getHistoricoIcon(item.type)}</span>
                                 <span className="truncate">{item.descricao}</span>
                               </span>
                             </div>
@@ -2926,8 +2926,8 @@ export function ArtistaVisao360Modal({
               <div>
                 <Label>Tipo de Meta *</Label>
                 <Select
-                  value={metaForm.tipo}
-                  onValueChange={(v) => setMetaForm({ ...metaForm, tipo: v })}
+                  value={metaForm.type}
+                  onValueChange={(v) => setMetaForm({ ...metaForm, type: v })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />

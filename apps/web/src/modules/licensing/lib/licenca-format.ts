@@ -27,7 +27,7 @@ export function formatLicensingDate(value?: string | Date | null): string | null
 }
 
 /**
- * Formata a remuneração da licença conforme o tipo:
+ * Formata a remuneração da licença conforme o type:
  * FIXED → "R$ 5.000,00" · PERCENTAGE → "15%" · FIXED_PLUS_PERCENTAGE → "US$ 1.000,00 + 10%".
  * Fallback para o campo legado `valor` quando não há remuneração estruturada.
  */

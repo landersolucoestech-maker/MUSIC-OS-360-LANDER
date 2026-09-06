@@ -92,7 +92,7 @@ function ReleaseCard({ release, artista, now, selected, onToggleSelect, onView, 
   // Countdown só faz sentido enquanto a data de lançamento não chegou.
   const releaseTime = release.data_lancamento ? new Date(release.data_lancamento).getTime() : NaN;
   const showCountdown = !Number.isNaN(releaseTime) && releaseTime > now;
-  const releaseType = release.tipo === "single" ? "Single" : release.tipo === "ep" ? "EP" : "Album";
+  const releaseType = release.type === "single" ? "Single" : release.type === "ep" ? "EP" : "Album";
   const genre = (release.genero as string | null) ?? artista?.genero_musical ?? "Genre TBA";
   const text = contrastText(mode);
   const subtext = contrastSubtext(mode);
@@ -339,7 +339,7 @@ export default function Lancamentos() {
       nome_musica: release.title ?? null,
       detentor: artista?.nome_artistico ?? release.title ?? "Lancamento",
       destinatario: null,
-      tipo: "interprete",
+      type: "interprete",
       direcao: "a_enviar",
       percentual: 100,
       status: "pendente",

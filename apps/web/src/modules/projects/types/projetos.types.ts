@@ -7,7 +7,7 @@ export interface Projeto {
   id: string;
   user_id?: string;
   title: string;
-  tipo?: ProjetoTipo | string | null;
+  type?: ProjetoTipo | string | null;
   status?: ProjetoStatus | string | null;
   artist_id?: string | null;
   orcamento?: number | null;

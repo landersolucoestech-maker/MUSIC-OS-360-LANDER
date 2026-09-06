@@ -194,11 +194,11 @@ describe('ImportCommitService — transações: colunas físicas e categoria (Ta
     return { sql: String(call?.[0]), params: call?.[1] as unknown[] };
   }
 
-  it('grava tipo_transacao/data_transacao nas colunas físicas reais (tipo/data), não nas colunas de formulário', async () => {
+  it('grava tipo_transacao/data_transacao nas colunas físicas reais (type/data), não nas colunas de formulário', async () => {
     const { svc, qr } = makeTxSvc({ row: { tipo_transacao: 'despesa', categoria: 'aluguel', descricao: 'Aluguel sala', data_transacao: '2026-01-05' } });
     await svc.commit('transactions', { filename: 'tx.xlsx', content: Buffer.from('x') }, 'tenant-1', 'user-1');
     const { sql, params } = insertCall(qr);
-    expect(sql).toContain('"tipo"');
+    expect(sql).toContain('"type"');
     expect(sql).not.toContain('"tipo_transacao"');
     expect(sql).toContain('"data"');
     expect(sql).not.toContain('"data_transacao"');

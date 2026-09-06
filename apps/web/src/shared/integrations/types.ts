@@ -121,7 +121,7 @@ export interface IntegrationMeta {
 
 /**
  * Wrapper de credenciais genérico.
- * Cada integração define o tipo concreto de `T`.
+ * Cada integração define o type concreto de `T`.
  */
 export interface IntegrationCredentials<T extends Record<string, string>> {
   integration_id: IntegrationId;

@@ -10,14 +10,14 @@ interface NfTypeSectionProps {
 
 export function NfTypeSection({ tipoOperacao, disabled, onChange }: NfTypeSectionProps) {
   return (
-    <section className="space-y-3" data-testid="section-tipo-operacao">
+    <section className="space-y-3" data-testid="section-type-operacao">
       <h3 className="text-base font-semibold border-b pb-1">Tipo de Operação</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => !disabled && onChange("saida")}
           disabled={disabled}
-          data-testid="button-tipo-saida"
+          data-testid="button-type-saida"
           className={cn(
             "flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-colors",
             tipoOperacao === "saida"
@@ -46,7 +46,7 @@ export function NfTypeSection({ tipoOperacao, disabled, onChange }: NfTypeSectio
           type="button"
           onClick={() => !disabled && onChange("entrada")}
           disabled={disabled}
-          data-testid="button-tipo-entrada"
+          data-testid="button-type-entrada"
           className={cn(
             "flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-colors",
             tipoOperacao === "entrada"

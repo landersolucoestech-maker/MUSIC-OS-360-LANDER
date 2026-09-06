@@ -82,7 +82,7 @@ export async function seedOperational(ds: DataSource, tenant: SeedResult): Promi
   end.setMonth(end.getMonth() + 1);
 
   await ds.query(`
-    INSERT INTO campaigns (id, tenant_id, nome, tipo, status, objetivo, artist_id, data_inicio, data_fim, created_by)
+    INSERT INTO campaigns (id, tenant_id, nome, type, status, objetivo, artist_id, data_inicio, data_fim, created_by)
     VALUES ($1, $2, 'Lancamento Verao Demo', 'digital', 'rascunho', 'Lancar single de verao', $3, $4, $5, $6)
     ON CONFLICT (id) DO NOTHING
   `, [campaignId, tenantId, artistId, now, end, effectiveAdminSub]);
@@ -105,14 +105,14 @@ export async function seedOperational(ds: DataSource, tenant: SeedResult): Promi
 
   const contractId = '10000000-0000-0000-0000-000000000060';
   await ds.query(`
-    INSERT INTO contracts (id, tenant_id, title, tipo, status, artist_id, valor, exclusivo, created_by)
+    INSERT INTO contracts (id, tenant_id, title, type, status, artist_id, valor, exclusivo, created_by)
     VALUES ($1, $2, 'Contrato de Gravacao Demo', 'gravacao', 'rascunho', $3, 50000, FALSE, $4)
     ON CONFLICT (id) DO NOTHING
   `, [contractId, tenantId, artistId, effectiveAdminSub]);
 
   const txId = '10000000-0000-0000-0000-000000000070';
   await ds.query(`
-    INSERT INTO transactions (id, tenant_id, tipo, categoria, descricao, valor, data, status, artist_id, created_by)
+    INSERT INTO transactions (id, tenant_id, type, categoria, descricao, valor, data, status, artist_id, created_by)
     VALUES ($1, $2, 'receita', 'external-rights-receipts', 'Recebimento externo de direitos Q1 Demo', 15000, $3, 'pendente', $4, $5)
     ON CONFLICT (id) DO NOTHING
   `, [txId, tenantId, now, artistId, effectiveAdminSub]);

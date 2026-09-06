@@ -208,11 +208,11 @@ export function FeriasAusenciasViewModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Férias / Ausência"
-      description={humanize(ausencia.tipo as string)}
+      description={humanize(ausencia.type as string)}
     >
       <Section title="Identificação">
         <Row label="Funcionário" value={funcionario?.nome} />
-        <Row label="Tipo" value={humanize(ausencia.tipo as string)} />
+        <Row label="Tipo" value={humanize(ausencia.type as string)} />
       </Section>
       <Section title="Período">
         <Row label="Data de início" value={formatDateDashes(ausencia.data_inicio)} />

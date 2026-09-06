@@ -19,7 +19,7 @@ import type { CreateSigningDocumentParams as CreateDocumentInput, SigningDocumen
 export interface ContratoEntity {
   id:            string;
   title:        string;
-  tipo:          string;
+  type:          string;
   status:        string;
   partes:        Array<{ nome: string; email: string; papel: string }>;
   fileKey?:      string;

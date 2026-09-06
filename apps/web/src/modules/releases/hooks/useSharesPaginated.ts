@@ -10,15 +10,15 @@ export interface UseSharesPaginatedParams {
   search?: string;
   direcao?: string;
   status?: string;
-  tipo?: string;
+  type?: string;
   shareType?: string;
 }
 
-export function useSharesPaginated({ page, pageSize, search, direcao, status, tipo, shareType }: UseSharesPaginatedParams) {
+export function useSharesPaginated({ page, pageSize, search, direcao, status, type, shareType }: UseSharesPaginatedParams) {
   const filters: Record<string, unknown> = {};
   if (direcao) filters.direcao = direcao;
   if (status) filters.status = status;
-  if (tipo) filters.tipo = tipo;
+  if (type) filters.type = type;
   if (shareType) filters.share_type = shareType;
 
   const result = usePaginatedDataQuery<ShareWithRelations>({

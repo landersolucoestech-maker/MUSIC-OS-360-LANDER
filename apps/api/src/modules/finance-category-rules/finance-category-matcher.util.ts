@@ -2,7 +2,7 @@
  * finance-category-matcher.util.ts
  *
  * Task W — motor de correspondência determinístico entre uma transação
- * (tipo + descrição) e as regras de categorização por palavra-chave
+ * (type + descrição) e as regras de categorização por palavra-chave
  * (finance_category_keyword_rules). Porta fiel do algoritmo já usado (mas
  * nunca chamado em produção) pelo frontend em
  * apps/web/src/modules/accounting/utils/financialCategorizationRules.utils.ts

@@ -21,28 +21,28 @@ import { ContatoFormModal, type ContatoFormPayload } from "@/modules/crm-relatio
 // ─────────────────────────────────────────────
 // Combos condicionais
 // ─────────────────────────────────────────────
-const EVENTO_COMBOS: ReadonlyArray<{ tipo: string; servico: string }> = [
-  { tipo: "marca_empresa",        servico: "eventos_corporativos" },
-  { tipo: "agencia",              servico: "producao_eventos"     },
-  { tipo: "agencia",              servico: "contratacao_artistas" },
-  { tipo: "produtora_eventos",    servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "eventos_corporativos" },
-  { tipo: "empresario_artistico", servico: "contratacao_artistas" },
-  { tipo: "empresario_artistico", servico: "eventos_corporativos" },
-  { tipo: "influenciador",        servico: "producao_eventos"     },
+const EVENTO_COMBOS: ReadonlyArray<{ type: string; servico: string }> = [
+  { type: "marca_empresa",        servico: "eventos_corporativos" },
+  { type: "agencia",              servico: "producao_eventos"     },
+  { type: "agencia",              servico: "contratacao_artistas" },
+  { type: "produtora_eventos",    servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "eventos_corporativos" },
+  { type: "empresario_artistico", servico: "contratacao_artistas" },
+  { type: "empresario_artistico", servico: "eventos_corporativos" },
+  { type: "influenciador",        servico: "producao_eventos"     },
 ];
 
-const CAMPANHA_COMBOS: ReadonlyArray<{ tipo: string; servico: string }> = [
-  { tipo: "marca_empresa", servico: "campanhas_artistas" },
-  { tipo: "agencia",       servico: "campanhas_artistas" },
+const CAMPANHA_COMBOS: ReadonlyArray<{ type: string; servico: string }> = [
+  { type: "marca_empresa", servico: "campanhas_artistas" },
+  { type: "agencia",       servico: "campanhas_artistas" },
 ];
 
 const matchCombo = (
-  list: ReadonlyArray<{ tipo: string; servico: string }>,
-  tipo: string,
+  list: ReadonlyArray<{ type: string; servico: string }>,
+  type: string,
   servico: string,
-) => list.some((c) => c.tipo === tipo && c.servico === servico);
+) => list.some((c) => c.type === type && c.servico === servico);
 
 // ─────────────────────────────────────────────
 // Mapeamentos

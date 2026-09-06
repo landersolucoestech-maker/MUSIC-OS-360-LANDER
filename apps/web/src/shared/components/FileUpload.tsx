@@ -60,7 +60,7 @@ const getFileIcon = (type: string, fileName?: string): LucideIcon => {
   return File;
 };
 
-// Verifica se o arquivo é válido baseado em tipo MIME ou extensão
+// Verifica se o arquivo é válido baseado em type MIME ou extensão
 const isFileTypeValid = (file: File, accept: string): boolean => {
   const acceptedTypes = accept.split(",").map((t) => t.trim().toLowerCase());
   const fileExt = `.${file.name.split(".").pop()?.toLowerCase() || ""}`;
@@ -101,7 +101,7 @@ const isFileTypeValid = (file: File, accept: string): boolean => {
       return fileExt === type;
     }
     
-    // Fallback: verificar se extensão corresponde ao tipo
+    // Fallback: verificar se extensão corresponde ao type
     return fileExt === `.${type}`;
   });
 };

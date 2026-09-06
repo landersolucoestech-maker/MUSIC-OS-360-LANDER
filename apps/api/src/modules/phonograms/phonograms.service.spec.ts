@@ -15,7 +15,7 @@ async function validateDto(payload: Record<string, unknown>) {
 
 const TENANT = 'tenant-test';
 const PHONO_ID = 'phono-test';
-const mockPhono = { id: PHONO_ID, tenant_id: TENANT, title: 'Test', tipo: 'master', deleted_at: null };
+const mockPhono = { id: PHONO_ID, tenant_id: TENANT, title: 'Test', type: 'master', deleted_at: null };
 
 const buildMockQb = (getOneValue: any = mockPhono) => {
   const qb: any = {
@@ -221,11 +221,11 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
     });
   });
 
-  describe('create() — tipo default aplicado somente no create', () => {
-    it("aplica tipo='master' quando o DTO não envia tipo", async () => {
+  describe('create() — type default aplicado somente no create', () => {
+    it("aplica type='master' quando o DTO não envia type", async () => {
       await service.create(TENANT, 'u1', { title: 'X' } as any);
       expect(mockDs._repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ tipo: 'master' }),
+        expect.objectContaining({ type: 'master' }),
       );
     });
 
@@ -255,17 +255,17 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
     });
   });
 
-  describe('update() — PATCH parcial não sobrescreve tipo', () => {
-    it('não inclui tipo no payload de update quando o DTO não o envia', async () => {
+  describe('update() — PATCH parcial não sobrescreve type', () => {
+    it('não inclui type no payload de update quando o DTO não o envia', async () => {
       await service.update(TENANT, 'u1', PHONO_ID, { observacoes: 'x' } as any);
       const updateCall = mockDs._repo.update.mock.calls[0];
-      expect(updateCall[1]).not.toHaveProperty('tipo');
+      expect(updateCall[1]).not.toHaveProperty('type');
     });
 
-    it('preserva tipo enviado explicitamente no update', async () => {
-      await service.update(TENANT, 'u1', PHONO_ID, { tipo: 'remix' } as any);
+    it('preserva type enviado explicitamente no update', async () => {
+      await service.update(TENANT, 'u1', PHONO_ID, { type: 'remix' } as any);
       const updateCall = mockDs._repo.update.mock.calls[0];
-      expect(updateCall[1]).toHaveProperty('tipo', 'remix');
+      expect(updateCall[1]).toHaveProperty('type', 'remix');
     });
   });
 

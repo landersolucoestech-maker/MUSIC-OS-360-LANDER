@@ -108,7 +108,7 @@ export class SocietyPayloadBuilderService {
         id: work.id,
         title: work.title,
         alternative_titles: Array.isArray(work.alternative_titles) ? work.alternative_titles : [],
-        type: work.tipo ?? null,
+        type: work.type ?? null,
         genre: work.genero ?? null,
         language: work.language ?? null,
         iswc: work.iswc ?? null,

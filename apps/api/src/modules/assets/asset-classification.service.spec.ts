@@ -50,7 +50,7 @@ describe('AssetClassificationService.classify (heurística)', () => {
 });
 
 describe('AssetClassificationService.classifyAndApply', () => {
-  it('persiste o tipo e registra log de uso "classified"', async () => {
+  it('persiste o type e registra log de uso "classified"', async () => {
     const { ds, repos } = makeDs();
     const svc = new AssetClassificationService(ds as never, skillRuns() as never);
 

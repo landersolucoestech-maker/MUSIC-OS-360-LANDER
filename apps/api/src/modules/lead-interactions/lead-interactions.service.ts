@@ -33,14 +33,14 @@ export class LeadInteractionsService {
 
   async create(tenantId: string, userId: string, dto: CreateLeadInteractionDto): Promise<LeadInteractionEntity> {
     // REM-04: o spread `...dto` gravava campos inexistentes na entity
-    // (leadId/type/notes) e deixava as colunas reais (lead_id/tipo NOT NULL)
+    // (leadId/type/notes) e deixava as colunas reais (lead_id/type NOT NULL)
     // vazias — todo POST falhava com violação de constraint. Mapeado
     // explicitamente para as colunas reais; `metadata` do DTO não tem
     // coluna correspondente nesta entity e não é persistido.
     const entity = this.repo!.create({
       tenant_id:  tenantId,
       lead_id:    dto.leadId,
-      tipo:       dto.type,
+      type:       dto.type,
       descricao:  dto.notes ?? null,
       created_by: userId,
     } as any);

@@ -192,7 +192,7 @@ export class HrService {
 
     if (query.employee_id) qb.andWhere('l.employee_id = :employeeId', { employeeId: query.employee_id });
     if (query.status)      qb.andWhere('l.status = :status', { status: query.status });
-    if (query.search)      qb.andWhere('l.tipo ILIKE :search', { search: `%${query.search}%` });
+    if (query.search)      qb.andWhere('l.type ILIKE :search', { search: `%${query.search}%` });
 
     qb.orderBy('l.created_at', 'DESC')
       .skip(query.offset ?? 0)
@@ -206,7 +206,7 @@ export class HrService {
     const entity = this.leaveRepo!.create({
       tenant_id:    tenantId,
       employee_id:  dto.employee_id,
-      tipo:         dto.tipo,
+      type:         dto.type,
       data_inicio:  new Date(dto.data_inicio),
       data_fim:     new Date(dto.data_fim),
       status:       (dto as any).status       ?? 'pendente',

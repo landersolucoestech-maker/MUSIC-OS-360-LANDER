@@ -19,7 +19,7 @@ export interface DivergenciaHistoricoEntry {
 
 export interface Divergencia {
   id: string;
-  tipo: string;
+  type: string;
   descricao: string;
   obra?: string;
   isrc?: string;
@@ -50,7 +50,7 @@ interface Props {
   onBulkDelete?: (ids: string[]) => void;
 }
 
-type SortKey = "tipo" | "obra" | "isrc" | "origem" | "severity" | "risco_score" | "data" | "status";
+type SortKey = "type" | "obra" | "isrc" | "origem" | "severity" | "risco_score" | "data" | "status";
 type SortDirection = "asc" | "desc";
 
 export function DivergenciasPanel({ divergencias, onResolve, onBulkDelete }: Props) {
@@ -166,7 +166,7 @@ export function DivergenciasPanel({ divergencias, onResolve, onBulkDelete }: Pro
         <TableHeader>
           <TableRow>
             <TableHead className="w-8"></TableHead>
-            <TableHead><SortButton keyName="tipo" label="Tipo" /></TableHead>
+            <TableHead><SortButton keyName="type" label="Tipo" /></TableHead>
             <TableHead><SortButton keyName="obra" label="Obra" /></TableHead>
             <TableHead><SortButton keyName="isrc" label="ISRC" /></TableHead>
             <TableHead><SortButton keyName="origem" label="Origem" /></TableHead>
@@ -186,12 +186,12 @@ export function DivergenciasPanel({ divergencias, onResolve, onBulkDelete }: Pro
                   <Checkbox
                     checked={selectedIds.includes(div.id)}
                     onCheckedChange={() => toggleSelect(div.id)}
-                    aria-label={`Selecionar divergência ${div.tipo}`}
+                    aria-label={`Selecionar divergência ${div.type}`}
                     data-testid={`checkbox-divergencia-${div.id}`}
                   />
                 </TableCell>
                 <TableCell>
-                  <p className="max-w-[260px] truncate font-medium">{div.tipo}</p>
+                  <p className="max-w-[260px] truncate font-medium">{div.type}</p>
                   <p className="max-w-[320px] truncate text-xs text-muted-foreground">{div.descricao}</p>
                 </TableCell>
                 <TableCell className="text-sm">{div.obra || "—"}</TableCell>

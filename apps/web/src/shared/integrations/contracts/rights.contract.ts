@@ -57,7 +57,7 @@ export interface ArtistSearchQuery {
 export interface ArtistSearchResult {
   external_id: string;
   nome: string;
-  tipo: "compositor" | "interprete" | "produtor" | "editora" | "gravadora";
+  type: "compositor" | "interprete" | "produtor" | "editora" | "gravadora";
   numero_filiado?: string | null;
   obras_count?: number | null;
   fonogramas_count?: number | null;
@@ -191,7 +191,7 @@ export type ArrecadacaoTipo =
 export interface ArrecadacaoEntry {
   id: string;
   entity: RightsEntityId;
-  tipo: ArrecadacaoTipo;
+  type: ArrecadacaoTipo;
   work_id?: string | null;
   fonograma_id?: string | null;
   periodo: string;                // "YYYY-MM"

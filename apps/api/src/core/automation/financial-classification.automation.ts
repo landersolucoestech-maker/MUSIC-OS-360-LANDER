@@ -40,7 +40,7 @@ import { runNativeSkillAutomation } from './native-skill-automation.runner';
 const SKILL_NAME = 'financial-classification';
 
 interface TransactionRow {
-  tipo: string | null;
+  type: string | null;
   categoria: string | null;
   descricao: string | null;
   valor: string | null;
@@ -50,9 +50,9 @@ interface TransactionRow {
   metadata: Record<string, unknown> | null;
 }
 
-/** Mapeia o `tipo` da transação (receita/despesa) para a direção da skill. */
-function mapDirection(tipo: string | null | undefined): FinancialDirection {
-  return (tipo ?? '').trim().toLowerCase() === 'receita' ? 'income' : 'expense';
+/** Mapeia o `type` da transação (receita/despesa) para a direção da skill. */
+function mapDirection(type: string | null | undefined): FinancialDirection {
+  return (type ?? '').trim().toLowerCase() === 'receita' ? 'income' : 'expense';
 }
 
 @Injectable()
@@ -105,7 +105,7 @@ export class FinancialClassificationAutomation {
   ): Promise<TransactionRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT t.tipo, t.categoria, t.descricao, t.valor, t.data, t.referencia, t.metadata,
+      `SELECT t.type, t.categoria, t.descricao, t.valor, t.data, t.referencia, t.metadata,
               a.nome_artistico AS artist_name
          FROM transactions t
          LEFT JOIN artists a
@@ -139,7 +139,7 @@ export class FinancialClassificationAutomation {
     const input: FinancialClassificationInput = {
       description: tx.descricao?.trim() || tx.categoria?.trim() || 'Transação financeira',
       amount: Number(tx.valor ?? 0),
-      direction: mapDirection(tx.tipo),
+      direction: mapDirection(tx.type),
       language: 'pt-BR',
     };
 

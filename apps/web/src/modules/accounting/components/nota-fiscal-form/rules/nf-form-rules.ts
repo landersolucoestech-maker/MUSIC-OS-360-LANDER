@@ -1,4 +1,4 @@
-import type { TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-tipo";
+import type { TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-type";
 export type { TipoOperacaoNF };
 
 export interface ItemNota {

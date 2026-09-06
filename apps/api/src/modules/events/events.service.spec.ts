@@ -14,7 +14,7 @@ async function validateDto(payload: Record<string, unknown>) {
 
 const TENANT = 'tenant-test';
 const EVENT_ID = 'event-test';
-const mockEvent = { id: EVENT_ID, tenant_id: TENANT, title: 'Show', tipo: 'show', data: new Date('2026-08-01T20:00:00Z'), deleted_at: null };
+const mockEvent = { id: EVENT_ID, tenant_id: TENANT, title: 'Show', type: 'show', data: new Date('2026-08-01T20:00:00Z'), deleted_at: null };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const buildMockQb = (getOneValue: any = mockEvent) => {
@@ -277,13 +277,16 @@ describe('EventsService — Estado P (pré-C3, comportamento atual documentado)'
       expect(mockDs._repo._qb.orderBy).toHaveBeenCalledWith('e.data', 'DESC');
     });
 
-    // Documentação do bug pré-existente (dívida C3.5): o DTO declara type/artistId
-    // (EN), mas o service lê tipo/artist_id/dateFrom/dateTo — nenhum filtro
-    // desses funciona via HTTP real. NÃO corrigido no pré-requisito.
-    it('filtro type (nome declarado no DTO) NÃO é aplicado pelo service', async () => {
+    // Documentação do bug pré-existente (dívida C3.5): o DTO declarava type/artistId
+    // (EN) enquanto o service lia tipo/artist_id/dateFrom/dateTo — o filtro type
+    // nunca funcionava via HTTP real. A normalização de nomenclatura (2026-09-05,
+    // tipo -> type) corrigiu esse mismatch especificamente para type (a coluna
+    // física passou a se chamar type, igual ao nome já declarado no DTO).
+    // artistId continua com o mismatch documentado abaixo — dívida C3.5 separada.
+    it('filtro type (nome declarado no DTO) agora É aplicado pelo service (corrigido por tipo -> type)', async () => {
       await service.list(TENANT, { type: 'show' } as never);
       const calls = mockDs._repo._qb.andWhere.mock.calls.map((c: unknown[]) => c[0]);
-      expect(calls).not.toContain('e.tipo = :tipo');
+      expect(calls).toContain('e.type = :type');
     });
 
     it('filtro artistId (nome declarado no DTO) NÃO é aplicado pelo service', async () => {

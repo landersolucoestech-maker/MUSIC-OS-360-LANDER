@@ -74,7 +74,7 @@ export class ContractsService {
       .andWhere('c.deleted_at IS NULL');
 
     if (q['status'])              qb.andWhere('c.status = :status',        { status:    q['status'] });
-    if (resolvedQuery.tipo)       qb.andWhere('c.tipo = :tipo',            { tipo:      resolvedQuery.tipo });
+    if (resolvedQuery.type)       qb.andWhere('c.type = :type',            { type:      resolvedQuery.type });
     if (resolvedQuery.artist_id) qb.andWhere('c.artist_id = :artistId', { artistId: resolvedQuery.artist_id });
     if (q['search'])              qb.andWhere('c.title ILIKE :search',    { search: `%${q['search']}%` });
     if (q['signing_platform'] === 'none') qb.andWhere('c.signing_platform IS NULL');
@@ -138,7 +138,7 @@ export class ContractsService {
 
   /**
    * Monta o payload final para persistência a partir dos campos canônicos já
-   * resolvidos (title/tipo/artist_id/data_inicio/data_fim/arquivo_url/valor
+   * resolvidos (title/type/artist_id/data_inicio/data_fim/arquivo_url/valor
    * — ver resolveContractAliases()) e dos demais campos não relacionados a
    * aliases, que continuam passando direto para a entity.
    */
@@ -185,8 +185,8 @@ export class ContractsService {
     this.logLegacyAliasUsage(legacyAliasesUsed, 'create', tenantId);
 
     const normalized = this.buildEntityPayload(rest, resolved);
-    // contracts.tipo é NOT NULL; o wizard pode não ter tipo de serviço definido.
-    if (normalized['tipo'] == null) normalized['tipo'] = 'outro';
+    // contracts.type é NOT NULL; o wizard pode não ter tipo de serviço definido.
+    if (normalized['type'] == null) normalized['type'] = 'outro';
 
     await assertSameTenantFk(this.ds!, 'artists', normalized['artist_id'] as string | undefined, tenantId, 'Artista');
     await assertSameTenantFk(this.ds!, 'clients', normalized['client_id'] as string | undefined, tenantId, 'Cliente');
@@ -209,7 +209,7 @@ export class ContractsService {
         contractId: saved.id,
         tenantId,
         title:     saved.title ?? (normalized['title'] as string) ?? '',
-        tipo:       saved.tipo   ?? (normalized['tipo']   as string) ?? '',
+        type:       saved.type   ?? (normalized['type']   as string) ?? '',
         artistId:   saved.artist_id ?? null,
         createdBy:  userId,
       },
@@ -240,7 +240,7 @@ export class ContractsService {
     this.logLegacyAliasUsage(legacyAliasesUsed, 'update', tenantId, id);
 
     const normalized = this.buildEntityPayload(restFields, resolved);
-    // Sem default de tipo='outro' aqui — PATCH ausente não deve forçar um valor.
+    // Sem default de type='outro' aqui — PATCH ausente não deve forçar um valor.
 
     const nonStatusUpdates: Record<string, unknown> = {
       updated_at: new Date(),

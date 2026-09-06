@@ -4,7 +4,7 @@ import { BadRequestException } from '@nestjs/common';
  * Resolução de aliases EN legados para os campos canônicos pt-BR de Phonograms
  * (C2): title/titulo, work_id/workId, artist_id/artistId. Puro: não loga,
  * não conhece tenant/operação, não acessa repository, não importa Swagger,
- * não aplica defaults de negócio (ex.: tipo='master') — isso é
+ * não aplica defaults de negócio (ex.: type='master') — isso é
  * responsabilidade do PhonogramsService.
  *
  * Regra de presença: `hasOwnProperty` decide presença; `undefined` é tratado

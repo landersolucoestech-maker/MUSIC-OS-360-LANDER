@@ -16,7 +16,7 @@ export class CreateLicenseDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() client_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) cliente?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) projeto?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) tipo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) tipo_uso?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) midia_destino?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(150) territorio?: string;
@@ -48,7 +48,7 @@ export class QueryLicenseDto extends PaginationDto {
    * ("negociacao,proposta") — a aba "Propostas" do Licenciamento.tsx
    * abrange dois status (Task H). */
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() work_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() client_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;

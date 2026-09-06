@@ -7,12 +7,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 /**
  * CreateContractDto aceita BOTH English camelCase e pt-BR snake_case.
  *
- * Fase 5 / C1: pt-BR é o contrato canônico para type/artistId/value/
+ * Fase 5 / C1: pt-BR é o contrato canônico para artistId/value/
  * startsAt/expiresAt/fileUrl — os aliases EN correspondentes estão em
  * depreciação temporária, ainda aceitos, resolvidos e validados por
  * contract-legacy-alias.util.ts, mas marcados `deprecated` no Swagger.
- * Exceção: `title` passou a ser o campo canônico (normalização de
- * nomenclatura, 2026-09-05) — `titulo` (pt-BR) é o alias legado agora.
+ * Exceção: `title`/`type` passaram a ser os campos canônicos (normalização
+ * de nomenclatura, 2026-09-05) — `titulo`/`tipo` (pt-BR) são os aliases
+ * legados agora.
  * Conflitos entre o par PT/EN são rejeitados com 400
  * (CONTRACT_ALIAS_CONFLICT). currency/signedAt/parties não fazem parte
  * desta depreciação (ver C1.1 — dívida separada, fora deste escopo).
@@ -25,7 +26,7 @@ export class CreateContractDto {
   @MaxLength(500)
   title?: string;
 
-  @ApiPropertyOptional({ example: 'recording', deprecated: true, description: 'Use "tipo".' })
+  @ApiPropertyOptional({ example: 'recording' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -90,7 +91,7 @@ export class CreateContractDto {
   @IsOptional() @IsString() @MaxLength(500)
   titulo?: string;
 
-  @ApiPropertyOptional({ example: 'gravacao' })
+  @ApiPropertyOptional({ example: 'gravacao', deprecated: true, description: 'Use "type".' })
   @IsOptional() @IsString() @MaxLength(100)
   tipo?: string;
 

@@ -10,7 +10,7 @@ export class CreateWorkDto {
   @ApiPropertyOptional({ example: 'composicao' })
   @IsOptional()
   @IsString()
-  tipo?: string;
+  type?: string;
 
   @ApiPropertyOptional({ example: 'T-034.521.489-2' })
   @IsOptional()

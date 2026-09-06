@@ -29,7 +29,7 @@ function RealtimeSyncAndNotify() {
 
   // ── Notificações persistidas (backend → fila NOTIFICATIONS → WS) ─────────
   useWsEvent<WsNotificationPayload>('notification:new', (n) => {
-    // Toast baseado no tipo da notificação
+    // Toast baseado no type da notificação
     const title       = n.title;
     const description = n.body ?? undefined;
 
@@ -85,8 +85,8 @@ function RealtimeSyncAndNotify() {
   });
 
   useWsEvent('finance.transaction.created', (d) => {
-    const tipo = (d as { tipo?: string }).tipo ?? 'transação';
-    toast.info(`Nova ${tipo} registrada`, { description: 'Financeiro atualizado' });
+    const type = (d as { type?: string }).type ?? 'transação';
+    toast.info(`Nova ${type} registrada`, { description: 'Financeiro atualizado' });
   });
 
   useWsEvent('finance.calculated', () => {

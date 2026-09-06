@@ -130,7 +130,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
                   {artistaNome && <Field label="Artista" value={artistaNome} icon={User} />}
                   <Field label="Participante" value={participanteNome} icon={User} />
                   <Field label="Destinatário" value={str("destinatario") || null} icon={User} />
-                  <Field label="Função" value={s["tipo"] ? funcaoLabel(String(s["tipo"])) : null} icon={Share2} />
+                  <Field label="Função" value={s["type"] ? funcaoLabel(String(s["type"])) : null} icon={Share2} />
                   <Field label="Direção" value={direcaoLabel} />
                 </>
               ) : (

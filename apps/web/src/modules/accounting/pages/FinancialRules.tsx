@@ -51,7 +51,7 @@ const TRIGGERS: { value: FinancialRuleTrigger; label: string }[] = [
 
 interface FormState {
   nome: string;
-  tipo: FinancialRuleTipo;
+  type: FinancialRuleTipo;
   categoria: string;
   calculo: FinancialRuleCalculo;
   valor: string;
@@ -61,14 +61,14 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  nome: "", tipo: "outros", categoria: "", calculo: "percentual",
+  nome: "", type: "outros", categoria: "", calculo: "percentual",
   valor: "", descricao: "", ativo: true, triggers: [],
 };
 
 function toForm(rule: FinancialRule): FormState {
   return {
     nome: rule.nome,
-    tipo: rule.tipo,
+    type: rule.type,
     categoria: rule.categoria ?? "",
     calculo: rule.calculo,
     valor: String(rule.valor),
@@ -115,7 +115,7 @@ export default function FinancialRules() {
 
     const payload = {
       nome: form.nome.trim(),
-      tipo: form.tipo,
+      type: form.type,
       categoria: form.categoria.trim() || undefined,
       calculo: form.calculo,
       valor: valorNum,
@@ -207,7 +207,7 @@ export default function FinancialRules() {
                           {rule.categoria && <p className="text-xs text-muted-foreground">{rule.categoria}</p>}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {TIPOS.find((t) => t.value === rule.tipo)?.label ?? rule.tipo}
+                          {TIPOS.find((t) => t.value === rule.type)?.label ?? rule.type}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{fmtValor(rule)}</TableCell>
                         <TableCell>
@@ -259,7 +259,7 @@ export default function FinancialRules() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Tipo</Label>
-                  <Select value={form.tipo} onValueChange={(v) => setField("tipo", v as FinancialRuleTipo)}>
+                  <Select value={form.type} onValueChange={(v) => setField("type", v as FinancialRuleTipo)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {TIPOS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}

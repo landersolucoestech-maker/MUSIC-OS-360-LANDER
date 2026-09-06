@@ -1,7 +1,7 @@
 /**
  * event-type.test.ts
  *
- * Task S — guarda permanente: events.tipo só guarda o enum coarse do
+ * Task S — guarda permanente: events.type só guarda o enum coarse do
  * backend (show/festival/recording/meeting/interview/tour/other). A
  * categoria granular configurada em Configurações → Operacional
  * (metadata.backend_type) precisa ser traduzida corretamente nos dois

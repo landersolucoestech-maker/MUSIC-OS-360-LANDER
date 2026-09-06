@@ -1128,7 +1128,7 @@ export default function ArtistaSignupPublic() {
             <div className="space-y-1.5">
               <Label className="text-sm">Perfil Comercial <span className="text-destructive">*</span></Label>
               <Select value={tipoPerfil} onValueChange={setTipoPerfil}>
-                <SelectTrigger data-testid="select-tipo-perfil">
+                <SelectTrigger data-testid="select-type-perfil">
                   <SelectValue placeholder="Selecione o perfil" />
                 </SelectTrigger>
                 <SelectContent className="bg-background border border-border z-50">

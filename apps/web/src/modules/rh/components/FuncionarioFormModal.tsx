@@ -397,7 +397,7 @@ export function FuncionarioFormModal({
                   onValueChange={setTipoContrato}
                   disabled={isViewMode}
                 >
-                  <SelectTrigger data-testid="select-tipo-contrato">
+                  <SelectTrigger data-testid="select-type-contrato">
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>

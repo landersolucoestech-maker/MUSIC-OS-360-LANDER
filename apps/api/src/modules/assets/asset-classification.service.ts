@@ -7,7 +7,7 @@
  * a partir de MIME + nome do arquivo + categoria de upload.
  *
  *   - classifyAndApply(): usado automaticamente pelo Asset Linking ao criar o
- *     asset (método "heuristic"), persistindo tipo + metadados de classificação.
+ *     asset (método "heuristic"), persistindo type + metadados de classificação.
  *   - review(): revisão MANUAL (método "manual"), executada como skill própria
  *     (skill_runs) com auditoria e log de uso.
  *

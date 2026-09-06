@@ -439,8 +439,8 @@ export default function RegistroMusicas() {
             </Select>
           )}
           {activeTab === "obras" && (
-            <Select value={tipoObraFilter} onValueChange={setTipoObraFilter} data-testid="select-filter-tipo-obra">
-              <SelectTrigger className="w-auto min-w-[126px] shrink-0 h-8 text-sm bg-card border-border" data-testid="trigger-filter-tipo-obra">
+            <Select value={tipoObraFilter} onValueChange={setTipoObraFilter} data-testid="select-filter-type-obra">
+              <SelectTrigger className="w-auto min-w-[126px] shrink-0 h-8 text-sm bg-card border-border" data-testid="trigger-filter-type-obra">
                 <SelectValue placeholder="Todos Tipos" />
               </SelectTrigger>
               <SelectContent>
@@ -727,7 +727,7 @@ export default function RegistroMusicas() {
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
-                            <ObraTipoBadge tipo={obra.tipo_obra as string | null | undefined} />
+                            <ObraTipoBadge type={obra.tipo_obra as string | null | undefined} />
                           </TableCell>
                           <TableCell className="py-3 text-sm">{obra.cod_entidade || "-"}</TableCell>
                           <TableCell className="py-3 text-sm">{obra.cod_ecad || "-"}</TableCell>
@@ -806,7 +806,7 @@ export default function RegistroMusicas() {
       <ObraTipoSelectorModal
         open={obraTipoSelectorOpen}
         onOpenChange={(v) => { setObraTipoSelectorOpen(v); if (!v) setPendingProjectId(null); }}
-        onSelect={async (tipo) => {
+        onSelect={async (type) => {
           let obraSeed: Record<string, unknown> | undefined;
           if (pendingProjectId) {
             // Busca DIRETO por ID (GET /projects/:id) — não depende do projeto
@@ -820,7 +820,7 @@ export default function RegistroMusicas() {
               obraSeed = { project_id: pendingProjectId };
             }
           }
-          setObraModal({ open: true, mode: "create", obra: obraSeed as Obra | undefined, tipoObra: tipo });
+          setObraModal({ open: true, mode: "create", obra: obraSeed as Obra | undefined, tipoObra: type });
           setPendingProjectId(null);
         }}
       />

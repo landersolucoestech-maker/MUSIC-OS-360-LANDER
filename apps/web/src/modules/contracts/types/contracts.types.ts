@@ -35,7 +35,7 @@ export interface Contrato {
   id: string;
   user_id?: string;
   title: string;
-  tipo?: ContratoTipo | string | null;
+  type?: ContratoTipo | string | null;
   status?: ContratoStatus | string | null;
   artist_id?: string | null;
   client_id?: string | null;

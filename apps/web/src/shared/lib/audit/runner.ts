@@ -61,7 +61,7 @@ const CONFIGS: AuditConfig[] = [
     label: (row) => entityLabel(row, ["title", "nome"], "Projeto sem título"),
     fields: [
       { key: "title", label: "Título", severity: "obrigatorio" },
-      { key: "tipo", label: "Tipo", severity: "obrigatorio" },
+      { key: "type", label: "Tipo", severity: "obrigatorio" },
       { key: "status", label: "Status", severity: "obrigatorio" },
       { key: "genero", label: "Gênero musical", severity: "recomendado" },
       { key: "artist_id", label: "Artista vinculado", severity: "recomendado" },
@@ -103,7 +103,7 @@ const CONFIGS: AuditConfig[] = [
     label: (row) => entityLabel(row, ["title", "upc", "isrc_global"], "Lançamento sem título"),
     fields: [
       { key: "title", label: "Título", severity: "obrigatorio" },
-      { key: "tipo", label: "Tipo", severity: "obrigatorio" },
+      { key: "type", label: "Tipo", severity: "obrigatorio" },
       { key: "status", label: "Status", severity: "obrigatorio" },
       { key: "artist_id", label: "Artista vinculado", severity: "obrigatorio" },
       { key: "data_lancamento", label: "Data de lançamento", severity: "recomendado" },
@@ -116,10 +116,10 @@ const CONFIGS: AuditConfig[] = [
     table: "contratos",
     entityType: "Contrato",
     fixPath: (row) => editPath("/contratos", row),
-    label: (row) => entityLabel(row, ["title", "tipo"], "Contrato sem título"),
+    label: (row) => entityLabel(row, ["title", "type"], "Contrato sem título"),
     fields: [
       { key: "title", label: "Título", severity: "obrigatorio" },
-      { key: "tipo", label: "Tipo", severity: "obrigatorio" },
+      { key: "type", label: "Tipo", severity: "obrigatorio" },
       { key: "status", label: "Status", severity: "obrigatorio" },
       { key: "data_inicio", label: "Data de início", severity: "recomendado" },
       { key: "data_fim", label: "Data de fim", severity: "recomendado" },
@@ -134,7 +134,7 @@ const CONFIGS: AuditConfig[] = [
     label: (row) => entityLabel(row, ["descricao", "categoria"], "Transação sem descrição"),
     fields: [
       { key: "descricao", label: "Descrição", severity: "obrigatorio" },
-      { key: "tipo", label: "Tipo", severity: "obrigatorio" },
+      { key: "type", label: "Tipo", severity: "obrigatorio" },
       { key: "categoria", label: "Categoria", severity: "obrigatorio" },
       { key: "valor", label: "Valor", severity: "obrigatorio" },
       { key: "data", label: "Data", severity: "obrigatorio" },

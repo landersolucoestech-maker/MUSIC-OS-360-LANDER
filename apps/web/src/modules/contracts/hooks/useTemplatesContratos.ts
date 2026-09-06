@@ -22,14 +22,14 @@ export function useTemplatesContratos() {
         emit(DomainEvents.CONTRACT_TEMPLATE_CREATED, {
           id:    (t as TemplateContrato & { id: string }).id,
           nome:  (t as TemplateContrato & { nome?: string }).nome ?? undefined,
-          tipo:  (t as TemplateContrato & { tipo?: string }).tipo ?? undefined,
+          type:  (t as TemplateContrato & { type?: string }).type ?? undefined,
           org_id: orgId,
         }),
       onUpdate: (t) =>
         emit(DomainEvents.CONTRACT_TEMPLATE_UPDATED, {
           id:    (t as TemplateContrato & { id: string }).id,
           nome:  (t as TemplateContrato & { nome?: string }).nome ?? undefined,
-          tipo:  (t as TemplateContrato & { tipo?: string }).tipo ?? undefined,
+          type:  (t as TemplateContrato & { type?: string }).type ?? undefined,
           org_id: orgId,
         }),
       onDelete: (id) =>

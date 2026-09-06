@@ -38,7 +38,7 @@ export class TransactionsController {
   @Get('stats')
   @RequireRole('viewer')
   @RequirePermission('transaction:read')
-  @ApiOperation({ summary: 'Distribuição exata tipo×status + soma de valor (tenant inteiro)' })
+  @ApiOperation({ summary: 'Distribuição exata type×status + soma de valor (tenant inteiro)' })
   stats(@CurrentTenant() tenant: { id: string }) {
     return this.service.stats(tenant.id);
   }

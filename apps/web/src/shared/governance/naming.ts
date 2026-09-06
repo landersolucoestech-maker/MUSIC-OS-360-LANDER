@@ -29,7 +29,7 @@
  * REGRA: kebab-case para todos os ficheiros. PascalCase apenas para
  *        componentes React (*.tsx que exportam um componente por defeito).
  *
- * Extensões obrigatórias por tipo:
+ * Extensões obrigatórias por type:
  *   .tsx  → componentes React (JSX)
  *   .ts   → lógica pura, tipos, hooks, serviços, utilitários
  *   .css  → estilos standalone (raramente usado; preferir Tailwind)
@@ -207,7 +207,7 @@ export const SERVICE_NAMING = {
  *   Regra: sem index signature; apenas campos explícitos.
  *
  * PROIBIDO:
- *   - Campos `any` — usar `unknown` ou tipo específico
+ *   - Campos `any` — usar `unknown` ou type específico
  *   - Index signatures em refs (ex: [key: string]: unknown) — usar campos explícitos
  *   - Tipos inline em componentes (extrair para .types.ts do módulo)
  *   - Duplicação de tipos entre módulos (usar EntityRef cross-domain)
@@ -378,8 +378,8 @@ export const CUSTOM_EVENTS = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * REGRA: Formato `{tipo}-{alvo}` para elementos interactivos.
- *        Formato `{tipo}-{conteúdo}-{id}` para listas dinâmicas.
+ * REGRA: Formato `{type}-{alvo}` para elementos interactivos.
+ *        Formato `{type}-{conteúdo}-{id}` para listas dinâmicas.
  *
  * Tipos de prefixo por categoria:
  *   button-   → botões                ex: button-create-artista
@@ -399,8 +399,8 @@ export const CUSTOM_EVENTS = {
  * OBRIGATORIO: todo elemento interactivo e todo dado dinâmico relevante.
  */
 export const TEST_ID_PATTERNS = {
-  interactive:   "{tipo}-{alvo}",
-  dynamic:       "{tipo}-{descricao}-{id}",
+  interactive:   "{type}-{alvo}",
+  dynamic:       "{type}-{descricao}-{id}",
   prefixes: ["button", "input", "link", "select", "table",
              "row", "card", "badge", "modal", "text", "img", "status"] as const,
 } as const;

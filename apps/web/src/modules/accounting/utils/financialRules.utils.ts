@@ -271,7 +271,7 @@ export function createFinancialTransactionFromPaidInvoice(input: {
   payment_method: string;
 }) {
   return {
-    tipo: "receita",
+    type: "receita",
     status: "pago",
     valor: roundMoney(input.amount_paid),
     metadata: input,

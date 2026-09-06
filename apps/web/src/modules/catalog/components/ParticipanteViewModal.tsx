@@ -38,8 +38,8 @@ const deriveTipoPessoa = (artista: Artista): string => {
   }
   const perfil = (artista.tipo_perfil as string | null | undefined) ?? "";
   if (perfil.toLowerCase().includes("empresa")) return "Jurídica";
-  const tipo = (artista.tipo as string | null | undefined) ?? "";
-  if (tipo.toLowerCase() === "empresa") return "Jurídica";
+  const type = (artista.type as string | null | undefined) ?? "";
+  if (type.toLowerCase() === "empresa") return "Jurídica";
   return "Física";
 };
 
@@ -95,7 +95,7 @@ export function ParticipanteViewModal({
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Tipo de Pessoa</Label>
               <Select value={tipoPessoa} disabled>
-                <SelectTrigger className="bg-muted/30 text-sm h-9" data-testid="select-participante-tipo-pessoa">
+                <SelectTrigger className="bg-muted/30 text-sm h-9" data-testid="select-participante-type-pessoa">
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>

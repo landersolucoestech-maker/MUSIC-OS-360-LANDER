@@ -164,11 +164,11 @@ export class ProjectsService {
       .andWhere('p.deleted_at IS NULL');
 
     // Task H: chaves alinhadas com QueryProjectDto (type/artistId, não
-    // tipo/artist_id — bug pré-existente: o DTO valida "type"/"artistId",
-    // mas o service lia "tipo"/"artist_id", que nunca existiam no objeto
+    // type/artist_id — bug pré-existente: o DTO valida "type"/"artistId",
+    // mas o service lia "type"/"artist_id", que nunca existiam no objeto
     // validado; os dois filtros eram efetivamente inertes).
     if (q['status'])   qb.andWhere('p.status = :status',         { status:    q['status'] });
-    if (q['type'])     qb.andWhere('p.tipo = :tipo',              { tipo:      q['type'] });
+    if (q['type'])     qb.andWhere('p.type = :type',              { type:      q['type'] });
     if (q['artistId']) qb.andWhere('p.artist_id = :artistId',   { artistId: q['artistId'] });
     if (q['genero'])   qb.andWhere('p.genero = :genero',          { genero:    q['genero'] });
     if (q['search'])   qb.andWhere('p.title ILIKE :search',      { search: `%${q['search']}%` });
@@ -311,7 +311,7 @@ export class ProjectsService {
         projectId:   project.id,
         tenantId,
         title:       project.title,
-        type:        project.tipo,
+        type:        project.type,
         artistId:    project.artist_id,
         completedBy: userId,
         completedAt,

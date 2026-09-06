@@ -1,7 +1,7 @@
 /**
  * EntityCalendarView — calendário genérico Dia/Semana/Mês/Ano que plota eventos
  * pela data/hora. Mesma identidade visual do calendário de conteúdo de Marketing
- * (MarketingCalendarView), porém desacoplado de qualquer tipo específico: recebe
+ * (MarketingCalendarView), porém desacoplado de qualquer type específico: recebe
  * uma lista genérica de `CalendarEvent`.
  */
 

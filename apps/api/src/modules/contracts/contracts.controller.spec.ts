@@ -85,7 +85,7 @@ describe('ContractsController — contrato HTTP real (Fase 5 / C1)', () => {
   it('create sem título → 400', async () => {
     await request(app.getHttpServer())
       .post('/contracts')
-      .send({ tipo: 'gravacao' })
+      .send({ type: 'gravacao' })
       .expect(400)
       .expect((res) => {
         expect(res.body.message?.code ?? res.body.code).toBe('CONTRACT_TITLE_REQUIRED');
@@ -113,17 +113,17 @@ describe('ContractsController — contrato HTTP real (Fase 5 / C1)', () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
-  it('query com type legado continua funcional (200, filtro canônico aplicado)', async () => {
+  it('query com type (canônico) continua funcional (200, filtro aplicado)', async () => {
     await request(app.getHttpServer())
       .get('/contracts')
       .query({ type: 'gravacao' })
       .expect(200);
   });
 
-  it('query tipo/type conflitantes → 400', async () => {
+  it('query type/tipo conflitantes → 400', async () => {
     await request(app.getHttpServer())
       .get('/contracts')
-      .query({ tipo: 'gravacao', type: 'edicao' })
+      .query({ type: 'gravacao', tipo: 'edicao' })
       .expect(400)
       .expect((res) => {
         expect(res.body.message?.code ?? res.body.code).toBe('CONTRACT_ALIAS_CONFLICT');
@@ -157,25 +157,25 @@ describe('Swagger/OpenAPI — metadados de depreciação dos aliases (Fase 5 / C
     await swaggerApp.close();
   });
 
-  it('CreateContractDto: os 6 aliases EN restantes estão deprecated (title passou a canônico em 2026-09-05)', () => {
+  it('CreateContractDto: os 6 aliases legados restantes estão deprecated (title/type passaram a canônicos em 2026-09-05)', () => {
     const props = schemas['CreateContractDto'].properties!;
-    for (const field of ['type', 'artistId', 'value', 'startsAt', 'expiresAt', 'fileUrl']) {
+    for (const field of ['tipo', 'artistId', 'value', 'startsAt', 'expiresAt', 'fileUrl']) {
       expect(props[field]?.deprecated).toBe(true);
     }
   });
 
   it('CreateContractDto: os campos canônicos NÃO estão deprecated', () => {
     const props = schemas['CreateContractDto'].properties!;
-    for (const field of ['title', 'tipo', 'artist_id', 'valor', 'data_inicio', 'data_fim', 'arquivo_url']) {
+    for (const field of ['title', 'type', 'artist_id', 'valor', 'data_inicio', 'data_fim', 'arquivo_url']) {
       expect(props[field]?.deprecated).toBeUndefined();
     }
   });
 
-  it('QueryContractDto: type e artistId estão deprecated; tipo e artist_id não (parâmetros de query no path /contracts)', () => {
+  it('QueryContractDto: tipo e artistId estão deprecated; type e artist_id não (parâmetros de query no path /contracts)', () => {
     const byName = Object.fromEntries(queryParams.map((p) => [p.name, p]));
-    expect(byName['type']?.deprecated).toBe(true);
+    expect(byName['tipo']?.deprecated).toBe(true);
     expect(byName['artistId']?.deprecated).toBe(true);
-    expect(byName['tipo']?.deprecated).toBeFalsy();
+    expect(byName['type']?.deprecated).toBeFalsy();
     expect(byName['artist_id']?.deprecated).toBeFalsy();
   });
 });

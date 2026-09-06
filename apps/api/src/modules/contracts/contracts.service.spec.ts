@@ -3,7 +3,7 @@
  *
  * Cobre exclusivamente o pré-requisito de C1 (não relacionado a aliases
  * EN/PT): persistência de template_id/signers (colunas da migration
- * 20260712000004, já commitada) e o default `tipo = 'outro'` quando o
+ * 20260712000004, já commitada) e o default `type = 'outro'` quando o
  * wizard cria um contrato sem tipo de serviço definido. Nenhum teste aqui
  * cobre resolução de aliases — isso pertence ao commit C1 propriamente dito.
  */
@@ -34,11 +34,11 @@ function created(repo: ReturnType<typeof makeRepo>) {
   return (repo.create as jest.Mock).mock.calls[0][0] as Record<string, unknown>;
 }
 
-describe('ContractsService.create — template_id/signers/tipo default (pré-requisito C1)', () => {
+describe('ContractsService.create — template_id/signers/type default (pré-requisito C1)', () => {
   it('persiste template_id quando enviado', async () => {
     const { svc, repo } = makeService();
     await svc.create('tenant-1', 'user-1', {
-      title: 'Contrato X', tipo: 'gravacao', template_id: '11111111-1111-4111-8111-111111111111',
+      title: 'Contrato X', type: 'gravacao', template_id: '11111111-1111-4111-8111-111111111111',
     } as unknown as CreateContractDto);
 
     expect(created(repo)['template_id']).toBe('11111111-1111-4111-8111-111111111111');
@@ -48,7 +48,7 @@ describe('ContractsService.create — template_id/signers/tipo default (pré-req
     const { svc, repo } = makeService();
     const signers = [{ name: 'Fulano', email: 'fulano@example.com', role: 'artista' }];
     await svc.create('tenant-1', 'user-1', {
-      title: 'Contrato X', tipo: 'gravacao', signers,
+      title: 'Contrato X', type: 'gravacao', signers,
     } as unknown as CreateContractDto);
 
     expect(created(repo)['signers']).toEqual(signers);
@@ -57,7 +57,7 @@ describe('ContractsService.create — template_id/signers/tipo default (pré-req
   it('não persiste signers quando não é um array', async () => {
     const { svc, repo } = makeService();
     await svc.create('tenant-1', 'user-1', {
-      title: 'Contrato X', tipo: 'gravacao', signers: 'not-an-array' as unknown as unknown[],
+      title: 'Contrato X', type: 'gravacao', signers: 'not-an-array' as unknown as unknown[],
     } as unknown as CreateContractDto);
 
     expect(created(repo)['signers']).toBeUndefined();
@@ -67,7 +67,7 @@ describe('ContractsService.create — template_id/signers/tipo default (pré-req
     const { svc, repo } = makeService();
     const documentos = [{ name: 'contrato.pdf', size: 1234, type: 'application/pdf', path: 'https://r2/x.pdf', url: 'https://r2/x.pdf' }];
     await svc.create('tenant-1', 'user-1', {
-      title: 'Contrato X', tipo: 'gravacao', documentos,
+      title: 'Contrato X', type: 'gravacao', documentos,
     } as unknown as CreateContractDto);
 
     expect(created(repo)['documentos']).toEqual(documentos);
@@ -76,34 +76,34 @@ describe('ContractsService.create — template_id/signers/tipo default (pré-req
   it('REM-02: documentos ausente persiste como array vazio (mesmo padrão de versoes)', async () => {
     const { svc, repo } = makeService();
     await svc.create('tenant-1', 'user-1', {
-      title: 'Contrato X', tipo: 'gravacao',
+      title: 'Contrato X', type: 'gravacao',
     } as unknown as CreateContractDto);
 
     expect(created(repo)['documentos']).toEqual([]);
   });
 
-  it('aplica tipo="outro" quando nem tipo nem type são enviados (fluxo do wizard sem template)', async () => {
+  it('aplica type="outro" quando nem type nem tipo são enviados (fluxo do wizard sem template)', async () => {
     const { svc, repo } = makeService();
     await svc.create('tenant-1', 'user-1', {
       title: 'Contrato sem tipo definido',
     } as unknown as CreateContractDto);
 
-    expect(created(repo)['tipo']).toBe('outro');
+    expect(created(repo)['type']).toBe('outro');
   });
 
-  it('preserva o tipo enviado quando presente (não aplica o default)', async () => {
+  it('preserva o type enviado quando presente (não aplica o default)', async () => {
     const { svc, repo } = makeService();
     await svc.create('tenant-1', 'user-1', {
-      title: 'Contrato X', tipo: 'gravacao',
+      title: 'Contrato X', type: 'gravacao',
     } as unknown as CreateContractDto);
 
-    expect(created(repo)['tipo']).toBe('gravacao');
+    expect(created(repo)['type']).toBe('gravacao');
   });
 
   it('template_id ausente não é persistido (filtro final remove null/undefined)', async () => {
     const { svc, repo } = makeService();
     await svc.create('tenant-1', 'user-1', {
-      title: 'Contrato X', tipo: 'gravacao',
+      title: 'Contrato X', type: 'gravacao',
     } as unknown as CreateContractDto);
 
     expect(created(repo)['template_id']).toBeUndefined();
@@ -168,7 +168,7 @@ const baseContractRow = (overrides: Record<string, unknown> = {}) => ({
   id: 'contract-1',
   tenant_id: 'tenant-1',
   title: 'Contrato existente',
-  tipo: 'gravacao',
+  type: 'gravacao',
   status: 'rascunho',
   artist_id: null,
   client_id: null,
@@ -184,33 +184,33 @@ describe('ContractsService.create — consolidação de aliases (Fase 5 / C1)', 
   it('payload PT canônico persiste somente chaves canônicas', async () => {
     const { svc, repo } = makeServiceC1();
     await svc.create('tenant-1', 'user-1', {
-      title: 'Contrato X', tipo: 'gravacao', artist_id: '11111111-1111-4111-8111-111111111111',
+      title: 'Contrato X', type: 'gravacao', artist_id: '11111111-1111-4111-8111-111111111111',
       data_inicio: '2026-01-01T00:00:00.000Z', arquivo_url: 'https://a.com/x.pdf', valor: 10,
     } as unknown as CreateContractDto);
 
     const row = createdC1(repo);
     expect(row['title']).toBe('Contrato X');
-    expect(row['tipo']).toBe('gravacao');
+    expect(row['type']).toBe('gravacao');
     expect(row['artist_id']).toBe('11111111-1111-4111-8111-111111111111');
     expect(row['valor']).toBe('10');
     expect(row['titulo']).toBeUndefined();
-    expect(row['type']).toBeUndefined();
+    expect(row['tipo']).toBeUndefined();
     expect(row['artistId']).toBeUndefined();
     expect(row['value']).toBeUndefined();
   });
 
-  it('payload com alias PT legado (titulo) + aliases EN (type/value) é traduzido para as colunas canônicas', async () => {
+  it('payload com aliases PT legados (titulo/tipo) + alias EN (value) é traduzido para as colunas canônicas', async () => {
     const { svc, repo } = makeServiceC1();
     await svc.create('tenant-1', 'user-1', {
-      titulo: 'Contrato PT legado', type: 'recording', value: '10',
+      titulo: 'Contrato PT legado', tipo: 'recording', value: '10',
     } as unknown as CreateContractDto);
 
     const row = createdC1(repo);
     expect(row['title']).toBe('Contrato PT legado');
-    expect(row['tipo']).toBe('recording');
+    expect(row['type']).toBe('recording');
     expect(row['valor']).toBe('10');
     expect(row['titulo']).toBeUndefined();
-    expect(row['type']).toBeUndefined();
+    expect(row['tipo']).toBeUndefined();
     expect(row['value']).toBeUndefined();
   });
 
@@ -218,12 +218,12 @@ describe('ContractsService.create — consolidação de aliases (Fase 5 / C1)', 
     const { svc } = makeServiceC1();
     const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     await svc.create('tenant-1', 'user-1', {
-      titulo: 'Contrato PT legado', type: 'recording',
+      titulo: 'Contrato PT legado', tipo: 'recording',
     } as unknown as CreateContractDto);
 
     const messages = warnSpy.mock.calls.map((c) => String(c[0]));
     expect(messages.filter((m) => m.includes('alias=titulo'))).toHaveLength(1);
-    expect(messages.filter((m) => m.includes('alias=type'))).toHaveLength(1);
+    expect(messages.filter((m) => m.includes('alias=tipo'))).toHaveLength(1);
     expect(messages.some((m) => m.includes('operation=create'))).toBe(true);
     expect(messages.some((m) => m.includes('tenantId=tenant-1'))).toBe(true);
     warnSpy.mockRestore();
@@ -241,7 +241,7 @@ describe('ContractsService.create — consolidação de aliases (Fase 5 / C1)', 
   it('título ausente (nem title nem titulo) rejeita antes do repository', async () => {
     const { svc, repo } = makeServiceC1();
     await expect(svc.create('tenant-1', 'user-1', {
-      tipo: 'gravacao',
+      type: 'gravacao',
     } as unknown as CreateContractDto)).rejects.toMatchObject({ response: { code: 'CONTRACT_TITLE_REQUIRED' } });
     expect(repo.create).not.toHaveBeenCalled();
   });
@@ -257,10 +257,10 @@ describe('ContractsService.create — consolidação de aliases (Fase 5 / C1)', 
     expect(repo.create).not.toHaveBeenCalled();
   });
 
-  it('tipo ausente aplica default "outro" (já coberto no pré-requisito; reconfirmado após a integração com o resolver)', async () => {
+  it('type ausente aplica default "outro" (já coberto no pré-requisito; reconfirmado após a integração com o resolver)', async () => {
     const { svc, repo } = makeServiceC1();
     await svc.create('tenant-1', 'user-1', { title: 'X' } as unknown as CreateContractDto);
-    expect(createdC1(repo)['tipo']).toBe('outro');
+    expect(createdC1(repo)['type']).toBe('outro');
   });
 
   it('valor zero é preservado (não tratado como ausente)', async () => {
@@ -334,11 +334,11 @@ describe('ContractsService.update — consolidação de aliases (Fase 5 / C1)', 
     expect(repo.update).not.toHaveBeenCalled();
   });
 
-  it('update sem tipo/type enviados NÃO aplica default "outro"', async () => {
+  it('update sem type/type enviados NÃO aplica default "outro"', async () => {
     const { svc, repo } = makeServiceC1([baseContractRow()]);
     await svc.update('tenant-1', 'user-1', 'contract-1', { observacoes: 'x' } as unknown as UpdateContractDto);
 
-    expect(updatedC1(repo)['tipo']).toBeUndefined();
+    expect(updatedC1(repo)['type']).toBeUndefined();
   });
 
   it('repository não é chamado quando a validação falha', async () => {
@@ -349,27 +349,27 @@ describe('ContractsService.update — consolidação de aliases (Fase 5 / C1)', 
 });
 
 describe('ContractsService.list — filtros canônicos e legados (Fase 5 / C1)', () => {
-  it('filtra por tipo canônico', async () => {
-    const { svc, repo } = makeServiceC1([baseContractRow()]);
-    await svc.list('tenant-1', { tipo: 'gravacao' } as unknown as QueryContractDto);
-    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.tipo = :tipo', { tipo: 'gravacao' });
-  });
-
-  it('filtra por type legado (traduzido para tipo)', async () => {
+  it('filtra por type canônico', async () => {
     const { svc, repo } = makeServiceC1([baseContractRow()]);
     await svc.list('tenant-1', { type: 'gravacao' } as unknown as QueryContractDto);
-    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.tipo = :tipo', { tipo: 'gravacao' });
+    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.type = :type', { type: 'gravacao' });
   });
 
-  it('tipo e type equivalentes são aceitos', async () => {
+  it('filtra por tipo legado (traduzido para type)', async () => {
     const { svc, repo } = makeServiceC1([baseContractRow()]);
-    await svc.list('tenant-1', { tipo: 'gravacao', type: 'gravacao' } as unknown as QueryContractDto);
-    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.tipo = :tipo', { tipo: 'gravacao' });
+    await svc.list('tenant-1', { tipo: 'gravacao' } as unknown as QueryContractDto);
+    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.type = :type', { type: 'gravacao' });
   });
 
-  it('tipo e type conflitantes rejeitam antes de montar a query', async () => {
+  it('type e tipo equivalentes são aceitos', async () => {
     const { svc, repo } = makeServiceC1([baseContractRow()]);
-    await expect(svc.list('tenant-1', { tipo: 'gravacao', type: 'edicao' } as unknown as QueryContractDto))
+    await svc.list('tenant-1', { type: 'gravacao', tipo: 'gravacao' } as unknown as QueryContractDto);
+    expect(repo._qb['andWhere']).toHaveBeenCalledWith('c.type = :type', { type: 'gravacao' });
+  });
+
+  it('type e tipo conflitantes rejeitam antes de montar a query', async () => {
+    const { svc, repo } = makeServiceC1([baseContractRow()]);
+    await expect(svc.list('tenant-1', { type: 'gravacao', tipo: 'edicao' } as unknown as QueryContractDto))
       .rejects.toMatchObject({ response: { code: 'CONTRACT_ALIAS_CONFLICT' } });
     expect(repo._qb['getManyAndCount']).not.toHaveBeenCalled();
   });
@@ -395,27 +395,27 @@ describe('ContractsService.list — filtros canônicos e legados (Fase 5 / C1)',
     } as unknown as QueryContractDto)).rejects.toMatchObject({ response: { code: 'CONTRACT_ALIAS_CONFLICT' } });
   });
 
-  it('query builder nunca recebe os nomes EN como parâmetro', async () => {
+  it('query builder nunca recebe os nomes legados como parâmetro', async () => {
     const { svc, repo } = makeServiceC1([baseContractRow()]);
-    await svc.list('tenant-1', { type: 'gravacao' } as unknown as QueryContractDto);
+    await svc.list('tenant-1', { tipo: 'gravacao' } as unknown as QueryContractDto);
     const calls = (repo._qb['andWhere'] as jest.Mock).mock.calls;
-    expect(calls.some(([sql]) => String(sql).includes('type'))).toBe(false);
-    expect(calls.some(([, params]) => params && 'type' in params)).toBe(false);
+    expect(calls.some(([sql]) => String(sql).includes('tipo'))).toBe(false);
+    expect(calls.some(([, params]) => params && 'tipo' in params)).toBe(false);
   });
 
   it('emite warning ao usar filtro legado', async () => {
     const { svc } = makeServiceC1([baseContractRow()]);
     const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-    await svc.list('tenant-1', { type: 'gravacao' } as unknown as QueryContractDto);
-    expect(warnSpy.mock.calls.some((c) => String(c[0]).includes('alias=type') && String(c[0]).includes('operation=list'))).toBe(true);
+    await svc.list('tenant-1', { tipo: 'gravacao' } as unknown as QueryContractDto);
+    expect(warnSpy.mock.calls.some((c) => String(c[0]).includes('alias=tipo') && String(c[0]).includes('operation=list'))).toBe(true);
     warnSpy.mockRestore();
   });
 
-  it('ausência de tipo/artist_id não adiciona filtro nenhum', async () => {
+  it('ausência de type/artist_id não adiciona filtro nenhum', async () => {
     const { svc, repo } = makeServiceC1([baseContractRow()]);
     await svc.list('tenant-1', {} as unknown as QueryContractDto);
     const calls = (repo._qb['andWhere'] as jest.Mock).mock.calls;
-    expect(calls.some(([sql]) => String(sql).includes('c.tipo'))).toBe(false);
+    expect(calls.some(([sql]) => String(sql).includes('c.type'))).toBe(false);
     expect(calls.some(([sql]) => String(sql).includes('c.artist_id'))).toBe(false);
   });
 });
@@ -431,21 +431,21 @@ describe('ContractsService.create — FK cross-tenant (P1)', () => {
   it('rejeita artist_id que não pertence ao tenant (ou não existe)', async () => {
     const { svc } = makeServiceC1([], jest.fn(async () => []));
     await expect(svc.create('tenant-1', 'user-1', {
-      title: 'X', tipo: 'gravacao', artist_id: '11111111-1111-4111-8111-111111111111',
+      title: 'X', type: 'gravacao', artist_id: '11111111-1111-4111-8111-111111111111',
     } as unknown as CreateContractDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejeita client_id que não pertence ao tenant (ou não existe)', async () => {
     const { svc } = makeServiceC1([], jest.fn(async () => []));
     await expect(svc.create('tenant-1', 'user-1', {
-      title: 'X', tipo: 'gravacao', client_id: '22222222-2222-4222-8222-222222222222',
+      title: 'X', type: 'gravacao', client_id: '22222222-2222-4222-8222-222222222222',
     } as unknown as CreateContractDto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('permite quando ambos pertencem ao tenant', async () => {
     const { svc } = makeServiceC1([], jest.fn(async () => [{ exists: 1 }]));
     await expect(svc.create('tenant-1', 'user-1', {
-      title: 'X', tipo: 'gravacao',
+      title: 'X', type: 'gravacao',
       artist_id: '11111111-1111-4111-8111-111111111111',
       client_id: '22222222-2222-4222-8222-222222222222',
     } as unknown as CreateContractDto)).resolves.toBeDefined();

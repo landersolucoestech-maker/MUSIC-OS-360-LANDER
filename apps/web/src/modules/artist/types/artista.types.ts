@@ -28,7 +28,7 @@ export interface ArtistaContatoVinculado {
 }
 
 export interface ArtistaRelacionamento {
-  tipo: "empresario" | "gravadora" | "editora" | "booker" | "juridico" | "financeiro" | "contador" | "assessoria";
+  type: "empresario" | "gravadora" | "editora" | "booker" | "juridico" | "financeiro" | "contador" | "assessoria";
   nome: string;
   telefone: string;
   email: string;

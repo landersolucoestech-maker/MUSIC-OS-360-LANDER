@@ -34,7 +34,7 @@ export interface ContentDetection {
   url: string | null;
   score: string | null;
   status: DetectionStatus;
-  tipo: string;
+  type: string;
   detectado_em: string;
   metadata: Record<string, unknown>;
   created_at: string;
@@ -45,7 +45,7 @@ export interface EcadReport {
   id: string;
   work_id: string | null;
   periodo: string;
-  tipo: string;
+  type: string;
   valor_bruto: string | null;
   valor_liquido: string | null;
   status: EcadReportStatus;

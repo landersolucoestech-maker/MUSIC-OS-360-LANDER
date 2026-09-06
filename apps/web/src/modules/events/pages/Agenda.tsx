@@ -129,7 +129,7 @@ export default function Agenda() {
     () => [{ value: "all-type", label: "Todos Tipos" }, ...(eventTypeOptions.length > 0 ? eventTypeOptions : TIPO_OPTIONS.slice(1))],
     [eventTypeOptions],
   );
-  // events.tipo só guarda o enum coarse do backend (show/festival/recording/
+  // events.type só guarda o enum coarse do backend (show/festival/recording/
   // meeting/interview/tour/other) — a categoria granular escolhida no filtro
   // (slug configurado em Configurações → Operacional) precisa ser traduzida
   // antes de virar filtro de query, senão nunca bate com nenhum evento real.
@@ -167,7 +167,7 @@ export default function Agenda() {
   } = useEventosScoped({
     dateFrom: periodStart.toISOString(),
     dateTo: periodEnd.toISOString(),
-    tipo: typeFilterBackendValue(typeFilter),
+    type: typeFilterBackendValue(typeFilter),
     status: statusFilter !== "all-status" ? statusFilter : undefined,
   });
   const scopedEventos = scopedEventosRaw as Evento[];
@@ -185,12 +185,12 @@ export default function Agenda() {
   const handleExcelExport = async () => {
     // Task I: varredura completa via paginação iterativa server-side —
     // antes exportava só `eventos` (useEventos() sem filtro, preso ao
-    // limit=50 default do backend). Preserva os filtros de tipo/status
+    // limit=50 default do backend). Preserva os filtros de type/status
     // ativos na tela; não escopa ao período do calendário (export é "todos
     // os eventos que casam com o filtro", não "só o que está visível agora").
     const filters: Record<string, unknown> = {};
     const backendType = typeFilterBackendValue(typeFilter);
-    if (backendType) filters.tipo = backendType;
+    if (backendType) filters.type = backendType;
     if (statusFilter !== "all-status") filters.status = statusFilter;
 
     const { items: allEventos, truncated } = await fetchAllPages<Evento>("eventos", { filters });
@@ -205,7 +205,7 @@ export default function Agenda() {
       const fim = splitDateTime(e.data_fim);
       return {
         title: e.title,
-        tipo: getBackendEventTypeLabel(e.tipo),
+        type: getBackendEventTypeLabel(e.type),
         status: e.status,
         participantes: summarizeAgendaParticipants(getEventoParticipants(e)),
         data_inicio: inicio.date,
@@ -258,12 +258,12 @@ export default function Agenda() {
         const horarioInicio = row.horario_inicio || row.horario || row.Horario || null;
         const dataFim = row.data_fim || row["Data Fim"] || null;
         const horarioFim = row.horario_fim || row["Horário Fim"] || null;
-        const tipoRaw = String(row.tipo_evento || row.tipo || row.Tipo || "").toLowerCase();
+        const tipoRaw = String(row.tipo_evento || row.type || row.Tipo || "").toLowerCase();
         const valorCache = row.valor_cache || row["Valor Cachê"];
         const publicoEsperado = row.publico_esperado || row["Público Esperado"] || row.capacidade || row["Capacidade"];
 
         // Payload no formato do CreateEventDto real (title/type/startsAt/
-        // endsAt/venue — não title/tipo/data_inicio, que não existem no DTO;
+        // endsAt/venue — não title/type/data_inicio, que não existem no DTO;
         // status é omitido pois CreateEventDto não o aceita, só UpdateEventDto).
         const payload: Record<string, unknown> = {
           title: title,
@@ -322,7 +322,7 @@ export default function Agenda() {
       location: evento.local,
       status: evento.status ?? "pendente",
       cache: evento.valor_cache ?? undefined,
-      type: getBackendEventTypeLabel(evento.tipo),
+      type: getBackendEventTypeLabel(evento.type),
       allDay: isMidnight,
       raw: evento,
     };

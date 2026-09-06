@@ -59,49 +59,49 @@ export const TEMPERATURA_OPTIONS = [
 ] as const;
 
 // ─────────────────────────────────────────────
-// Regras condicionais por combo tipo + serviço
+// Regras condicionais por combo type + serviço
 // ─────────────────────────────────────────────
 
-const EVENTO_COMBOS: ReadonlyArray<{ tipo: string; servico: string }> = [
-  { tipo: "marca_empresa",        servico: "eventos_corporativos" },
-  { tipo: "agencia",              servico: "producao_eventos"     },
-  { tipo: "agencia",              servico: "contratacao_artistas" },
-  { tipo: "produtora_eventos",    servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "eventos_corporativos" },
-  { tipo: "empresario_artistico", servico: "contratacao_artistas" },
-  { tipo: "empresario_artistico", servico: "eventos_corporativos" },
-  { tipo: "influenciador",        servico: "producao_eventos"     },
+const EVENTO_COMBOS: ReadonlyArray<{ type: string; servico: string }> = [
+  { type: "marca_empresa",        servico: "eventos_corporativos" },
+  { type: "agencia",              servico: "producao_eventos"     },
+  { type: "agencia",              servico: "contratacao_artistas" },
+  { type: "produtora_eventos",    servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "eventos_corporativos" },
+  { type: "empresario_artistico", servico: "contratacao_artistas" },
+  { type: "empresario_artistico", servico: "eventos_corporativos" },
+  { type: "influenciador",        servico: "producao_eventos"     },
 ];
 
-const CAMPANHA_COMBOS: ReadonlyArray<{ tipo: string; servico: string }> = [
-  { tipo: "marca_empresa", servico: "campanhas_artistas" },
-  { tipo: "agencia",       servico: "campanhas_artistas" },
+const CAMPANHA_COMBOS: ReadonlyArray<{ type: string; servico: string }> = [
+  { type: "marca_empresa", servico: "campanhas_artistas" },
+  { type: "agencia",       servico: "campanhas_artistas" },
 ];
 
-const ARTISTA_EVENTO_COMBOS: ReadonlyArray<{ tipo: string; servico: string }> = [
-  { tipo: "marca_empresa",        servico: "eventos_corporativos" },
-  { tipo: "agencia",              servico: "producao_eventos"     },
-  { tipo: "agencia",              servico: "contratacao_artistas" },
-  { tipo: "produtora_eventos",    servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "eventos_corporativos" },
-  { tipo: "empresario_artistico", servico: "contratacao_artistas" },
-  { tipo: "empresario_artistico", servico: "eventos_corporativos" },
+const ARTISTA_EVENTO_COMBOS: ReadonlyArray<{ type: string; servico: string }> = [
+  { type: "marca_empresa",        servico: "eventos_corporativos" },
+  { type: "agencia",              servico: "producao_eventos"     },
+  { type: "agencia",              servico: "contratacao_artistas" },
+  { type: "produtora_eventos",    servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "eventos_corporativos" },
+  { type: "empresario_artistico", servico: "contratacao_artistas" },
+  { type: "empresario_artistico", servico: "eventos_corporativos" },
 ];
 
 const matchCombo = (
-  list: ReadonlyArray<{ tipo: string; servico: string }>,
-  tipo: string,
+  list: ReadonlyArray<{ type: string; servico: string }>,
+  type: string,
   servico: string,
-) => list.some((c) => c.tipo === tipo && c.servico === servico);
+) => list.some((c) => c.type === type && c.servico === servico);
 
 // ─────────────────────────────────────────────
 // Tipos
 // ─────────────────────────────────────────────
 export type Interacao = {
   id: string;
-  tipo: string;
+  type: string;
   data: string;
   horario: string;
   descricao: string;
@@ -358,7 +358,7 @@ export function LeadFormModal({
   // ── Interações ───────────────────────────────
   const addInteracao = () => {
     const nova: Interacao = {
-      id: newId(), tipo: "whatsapp",
+      id: newId(), type: "whatsapp",
       data: todayISO(), horario: nowHorario(), descricao: "",
     };
     setValues((prev) => ({ ...prev, interacoes: [...prev.interacoes, nova] }));
@@ -408,22 +408,22 @@ export function LeadFormModal({
   const removeUpload = (id: string) =>
     setValues((prev) => ({ ...prev, uploads: prev.uploads.filter((upload) => upload.id !== id) }));
 
-  const tipo    = values.tipo_lead as TipoLead | "";
+  const type    = values.tipo_lead as TipoLead | "";
   const servico = values.servico;
 
-  const showEvento   = matchCombo(EVENTO_COMBOS,   tipo, servico);
-  const showCampanha = matchCombo(CAMPANHA_COMBOS, tipo, servico);
+  const showEvento   = matchCombo(EVENTO_COMBOS,   type, servico);
+  const showCampanha = matchCombo(CAMPANHA_COMBOS, type, servico);
 
   // CORRIGIDO: showInfluenciador e showEmpresario são mutuamente exclusivos com showEvento
-  const showInfluenciador = tipo === TIPO_LEAD_INFLUENCIADOR && !showEvento;
-  const showEmpresario    = tipo === TIPO_LEAD_EMPRESARIO    && !showEvento;
+  const showInfluenciador = type === TIPO_LEAD_INFLUENCIADOR && !showEvento;
+  const showEmpresario    = type === TIPO_LEAD_EMPRESARIO    && !showEvento;
 
-  const showArtistaBandaEvento = matchCombo(ARTISTA_EVENTO_COMBOS, tipo, servico);
+  const showArtistaBandaEvento = matchCombo(ARTISTA_EVENTO_COMBOS, type, servico);
 
   // Campo artista/influenciador na seção Classificação
-  const showArtistaMarcaEmpresa    = tipo === "marca_empresa"    && servico === "campanhas_artistas";
-  const showArtistaBandaEmpresario = tipo === TIPO_LEAD_EMPRESARIO;
-  const showInfluenciadorTipoLead  = tipo === TIPO_LEAD_INFLUENCIADOR;
+  const showArtistaMarcaEmpresa    = type === "marca_empresa"    && servico === "campanhas_artistas";
+  const showArtistaBandaEmpresario = type === TIPO_LEAD_EMPRESARIO;
+  const showInfluenciadorTipoLead  = type === TIPO_LEAD_INFLUENCIADOR;
 
   const showCampoArtista =
     showArtistaMarcaEmpresa    ||
@@ -443,8 +443,8 @@ export function LeadFormModal({
       : "Ex: João da Silva";
 
   const servicosDisponiveis = useMemo(
-    () => getServicosForTipoLead(tipo),
-    [tipo],
+    () => getServicosForTipoLead(type),
+    [type],
   );
 
   // ── Submit ───────────────────────────────────
@@ -609,7 +609,7 @@ export function LeadFormModal({
                   }));
                 }}
                 options={TIPO_LEAD_OPTIONS}
-                testId="select-tipo-lead"
+                testId="select-type-lead"
               />
             </Field>
             <Field label="Serviço">
@@ -769,7 +769,7 @@ export function LeadFormModal({
                     value={values.evento!.tipo_evento}
                     onChange={(v) => setEvento("tipo_evento", v)}
                     options={TIPO_EVENTO_OPTIONS}
-                    testId="select-evento-tipo"
+                    testId="select-evento-type"
                   />
                 </Field>
               </div>
@@ -861,7 +861,7 @@ export function LeadFormModal({
                   <Input
                     value={values.campanha!.tipo_campanha}
                     onChange={(e) => setCampanha("tipo_campanha", e.target.value)}
-                    data-testid="input-campanha-tipo"
+                    data-testid="input-campanha-type"
                   />
                 </Field>
               </div>
@@ -942,7 +942,7 @@ export function LeadFormModal({
                   <Input
                     value={values.influenciador!.tipo_campanha}
                     onChange={(e) => setInfluenciador("tipo_campanha", e.target.value)}
-                    data-testid="input-influ-tipo"
+                    data-testid="input-influ-type"
                   />
                 </Field>
               </div>
@@ -1132,10 +1132,10 @@ export function LeadFormModal({
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Tipo">
                   <SelectField
-                    value={it.tipo}
-                    onChange={(v) => updateInteracao(it.id, "tipo", v)}
+                    value={it.type}
+                    onChange={(v) => updateInteracao(it.id, "type", v)}
                     options={TIPO_INTERACAO_OPTIONS}
-                    testId={`select-interacao-tipo-${it.id}`}
+                    testId={`select-interacao-type-${it.id}`}
                   />
                 </Field>
                 <Field label="Data">

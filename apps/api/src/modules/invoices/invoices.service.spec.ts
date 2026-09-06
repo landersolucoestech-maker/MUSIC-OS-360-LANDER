@@ -6,7 +6,7 @@ import { InvoicesService } from './invoices.service';
  * REM-06 (Remaining Product Completion Backlog): `invoices` mistura Notas
  * Fiscais (o tenant fatura os SEUS clientes) com faturas Stripe da própria
  * assinatura SaaS do tenant (billing.service.ts upsertStripeInvoice,
- * tipo='stripe_subscription'). GET /invoices e GET /invoices/:id (
+ * type='stripe_subscription'). GET /invoices e GET /invoices/:id (
  * RequireRole('viewer')) vazavam essas faturas Stripe — o mesmo dado só
  * deveria ser acessível via /billing/subscription (RequireRole('admin')).
  */
@@ -32,20 +32,20 @@ function makeService(rows: unknown[] = [], one: unknown = null) {
 }
 
 describe('InvoicesService.list — exclui faturas Stripe da assinatura SaaS (REM-06)', () => {
-  it('filtra tipo != stripe_subscription por padrão', async () => {
+  it('filtra type != stripe_subscription por padrão', async () => {
     const { svc, qb } = makeService();
     await svc.list('tenant-1', {} as any);
 
-    expect(qb.andWhere).toHaveBeenCalledWith("i.tipo != 'stripe_subscription'");
+    expect(qb.andWhere).toHaveBeenCalledWith("i.type != 'stripe_subscription'");
   });
 });
 
 describe('InvoicesService.findById — exclui faturas Stripe da assinatura SaaS (REM-06)', () => {
-  it('filtra tipo != stripe_subscription na busca por id', async () => {
-    const { svc, qb } = makeService([], { id: 'inv-1', tipo: 'nfse' });
+  it('filtra type != stripe_subscription na busca por id', async () => {
+    const { svc, qb } = makeService([], { id: 'inv-1', type: 'nfse' });
     await svc.findById('tenant-1', 'inv-1');
 
-    expect(qb.andWhere).toHaveBeenCalledWith("i.tipo != 'stripe_subscription'");
+    expect(qb.andWhere).toHaveBeenCalledWith("i.type != 'stripe_subscription'");
   });
 
   it('lança NotFoundException quando a fatura Stripe é a única correspondência (excluída pela query)', async () => {

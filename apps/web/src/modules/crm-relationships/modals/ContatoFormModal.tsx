@@ -282,7 +282,7 @@ export function ContatoFormModal({ open, onOpenChange, mode, initialValue, onSub
 
   // Interações
   const addInteracao = () => {
-    const nova: Interacao = { id: newId(), tipo: "whatsapp", data: todayISO(), horario: nowHorario(), descricao: "" };
+    const nova: Interacao = { id: newId(), type: "whatsapp", data: todayISO(), horario: nowHorario(), descricao: "" };
     setState((prev) => ({ ...prev, interacoes: [...prev.interacoes, nova] }));
   };
   const updateInteracao = <K extends keyof Interacao>(id: string, field: K, value: Interacao[K]) => {
@@ -390,8 +390,8 @@ export function ContatoFormModal({ open, onOpenChange, mode, initialValue, onSub
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Tipo">
-              <Select value={it.tipo} onValueChange={(v) => updateInteracao(it.id, "tipo", v)}>
-                <SelectTrigger data-testid={`select-interacao-tipo-${it.id}`}><SelectValue /></SelectTrigger>
+              <Select value={it.type} onValueChange={(v) => updateInteracao(it.id, "type", v)}>
+                <SelectTrigger data-testid={`select-interacao-type-${it.id}`}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {TIPO_INTERACAO_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
@@ -476,7 +476,7 @@ export function ContatoFormModal({ open, onOpenChange, mode, initialValue, onSub
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Tipo de Contato *">
               <Select value={state.tipo_pessoa} onValueChange={(v) => changeTipo(v as ContatoFormState["tipo_pessoa"])}>
-                <SelectTrigger data-testid="select-tipo-contato">
+                <SelectTrigger data-testid="select-type-contato">
                   <SelectValue placeholder="Selecione o Tipo de Contato" />
                 </SelectTrigger>
                 <SelectContent>

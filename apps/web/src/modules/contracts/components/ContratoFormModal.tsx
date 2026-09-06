@@ -109,7 +109,7 @@ const ContractForm = ({
       new Set(
         templates
           .map((t) => {
-            const raw = (t.tipo_servico || (t as Record<string, unknown>)["tipo"]) as string | undefined;
+            const raw = (t.tipo_servico || (t as Record<string, unknown>)["type"]) as string | undefined;
             return normalizeToCst(raw);
           })
           .filter((s): s is string => Boolean(s)),
@@ -128,7 +128,7 @@ const ContractForm = ({
   const cstToLabel = useMemo(() => {
     const map = new Map<string, string>();
     for (const t of templates) {
-      const raw = (t.tipo_servico || (t as Record<string, unknown>)["tipo"]) as string | undefined;
+      const raw = (t.tipo_servico || (t as Record<string, unknown>)["type"]) as string | undefined;
       if (!raw) continue;
       const cstSlug = normalizeToCst(raw);
       if (!cstSlug) continue;
@@ -196,7 +196,7 @@ const ContractForm = ({
                 <SelectContent>
                   {legacyServiceTypeLabel && (
                     <SelectItem value={serviceTypeValue!} disabled className="text-muted-foreground">
-                      {legacyServiceTypeLabel} (tipo anterior)
+                      {legacyServiceTypeLabel} (type anterior)
                     </SelectItem>
                   )}
                   {typesWithTemplates.length === 0 ? (
@@ -328,7 +328,7 @@ const ContractForm = ({
                   </>
                 )}
 
-                {/* Recebimentos externos de direitos direto (tipo não usa seletor de pagamento) */}
+                {/* Recebimentos externos de direitos direto (type não usa seletor de pagamento) */}
                 {selectedType.requires_external_rights_terms && !selectedType.allow_installments && (
                   <div className="space-y-2">
                     <Label htmlFor="external_rights_percentage">Termos externos de direitos (%)</Label>
@@ -337,7 +337,7 @@ const ContractForm = ({
                   </div>
                 )}
 
-                {/* Valor fixo direto (tipo não usa seletor de pagamento) */}
+                {/* Valor fixo direto (type não usa seletor de pagamento) */}
                 {selectedType.requires_fixed_value && !selectedType.allow_installments && (
                   <div className="space-y-2">
                     <Label htmlFor="fixed_value">Valor Fixo do Serviço (R$)</Label>
@@ -365,7 +365,7 @@ const ContractForm = ({
                 )}
               </>
             ) : (
-              /* Sem tipo selecionado: campo de valor genérico (fallback) */
+              /* Sem type selecionado: campo de valor genérico (fallback) */
               <div className="space-y-2">
                 <Label htmlFor="fixed_value_default">Valor do Contrato (R$)</Label>
                 <Input id="fixed_value_default" type="number" step="0.01" placeholder="0,00"
@@ -566,7 +566,7 @@ const ContractForm = ({
 // ── Mapper: ContratoWithRelations → ContratoFormData ─────────────────────────
 function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormSubmitData> {
   const status = c.status as ContratoFormData["status"] | undefined;
-  const serviceType = c.tipo as ContratoFormData["service_type"] | undefined;
+  const serviceType = c.type as ContratoFormData["service_type"] | undefined;
   return {
     title:        c.title ?? "",
     service_type: serviceType,
@@ -616,7 +616,7 @@ export const ContratoFormModal = ({
 
     const payload: Record<string, unknown> = {
       title: title,
-      tipo: service_type,
+      type: service_type,
       status: status || "rascunho",
       arquivo_url: resolvedArquivoUrl,
       release_id: resolvedReleaseId,

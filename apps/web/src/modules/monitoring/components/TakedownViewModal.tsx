@@ -50,7 +50,7 @@ export function TakedownViewModal({ open, onOpenChange, takedown }: TakedownView
               </div>
               <div>
                 <span className="text-sm text-muted-foreground">Tipo</span>
-                <div className="mt-1">{tipoBadge(n.tipo)}</div>
+                <div className="mt-1">{tipoBadge(n.type)}</div>
               </div>
               <Field label="Prioridade" value={prioridadeLabel(n.prioridade)} />
             </div>

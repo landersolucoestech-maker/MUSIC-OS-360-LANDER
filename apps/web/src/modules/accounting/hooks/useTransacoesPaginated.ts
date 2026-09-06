@@ -8,7 +8,7 @@ export interface UseTransacoesPaginatedParams {
   page: number;
   pageSize: number;
   search?: string;
-  tipo?: string;
+  type?: string;
   status?: string;
   categoria?: string;
   dateFrom?: string;
@@ -16,10 +16,10 @@ export interface UseTransacoesPaginatedParams {
 }
 
 export function useTransacoesPaginated({
-  page, pageSize, search, tipo, status, categoria, dateFrom, dateTo,
+  page, pageSize, search, type, status, categoria, dateFrom, dateTo,
 }: UseTransacoesPaginatedParams) {
   const filters: Record<string, unknown> = {};
-  if (tipo) filters.tipo = tipo;
+  if (type) filters.type = type;
   if (status) filters.status = status;
   if (categoria) filters.categoria = categoria;
   if (dateFrom) filters.dateFrom = dateFrom;
@@ -46,7 +46,7 @@ export function useTransacoesPaginated({
 }
 
 interface TipoStatusRow {
-  tipo: string;
+  type: string;
   status: string;
   cnt: number;
   sum: number;
@@ -70,7 +70,7 @@ const EMPTY_KPIS: FinanceiroKPIs = {
 };
 
 /**
- * GET /transactions/stats — distribuição exata tipo×status + soma de valor,
+ * GET /transactions/stats — distribuição exata type×status + soma de valor,
  * tenant inteiro (Task H). Os KPIs de Financeiro.tsx nunca são calculados só
  * sobre a página ou o intervalo de datas atualmente filtrado na tabela.
  */
@@ -86,10 +86,10 @@ export function useFinanceiroStats() {
   let receitasPendentes = 0, despesasPendentes = 0;
   for (const row of rows) {
     total += row.cnt;
-    if (row.tipo === "receita" && row.status === "pago") { receitasPagas += row.sum; }
-    else if (row.tipo === "despesa" && row.status === "pago") { despesasPagas += row.sum; }
-    else if (row.tipo === "receita" && row.status === "pendente") { contasReceber += row.sum; receitasPendentes += row.cnt; }
-    else if (row.tipo === "despesa" && row.status === "pendente") { contasPagar += row.sum; despesasPendentes += row.cnt; }
+    if (row.type === "receita" && row.status === "pago") { receitasPagas += row.sum; }
+    else if (row.type === "despesa" && row.status === "pago") { despesasPagas += row.sum; }
+    else if (row.type === "receita" && row.status === "pendente") { contasReceber += row.sum; receitasPendentes += row.cnt; }
+    else if (row.type === "despesa" && row.status === "pendente") { contasPagar += row.sum; despesasPendentes += row.cnt; }
   }
   const lucroLiquido = receitasPagas - despesasPagas;
   const margem = receitasPagas > 0 ? Math.round((lucroLiquido / receitasPagas) * 100) : 0;

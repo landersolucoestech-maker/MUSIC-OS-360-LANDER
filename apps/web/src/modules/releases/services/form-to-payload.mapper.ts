@@ -71,7 +71,7 @@ export function formToLancamentoPayload(f: LancamentoFormFields, mode: "create" 
 
   const payload: Record<string, unknown> = {
     title:       f.title.trim(),
-    type:        ns(f.tipo) ?? "single",
+    type:        ns(f.type) ?? "single",
   };
 
   const artistId  = ns(f.artist_id);

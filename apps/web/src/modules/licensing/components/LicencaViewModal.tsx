@@ -72,7 +72,7 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
                 <span className="text-sm text-muted-foreground">Status</span>
                 <div className="mt-1">{getStatusBadge(licenca.status)}</div>
               </div>
-              <Field label="Tipo de Licença" value={tipoLabel(licenca.tipo)} />
+              <Field label="Tipo de Licença" value={tipoLabel(licenca.type)} />
               <Field label="Obra Musical" value={obraTitle} />
               <Field label="Artista" value={artista} />
             </div>

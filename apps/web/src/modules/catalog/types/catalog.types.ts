@@ -18,7 +18,7 @@ export interface Obra {
   // Renomeado de `cod_abramus` (20260718000017) — código em qualquer entidade
   // de gestão coletiva (ABRAMUS, UBC, SOCINPRO, ...), não só ABRAMUS.
   cod_entidade?: string | null;
-  tipo?: ObraTipo | string | null;
+  type?: ObraTipo | string | null;
   genero?: string | null;
   status?: ObraStatus | string | null;
   duracao?: string | null;
@@ -48,7 +48,7 @@ export interface Fonograma {
   artist_id?: string | null;
   isrc?: string | null;
   duracao?: string | null;
-  tipo?: string | null;
+  type?: string | null;
   status?: FonogramaStatus | string | null;
   compositores?: string | null;
   interpretes?: string | null;

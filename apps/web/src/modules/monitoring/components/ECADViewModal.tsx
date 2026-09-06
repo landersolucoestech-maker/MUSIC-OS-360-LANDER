@@ -60,7 +60,7 @@ export function ECADViewModal({ open, onOpenChange, relatorio }: ECADViewModalPr
           <div className="space-y-6 pr-4">
             <div className="flex gap-2">
               {getStatusBadge(relatorio.status)}
-              <Badge variant="outline" className="capitalize">{relatorio.tipo.replace(/_/g, " ")}</Badge>
+              <Badge variant="outline" className="capitalize">{relatorio.type.replace(/_/g, " ")}</Badge>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

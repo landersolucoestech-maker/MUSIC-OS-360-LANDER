@@ -119,7 +119,7 @@ describe('AssetLinkingService.processUpload', () => {
 });
 
 describe('AssetLinkingService.getProjectAssetsDetailed', () => {
-  it('enriquece os vínculos com nome/tipo/URL da versão corrente', async () => {
+  it('enriquece os vínculos com nome/type/URL da versão corrente', async () => {
     const link = { id: 'pa-1', asset_id: 'asset-1', role: 'reference', source_event: 'asset.uploaded', linked_by: 'user-1', created_at: new Date() };
     const asset = { id: 'asset-1', name: 'master.wav', asset_type: 'wav', mime_type: 'audio/wav', status: 'active', current_version_id: 'ver-1' };
     const version = { id: 'ver-1', file_url: 'tenant/t1/u1.wav' };

@@ -111,7 +111,7 @@ const LEGACY_TO_DISPLAY: Record<string, ReleaseStatus> = {
 
 /** Há campos obrigatórios mínimos para o release deixar de ser "incompleto"? */
 export function hasRequiredForSubmission(release: Lancamento & Record<string, unknown>): boolean {
-  return Boolean(str(release.title) && str(release.artist_id) && str(release.genero) && str(release.tipo));
+  return Boolean(str(release.title) && str(release.artist_id) && str(release.genero) && str(release.type));
 }
 
 /**

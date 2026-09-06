@@ -40,7 +40,7 @@ export class ReleasesService {
       .andWhere('r.deleted_at IS NULL');
 
     if (q.status)      qb.andWhere('r.status = :status',               { status:      q.status });
-    if (q.type)        qb.andWhere('r.tipo = :tipo',                   { tipo:        q.type });
+    if (q.type)        qb.andWhere('r.type = :type',                   { type:        q.type });
     if (q.artistId)    qb.andWhere('r.artist_id = :artistId',        { artistId:   q.artistId });
     if (q.distributor) qb.andWhere('r.distribuidora = :distribuidora', { distribuidora: q.distributor });
     if (q.search)      qb.andWhere('r.title ILIKE :search',           { search:      `%${q.search}%` });
@@ -70,7 +70,7 @@ export class ReleasesService {
     qb.select('r.status', 'status')
       .addSelect(
         `CASE WHEN r.title IS NOT NULL AND r.title <> '' AND r.artist_id IS NOT NULL
-              AND r.genero IS NOT NULL AND r.genero <> '' AND r.tipo IS NOT NULL AND r.tipo <> ''
+              AND r.genero IS NOT NULL AND r.genero <> '' AND r.type IS NOT NULL AND r.type <> ''
          THEN true ELSE false END`,
         'has_required',
       )
@@ -105,7 +105,7 @@ export class ReleasesService {
     const entity = this.repo!.create({
       tenant_id:       tenantId,
       title:          dto.title,
-      tipo:            dto.type,
+      type:            dto.type,
       artist_id:      dto.artistId    ?? null,
       upc:             dto.upc         ?? null,
       distribuidora:   dto.distributor ?? null,
@@ -129,7 +129,7 @@ export class ReleasesService {
     const saved = await this.repo!.save(entity);
     await this.recordActivity(tenantId, userId, saved.id, 'created', `Lancamento "${saved.title}" criado`, {
       title: saved.title,
-      tipo: saved.tipo,
+      type: saved.type,
       artistId: saved.artist_id,
     });
 
@@ -144,7 +144,7 @@ export class ReleasesService {
         releaseId: saved.id,
         tenantId,
         title:    saved.title,
-        tipo:      saved.tipo,
+        type:      saved.type,
         artistId:  saved.artist_id,
         createdBy: userId,
         createdAt: (saved.created_at ?? new Date()).toISOString(),
@@ -168,7 +168,7 @@ export class ReleasesService {
 
     const nonStatusUpdates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
     if (dto.title       != null) nonStatusUpdates.title          = dto.title;
-    if (dto.type        != null) nonStatusUpdates.tipo            = dto.type;
+    if (dto.type        != null) nonStatusUpdates.type            = dto.type;
     if (dto.artistId    != null) nonStatusUpdates.artist_id      = dto.artistId;
     if (dto.upc         != null) nonStatusUpdates.upc             = dto.upc;
     if (dto.distributor != null) nonStatusUpdates.distribuidora   = dto.distributor;

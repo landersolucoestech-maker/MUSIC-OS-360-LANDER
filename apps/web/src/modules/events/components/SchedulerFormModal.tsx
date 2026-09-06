@@ -96,7 +96,7 @@ const tipoEventoAliases: Record<string, string> = {
   evento_corporativo: "shows",
   reuniao: "reunioes",
   reunioes: "reunioes",
-  // Eventos já persistidos só guardam o enum coarse do backend (events.tipo,
+  // Eventos já persistidos só guardam o enum coarse do backend (events.type,
   // sem a categoria granular original) — ao editar, o select precisa
   // resolver esses valores para uma categoria granular representativa em
   // vez de ficar em branco.
@@ -169,13 +169,13 @@ const normalizeTimeValue = (value: unknown): string => {
 };
 
 const getInitialFormData = (evento?: any) => {
-  // Backend HTTP retorna entity columns: tipo, data, local. Metadata armazena
+  // Backend HTTP retorna entity columns: type, data, local. Metadata armazena
   // descricao, observacoes, valor_cache, etc. Aceita todos os formatos.
   const meta = (evento?.metadata as Record<string, unknown> | undefined) ?? {};
   return {
     title: evento?.title || evento?.title || "",
     tipoEvento: normalizeSelectValue(
-      evento?.tipoEvento || evento?.tipo_evento || evento?.tipo || evento?.type,
+      evento?.tipoEvento || evento?.tipo_evento || evento?.type || evento?.type,
       tipoEventoAliases,
     ),
     artista: evento?.artista || evento?.artist_id || evento?.artistId || "",
@@ -227,7 +227,7 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
   const { getOptionsByKind, getItemsByKind } = useOperationalSettings();
   const operationalEventTypeOptions = getOptionsByKind("event_type");
   const eventTypeOptions = operationalEventTypeOptions.length > 0 ? operationalEventTypeOptions : tiposEvento;
-  // events.tipo só guarda o enum coarse do backend — cada categoria granular
+  // events.type só guarda o enum coarse do backend — cada categoria granular
   // configurada em Configurações → Operacional carrega a correspondência em
   // metadata.backend_type (ver lib/event-type.ts).
   const granularToBackendType = buildGranularToBackendTypeMap(getItemsByKind("event_type"));
@@ -378,7 +378,7 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
 
   // Maps frontend tipoEvento (granular, tenant-configurável) → backend
   // CreateEventDto.type enum (coarse: show|festival|recording|meeting|
-  // interview|tour|other — a única coisa que events.tipo realmente guarda).
+  // interview|tour|other — a única coisa que events.type realmente guarda).
   // Fonte primária: metadata.backend_type de cada categoria configurada em
   // Configurações → Operacional (granularToBackendType, lib/event-type.ts).
   // A tabela abaixo é só o fallback para slugs legados/digitados à mão que
@@ -406,8 +406,8 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
     tour:            "tour",
     turne:           "tour",
   };
-  const mapTipoToBackendType = (tipo: string): string => {
-    const t = (tipo || "").toLowerCase();
+  const mapTipoToBackendType = (type: string): string => {
+    const t = (type || "").toLowerCase();
     if (granularToBackendType[t]) return granularToBackendType[t];
     return legacyTipoToBackendType[t] ?? "other";
   };
@@ -584,9 +584,9 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {eventTypeOptions.map((tipo) => (
-                    <SelectItem key={tipo.value} value={tipo.value}>
-                      {tipo.label}
+                  {eventTypeOptions.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

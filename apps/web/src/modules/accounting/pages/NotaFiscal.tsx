@@ -38,7 +38,7 @@ import { usePagination } from "@/shared/hooks/usePagination";
 import { Badge } from "@/shared/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { parseTipoOperacao, type TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-tipo";
+import { parseTipoOperacao, type TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-type";
 import { formatCurrency, getCurrencyToneClass, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 
 type TipoFilter = "all" | TipoOperacaoNF;
@@ -81,12 +81,12 @@ export default function NotaFiscal() {
 
   const [isViewOpen, setIsViewOpen] = useState(false);
 
-  // Enriquecimento: anota cada nota com o tipo derivado das observações
+  // Enriquecimento: anota cada nota com o type derivado das observações
   const notasFiscaisComTipo = useMemo(
     () =>
       notasFiscais.map((n: any) => ({
         ...n,
-        _tipoOperacao: parseTipoOperacao(n.observacoes).tipo,
+        _tipoOperacao: parseTipoOperacao(n.observacoes).type,
       })),
     [notasFiscais],
   );
@@ -117,9 +117,9 @@ export default function NotaFiscal() {
     setSelectedNota(null);
   };
 
-  const handleCreate = (tipo: TipoOperacaoNF) => {
+  const handleCreate = (type: TipoOperacaoNF) => {
     setSelectedNota(null);
-    setCreateTipo(tipo);
+    setCreateTipo(type);
     setModalMode("create");
     setIsModalOpen(true);
   };
@@ -178,14 +178,14 @@ export default function NotaFiscal() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const getTipoBadge = (tipo: TipoOperacaoNF) =>
-    tipo === "entrada" ? (
-      <Badge variant="secondary" className="gap-1" data-testid="badge-tipo-entrada">
+  const getTipoBadge = (type: TipoOperacaoNF) =>
+    type === "entrada" ? (
+      <Badge variant="secondary" className="gap-1" data-testid="badge-type-entrada">
         <ArrowDownLeft className="h-3 w-3" />
         Entrada
       </Badge>
     ) : (
-      <Badge variant="default" className="gap-1" data-testid="badge-tipo-saida">
+      <Badge variant="default" className="gap-1" data-testid="badge-type-saida">
         <ArrowUpRight className="h-3 w-3" />
         Saída
       </Badge>
@@ -318,13 +318,13 @@ export default function NotaFiscal() {
             />
           </div>
           <Select value={tipoFilter} onValueChange={(value) => setTipoFilter(value as TipoFilter)}>
-            <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border shrink-0" data-testid="select-tipo-filter">
+            <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border shrink-0" data-testid="select-type-filter">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" data-testid="filter-tipo-all">Todas</SelectItem>
-              <SelectItem value="saida" data-testid="filter-tipo-saida">Saída</SelectItem>
-              <SelectItem value="entrada" data-testid="filter-tipo-entrada">Entrada</SelectItem>
+              <SelectItem value="all" data-testid="filter-type-all">Todas</SelectItem>
+              <SelectItem value="saida" data-testid="filter-type-saida">Saída</SelectItem>
+              <SelectItem value="entrada" data-testid="filter-type-entrada">Entrada</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>

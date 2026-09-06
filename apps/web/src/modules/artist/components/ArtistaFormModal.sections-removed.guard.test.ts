@@ -4,7 +4,7 @@
  * Guarda permanente (Task AA): as seções "Classificação e Vínculos",
  * "Equipe de Gestão" e "Mídia Adicional" deixaram de fazer parte do
  * cadastro/edição de Artista. Os campos por trás delas continuam existindo
- * no domínio (tipo/status/contrato_id são usados amplamente; manager_*,
+ * no domínio (type/status/contrato_id são usados amplamente; manager_*,
  * produtor_executivo, agencia_booking, label_parceira e galeria_urls
  * seguem no contrato de Relatórios; galeria_urls, documentos e
  * contatos_equipe seguem exibidos no Perfil 360) — só a UI de
@@ -27,7 +27,7 @@ describe("ArtistaFormModal — as três seções descontinuadas não reaparecem"
 
   it("nenhum controle exclusivo dessas seções é renderizado (data-testid)", () => {
     const removedTestIds = [
-      "select-tipo-artista",
+      "select-type-artista",
       "select-status-artista",
       "select-contrato",
       "button-remover-contrato",

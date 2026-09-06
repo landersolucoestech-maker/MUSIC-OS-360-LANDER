@@ -10,7 +10,7 @@ import type { Takedown } from "@/modules/monitoring/types/monitoring.types";
 export interface NormalizedTakedown {
   id: string;
   title: string;
-  tipo: string;
+  type: string;
   obra_afetada: string;
   artista: string;
   plataforma: string;
@@ -57,7 +57,7 @@ export function normalizeTakedown(raw: Takedown & Record<string, unknown>): Norm
   return {
     id: String(raw.id),
     title: pick(raw.title),
-    tipo: pick(raw.tipo),
+    type: pick(raw.type),
     obra_afetada: pick(raw.obra_afetada, raw.obraAfetada),
     artista: pick(raw.artista),
     plataforma: pick(raw.plataforma),
@@ -107,14 +107,14 @@ export function statusBadge(status?: string | null) {
 }
 
 // ── Tipo ──────────────────────────────────────────────────────────────────────
-export function tipoBadge(tipo?: string | null) {
-  if (tipo === "enviado") return <Badge variant="info">Enviado</Badge>;
-  if (tipo === "recebido") return <Badge variant="warning">Recebido</Badge>;
+export function tipoBadge(type?: string | null) {
+  if (type === "enviado") return <Badge variant="info">Enviado</Badge>;
+  if (type === "recebido") return <Badge variant="warning">Recebido</Badge>;
   return <Badge variant="neutral">—</Badge>;
 }
 
-export const tipoLabel = (tipo?: string | null): string =>
-  tipo === "enviado" ? "Enviado por nós" : tipo === "recebido" ? "Recebido (Claim)" : "—";
+export const tipoLabel = (type?: string | null): string =>
+  type === "enviado" ? "Enviado por nós" : type === "recebido" ? "Recebido (Claim)" : "—";
 
 // ── Prioridade ──────────────────────────────────────────────────────────────────
 const PRIORIDADE_LABEL: Record<string, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };

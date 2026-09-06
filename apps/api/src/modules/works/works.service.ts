@@ -159,8 +159,8 @@ export class WorksService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateWorkDto): Promise<WorkWithParticipantes> {
-    // works.tipo é NOT NULL; o formulário envia tipo_obra (campo próprio).
-    const tipo = dto.tipo ?? dto.tipo_obra ?? 'composicao';
+    // works.type é NOT NULL; o formulário envia tipo_obra (campo próprio).
+    const type = dto.type ?? dto.tipo_obra ?? 'composicao';
     const { participantes, ...rest } = dto as CreateWorkDto & { participantes?: unknown[] };
 
     // Obra + participantes na mesma transação: se a gravação dos participantes
@@ -169,7 +169,7 @@ export class WorksService {
     const saved = await this.ds!.transaction(async (em) => {
       const workRepo = em.getRepository(WorkEntity);
       const participantsRepo = em.getRepository(WorkParticipantEntity);
-      const entity = workRepo.create({ tenant_id: tenantId, ...(rest as any), tipo, created_by: userId, updated_by: userId });
+      const entity = workRepo.create({ tenant_id: tenantId, ...(rest as any), type, created_by: userId, updated_by: userId });
       const savedWork = (await workRepo.save(entity as any)) as WorkEntity;
       await this.replaceParticipantes(participantsRepo, tenantId, savedWork.id, participantes);
       return savedWork;

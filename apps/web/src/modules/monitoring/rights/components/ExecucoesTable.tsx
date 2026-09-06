@@ -84,7 +84,7 @@ export function ExecucoesTable({ deteccoes, onViewDetail, selectedIds, onToggleS
                 </TableCell>
                 <TableCell className="py-3 hidden md:table-cell">
                   <span className="inline-flex items-center text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md font-medium capitalize">
-                    {det.tipo.replace(/_/g, " ")}
+                    {det.type.replace(/_/g, " ")}
                   </span>
                 </TableCell>
                 <TableCell className="py-3 hidden xl:table-cell">

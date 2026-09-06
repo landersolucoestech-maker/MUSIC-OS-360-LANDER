@@ -5,7 +5,7 @@
  * formToLancamentoPayload gravava isrc_global, notas_internas, observacoes,
  * gravadora, copyright, genero, idioma, assets e cronograma dentro de
  * `metadata`, apesar do mapper de leitura (entity-to-form.mapper.ts) e do
- * tipo `Lancamento` já esperarem essas colunas como campos de topo — a
+ * type `Lancamento` já esperarem essas colunas como campos de topo — a
  * migration ReleasesFormFieldColumns20260718000010 fechou essa lacuna no
  * banco/DTO; este teste garante que o mapper de escrita usa as colunas.
  */
@@ -18,7 +18,7 @@ function baseFields(overrides: Partial<LancamentoFormFields> = {}): LancamentoFo
   return {
     ...emptyLancamentoFormFields(),
     title: "Meu Lançamento",
-    tipo: "single",
+    type: "single",
     isrcGlobal: "BR-XXX-25-00001",
     notasInternas: "nota interna",
     notasDistribuicao: "nota de distribuição",

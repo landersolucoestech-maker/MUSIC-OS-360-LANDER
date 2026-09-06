@@ -52,7 +52,7 @@ export function ExecucaoDetailModal({ exec, open, onOpenChange }: Props) {
             <p className="text-xs font-semibold  tracking-wide text-muted-foreground mb-2">Dados da Detecção</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
               <Row icon={<Globe className="h-3.5 w-3.5" />} label="Plataforma" value={exec.plataforma} />
-              <Row icon={<Tag className="h-3.5 w-3.5" />} label="Tipo" value={<span className="capitalize">{exec.tipo.replace(/_/g, " ")}</span>} />
+              <Row icon={<Tag className="h-3.5 w-3.5" />} label="Tipo" value={<span className="capitalize">{exec.type.replace(/_/g, " ")}</span>} />
               <Row icon={<Clock3 className="h-3.5 w-3.5" />} label="Detectado em" value={formatRightsDateTime(exec.detectado_em).full} />
               <Row
                 icon={<CheckCircle className="h-3.5 w-3.5" />}

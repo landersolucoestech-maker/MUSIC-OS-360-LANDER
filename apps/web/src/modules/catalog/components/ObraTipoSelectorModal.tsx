@@ -12,7 +12,7 @@ export type TipoObra = "autoral" | "referencia";
 interface ObraTipoSelectorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (tipo: TipoObra) => void;
+  onSelect: (type: TipoObra) => void;
 }
 
 export function ObraTipoSelectorModal({
@@ -20,8 +20,8 @@ export function ObraTipoSelectorModal({
   onOpenChange,
   onSelect,
 }: ObraTipoSelectorModalProps) {
-  const handleSelect = (tipo: TipoObra) => {
-    onSelect(tipo);
+  const handleSelect = (type: TipoObra) => {
+    onSelect(type);
     onOpenChange(false);
   };
 

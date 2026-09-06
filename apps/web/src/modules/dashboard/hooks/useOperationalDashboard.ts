@@ -93,7 +93,7 @@ async function computeFromMockStorage(): Promise<OperationalDashboard> {
   const artists_by_status     = bucketBy(artistas,  "status");
   const invoices_by_status    = bucketBy(notasFiscais, "status");
   const transactions_by_status = bucketBy(transacoes, "status");
-  const transactions_by_tipo  = bucketBy(transacoes, "tipo");
+  const transactions_by_tipo  = bucketBy(transacoes, "type");
 
   const active_contracts_count = contratos.filter((c) => {
     const s = String(c["status"] ?? "").toLowerCase();
@@ -115,7 +115,7 @@ async function computeFromMockStorage(): Promise<OperationalDashboard> {
 
   const revenue_current_month = transacoes
     .filter((t) => {
-      if (String(t["tipo"] ?? "") !== "receita") return false;
+      if (String(t["type"] ?? "") !== "receita") return false;
       const s = String(t["status"] ?? "").toLowerCase();
       if (s === "cancelado" || s === "cancelled") return false;
       const data = tryParseDate(t["data"] ?? t["data_pagamento"]);
@@ -125,7 +125,7 @@ async function computeFromMockStorage(): Promise<OperationalDashboard> {
 
   const expenses_current_month = transacoes
     .filter((t) => {
-      if (String(t["tipo"] ?? "") !== "despesa") return false;
+      if (String(t["type"] ?? "") !== "despesa") return false;
       const s = String(t["status"] ?? "").toLowerCase();
       if (s === "cancelado" || s === "cancelled") return false;
       const data = tryParseDate(t["data"] ?? t["data_pagamento"]);
@@ -137,7 +137,7 @@ async function computeFromMockStorage(): Promise<OperationalDashboard> {
 
   const pending_receivables = transacoes
     .filter((t) => {
-      if (String(t["tipo"] ?? "") !== "receita") return false;
+      if (String(t["type"] ?? "") !== "receita") return false;
       const s = String(t["status"] ?? "").toLowerCase();
       return s === "pendente" || s === "agendado";
     })

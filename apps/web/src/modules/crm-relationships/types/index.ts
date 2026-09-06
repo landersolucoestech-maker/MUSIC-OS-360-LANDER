@@ -204,7 +204,7 @@ export type Cliente = {
   tipo_pessoa?: "fisica" | "juridica" | "pessoa_fisica" | "pessoa_juridica" | string | null;
   responsavel?: string | null;
   observacoes?: string | null;
-  tipo?: string | null;
+  type?: string | null;
   segmento?: string | null;
 };
 

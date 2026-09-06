@@ -12,11 +12,11 @@ const STATUSES = Object.values(ProjectStatus) as string[];
  * ativo (ProjetoFormModal.tsx / bulk-import em Projetos.tsx), não os nomes em
  * inglês do DTO anterior (title/type/artistId/budget/currency/startsAt/
  * deadlineAt/releasedAt) — que nunca tinham writer real e, mesmo se
- * aceitos, não batiam com as colunas físicas (nome/tipo/status/descricao).
+ * aceitos, não batiam com as colunas físicas (nome/type/status/descricao).
  */
 export class CreateProjectDto {
   @ApiProperty() @IsString() @MaxLength(500) title!: string;
-  @ApiProperty({ enum: TYPES }) @IsIn(TYPES) tipo!: typeof TYPES[number];
+  @ApiProperty({ enum: TYPES }) @IsIn(TYPES) type!: typeof TYPES[number];
   @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) orcamento?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;

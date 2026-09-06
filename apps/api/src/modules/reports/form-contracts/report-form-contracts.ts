@@ -154,7 +154,7 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
   tableName: 'contracts',
   identityColumn: 'title',
   fields: [
-    col('title'), col('tipo'), col('status'), col('valor'),
+    col('title'), col('type'), col('status'), col('valor'),
     col('data_inicio'), col('data_fim'), col('exclusivo'), col('observacoes'),
     col('arquivo_url'), col('signing_platform'),
     col('artist_id'), col('client_id'), col('release_id'),
@@ -172,7 +172,7 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
   },
   formFieldAliases: {
     titulo: 'title',
-    type: 'tipo',
+    tipo: 'type',
     value: 'valor',
     fileUrl: 'arquivo_url',
     startsAt: 'data_inicio',
@@ -186,7 +186,7 @@ const WORKS_CONTRACT: ReportFormContract = {
   tableName: 'works',
   identityColumn: 'title',
   fields: [
-    col('title'), col('tipo'), col('status'), col('genero'),
+    col('title'), col('type'), col('status'), col('genero'),
     col('compositor'), col('compositores'), col('editora'),
     col('isrc'), col('iswc'),
     // Campos do formulário de Obra (regra 2026-07-12: 1 coluna por campo, nome exato)
@@ -229,7 +229,7 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
     col('pais_origem'), col('pais_publicacao'), col('gravadora'),
     col('observacoes'), col('participacao'), col('arquivo_audio'),
     // Somente leitura: registro/sociedades e metadados de gravação
-    ro('tipo'), ro('version_title'), ro('interpretes'), ro('compositores'),
+    ro('type'), ro('version_title'), ro('interpretes'), ro('compositores'),
     ro('produtores'), ro('duration_seconds'),
     ro('recording_date'), ro('release_date'), ro('copyright_year'),
     ro('copyright_owner'), ro('country_of_recording'),
@@ -299,7 +299,7 @@ const PROJECTS_CONTRACT: ReportFormContract = {
   tableName: 'projects',
   identityColumn: 'nome_ep_album',
   fields: [
-    col('tipo_lancamento', 'tipo'),
+    col('tipo_lancamento', 'type'),
     col('nome_ep_album', 'title'),
     col('observacoes'),
     col('status_projeto', 'status'),
@@ -344,7 +344,7 @@ const CONTENT_DETECTIONS_CONTRACT: ReportFormContract = {
   tableName: 'content_detections',
   identityColumn: 'titulo_detectado',
   fields: [
-    ro('titulo_detectado'), ro('plataforma'), ro('tipo'), ro('status'),
+    ro('titulo_detectado'), ro('plataforma'), ro('type'), ro('status'),
     ro('url'), ro('score'), ro('detectado_em'), ro('work_id'), ro('artist_id'),
   ],
   excludedFormFields: {},
@@ -359,20 +359,20 @@ const LICENSES_CONTRACT: ReportFormContract = {
   tableName: 'licenses',
   identityColumn: 'title',
   fields: [
-    col('title'), col('tipo'), col('work_id'), col('obra_musical'), col('artista'),
+    col('title'), col('type'), col('work_id'), col('obra_musical'), col('artista'),
     col('client_id'), col('cliente'), col('projeto'), col('tipo_uso'),
     col('midia_destino'), col('territorio'), col('status'),
     col('data_inicio'), col('data_fim'), col('valor'), col('moeda'), col('observacoes'),
   ],
   excludedFormFields: {},
-  filterableColumns: ['status', 'tipo', 'territorio'],
+  filterableColumns: ['status', 'type', 'territorio'],
   searchableColumns: ['title', 'obra_musical', 'artista', 'cliente', 'projeto'],
 };
 
 // ─── Takedowns ────────────────────────────────────────────────────────────────
 // CreateTakedownDto (platform/trackId/reason/requestedAt) diverge por completo
 // dos nomes reais de coluna e do formulário real (TakedownFormModal.tsx, que
-// usa title/tipo/obra_afetada/artista/.../observacoes) — bug pré-existente
+// usa title/type/obra_afetada/artista/.../observacoes) — bug pré-existente
 // de mismatch DTO↔form, fora do escopo desta Parte. O contrato usa as colunas
 // físicas reais que o formulário de fato grava; não é checado contra o DTO
 // quebrado (ausente de FORM_DTO_BY_TABLE no guard test).
@@ -380,12 +380,12 @@ const TAKEDOWNS_CONTRACT: ReportFormContract = {
   tableName: 'takedowns',
   identityColumn: 'title',
   fields: [
-    col('title'), col('tipo'), col('obra_afetada'), col('artista'), col('status'),
+    col('title'), col('type'), col('obra_afetada'), col('artista'), col('status'),
     col('prioridade'), col('plataforma'), col('url_infracao'), col('motivo'),
     col('data_identificacao'), col('descricao'), col('evidencias'), col('observacoes'),
   ],
   excludedFormFields: {},
-  filterableColumns: ['status', 'tipo', 'prioridade', 'plataforma'],
+  filterableColumns: ['status', 'type', 'prioridade', 'plataforma'],
   searchableColumns: ['title', 'obra_afetada', 'artista', 'motivo'],
 };
 
@@ -402,7 +402,7 @@ const RELEASES_CONTRACT: ReportFormContract = {
   tableName: 'releases',
   identityColumn: 'title',
   fields: [
-    col('title'), col('tipo'), col('artist_id'), col('upc'), col('distribuidora'),
+    col('title'), col('type'), col('artist_id'), col('upc'), col('distribuidora'),
     col('data_lancamento'), col('capa_url'), col('isrc_global'), col('notas_internas'),
     col('observacoes'), col('gravadora'), col('copyright'), col('genero'), col('idioma'),
     ro('status'), ro('cronograma'),
@@ -420,7 +420,7 @@ const RELEASES_CONTRACT: ReportFormContract = {
   },
   formFieldAliases: {
     title: 'title',
-    type: 'tipo',
+    type: 'type',
     artistId: 'artist_id',
     distributor: 'distribuidora',
     releasedAt: 'data_lancamento',
@@ -448,7 +448,7 @@ const SHARES_CONTRACT: ReportFormContract = {
   fields: [
     col('share_type'), col('percentual'), col('status'), col('direcao'),
     col('release_id'), col('nome_musica'), col('detentor'), col('destinatario'),
-    col('tipo'), col('artista_externo'), col('artista_project_id'), col('artist_id'),
+    col('type'), col('artista_externo'), col('artista_project_id'), col('artist_id'),
     col('pagador'), col('pagador_contato'), col('origem_acordo'), col('data_prevista'),
     col('documentos'), col('acordo_notas'), col('acordo_url'), col('observacoes'),
     col('valor_total'), col('valor_liquidado'),
@@ -503,7 +503,7 @@ const AUDIOVISUAL_PROJECTS_CONTRACT: ReportFormContract = {
 
 // ─── Transações Financeiras ─────────────────────────────────────────────────────
 // Colunas de formulário (regra 2026-07-12) — `tipo_transacao`/`data_transacao`
-// são a chave lógica do arquivo, mas a tabela NÃO as duplica de `tipo`/`data`
+// são a chave lógica do arquivo, mas a tabela NÃO as duplica de `type`/`data`
 // (essas são NOT NULL, sem default, e são as únicas lidas por
 // TransactionsService — tipo_transacao/data_transacao ficavam sempre NULL).
 // `physical` aponta a chave lógica para a coluna real, igual ao import/export
@@ -514,7 +514,7 @@ const TRANSACTIONS_CONTRACT: ReportFormContract = {
   tableName: 'transactions',
   identityColumn: 'descricao',
   fields: [
-    col('tipo_transacao', 'tipo'), col('tipo_cliente'), col('categoria'), col('subcategoria'),
+    col('tipo_transacao', 'type'), col('tipo_cliente'), col('categoria'), col('subcategoria'),
     col('descricao'), col('valor'), col('data_transacao', 'data'), col('status'),
     col('artist_id'), col('project_id'), col('contrato_id'), col('evento_id'),
     col('fornecedor_cliente'), col('orgao_arrecadador'), col('centro_custo'), col('competencia'),
@@ -564,7 +564,7 @@ const EVENTS_CONTRACT: ReportFormContract = {
   tableName: 'events',
   identityColumn: 'title',
   fields: [
-    col('title'), col('tipo'), col('data'), col('data_fim'), col('local'),
+    col('title'), col('type'), col('data'), col('data_fim'), col('local'),
     col('contato_local'), col('endereco'), col('valor_cache'), col('publico_esperado'),
     col('descricao'), col('observacoes'), col('status'),
   ],
@@ -574,12 +574,12 @@ const EVENTS_CONTRACT: ReportFormContract = {
     capacity: 'aceito pelo DTO mas descartado no servidor — sem coluna física (ver publico_esperado)',
     ticketUrl: 'aceito pelo DTO mas sem coluna física nem input no modal',
     metadata: 'objeto jsonb interno bruto',
-    artistId: 'vínculo técnico preenchido indiretamente pelo primeiro participante do tipo artista — sem input próprio',
+    artistId: 'vínculo técnico preenchido indiretamente pelo primeiro participante do type artista — sem input próprio',
     participantes: 'representada em grupo repetível própria ("Participantes do Evento", repeatingGroup) — nunca compactada numa única célula',
   },
   formFieldAliases: {
     title: 'title',
-    type: 'tipo',
+    type: 'type',
     venue: 'local',
     startsAt: 'data',
     endsAt: 'data_fim',
@@ -692,7 +692,7 @@ const MARKETING_CONTENT_POSTS_CONTRACT: ReportFormContract = {
   ],
   excludedFormFields: {
     owner: 'valor fixo "Marketing" definido pelo formulário — não é um input do usuário',
-    format: 'derivado automaticamente de plataforma+tipo — não é um input do usuário',
+    format: 'derivado automaticamente de plataforma+type — não é um input do usuário',
     releaseId: 'aceito pelo DTO mas sem controle de UI nesta tela',
     metadata: 'objeto jsonb interno — hashtags/localização são mescladas em notes pelo próprio formulário, sem colunas próprias',
   },

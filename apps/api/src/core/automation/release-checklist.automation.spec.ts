@@ -80,7 +80,7 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
       releaseId: 'r1',
       tenantId: 't1',
       title: 'Aurora',
-      tipo: 'single',
+      type: 'single',
       artistId: 'a1',
       createdBy: 'u1',
       createdAt: new Date().toISOString(),
@@ -91,7 +91,7 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
 
 const RELEASE_ROW = {
   title: 'Aurora',
-  tipo: 'single',
+  type: 'single',
   data_lancamento: null,
   upc: null,
   capa_url: null,

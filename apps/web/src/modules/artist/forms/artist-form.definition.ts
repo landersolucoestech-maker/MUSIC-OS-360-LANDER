@@ -2,7 +2,7 @@
  * modules/artist/forms/artist-form.definition.ts
  * ─────────────────────────────────────────────────────────────────
  * FONTE ÚNICA DE VERDADE da estrutura do formulário de artista
- * (Modal Criar/Editar). Define, para cada campo: id, label, tipo,
+ * (Modal Criar/Editar). Define, para cada campo: id, label, type,
  * seção, ordem (posição no array) e obrigatoriedade.
  *
  * Consumidores obrigatórios desta definição:
@@ -291,12 +291,12 @@ export const ARTIST_FORM_SECTIONS: ArtistFormSection[] = [
     ],
   },
   {
-    id: "tipo-perfil",
+    id: "type-perfil",
     title: "Tipo de Perfil",
     fields: [
       {
         id: "tipoPerfil", label: "Perfil Comercial", type: "select", fullWidth: true,
-        options: TIPO_PERFIL_OPTIONS, placeholder: "Selecione o perfil", testId: "select-tipo-perfil",
+        options: TIPO_PERFIL_OPTIONS, placeholder: "Selecione o perfil", testId: "select-type-perfil",
       },
       { id: "contatosVinculados", label: "Equipe / Contatos (CRM)", type: "contatos-crm", fullWidth: true },
     ],

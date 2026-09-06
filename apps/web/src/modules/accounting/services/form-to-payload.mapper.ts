@@ -7,7 +7,7 @@ import type { TransacaoFormData } from "@/modules/accounting/lib/transacao-const
 
 export interface TransacaoFormPayload {
   [key: string]: string | number | null;
-  tipo: string | null;
+  type: string | null;
   tipo_transacao: string | null;
   tipoTransacao: string | null;
   tipo_cliente: string | null;
@@ -63,7 +63,7 @@ export function formToTransacaoPayload(f: TransacaoFormData): TransacaoFormPaylo
   const attachmentUrl = str(f.anexoUrl);
 
   return {
-    tipo:                    str(f.tipoTransacao),
+    type:                    str(f.tipoTransacao),
     tipo_transacao:          str(f.tipoTransacao),
     tipoTransacao:           str(f.tipoTransacao),
     tipo_cliente:            str(f.tipoCliente),

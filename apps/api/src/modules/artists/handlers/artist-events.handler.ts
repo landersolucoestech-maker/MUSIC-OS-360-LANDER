@@ -16,9 +16,9 @@ import type {
 } from '../../../core/events/domain-events.types';
 
 const INITIAL_GOALS = [
-  { title: 'Meta de Streams Mensais', tipo: 'streams', meta_valor: '10000', periodo: 'mensal' },
-  { title: 'Meta de Seguidores', tipo: 'followers', meta_valor: '5000', periodo: 'mensal' },
-  { title: 'Meta de Receita Mensal (R$)', tipo: 'receita', meta_valor: '3000', periodo: 'mensal' },
+  { title: 'Meta de Streams Mensais', type: 'streams', meta_valor: '10000', periodo: 'mensal' },
+  { title: 'Meta de Seguidores', type: 'followers', meta_valor: '5000', periodo: 'mensal' },
+  { title: 'Meta de Receita Mensal (R$)', type: 'receita', meta_valor: '3000', periodo: 'mensal' },
 ] as const;
 
 @Injectable()
@@ -53,7 +53,7 @@ export class ArtistEventsHandler {
               tenant_id: tenantId,
               artist_id: artistId,
               title: goal.title,
-              tipo: goal.tipo,
+              type: goal.type,
               meta_valor: goal.meta_valor,
               valor_atual: '0',
               periodo: goal.periodo,

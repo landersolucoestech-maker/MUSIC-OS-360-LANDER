@@ -26,7 +26,7 @@ export class EventsService {
       .andWhere('e.deleted_at IS NULL');
 
     if (q['status'])     qb.andWhere('e.status = :status',       { status:     q['status'] });
-    if (q['tipo'])       qb.andWhere('e.tipo = :tipo',           { tipo:       q['tipo'] });
+    if (q['type'])       qb.andWhere('e.type = :type',           { type:       q['type'] });
     if (q['artist_id']) qb.andWhere('e.artist_id = :artistId', { artistId: q['artist_id'] });
     if (q['dateFrom'])   qb.andWhere('e.data >= :dateFrom',      { dateFrom:   q['dateFrom'] });
     if (q['dateTo'])     qb.andWhere('e.data <= :dateTo',        { dateTo:     q['dateTo'] });
@@ -87,13 +87,13 @@ export class EventsService {
 
   /**
    * Maps CreateEventDto / UpdateEventDto (camelCase EN) → EventEntity columns (snake_case PT).
-   * Backend DTO usa title/type/startsAt/venue/artistId; tabela usa title/tipo/data/local/artist_id.
+   * Backend DTO usa title/type/startsAt/venue/artistId; tabela usa title/type/data/local/artist_id.
    */
   private dtoToEntity(dto: Partial<CreateEventDto & UpdateEventDto>): Partial<EventEntity> {
     const d = dto as Record<string, unknown>;
     const out: Record<string, unknown> = {};
     if (d['title']     != null) out['title']     = d['title'];
-    if (d['type']      != null) out['tipo']       = d['type'];
+    if (d['type']      != null) out['type']       = d['type'];
     if (d['artistId']  != null) out['artist_id'] = d['artistId'];
     if (d['venue']     != null) out['local']      = d['venue'];
     if (d['startsAt']  != null) {
@@ -137,7 +137,7 @@ export class EventsService {
     const saved = await this.repo!.save(entity as EventEntity);
     await this.recordActivity(tenantId, userId, saved.id, 'created', `Evento "${saved.title}" criado`, {
       title: saved.title,
-      tipo: saved.tipo,
+      type: saved.type,
       artistId: saved.artist_id,
       data: saved.data,
     });

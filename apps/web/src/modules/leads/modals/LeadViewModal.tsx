@@ -35,39 +35,39 @@ import { LEAD_INTERACTION_TYPE_LABELS } from "../services/lead-interactions.serv
 // ─────────────────────────────────────────────
 // Combos — espelho exato do LeadFormModal
 // ─────────────────────────────────────────────
-const EVENTO_COMBOS: ReadonlyArray<{ tipo: string; servico: string }> = [
-  { tipo: "marca_empresa",        servico: "eventos_corporativos" },
-  { tipo: "agencia",              servico: "producao_eventos"     },
-  { tipo: "agencia",              servico: "contratacao_artistas" },
-  { tipo: "produtora_eventos",    servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "eventos_corporativos" },
-  { tipo: "empresario_artistico", servico: "contratacao_artistas" },
-  { tipo: "empresario_artistico", servico: "eventos_corporativos" },
-  { tipo: "influenciador",        servico: "producao_eventos"     },
+const EVENTO_COMBOS: ReadonlyArray<{ type: string; servico: string }> = [
+  { type: "marca_empresa",        servico: "eventos_corporativos" },
+  { type: "agencia",              servico: "producao_eventos"     },
+  { type: "agencia",              servico: "contratacao_artistas" },
+  { type: "produtora_eventos",    servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "eventos_corporativos" },
+  { type: "empresario_artistico", servico: "contratacao_artistas" },
+  { type: "empresario_artistico", servico: "eventos_corporativos" },
+  { type: "influenciador",        servico: "producao_eventos"     },
 ];
 
-const CAMPANHA_COMBOS: ReadonlyArray<{ tipo: string; servico: string }> = [
-  { tipo: "marca_empresa", servico: "campanhas_artistas" },
-  { tipo: "agencia",       servico: "campanhas_artistas" },
+const CAMPANHA_COMBOS: ReadonlyArray<{ type: string; servico: string }> = [
+  { type: "marca_empresa", servico: "campanhas_artistas" },
+  { type: "agencia",       servico: "campanhas_artistas" },
 ];
 
-const ARTISTA_EVENTO_COMBOS: ReadonlyArray<{ tipo: string; servico: string }> = [
-  { tipo: "marca_empresa",        servico: "eventos_corporativos" },
-  { tipo: "agencia",              servico: "producao_eventos"     },
-  { tipo: "agencia",              servico: "contratacao_artistas" },
-  { tipo: "produtora_eventos",    servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "contratacao_artistas" },
-  { tipo: "contratante_show",     servico: "eventos_corporativos" },
-  { tipo: "empresario_artistico", servico: "contratacao_artistas" },
-  { tipo: "empresario_artistico", servico: "eventos_corporativos" },
+const ARTISTA_EVENTO_COMBOS: ReadonlyArray<{ type: string; servico: string }> = [
+  { type: "marca_empresa",        servico: "eventos_corporativos" },
+  { type: "agencia",              servico: "producao_eventos"     },
+  { type: "agencia",              servico: "contratacao_artistas" },
+  { type: "produtora_eventos",    servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "contratacao_artistas" },
+  { type: "contratante_show",     servico: "eventos_corporativos" },
+  { type: "empresario_artistico", servico: "contratacao_artistas" },
+  { type: "empresario_artistico", servico: "eventos_corporativos" },
 ];
 
 const matchCombo = (
-  list: ReadonlyArray<{ tipo: string; servico: string }>,
-  tipo: string,
+  list: ReadonlyArray<{ type: string; servico: string }>,
+  type: string,
   servico: string,
-) => list.some((c) => c.tipo === tipo && c.servico === servico);
+) => list.some((c) => c.type === type && c.servico === servico);
 
 // ─────────────────────────────────────────────
 // Tipos
@@ -329,7 +329,7 @@ export function LeadViewModal({
                   >
                     <p className="flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground">
                       <MessageSquare className="h-3.5 w-3.5" />
-                      Interação {idx + 1} · {lookup(TIPO_INTERACAO_OPTIONS, it.tipo)} · {fmtDate(it.data)}{it.horario ? ` ${it.horario}` : ""}
+                      Interação {idx + 1} · {lookup(TIPO_INTERACAO_OPTIONS, it.type)} · {fmtDate(it.data)}{it.horario ? ` ${it.horario}` : ""}
                     </p>
                     <p className="text-sm text-foreground whitespace-pre-wrap">
                       {it.descricao || "—"}
@@ -361,7 +361,7 @@ export function LeadViewModal({
                   >
                     <p className="flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground">
                       <MessageSquare className="h-3.5 w-3.5" />
-                      {LEAD_INTERACTION_TYPE_LABELS[it.tipo] ?? it.tipo} · {fmtDate(it.data)}
+                      {LEAD_INTERACTION_TYPE_LABELS[it.type] ?? it.type} · {fmtDate(it.data)}
                     </p>
                     <p className="text-sm text-foreground whitespace-pre-wrap">
                       {it.descricao || "—"}

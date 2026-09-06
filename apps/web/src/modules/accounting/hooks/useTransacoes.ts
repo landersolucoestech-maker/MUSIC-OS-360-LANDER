@@ -30,7 +30,7 @@ export function useTransacoes(enabled = true, artistId?: string) {
       onCreate: (t) =>
         emit(DomainEvents.TRANSACTION_CREATED, {
           id: (t as TransacaoWithRelations & { id: string }).id,
-          tipo: t.tipo as "receita" | "despesa",
+          type: t.type as "receita" | "despesa",
           valor: t.valor ?? 0,
           artist_id: t.artist_id ?? undefined,
           project_id: typeof t.project_id === "string" ? t.project_id : undefined,
@@ -39,7 +39,7 @@ export function useTransacoes(enabled = true, artistId?: string) {
       onUpdate: (t) =>
         emit(DomainEvents.TRANSACTION_UPDATED, {
           id: (t as TransacaoWithRelations & { id: string }).id,
-          tipo: t.tipo as "receita" | "despesa",
+          type: t.type as "receita" | "despesa",
           valor: t.valor ?? 0,
           artist_id: t.artist_id ?? undefined,
           project_id: typeof t.project_id === "string" ? t.project_id : undefined,

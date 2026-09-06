@@ -20,9 +20,9 @@ export function useLeadInteractions(leadId: string | undefined) {
 export function useCreateLeadInteraction(leadId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ tipo, notes }: { tipo: LeadInteractionType; notes?: string }) => {
+    mutationFn: ({ type, notes }: { type: LeadInteractionType; notes?: string }) => {
       if (!leadId) throw new Error("leadId ausente");
-      return leadInteractionsService.create(leadId, tipo, notes);
+      return leadInteractionsService.create(leadId, type, notes);
     },
     onSuccess: () => {
       if (leadId) queryClient.invalidateQueries({ queryKey: LEAD_INTERACTIONS_KEYS.byLead(leadId) });

@@ -52,7 +52,7 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
     payload: {
       transactionId: 'x1',
       tenantId: 't1',
-      tipo: 'despesa',
+      type: 'despesa',
       categoria: 'Marketing',
       valor: '1500.00',
       contratoId: null,
@@ -64,7 +64,7 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
 }
 
 const TX_ROW = {
-  tipo: 'despesa',
+  type: 'despesa',
   categoria: 'Marketing',
   descricao: 'Tráfego pago Meta Ads campanha lançamento',
   valor: '1500.00',
@@ -127,13 +127,13 @@ describe('FinancialClassificationAutomation (transaction.created → financial-c
   });
 
   it('mapeia direction=income para receita', async () => {
-    const row = { ...TX_ROW, tipo: 'receita', descricao: 'Royalties Spotify' };
+    const row = { ...TX_ROW, type: 'receita', descricao: 'Royalties Spotify' };
     const { ds } = makeDs([row]);
     const skillRun = makeSkillRun();
     const ai = makeAi(VALID_JSON);
     const handler = new FinancialClassificationAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
 
-    await handler.onTransactionCreated(makeEvent({ tipo: 'receita' }) as never);
+    await handler.onTransactionCreated(makeEvent({ type: 'receita' }) as never);
 
     const aiCalls = ai.complete.mock.calls as unknown as Array<[{ prompt: string }]>;
     expect(aiCalls[0][0].prompt).toContain('receita (income)');

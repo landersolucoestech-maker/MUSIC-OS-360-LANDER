@@ -18,7 +18,7 @@
 /** Entidade de domínio Transação (fonte: mockData accounting). */
 export interface TransacaoEntity {
   id:          string;
-  tipo:        "receita" | "despesa";
+  type:        "receita" | "despesa";
   categoria:   string;
   descricao:   string;
   valor:       number;
@@ -51,7 +51,7 @@ export const transacaoMapper = {
     const data    = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
 
     return {
-      tipo:        entry.TRNAMT >= 0 ? "receita" : "despesa",
+      type:        entry.TRNAMT >= 0 ? "receita" : "despesa",
       categoria:   "importado",
       descricao:   entry.MEMO,
       valor:       Math.abs(entry.TRNAMT),
@@ -67,7 +67,7 @@ export const transacaoMapper = {
    */
   calcNetProfit(transacoes: TransacaoEntity[]): number {
     return transacoes.reduce((acc, t) => {
-      const signed = t.tipo === "receita" ? t.valor : -t.valor;
+      const signed = t.type === "receita" ? t.valor : -t.valor;
       return acc + signed;
     }, 0);
   },

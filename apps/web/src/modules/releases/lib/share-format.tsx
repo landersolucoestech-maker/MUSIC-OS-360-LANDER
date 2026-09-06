@@ -4,13 +4,13 @@ import type { Share, ShareType } from "@/modules/releases/types";
 /**
  * share-format — utilidades de Shares: discrimina interno × externo e renderiza
  * status com contraste AA. Lê o campo novo `share_type` e, quando ausente (dados
- * legados), deriva o tipo dos campos existentes — sem inventar dados.
+ * legados), deriva o type dos campos existentes — sem inventar dados.
  */
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
 /**
- * Resolve o tipo do share. Preferência: `share_type` explícito. Fallback (legado):
+ * Resolve o type do share. Preferência: `share_type` explícito. Fallback (legado):
  * vínculo a lançamento ou função de distribuição → interno; música/pagador externo
  * → externo. Default conservador: interno (compatível com os seeds atuais de royalties).
  */
@@ -51,7 +51,7 @@ export function shareStatusBadge(status?: string | null) {
   return <Badge variant={meta?.variant ?? "neutral"}>{shareStatusLabel(status)}</Badge>;
 }
 
-// ── Função (tipo) ─────────────────────────────────────────────────────────────
+// ── Função (type) ─────────────────────────────────────────────────────────────
 export const FUNCAO_LABELS: Record<string, string> = {
   compositor: "Compositor / Autor",
   interprete: "Intérprete",

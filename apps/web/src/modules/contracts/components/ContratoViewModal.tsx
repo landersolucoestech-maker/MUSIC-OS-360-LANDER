@@ -152,7 +152,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   {[
                     { label: "Artista / Cliente", value: contrato.artistas?.nome_artistico || contrato.clientes?.nome || "—" },
-                    { label: "Tipo", value: contrato.tipo ? formatCategoryLabel(contrato.tipo) : "—" },
+                    { label: "Tipo", value: contrato.type ? formatCategoryLabel(contrato.type) : "—" },
                     { label: "Início", value: formatDateDashes(contrato.data_inicio) },
                     { label: "Término", value: contrato.data_fim ? formatDateDashes(contrato.data_fim) : "Indeterminado" },
                     { label: "Valor", value: contrato.valor != null ? <span className={getMonetarySemanticClass("neutral")}>{formatCurrency(contrato.valor)}</span> : "—" },
@@ -490,7 +490,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                         <p className="font-semibold text-sm truncate">{lancamentoVinculado.title}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge variant="outline" className="text-[10px] capitalize">
-                            {lancamentoVinculado.tipo || "—"}
+                            {lancamentoVinculado.type || "—"}
                           </Badge>
                           <StatusBadge status={lancamentoVinculado.status ?? ""} />
                         </div>

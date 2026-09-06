@@ -78,7 +78,7 @@ export default function GestaoShares() {
     page, pageSize, search: debouncedSearch || undefined,
     direcao: direcaoFilter !== "todos" ? direcaoFilter : undefined,
     status: statusFilter !== "todos" ? statusFilter : undefined,
-    tipo: tipoFilter !== "todos" ? tipoFilter : undefined,
+    type: tipoFilter !== "todos" ? tipoFilter : undefined,
     shareType: shareTypeFilter !== "todos" ? shareTypeFilter : undefined,
   });
 
@@ -324,7 +324,7 @@ export default function GestaoShares() {
                 </SelectContent>
               </Select>
               <Select value={tipoFilter} onValueChange={setTipoFilter}>
-                <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border" data-testid="select-tipo">
+                <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border" data-testid="select-type">
                   <SelectValue placeholder="Função" />
                 </SelectTrigger>
                 <SelectContent>
@@ -430,7 +430,7 @@ export default function GestaoShares() {
                         <TableCell className="text-foreground text-sm">{nomeDetentor}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
-                            {TIPO_LABELS[share.tipo] ?? share.tipo ?? "—"}
+                            {TIPO_LABELS[share.type] ?? share.type ?? "—"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center text-foreground text-sm">

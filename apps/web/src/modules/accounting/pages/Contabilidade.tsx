@@ -196,15 +196,15 @@ export default function Contabilidade() {
   const [endDate, setEndDate] = useState("");
   const [financialFilter, setFinancialFilter] = useState<"todos" | "receitas" | "despesas" | "lucro">("todos");
 
-  // Filtra por busca (descrição/categoria), intervalo de datas e tipo financeiro — base de todas as visões.
+  // Filtra por busca (descrição/categoria), intervalo de datas e type financeiro — base de todas as visões.
   const filteredTransacoes = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return transacoes.filter((t: any) => {
       const data = String(t.data ?? "").slice(0, 10);
       if (startDate && data && data < startDate) return false;
       if (endDate && data && data > endDate) return false;
-      if (financialFilter === "receitas" && t.tipo !== "receita") return false;
-      if (financialFilter === "despesas" && t.tipo !== "despesa") return false;
+      if (financialFilter === "receitas" && t.type !== "receita") return false;
+      if (financialFilter === "despesas" && t.type !== "despesa") return false;
       // "lucro" e "todos" mantêm receitas e despesas (o resultado líquido é consolidado nos KPIs).
       if (!term) return true;
       return (
@@ -214,8 +214,8 @@ export default function Contabilidade() {
     });
   }, [transacoes, searchTerm, startDate, endDate, financialFilter]);
 
-  const receitas = useMemo(() => filteredTransacoes.filter((t: any) => t.tipo === "receita"), [filteredTransacoes]);
-  const despesas = useMemo(() => filteredTransacoes.filter((t: any) => t.tipo === "despesa"), [filteredTransacoes]);
+  const receitas = useMemo(() => filteredTransacoes.filter((t: any) => t.type === "receita"), [filteredTransacoes]);
+  const despesas = useMemo(() => filteredTransacoes.filter((t: any) => t.type === "despesa"), [filteredTransacoes]);
 
   const totalReceitas = sum(receitas, "valor");
   const totalDespesas = sum(despesas, "valor");
@@ -243,9 +243,9 @@ export default function Contabilidade() {
           id: t.id,
           nome: t.descricao ?? "—",
           categoria: t.categoria ?? "—",
-          receita: t.tipo === "receita" ? valor : 0,
-          despesa: t.tipo === "despesa" ? valor : 0,
-          resultado: t.tipo === "receita" ? valor : -valor,
+          receita: t.type === "receita" ? valor : 0,
+          despesa: t.type === "despesa" ? valor : 0,
+          resultado: t.type === "receita" ? valor : -valor,
         };
       })
       .sort((a, b) => b.resultado - a.resultado),
@@ -267,8 +267,8 @@ export default function Contabilidade() {
         totalRec: 0,
         totalDes: 0,
       };
-      if (t.tipo === "receita") entry.totalRec += toNumber(t.valor);
-      else if (t.tipo === "despesa") entry.totalDes += toNumber(t.valor);
+      if (t.type === "receita") entry.totalRec += toNumber(t.valor);
+      else if (t.type === "despesa") entry.totalDes += toNumber(t.valor);
       porArtista.set(artistId, entry);
     }
     return Array.from(porArtista.values())

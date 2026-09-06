@@ -33,7 +33,7 @@ export class CreateShareDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) nome_musica?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) detentor?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) destinatario?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) tipo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista_externo?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() artista_project_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() artist_id?: string;
@@ -66,6 +66,6 @@ export class QueryShareDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() papel?: string;
   @ApiPropertyOptional() @IsOptional() @IsIn(['a_receber', 'a_enviar']) direcao?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() share_type?: string;
 }

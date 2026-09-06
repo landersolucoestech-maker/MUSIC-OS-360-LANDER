@@ -7,7 +7,7 @@ import { Button } from "@/shared/ui/button";
 import { FileText, Calendar, Building2, MapPin, Mail, ExternalLink, Pencil, Receipt, CreditCard, Calculator, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { formatCurrency, formatDate, getCurrencyToneClass } from "@/shared/lib/format-utils";
 import { formatCpfCnpj } from "@/shared/lib/br-validators";
-import { parseTipoOperacao } from "@/modules/accounting/lib/nota-fiscal-tipo";
+import { parseTipoOperacao } from "@/modules/accounting/lib/nota-fiscal-type";
 
 interface NotaFiscalViewModalProps {
   open: boolean;
@@ -66,7 +66,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function NotaFiscalViewModal({ open, onOpenChange, notaFiscal, onEdit }: NotaFiscalViewModalProps) {
   if (!notaFiscal) return null;
-  const { tipo: tipoOperacao, observacoesLimpas } = parseTipoOperacao(notaFiscal.observacoes);
+  const { type: tipoOperacao, observacoesLimpas } = parseTipoOperacao(notaFiscal.observacoes);
   const isEntrada = tipoOperacao === "entrada";
   const itens: any[] = Array.isArray(notaFiscal.itens) ? notaFiscal.itens : [];
   const valorServicos = numberValue(notaFiscal.valor_servicos, notaFiscal.valor, notaFiscal.valor_total) ?? 0;
@@ -92,7 +92,7 @@ export function NotaFiscalViewModal({ open, onOpenChange, notaFiscal, onEdit }: 
             Nota Fiscal Nº {notaFiscal.numero}/{notaFiscal.serie || "001"}
           </DialogTitle>
           <DialogDescription className="flex gap-2 items-center mt-1">
-            <Badge variant={isEntrada ? "secondary" : "default"} className="gap-1" data-testid={`badge-tipo-${tipoOperacao}`}>
+            <Badge variant={isEntrada ? "secondary" : "default"} className="gap-1" data-testid={`badge-type-${tipoOperacao}`}>
               {isEntrada ? <ArrowDownLeft className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
               {isEntrada ? "Entrada" : "Saída"}
             </Badge>

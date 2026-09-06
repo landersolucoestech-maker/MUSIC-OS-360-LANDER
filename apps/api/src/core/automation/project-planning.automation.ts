@@ -35,7 +35,7 @@ import { runNativeSkillAutomation } from './native-skill-automation.runner';
 
 const SKILL_NAME = 'project-planning';
 
-/** Palavras-chave que indicam projeto musical / lançamento musical (tipo livre). */
+/** Palavras-chave que indicam projeto musical / lançamento musical (type livre). */
 const MUSICAL_TYPE_KEYWORDS = [
   'lancamento', 'lançamento', 'single', 'ep', 'album', 'álbum', 'release',
   'fonograma', 'musical', 'musica', 'música', 'turne', 'turnê', 'show',
@@ -47,7 +47,7 @@ const DEFAULT_DEPARTMENTS = ['A&R', 'Marketing', 'Audiovisual', 'Distribuição'
 
 interface ProjectRow {
   nome: string;
-  tipo: string;
+  type: string;
   descricao: string | null;
   artist_id: string | null;
   data_fim: string | Date | null;
@@ -111,7 +111,7 @@ export class ProjectPlanningAutomation {
   ): Promise<ProjectRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT nome, tipo, descricao, artist_id, data_fim, metadata
+      `SELECT nome, type, descricao, artist_id, data_fim, metadata
          FROM projects
         WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
         LIMIT 1`,
@@ -151,7 +151,7 @@ export class ProjectPlanningAutomation {
 
     const input: ProjectPlanningInput = {
       projectName: project.nome,
-      projectType: project.tipo,
+      projectType: project.type,
       departments,
       goals,
       language: 'pt-BR',

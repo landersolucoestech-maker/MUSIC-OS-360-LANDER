@@ -9,7 +9,7 @@ export interface UseEventosScopedParams {
   dateFrom: string;
   dateTo: string;
   search?: string;
-  tipo?: string;
+  type?: string;
   status?: string;
 }
 
@@ -21,9 +21,9 @@ export interface UseEventosScopedParams {
  * Escopar por dateFrom/dateTo (coluna real `data`) resolve isso: cada
  * período tem, na prática, muito menos de 200 eventos.
  */
-export function useEventosScoped({ dateFrom, dateTo, search, tipo, status }: UseEventosScopedParams) {
+export function useEventosScoped({ dateFrom, dateTo, search, type, status }: UseEventosScopedParams) {
   const filters: Record<string, unknown> = { dateFrom, dateTo };
-  if (tipo) filters.tipo = tipo;
+  if (type) filters.type = type;
   if (status) filters.status = status;
 
   const result = usePaginatedDataQuery<EventoWithRelations>({

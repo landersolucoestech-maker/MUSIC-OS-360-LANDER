@@ -5,7 +5,7 @@ export class CreateLeaveRequestDto {
   employee_id: string;
 
   @IsString()
-  tipo: string;
+  type: string;
 
   @IsDateString()
   data_inicio: string;

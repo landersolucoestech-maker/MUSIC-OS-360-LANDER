@@ -7,7 +7,7 @@ interface AccountingFilters {
   period: AccountingPeriod;
   startDate?: string;
   endDate?: string;
-  tipo?: "receita" | "despesa" | "all";
+  type?: "receita" | "despesa" | "all";
   status?: string;
   category?: string;
   search: string;
@@ -27,7 +27,7 @@ interface AccountingState {
 
 const DEFAULT_FILTERS: AccountingFilters = {
   period: "current_month",
-  tipo: "all",
+  type: "all",
   search: "",
 };
 

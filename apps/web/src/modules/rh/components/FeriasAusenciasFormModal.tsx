@@ -58,7 +58,7 @@ export function FeriasAusenciasFormModal({
   const { isLoading: loadingFuncionarios } = useFuncionarios();
 
   const [funcionarioId, setFuncionarioId] = useState("");
-  const [tipo, setTipo] = useState("");
+  const [type, setTipo] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [status, setStatus] = useState("pendente");
@@ -73,7 +73,7 @@ export function FeriasAusenciasFormModal({
   useEffect(() => {
     if (open && mode === "edit" && ausencia) {
       setFuncionarioId((ausencia.funcionario_id as string) || "");
-      setTipo((ausencia.tipo as string) || "");
+      setTipo((ausencia.type as string) || "");
       setDataInicio((ausencia.data_inicio as string) || "");
       setDataFim((ausencia.data_fim as string) || "");
       setStatus((ausencia.status as string) || "pendente");
@@ -82,7 +82,7 @@ export function FeriasAusenciasFormModal({
       setErrors({});
     } else if (open && mode === "view" && ausencia) {
       setFuncionarioId((ausencia.funcionario_id as string) || "");
-      setTipo((ausencia.tipo as string) || "");
+      setTipo((ausencia.type as string) || "");
       setDataInicio((ausencia.data_inicio as string) || "");
       setDataFim((ausencia.data_fim as string) || "");
       setStatus((ausencia.status as string) || "pendente");
@@ -114,7 +114,7 @@ export function FeriasAusenciasFormModal({
   const validate = (): boolean => {
     const result = feriasAusenciasSchema.safeParse({
       funcionarioId,
-      tipo,
+      type,
       dataInicio,
       dataFim,
       status: status as "pendente" | "aprovado" | "rejeitado" | "em_andamento" | "concluido",
@@ -156,7 +156,7 @@ export function FeriasAusenciasFormModal({
 
     const data: FeriasAusenciaInsert = {
       funcionario_id: funcionarioId,
-      tipo: tipo || null,
+      type: type || null,
       data_inicio: dataInicio,
       data_fim: dataFim,
       dias_totais: diasTotais,
@@ -232,16 +232,16 @@ export function FeriasAusenciasFormModal({
           <div className="space-y-2">
             <Label>Tipo de Ausência *</Label>
             <Select
-              value={tipo}
+              value={type}
               onValueChange={(v) => {
                 setTipo(v);
-                clearError("tipo");
+                clearError("type");
               }}
               disabled={isViewMode}
             >
               <SelectTrigger
-                className={errors.tipo ? "border-destructive" : ""}
-                data-testid="select-tipo-ausencia"
+                className={errors.type ? "border-destructive" : ""}
+                data-testid="select-type-ausencia"
               >
                 <SelectValue placeholder="Selecione o tipo" />
               </SelectTrigger>
@@ -253,8 +253,8 @@ export function FeriasAusenciasFormModal({
                 ))}
               </SelectContent>
             </Select>
-            {errors.tipo && (
-              <p className="text-sm text-destructive">{errors.tipo}</p>
+            {errors.type && (
+              <p className="text-sm text-destructive">{errors.type}</p>
             )}
           </div>
 

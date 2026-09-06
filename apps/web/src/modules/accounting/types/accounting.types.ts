@@ -33,7 +33,7 @@ export interface Transacao {
   id: string;
   user_id?: string;
   descricao: string;
-  tipo: TransacaoTipo | string;
+  type: TransacaoTipo | string;
   categoria?: string | null;
   valor: number;
   data: string;

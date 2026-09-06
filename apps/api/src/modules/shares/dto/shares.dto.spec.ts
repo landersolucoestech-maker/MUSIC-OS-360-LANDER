@@ -75,7 +75,7 @@ describe('CreateShareDto — regressão: campos do share financeiro permanecem i
   // O C6 isolou titular_nome/percentual (registro) de detentor/artista_externo/
   // pagador/destinatario (financeiro) — nunca removeu ou renomeou os campos
   // financeiros em si. Esta regressão falha se algum deles for removido/renomeado.
-  const FINANCIAL_FIELDS = ['detentor', 'artista_externo', 'pagador', 'destinatario', 'share_type', 'percentual', 'direcao', 'tipo'];
+  const FINANCIAL_FIELDS = ['detentor', 'artista_externo', 'pagador', 'destinatario', 'share_type', 'percentual', 'direcao', 'type'];
 
   it('CreateShareDto ainda declara todos os campos financeiros', () => {
     const props = decoratedPropertyNames(CreateShareDto);

@@ -27,7 +27,7 @@ function isSensitiveColumn(c: ColumnMeta): boolean {
 
 const DATE_TYPES = new Set(['timestamp', 'timestamptz', 'date', 'datetime', 'Date']);
 const NUMERIC_TYPES = new Set(['int', 'integer', 'numeric', 'decimal', 'float', 'bigint', 'Number', 'real', 'double precision']);
-const FILTERABLE_HINTS = /^(status|situacao|categoria|category|tipo|type|kind|stage|prioridade|priority|active|ativo|is_active|published|approved|archived)$/;
+const FILTERABLE_HINTS = /^(status|situacao|categoria|category|type|type|kind|stage|prioridade|priority|active|ativo|is_active|published|approved|archived)$/;
 
 @Injectable()
 export class ReportEntityDefinitionService {

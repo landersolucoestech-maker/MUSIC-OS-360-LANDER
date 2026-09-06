@@ -130,17 +130,17 @@ function validateParcelamento(data: PartialPayloadForValidation, ctx: z.Refineme
  * Requires tipoTransacao to be present — enforced by both schemas.
  */
 function validateConditionalByType(data: PayloadForValidation, ctx: z.RefinementCtx): void {
-  const tipo             = data.tipoTransacao;
+  const type             = data.tipoTransacao;
   const tipoCliente      = data.tipoCliente;
   const categoria        = data.categoria;
   const subcategoria     = data.subcategoria ?? '';
   const artistaVinculado = data.artistaVinculado;
 
-  const isImposto        = tipo === 'imposto';
-  const isTransferencia  = tipo === 'transferencia';
-  const isInvestimento   = tipo === 'investimento';
-  const isDespesa        = tipo === 'despesa';
-  const isReceita        = tipo === 'receita';
+  const isImposto        = type === 'imposto';
+  const isTransferencia  = type === 'transferencia';
+  const isInvestimento   = type === 'investimento';
+  const isDespesa        = type === 'despesa';
+  const isReceita        = type === 'receita';
   const isEmpresa        = tipoCliente === 'empresa';
   const isArtista        = tipoCliente === 'artista';
   const isPessoa         = tipoCliente === 'pessoa';

@@ -47,7 +47,7 @@ export interface FonogramaRef {
 export interface LancamentoRef {
   id: string;
   title: string;
-  tipo?: string | null;
+  type?: string | null;
   status?: string | null;
 }
 
@@ -56,14 +56,14 @@ export interface ProjetoRef {
   id: string;
   title: string;
   status?: string | null;
-  tipo?: string | null;
+  type?: string | null;
 }
 
 /** Referência leve a um Contrato. */
 export interface ContratoRef {
   id: string;
   title?: string | null;
-  tipo?: string | null;
+  type?: string | null;
   status?: string | null;
 }
 

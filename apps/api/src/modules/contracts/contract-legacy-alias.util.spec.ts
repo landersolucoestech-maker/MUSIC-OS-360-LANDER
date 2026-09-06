@@ -52,65 +52,65 @@ describe('resolveContractAliases — title (obrigatoriedade tratada pelo chamado
   });
 });
 
-describe('resolveContractAliases — tipo/type (comparação estrita, sem trim)', () => {
-  it('somente PT', () => {
-    expect(resolveContractAliases({ title: 'X', tipo: 'gravacao' }).normalized.tipo).toBe('gravacao');
+describe('resolveContractAliases — type/tipo (comparação estrita, sem trim)', () => {
+  it('somente EN', () => {
+    expect(resolveContractAliases({ title: 'X', type: 'gravacao' }).normalized.type).toBe('gravacao');
   });
 
-  it('somente EN', () => {
-    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', type: 'gravacao' });
-    expect(normalized.tipo).toBe('gravacao');
-    expect(legacyAliasesUsed).toContain('type');
+  it('somente PT (legado)', () => {
+    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', tipo: 'gravacao' });
+    expect(normalized.type).toBe('gravacao');
+    expect(legacyAliasesUsed).toContain('tipo');
   });
 
   it('ambos equivalentes (idênticos)', () => {
-    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', tipo: 'gravacao', type: 'gravacao' });
-    expect(normalized.tipo).toBe('gravacao');
-    expect(legacyAliasesUsed).toContain('type');
+    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', type: 'gravacao', tipo: 'gravacao' });
+    expect(normalized.type).toBe('gravacao');
+    expect(legacyAliasesUsed).toContain('tipo');
   });
 
   it('ambos conflitantes', () => {
-    expect(getBody(() => resolveContractAliases({ title: 'X', tipo: 'gravacao', type: 'edicao' })).code).toBe('CONTRACT_ALIAS_CONFLICT');
+    expect(getBody(() => resolveContractAliases({ title: 'X', type: 'gravacao', tipo: 'edicao' })).code).toBe('CONTRACT_ALIAS_CONFLICT');
   });
 
-  it('diferença só de espaços é CONFLITO (sem trim aplicado a tipo)', () => {
-    expect(getBody(() => resolveContractAliases({ title: 'X', tipo: 'gravacao', type: ' gravacao ' })).code).toBe('CONTRACT_ALIAS_CONFLICT');
+  it('diferença só de espaços é CONFLITO (sem trim aplicado a type)', () => {
+    expect(getBody(() => resolveContractAliases({ title: 'X', type: 'gravacao', tipo: ' gravacao ' })).code).toBe('CONTRACT_ALIAS_CONFLICT');
   });
 
   it('ambos null → equivalente, retorna null', () => {
-    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', tipo: null, type: null });
-    expect(normalized.tipo).toBeNull();
-    expect(legacyAliasesUsed).toContain('type');
+    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', type: null, tipo: null });
+    expect(normalized.type).toBeNull();
+    expect(legacyAliasesUsed).toContain('tipo');
   });
 
-  it('PT null e EN válido → CONFLITO (nunca fallback silencioso)', () => {
-    expect(getBody(() => resolveContractAliases({ title: 'X', tipo: null, type: 'gravacao' })).code).toBe('CONTRACT_ALIAS_CONFLICT');
+  it('EN null e PT válido → CONFLITO (nunca fallback silencioso)', () => {
+    expect(getBody(() => resolveContractAliases({ title: 'X', type: null, tipo: 'gravacao' })).code).toBe('CONTRACT_ALIAS_CONFLICT');
   });
 
-  it('PT válido e EN null → CONFLITO', () => {
-    expect(getBody(() => resolveContractAliases({ title: 'X', tipo: 'gravacao', type: null })).code).toBe('CONTRACT_ALIAS_CONFLICT');
+  it('EN válido e PT null → CONFLITO', () => {
+    expect(getBody(() => resolveContractAliases({ title: 'X', type: 'gravacao', tipo: null })).code).toBe('CONTRACT_ALIAS_CONFLICT');
   });
 
-  it('EN undefined é tratado como ausente (não conta como "ambos presentes")', () => {
-    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', tipo: 'gravacao', type: undefined });
-    expect(normalized.tipo).toBe('gravacao');
+  it('PT undefined é tratado como ausente (não conta como "ambos presentes")', () => {
+    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', type: 'gravacao', tipo: undefined });
+    expect(normalized.type).toBe('gravacao');
     expect(legacyAliasesUsed).toEqual([]);
   });
 
-  it('ausência total → tipo undefined', () => {
-    expect(resolveContractAliases({ title: 'X' }).normalized.tipo).toBeUndefined();
+  it('ausência total → type undefined', () => {
+    expect(resolveContractAliases({ title: 'X' }).normalized.type).toBeUndefined();
   });
 
-  it('somente PT com null → válido, não gera 400, retorna null', () => {
-    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', tipo: null });
-    expect(normalized.tipo).toBeNull();
-    expect(legacyAliasesUsed).toEqual([]);
-  });
-
-  it('somente EN com null → válido durante a depreciação, registra alias, retorna null', () => {
+  it('somente EN com null → válido, não gera 400, retorna null', () => {
     const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', type: null });
-    expect(normalized.tipo).toBeNull();
-    expect(legacyAliasesUsed).toEqual(['type']);
+    expect(normalized.type).toBeNull();
+    expect(legacyAliasesUsed).toEqual([]);
+  });
+
+  it('somente PT (legado) com null → válido durante a depreciação, registra alias, retorna null', () => {
+    const { normalized, legacyAliasesUsed } = resolveContractAliases({ title: 'X', tipo: null });
+    expect(normalized.type).toBeNull();
+    expect(legacyAliasesUsed).toEqual(['tipo']);
   });
 });
 
@@ -303,15 +303,15 @@ describe('resolveContractAliases — valor/value (coerção numérica)', () => {
   });
 });
 
-describe('resolveContractQueryAliases — apenas tipo/type e artist_id/artistId', () => {
-  it('tipo canônico', () => {
-    expect(resolveContractQueryAliases({ tipo: 'gravacao' }).normalized.tipo).toBe('gravacao');
+describe('resolveContractQueryAliases — apenas type/tipo e artist_id/artistId', () => {
+  it('type canônico', () => {
+    expect(resolveContractQueryAliases({ type: 'gravacao' }).normalized.type).toBe('gravacao');
   });
 
-  it('type legado', () => {
-    const { normalized, legacyAliasesUsed } = resolveContractQueryAliases({ type: 'gravacao' });
-    expect(normalized.tipo).toBe('gravacao');
-    expect(legacyAliasesUsed).toContain('type');
+  it('tipo legado', () => {
+    const { normalized, legacyAliasesUsed } = resolveContractQueryAliases({ tipo: 'gravacao' });
+    expect(normalized.type).toBe('gravacao');
+    expect(legacyAliasesUsed).toContain('tipo');
   });
 
   it('artist_id canônico', () => {
@@ -326,18 +326,18 @@ describe('resolveContractQueryAliases — apenas tipo/type e artist_id/artistId'
     expect(legacyAliasesUsed).toContain('artistId');
   });
 
-  it('conflito tipo/type', () => {
-    expect(getBody(() => resolveContractQueryAliases({ tipo: 'gravacao', type: 'edicao' })).code).toBe('CONTRACT_ALIAS_CONFLICT');
+  it('conflito type/tipo', () => {
+    expect(getBody(() => resolveContractQueryAliases({ type: 'gravacao', tipo: 'edicao' })).code).toBe('CONTRACT_ALIAS_CONFLICT');
   });
 
-  it('null/null em tipo → equivalente', () => {
-    const { normalized } = resolveContractQueryAliases({ tipo: null, type: null });
-    expect(normalized.tipo).toBeNull();
+  it('null/null em type → equivalente', () => {
+    const { normalized } = resolveContractQueryAliases({ type: null, tipo: null });
+    expect(normalized.type).toBeNull();
   });
 
   it('ausência total → objeto vazio', () => {
     const { normalized, legacyAliasesUsed } = resolveContractQueryAliases({});
-    expect(normalized.tipo).toBeUndefined();
+    expect(normalized.type).toBeUndefined();
     expect(normalized.artist_id).toBeUndefined();
     expect(legacyAliasesUsed).toEqual([]);
   });

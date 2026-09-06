@@ -70,7 +70,7 @@ export class EmailQueueService {
   async enqueueMonitoringAlertEmail(payload: MonitoringAlertEmailPayload): Promise<void> {
     if (!this.available) return;
     const job = await this.emailQueue!.add(EMAIL_JOB_NAMES.MONITORING_ALERT, payload, NORMAL_PRIORITY);
-    this.logger.log(`[emails] enqueued "${EMAIL_JOB_NAMES.MONITORING_ALERT}" jobId=${job.id} tipo=${payload.alertType}`);
+    this.logger.log(`[emails] enqueued "${EMAIL_JOB_NAMES.MONITORING_ALERT}" jobId=${job.id} type=${payload.alertType}`);
   }
 
   async getQueueStats(): Promise<{ waiting: number; active: number; completed: number; failed: number; delayed: number }> {

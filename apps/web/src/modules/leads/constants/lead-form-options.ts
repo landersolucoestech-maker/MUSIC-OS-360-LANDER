@@ -121,10 +121,10 @@ export const SERVICOS_POR_TIPO_LEAD: Record<TipoLead, ReadonlyArray<ServicoLead>
 };
 
 export function getServicosForTipoLead(
-  tipo: TipoLead | "" | undefined,
+  type: TipoLead | "" | undefined,
 ): ReadonlyArray<Option> {
-  if (!tipo) return [];
-  const slugs = SERVICOS_POR_TIPO_LEAD[tipo as TipoLead] ?? [];
+  if (!type) return [];
+  const slugs = SERVICOS_POR_TIPO_LEAD[type as TipoLead] ?? [];
   return slugs
     .map((slug) => SERVICOS_OPTIONS.find((o) => o.value === slug))
     .filter((o): o is (typeof SERVICOS_OPTIONS)[number] => Boolean(o));

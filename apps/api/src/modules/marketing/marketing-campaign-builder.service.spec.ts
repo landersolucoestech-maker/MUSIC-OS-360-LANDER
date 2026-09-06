@@ -24,7 +24,7 @@ describe('MarketingCampaignBuilderService tenant persistence', () => {
     expect(qb.where).toHaveBeenCalledWith('campaign.tenant_id = :tenantId', {
       tenantId: 'tenant-a',
     });
-    expect(qb.andWhere).toHaveBeenCalledWith('campaign.tipo = :type', {
+    expect(qb.andWhere).toHaveBeenCalledWith('campaign.type = :type', {
       type: 'marketing_builder',
     });
   });

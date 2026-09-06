@@ -30,7 +30,7 @@ export class CreateContentDetectionDto {
 
   @IsOptional()
   @IsString()
-  tipo?: string;
+  type?: string;
 
   @IsOptional()
   metadata?: Record<string, unknown>;

@@ -78,7 +78,7 @@ export default function Contratos() {
     pageSize,
     search: debouncedSearch || undefined,
     status: statusFilter !== "all-status" ? statusFilter : undefined,
-    tipo: typeFilter !== "all-type" ? typeFilter : undefined,
+    type: typeFilter !== "all-type" ? typeFilter : undefined,
     signingPlatform: platformFilter !== "all-platform" ? platformFilter : undefined,
   });
   const filteredContratos = pageItems;
@@ -234,7 +234,7 @@ export default function Contratos() {
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Buscar por artista, tipo ou título…"
+              placeholder="Buscar por artista, type ou título…"
               className="pl-9 h-8 text-sm bg-card border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -353,7 +353,7 @@ export default function Contratos() {
                         <TableCell className="text-muted-foreground text-sm">
                           {contrato.artistas?.nome_artistico || contrato.clientes?.nome || "—"}
                         </TableCell>
-                        <TableCell className="text-sm">{contrato.tipo ? formatCategoryLabel(contrato.tipo) : "—"}</TableCell>
+                        <TableCell className="text-sm">{contrato.type ? formatCategoryLabel(contrato.type) : "—"}</TableCell>
                         <TableCell><SigningPlatformBadge platform={contrato.signing_platform} /></TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">

@@ -37,7 +37,7 @@ export class TransactionEventsHandler {
     }
     if (!this.financialRules) return;
 
-    const { transactionId, tipo, categoria, valor, source } = event.payload;
+    const { transactionId, type, categoria, valor, source } = event.payload;
     // A transação provisória criada por contract.signed já avalia regras sob
     // esse trigger — evita disparo duplicado para a mesma ação de negócio.
     if (source === 'contract.signed') return;
@@ -48,7 +48,7 @@ export class TransactionEventsHandler {
         entityType: 'transaction',
         valor: parseFloat(valor),
         categoria,
-        tipo,
+        type,
       });
     } catch (err) {
       this.logger.warn(`Failed to evaluate financial rules for transaction.created "${transactionId}" — ${String(err)}`);
@@ -72,7 +72,7 @@ export class TransactionEventsHandler {
     await runInContext(async (manager) => {
       const contractRepo = manager ? manager.getRepository(ContractEntity) : this.contractRepo;
       const taskRepo     = manager ? manager.getRepository(CrmTaskEntity)  : this.taskRepo;
-      const { transactionId, tipo, contratoId, valor, paidBy, paidAt } = event.payload;
+      const { transactionId, type, contratoId, valor, paidBy, paidAt } = event.payload;
 
       if (this.financialRules) {
         try {
@@ -80,7 +80,7 @@ export class TransactionEventsHandler {
             entityId: transactionId,
             entityType: 'transaction',
             valor: parseFloat(valor),
-            tipo,
+            type,
           });
         } catch (err) {
           this.logger.warn(`Failed to evaluate financial rules for transaction.paid "${transactionId}" — ${String(err)}`);

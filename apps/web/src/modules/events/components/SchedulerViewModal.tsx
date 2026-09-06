@@ -88,7 +88,7 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
             <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="text-xs">
                   <Tag className="h-3 w-3 mr-1" />
-                  {getBackendEventTypeLabel(evento.tipo)}
+                  {getBackendEventTypeLabel(evento.type)}
                 </Badge>
                 {getStatusBadge(evento.status)}
               </div>

@@ -107,7 +107,7 @@ function shareToForm(share: Share & Record<string, unknown>): ShareFormState {
     release_id: s("release_id"),
     detentor: s("detentor"),
     destinatario: s("destinatario"),
-    funcao: s("tipo") || "interprete",
+    funcao: s("type") || "interprete",
     nome_musica: s("nome_musica") || s("titulo_obra"),
     artista_externo: s("artista_externo"),
     artista_project_id: s("artista_project_id") || s("artist_id"),
@@ -222,7 +222,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, initialRelea
             nome_musica: selectedRelease?.title ?? null,
             detentor: formData.detentor.trim() || null,
             destinatario: formData.destinatario.trim() || null,
-            tipo: formData.funcao || null,
+            type: formData.funcao || null,
           }
         : {
             ...common,

@@ -124,7 +124,7 @@ export default function Projetos() {
     pageSize,
     search: debouncedSearch || undefined,
     status: statusFilter !== "all" ? statusFilter : undefined,
-    tipo: tipoFilter !== "all" ? tipoFilter : undefined,
+    type: tipoFilter !== "all" ? tipoFilter : undefined,
     artistId: artistaFilter !== "all" ? artistaFilter : undefined,
     genero: generoFilter !== "all" ? generoFilter : undefined,
   });
@@ -391,7 +391,7 @@ export default function Projetos() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="capitalize text-sm">{project.tipo || "—"}</TableCell>
+                        <TableCell className="capitalize text-sm">{project.type || "—"}</TableCell>
                         <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-compositores-${project.id}`}>{info.compositores || "—"}</TableCell>
                         <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-interpretes-${project.id}`}>{info.interpretes || "—"}</TableCell>
                         <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-produtores-${project.id}`}>{info.produtores || "—"}</TableCell>

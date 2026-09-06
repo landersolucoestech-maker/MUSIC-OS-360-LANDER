@@ -8,7 +8,7 @@ const CALCULOS = ['percentual', 'fixo', 'faixa'] as const;
 
 export class CreateFinancialRuleDto {
   @ApiProperty() @IsString() @MaxLength(255) nome!: string;
-  @ApiProperty({ enum: TIPOS }) @IsIn(TIPOS) tipo!: string;
+  @ApiProperty({ enum: TIPOS }) @IsIn(TIPOS) type!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) categoria?: string;
   @ApiProperty({ enum: CALCULOS }) @IsIn(CALCULOS) calculo!: string;
   @ApiProperty() @IsNumber() @Type(() => Number) valor!: number;
@@ -23,7 +23,7 @@ export class UpdateFinancialRuleDto extends PartialType(CreateFinancialRuleDto) 
 }
 
 export class QueryFinancialRuleDto extends PaginationDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() tipo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() categoria?: string;
   @ApiPropertyOptional() @IsOptional() ativo?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;

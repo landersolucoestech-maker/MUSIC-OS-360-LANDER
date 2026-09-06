@@ -176,8 +176,8 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
     detail?.status ?? lancamento.status,
     detail?.allowed_transitions,
   );
-  const tipo = String(lancamento.tipo ?? "single").toLowerCase();
-  const tipoInfo = TIPO_MAP[tipo] ?? { label: tipo.toUpperCase(), color: "bg-muted text-muted-foreground" };
+  const type = String(lancamento.type ?? "single").toLowerCase();
+  const tipoInfo = TIPO_MAP[type] ?? { label: type.toUpperCase(), color: "bg-muted text-muted-foreground" };
   const capaUrl = (lancamento.capa_url as string | null | undefined) ?? textValue(assets["capa_url"]);
   const dataFormatada = formatReleaseDate(lancamento.data_lancamento);
   const idiomaRaw = lancamento.idioma ?? metadata["idioma"];

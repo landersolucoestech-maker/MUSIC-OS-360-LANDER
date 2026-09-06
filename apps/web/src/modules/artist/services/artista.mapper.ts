@@ -213,7 +213,7 @@ export interface ArtistaFormResponsavel {
 }
 
 export interface ArtistaFormRelacionamento {
-  tipo: "empresario" | "gravadora" | "editora" | "booker" | "juridico" | "financeiro" | "contador" | "assessoria";
+  type: "empresario" | "gravadora" | "editora" | "booker" | "juridico" | "financeiro" | "contador" | "assessoria";
   nome: string;
   telefone: string;
   email: string;
@@ -285,13 +285,13 @@ export interface ArtistaFormFields {
   contratoId: string;
 }
 
-function emptyRelacionamento(tipo: ArtistaFormRelacionamento["tipo"]): ArtistaFormRelacionamento {
-  return { tipo, nome: "", telefone: "", email: "", escritorio: "", crc: "", responsaveis: [], distribuidoras: [] };
+function emptyRelacionamento(type: ArtistaFormRelacionamento["type"]): ArtistaFormRelacionamento {
+  return { type, nome: "", telefone: "", email: "", escritorio: "", crc: "", responsaveis: [], distribuidoras: [] };
 }
 
 function dbRelToForm(r: ArtistaRelacionamento): ArtistaFormRelacionamento {
   return {
-    tipo: r.tipo,
+    type: r.type,
     nome: r.nome ?? "",
     telefone: r.telefone ?? "",
     email: r.email ?? "",
@@ -335,7 +335,7 @@ function migrateLegatoRelacionamentos(artista: Artista): ArtistaFormRelacionamen
 
   if (artista.empresario_nome) {
     rels.push({
-      tipo: "empresario",
+      type: "empresario",
       nome: str(artista.empresario_nome),
       telefone: str(artista.empresario_telefone),
       email: str(artista.empresario_email),
@@ -348,7 +348,7 @@ function migrateLegatoRelacionamentos(artista: Artista): ArtistaFormRelacionamen
 
   if (artista.gravadora_nome) {
     const tp = str(artista.tipo_perfil);
-    const tipoRel: ArtistaFormRelacionamento["tipo"] = tp === "editora" ? "editora" : "gravadora";
+    const tipoRel: ArtistaFormRelacionamento["type"] = tp === "editora" ? "editora" : "gravadora";
     // Migrar o responsável único legado (gravadora_responsavel_*) para o array
     const responsaveis: ArtistaFormResponsavel[] = [];
     if (artista.gravadora_responsavel_nome) {
@@ -359,7 +359,7 @@ function migrateLegatoRelacionamentos(artista: Artista): ArtistaFormRelacionamen
       });
     }
     rels.push({
-      tipo: tipoRel,
+      type: tipoRel,
       nome: str(artista.gravadora_nome),
       telefone: str(artista.gravadora_telefone),
       email: str(artista.gravadora_email),
@@ -522,7 +522,7 @@ export interface FormToArtistaInput extends ArtistaFormFields {
 
 /**
  * Converte o estado do formulário em payload pronto para persistência.
- * Salva todos os campos — incluindo tipo e status — garantindo que
+ * Salva todos os campos — incluindo type e status — garantindo que
  * exportação e re-importação não percam dados.
  */
 export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" | "user_id" | "created_at" | "updated_at"> {
@@ -532,7 +532,7 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     .map((r) => {
       const responsaveisValid = (r.responsaveis ?? []).filter((rv) => rv.nome.trim() !== "");
       return {
-        tipo: r.tipo,
+        type: r.type,
         nome: r.nome.trim(),
         telefone: r.telefone.trim(),
         email: r.email.trim(),
@@ -545,8 +545,8 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
 
   // Deriva mapas legados de distribuidoras a partir do novo modelo relacional
   // (empresario + gravadora + editora têm distribuidoras próprias no novo modelo)
-  const empresarioRels = f.relacionamentos.filter((r) => r.tipo === "empresario");
-  const gravadoraRels  = f.relacionamentos.filter((r) => r.tipo === "gravadora" || r.tipo === "editora");
+  const empresarioRels = f.relacionamentos.filter((r) => r.type === "empresario");
+  const gravadoraRels  = f.relacionamentos.filter((r) => r.type === "gravadora" || r.type === "editora");
 
   const distribuidorasSelecionadas: Record<string, boolean> = {};
   const distribuidorasEmails: Record<string, string>        = {};
@@ -578,7 +578,7 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
   }
 
   // Primeiro responsável da primeira gravadora → campos legados
-  const firstGrav = f.relacionamentos.find((r) => r.tipo === "gravadora" || r.tipo === "editora");
+  const firstGrav = f.relacionamentos.find((r) => r.type === "gravadora" || r.type === "editora");
   const firstResp = firstGrav?.responsaveis?.[0];
 
   return {

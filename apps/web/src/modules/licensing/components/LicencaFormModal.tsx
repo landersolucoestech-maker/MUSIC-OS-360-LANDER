@@ -87,7 +87,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
     if (licenca) {
       reset({
         title: licenca.title || "",
-        tipoLicenca: licenca.tipo || "",
+        tipoLicenca: licenca.type || "",
         workId: licenca.work_id || "",
         clientId: licenca.client_id || "",
         projeto: licenca.projeto || "",
@@ -115,7 +115,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
     const pctNum = data.percentage ? Number(data.percentage) : null;
     return {
       title:            data.title,
-      tipo:              data.tipoLicenca || undefined,
+      type:              data.tipoLicenca || undefined,
       work_id:           data.workId,
       client_id:        data.clientId,
       projeto:           data.projeto || undefined,
@@ -191,12 +191,12 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
                   control={control}
                   render={({ field }) => (
                     <Select value={field.value ?? ""} onValueChange={field.onChange} disabled={isViewMode}>
-                      <SelectTrigger data-testid="select-tipo-licenca">
+                      <SelectTrigger data-testid="select-type-licenca">
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        {tiposLicenca.map(tipo => (
-                          <SelectItem key={tipo} value={tipo.toLowerCase().replace(/ /g, "_")}>{tipo}</SelectItem>
+                        {tiposLicenca.map(type => (
+                          <SelectItem key={type} value={type.toLowerCase().replace(/ /g, "_")}>{type}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

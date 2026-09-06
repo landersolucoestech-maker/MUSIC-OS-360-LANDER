@@ -114,7 +114,7 @@ type ContentFormValues = {
   title: string;
   targetType: MarketingTarget;
   targetName: string;
-  /** Plataforma principal — dirige formato/preview/tipo. */
+  /** Plataforma principal — dirige formato/preview/type. */
   channel: SocialPlatform;
   /** Todas as plataformas selecionadas (publicação multiplataforma). */
   channels: SocialPlatform[];
@@ -464,7 +464,7 @@ function ContentScheduleModal({
 
   /**
    * Seleção MÚLTIPLA de plataformas: alterna a plataforma mantendo as demais.
-   * A primeira plataforma da lista é a principal (dirige formato/preview/tipo).
+   * A primeira plataforma da lista é a principal (dirige formato/preview/type).
    * Nunca remove outras ao adicionar; nunca substitui automaticamente; nunca fica vazia.
    */
   const togglePlatform = (platform: SocialPlatform) => {
@@ -677,7 +677,7 @@ function ContentScheduleModal({
 
               <FieldBlock label="Tipo de conteudo" required error={errors.type}>
                 <Select value={values.type} onValueChange={(value) => handleTypeChange(value as ContentType)}>
-                  <SelectTrigger data-testid="select-tipo-conteudo">
+                  <SelectTrigger data-testid="select-type-conteudo">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

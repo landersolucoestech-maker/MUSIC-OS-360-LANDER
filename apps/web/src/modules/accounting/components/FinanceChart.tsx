@@ -61,11 +61,11 @@ export function FinanceChart() {
       });
 
       const receitas = mesTransacoes
-        .filter(t => t.tipo === "receita")
+        .filter(t => t.type === "receita")
         .reduce((acc, t) => acc + (t.valor || 0), 0);
 
       const despesas = mesTransacoes
-        .filter(t => t.tipo === "despesa")
+        .filter(t => t.type === "despesa")
         .reduce((acc, t) => acc + (t.valor || 0), 0);
 
       return {

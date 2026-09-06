@@ -211,7 +211,7 @@ export function NfeConfigDialog({ open, onOpenChange }: NfeConfigDialogProps) {
                   value={certificadoTipo}
                   onValueChange={(v) => setCertificadoTipo(v as NfeCertificadoTipo)}
                 >
-                  <SelectTrigger data-testid="select-nfe-cert-tipo">
+                  <SelectTrigger data-testid="select-nfe-cert-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

@@ -16,7 +16,7 @@ const STATUSES = ['pendente', 'em_andamento', 'concluido', 'rejeitado'] as const
  */
 export class CreateTakedownDto {
   @ApiProperty() @IsString() @MaxLength(255) title!: string;
-  @ApiPropertyOptional({ enum: TIPOS }) @IsOptional() @IsIn(TIPOS) tipo?: string;
+  @ApiPropertyOptional({ enum: TIPOS }) @IsOptional() @IsIn(TIPOS) type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) obra_afetada?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista?: string;
   @ApiProperty() @IsString() @MaxLength(100) plataforma!: string;

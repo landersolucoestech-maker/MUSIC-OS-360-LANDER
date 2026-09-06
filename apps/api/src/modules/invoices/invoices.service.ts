@@ -47,7 +47,7 @@ export class InvoicesService {
     const input = dto as unknown as Record<string, unknown>;
     const payload: Record<string, unknown> = { ...input };
 
-    if (input['tipo_nota'] !== undefined) payload['tipo'] = input['tipo_nota'];
+    if (input['tipo_nota'] !== undefined) payload['type'] = input['tipo_nota'];
     if (input['valor_servicos'] !== undefined) payload['valor'] = input['valor_servicos'];
     if (input['vencimento'] !== undefined) payload['data_vencimento'] = input['vencimento'];
 
@@ -67,18 +67,18 @@ export class InvoicesService {
       .where('i.tenant_id = :tenantId', { tenantId })
       .andWhere('i.deleted_at IS NULL')
       // REM-06: `invoices` também recebe as faturas Stripe da assinatura SaaS
-      // do próprio tenant (billing.service.ts upsertStripeInvoice, tipo=
+      // do próprio tenant (billing.service.ts upsertStripeInvoice, type=
       // 'stripe_subscription'). Este endpoint (RequireRole('viewer')) é a
       // listagem de Notas Fiscais emitidas pelo tenant aos SEUS clientes —
       // sem este filtro, um viewer via /invoices contornava a barreira
       // RequireRole('admin') que protege os mesmos dados em /billing/subscription.
-      .andWhere("i.tipo != 'stripe_subscription'");
+      .andWhere("i.type != 'stripe_subscription'");
 
     if (query.status) qb.andWhere('i.status = :status', { status: query.status });
 
     const tipoNota = query.tipo_nota ?? query.type;
     if (tipoNota) {
-      qb.andWhere('(i.tipo_nota = :tipoNota OR i.tipo = :tipoNota)', { tipoNota });
+      qb.andWhere('(i.tipo_nota = :tipoNota OR i.type = :tipoNota)', { tipoNota });
     }
     if (query.client_id) qb.andWhere('i.client_id = :clientId', { clientId: query.client_id });
     if (query.artistId) qb.andWhere('i.prestador_id = :prestadorId', { prestadorId: query.artistId });
@@ -106,7 +106,7 @@ export class InvoicesService {
       .where('i.id = :id AND i.tenant_id = :tenantId AND i.deleted_at IS NULL', { id, tenantId })
       // REM-06: mesma exclusão de list() — nunca expor uma fatura Stripe de
       // assinatura SaaS via GET /invoices/:id.
-      .andWhere("i.tipo != 'stripe_subscription'")
+      .andWhere("i.type != 'stripe_subscription'")
       .getOne();
     if (!result) throw new NotFoundException('Nota fiscal não encontrada');
     return this.mapInvoice(result);
@@ -130,7 +130,7 @@ export class InvoicesService {
       payload: {
         invoiceId: saved.id,
         tenantId,
-        tipo: String((saved as unknown as Record<string, unknown>)['tipo_nota'] ?? saved.tipo ?? ''),
+        type: String((saved as unknown as Record<string, unknown>)['tipo_nota'] ?? saved.type ?? ''),
         valor: String((saved as unknown as Record<string, unknown>)['valor_servicos'] ?? saved.valor ?? 0),
         numero: saved.numero ?? null,
         prestadorId: saved.prestador_id ?? null,
@@ -146,7 +146,7 @@ export class InvoicesService {
           action: 'created',
           description: `Nota fiscal${saved.numero ? ` nº ${saved.numero}` : ''} criada — R$${String((mapped['valor_servicos'] ?? mapped['valor']) ?? 0)}`,
           metadata: {
-            tipo: mapped['tipo_nota'] ?? mapped['tipo'],
+            type: mapped['tipo_nota'] ?? mapped['type'],
             valor: String((mapped['valor_servicos'] ?? mapped['valor']) ?? 0),
             numero: saved.numero,
           },
@@ -241,7 +241,7 @@ export class InvoicesService {
         payload: {
           invoiceId,
           tenantId,
-          tipo: String(after['tipo_nota'] ?? after['tipo'] ?? ''),
+          type: String(after['tipo_nota'] ?? after['type'] ?? ''),
           valor,
           numero,
           issuedBy: userId,

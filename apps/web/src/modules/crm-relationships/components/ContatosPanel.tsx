@@ -183,8 +183,8 @@ export const ContatosPanel = forwardRef<ContatosPanelHandle, Record<string, neve
             data-testid="contatos-search"
           />
           <Select value={filtro} onValueChange={(v) => setFiltro(v as FiltroTipo)}>
-            <SelectTrigger className="h-8 w-auto min-w-[140px] text-sm" data-testid="contatos-filtro-tipo">
-              <SelectValue placeholder="Filtrar por tipo" />
+            <SelectTrigger className="h-8 w-auto min-w-[140px] text-sm" data-testid="contatos-filtro-type">
+              <SelectValue placeholder="Filtrar por type" />
             </SelectTrigger>
             <SelectContent>
               {FILTROS.map((f) => (

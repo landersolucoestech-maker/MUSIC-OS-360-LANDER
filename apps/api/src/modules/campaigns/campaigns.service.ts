@@ -32,7 +32,7 @@ export class CampaignsService {
       .andWhere('c.deleted_at IS NULL');
 
     if (q['status'])     qb.andWhere('c.status = :status',         { status:     q['status'] });
-    if (q['tipo'])       qb.andWhere('c.tipo = :tipo',             { tipo:       q['tipo'] });
+    if (q['type'])       qb.andWhere('c.type = :type',             { type:       q['type'] });
     if (q['artist_id']) qb.andWhere('c.artist_id = :artistId',  { artistId:  q['artist_id'] });
     if (q['search'])     qb.andWhere('c.nome ILIKE :search',       { search: `%${q['search']}%` });
 

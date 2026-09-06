@@ -8,7 +8,7 @@ export type FinancialRuleCalculo = "percentual" | "fixo" | "faixa";
 export interface FinancialRule {
   id: string;
   nome: string;
-  tipo: FinancialRuleTipo;
+  type: FinancialRuleTipo;
   categoria: string | null;
   calculo: FinancialRuleCalculo;
   valor: number;

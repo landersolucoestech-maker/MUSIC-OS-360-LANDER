@@ -23,8 +23,8 @@ export async function fetchAccountingSummaryRows(
   const rows = (await ds.query(
     `SELECT
        a.nome_artistico AS artista,
-       COALESCE(SUM(t.valor) FILTER (WHERE t.tipo = 'receita'), 0) AS receitas,
-       COALESCE(SUM(t.valor) FILTER (WHERE t.tipo = 'despesa'), 0) AS despesas
+       COALESCE(SUM(t.valor) FILTER (WHERE t.type = 'receita'), 0) AS receitas,
+       COALESCE(SUM(t.valor) FILTER (WHERE t.type = 'despesa'), 0) AS despesas
      FROM artists a
      JOIN transactions t ON t.artist_id = a.id AND t.tenant_id = a.tenant_id
      WHERE a.tenant_id = $1 AND t.deleted_at IS NULL

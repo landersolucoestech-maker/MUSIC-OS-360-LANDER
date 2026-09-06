@@ -41,7 +41,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
     resolver: zodResolver(takedownSchema),
     defaultValues: {
       title: "",
-      tipo: "enviado",
+      type: "enviado",
       obraAfetada: "",
       artista: "",
       plataforma: "",
@@ -62,7 +62,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
       const n = normalizeTakedown(takedown);
       reset({
         title: n.title,
-        tipo: n.tipo || "enviado",
+        type: n.type || "enviado",
         obraAfetada: n.obra_afetada,
         artista: n.artista,
         plataforma: n.plataforma,
@@ -78,7 +78,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
     } else {
       reset({
         title: "",
-        tipo: "enviado",
+        type: "enviado",
         obraAfetada: "",
         artista: "",
         plataforma: "",
@@ -97,7 +97,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
   /** Converte os campos do formulário no shape canônico snake_case persistido. */
   const buildPayload = (data: TakedownFormData) => ({
     title: data.title,
-    tipo: data.tipo || null,
+    type: data.type || null,
     obra_afetada: data.obraAfetada || null,
     artista: data.artista || null,
     plataforma: data.plataforma,
@@ -162,11 +162,11 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
               <div className="space-y-2">
                 <Label>Tipo</Label>
                 <Controller
-                  name="tipo"
+                  name="type"
                   control={control}
                   render={({ field }) => (
                     <Select value={field.value ?? ""} onValueChange={field.onChange} disabled={isViewMode}>
-                      <SelectTrigger data-testid="select-tipo">
+                      <SelectTrigger data-testid="select-type">
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
                       <SelectContent>

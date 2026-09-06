@@ -101,12 +101,12 @@ export default function Financeiro() {
   };
 
   const parseOFXContent = (content: string): Array<{
-    descricao: string; valor: number; data: string; tipo: string;
+    descricao: string; valor: number; data: string; type: string;
     categoria: string; status: string; artist_id: string | null;
     client_id: string | null; origem: any; venda_id: string | null;
   }> => {
     const transactions: Array<{
-      descricao: string; valor: number; data: string; tipo: string;
+      descricao: string; valor: number; data: string; type: string;
       categoria: string; status: string; artist_id: string | null;
       client_id: string | null; origem: any; venda_id: string | null;
     }> = [];
@@ -126,7 +126,7 @@ export default function Financeiro() {
         transactions.push({
           descricao: memo, valor: Math.abs(valor),
           data: `${year}-${month}-${day}`,
-          tipo: valor >= 0 ? "receita" : "despesa",
+          type: valor >= 0 ? "receita" : "despesa",
           categoria: "outros", status: "pago",
           artist_id: null, client_id: null,
           origem: "manual" as any, venda_id: null,
@@ -151,7 +151,7 @@ export default function Financeiro() {
     transacoes: pageItems, total, isLoading: isLoadingPage, error: pageError, refetch: refetchPage,
   } = useTransacoesPaginated({
     page, pageSize, search: debouncedSearch || undefined,
-    tipo: typeFilter !== "all-type" ? typeFilter : undefined,
+    type: typeFilter !== "all-type" ? typeFilter : undefined,
     status: statusFilter !== "all-status" ? statusFilter : undefined,
     categoria: categoryFilter !== "all-category" ? categoryFilter : undefined,
     dateFrom: startDate || undefined,
@@ -394,7 +394,7 @@ export default function Financeiro() {
                 </TableHeader>
                 <TableBody>
                   {pageItems.map((transacao) => {
-                    const tipo = transacao.tipo === "receita" ? "receita" : "despesa";
+                    const type = transacao.type === "receita" ? "receita" : "despesa";
                     const descricao = String(transacao.descricao ?? "Transação sem descrição");
                     const categoria = String(transacao.categoria ?? "sem_categoria");
                     const data = String(transacao.data ?? "");
@@ -412,11 +412,11 @@ export default function Financeiro() {
                       <TableCell>
                         <div className={cn(
                           "w-7 h-7 rounded-lg flex items-center justify-center",
-                          tipo === "receita"
+                          type === "receita"
                             ? "bg-success/10 border border-success/20"
                             : "bg-destructive/10 border border-destructive/20"
                         )}>
-                          {tipo === "receita"
+                          {type === "receita"
                             ? <TrendingUp className="h-3.5 w-3.5 text-success" />
                             : <TrendingDown className="h-3.5 w-3.5 text-destructive" />
                           }
@@ -428,9 +428,9 @@ export default function Financeiro() {
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{data ? formatDate(data) : "—"}</TableCell>
                       <TableCell className={cn(
                         "text-right text-sm",
-                        valor === 0 ? "text-muted-foreground" : tipo === "receita" ? "text-success" : "text-destructive"
+                        valor === 0 ? "text-muted-foreground" : type === "receita" ? "text-success" : "text-destructive"
                       )}>
-                        {valor === 0 ? "" : tipo === "receita" ? "+" : "−"}{formatCurrency(valor)}
+                        {valor === 0 ? "" : type === "receita" ? "+" : "−"}{formatCurrency(valor)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

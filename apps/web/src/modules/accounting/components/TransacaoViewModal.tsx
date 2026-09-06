@@ -343,7 +343,7 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
   }, [open, transactionId]);
 
   const t = details;
-  const type = String(valueOf(t, ["type", "tipo", "tipoTransacao", "tipo_transacao"]) ?? "outros").toLowerCase();
+  const type = String(valueOf(t, ["type", "type", "tipoTransacao", "tipo_transacao"]) ?? "outros").toLowerCase();
   const status = String(valueOf(t, ["status"]) ?? "pendente").toLowerCase();
   const typeMeta = transactionTypeMeta[type] ?? transactionTypeMeta.outros;
   const amount = numValue(valueOf(t, ["amount", "valor", "grossAmount", "gross_amount"])) ?? 0;

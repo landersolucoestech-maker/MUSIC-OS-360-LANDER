@@ -33,7 +33,7 @@ export interface ContractAliasErrorBody {
 
 export interface ResolvedContractWriteFields {
   title?: string;
-  tipo?: string | null;
+  type?: string | null;
   artist_id?: string | null;
   data_inicio?: string | null;
   data_fim?: string | null;
@@ -42,7 +42,7 @@ export interface ResolvedContractWriteFields {
 }
 
 export interface ResolvedContractQueryFields {
-  tipo?: string | null;
+  type?: string | null;
   artist_id?: string | null;
 }
 
@@ -96,7 +96,7 @@ function throwInvalid(code: ContractAliasErrorCode, canonical: string, field: st
   throw new BadRequestException(body);
 }
 
-// ── Resolução genérica de par (campos opcionais: tipo, artist_id, datas, valor) ─
+// ── Resolução genérica de par (campos opcionais: type, artist_id, datas, valor) ─
 
 interface PairSpec {
   canonical: string;
@@ -155,9 +155,9 @@ function resolvePair(input: Record<string, unknown>, spec: PairSpec, legacyUsed:
   throwConflict(spec.canonical, spec.legacy);
 }
 
-const TIPO_SPEC: PairSpec = {
-  canonical: 'tipo',
-  legacy: 'type',
+const TYPE_SPEC: PairSpec = {
+  canonical: 'type',
+  legacy: 'tipo',
   isEquivalent: (a, b) => a === b,
   transform: (v) => v,
 };
@@ -260,8 +260,8 @@ export function resolveContractAliases(input: Record<string, unknown>): Contract
   const title = resolveTitle(input, legacyUsed);
   if (title !== undefined) normalized.title = title;
 
-  const tipo = resolvePair(input, TIPO_SPEC, legacyUsed);
-  if (tipo !== undefined) normalized.tipo = tipo as string | null;
+  const type = resolvePair(input, TYPE_SPEC, legacyUsed);
+  if (type !== undefined) normalized.type = type as string | null;
 
   const artistId = resolvePair(input, ARTIST_ID_SPEC, legacyUsed);
   if (artistId !== undefined) normalized.artist_id = artistId as string | null;
@@ -282,15 +282,15 @@ export function resolveContractAliases(input: Record<string, unknown>): Contract
 }
 
 /**
- * Resolve exclusivamente os 2 aliases de consulta (tipo/type, artist_id/artistId).
+ * Resolve exclusivamente os 2 aliases de consulta (type/tipo, artist_id/artistId).
  * Não conhece nem processa title/value/datas — impossível vazarem pela query.
  */
 export function resolveContractQueryAliases(input: Record<string, unknown>): ContractAliasResolution<ResolvedContractQueryFields> {
   const legacyUsed = new Set<string>();
   const normalized: ResolvedContractQueryFields = {};
 
-  const tipo = resolvePair(input, TIPO_SPEC, legacyUsed);
-  if (tipo !== undefined) normalized.tipo = tipo as string | null;
+  const type = resolvePair(input, TYPE_SPEC, legacyUsed);
+  if (type !== undefined) normalized.type = type as string | null;
 
   const artistId = resolvePair(input, ARTIST_ID_SPEC, legacyUsed);
   if (artistId !== undefined) normalized.artist_id = artistId as string | null;

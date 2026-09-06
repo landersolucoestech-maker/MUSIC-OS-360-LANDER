@@ -139,8 +139,8 @@ export const CONTACT_PROFILES: Record<ContatoTipoPessoa, Record<string, Classifi
 };
 
 /** Perfis válidos para uma combinação Tipo + Categoria. */
-export function getPerfis(tipo: ContatoTipoPessoa, categoriaSlug: string): ClassificationOption[] {
-  return CONTACT_PROFILES[tipo]?.[categoriaSlug] ?? [];
+export function getPerfis(type: ContatoTipoPessoa, categoriaSlug: string): ClassificationOption[] {
+  return CONTACT_PROFILES[type]?.[categoriaSlug] ?? [];
 }
 
 /**

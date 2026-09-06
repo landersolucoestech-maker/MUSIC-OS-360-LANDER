@@ -3,7 +3,7 @@ export type TipoOperacaoNF = "entrada" | "saida";
 const ENTRADA_MARKER = "[TIPO_OPERACAO:ENTRADA]";
 
 export function parseTipoOperacao(observacoes: string | null | undefined): {
-  tipo: TipoOperacaoNF;
+  type: TipoOperacaoNF;
   observacoesLimpas: string;
 } {
   const raw = observacoes ?? "";
@@ -11,17 +11,17 @@ export function parseTipoOperacao(observacoes: string | null | undefined): {
   if (trimmed.startsWith(ENTRADA_MARKER)) {
     const rest = trimmed.slice(ENTRADA_MARKER.length);
     const limpas = rest.startsWith("\n") ? rest.slice(1) : rest;
-    return { tipo: "entrada", observacoesLimpas: limpas };
+    return { type: "entrada", observacoesLimpas: limpas };
   }
-  return { tipo: "saida", observacoesLimpas: raw };
+  return { type: "saida", observacoesLimpas: raw };
 }
 
 export function serializeTipoOperacao(
-  tipo: TipoOperacaoNF,
+  type: TipoOperacaoNF,
   observacoes: string | null | undefined,
 ): string {
   const texto = (observacoes ?? "").replace(/^\s*\[TIPO_OPERACAO:ENTRADA\]\n?/, "");
-  if (tipo === "entrada") {
+  if (type === "entrada") {
     return texto.length > 0 ? `${ENTRADA_MARKER}\n${texto}` : ENTRADA_MARKER;
   }
   return texto;

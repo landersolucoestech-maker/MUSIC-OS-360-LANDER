@@ -101,7 +101,7 @@ export function ContatoViewModal({ open, onOpenChange, contact, onEdit }: Contat
   const po = (contact.payloadOperacional ?? {}) as Record<string, unknown>;
   const str = (k: string): string => (typeof po[k] === "string" ? (po[k] as string) : "");
 
-  const interacoes: Array<{ id: string; tipo: string; data: string; horario: string; descricao: string }> =
+  const interacoes: Array<{ id: string; type: string; data: string; horario: string; descricao: string }> =
     Array.isArray(po.interacoes) ? (po.interacoes as never) : [];
 
   const tipoPessoa  = str("tipo_pessoa") || "pessoa_fisica";
@@ -266,7 +266,7 @@ export function ContatoViewModal({ open, onOpenChange, contact, onEdit }: Contat
                   >
                     <p className="flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground">
                       <MessageSquare className="h-3.5 w-3.5" />
-                      Interação {idx + 1} · {labelFor([...TIPO_INTERACAO_OPTIONS], it.tipo)} · {fmtDate(it.data)}{it.horario ? ` ${it.horario}` : ""}
+                      Interação {idx + 1} · {labelFor([...TIPO_INTERACAO_OPTIONS], it.type)} · {fmtDate(it.data)}{it.horario ? ` ${it.horario}` : ""}
                     </p>
                     <p className="whitespace-pre-wrap text-sm text-foreground">
                       {it.descricao || "—"}

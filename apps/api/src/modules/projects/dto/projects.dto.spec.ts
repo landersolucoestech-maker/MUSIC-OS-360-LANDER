@@ -9,9 +9,9 @@ import { CreateProjectDto } from './projects.dto';
  * Guarda permanente (auditoria 2026-07-18 — bug real confirmado): o DTO
  * antigo usava nomes em inglês (type/artistId/budget/currency/
  * startsAt/deadlineAt/releasedAt) que NUNCA batiam com o payload real
- * enviado por ProjetoFormModal.tsx/Projetos.tsx (title/tipo/status/
+ * enviado por ProjetoFormModal.tsx/Projetos.tsx (title/type/status/
  * observacoes/descricao/genero/artist_id/musicas[]) nem com as colunas
- * físicas da entity (title/tipo/status/descricao). Com
+ * físicas da entity (title/type/status/descricao). Com
  * ValidationPipe (whitelist + forbidNonWhitelisted), toda criação/edição de
  * projeto retornava 400. `title` passou de nome legado a canônico na
  * normalização de nomenclatura (2026-09-05).
@@ -23,7 +23,7 @@ async function validatePayload(payload: Record<string, unknown>) {
 
 const REAL_FORM_PAYLOAD = {
   title: 'Meu Álbum',
-  tipo: 'album',
+  type: 'album',
   observacoes: 'Notas internas',
   descricao: null,
   genero: 'pop',
@@ -50,13 +50,13 @@ describe('CreateProjectDto — contrato canônico real (auditoria 2026-07-18)', 
     }
   });
 
-  it('aceita payload mínimo (apenas title/tipo obrigatórios)', async () => {
-    const errors = await validatePayload({ title: 'X', tipo: 'single' });
+  it('aceita payload mínimo (apenas title/type obrigatórios)', async () => {
+    const errors = await validatePayload({ title: 'X', type: 'single' });
     expect(errors).toEqual([]);
   });
 
-  it('rejeita tipo fora do enum real', async () => {
-    const errors = await validatePayload({ title: 'X', tipo: 'inexistente' });
-    expect(errors.some((e) => e.property === 'tipo')).toBe(true);
+  it('rejeita type fora do enum real', async () => {
+    const errors = await validatePayload({ title: 'X', type: 'inexistente' });
+    expect(errors.some((e) => e.property === 'type')).toBe(true);
   });
 });
