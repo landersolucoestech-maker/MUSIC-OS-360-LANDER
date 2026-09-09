@@ -15,9 +15,11 @@ node_modules/
 # Monorepo / task runner cache
 .turbo/
 
-# Local agent/tool state
+# Local AI/agent/tool state — never versioned; canonical engineering guidance lives in docs/engineering/
 .claude/
 .agents/
+.skills/
+AGENTS.md
 .config/
 
 # Environment files and secret backups
