@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/change-set.schema.json",
+  "title": "ChangeSet",
+  "description": "A bounded batch of files an implementation-engineer is authorized to touch, produced by the cross-layer-impact skill. Consumer: ops.mjs changeset open/close; git-auditor compares the actual git diff file list against the open changeset's declared files to detect scope leakage.",
+  "type": "object",
+  "required": ["id", "files", "status", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "requirementId": { "type": ["string", "null"] },
+    "files": { "type": "array", "items": { "type": "string" } },
+    "owner": { "type": "string" },
+    "status": { "enum": ["OPEN", "CLOSED"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "closedAt": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

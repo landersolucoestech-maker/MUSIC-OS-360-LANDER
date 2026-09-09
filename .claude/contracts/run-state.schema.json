@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/run-state.schema.json",
+  "title": "RunState",
+  "description": "Schema of .claude/ops/state.json in the target project — the live/current mission state. Renamed from an earlier mission-state.schema.json to match the canonical name; distinct from run-record.schema.json, which is the archived historical summary written when a run closes. Only runtime/ops.mjs writes state.json.",
+  "type": "object",
+  "required": ["version", "missionId", "status", "requirements", "findings", "blockers"],
+  "properties": {
+    "version": { "const": 2 },
+    "missionId": { "type": "string" },
+    "missionName": { "type": "string" },
+    "status": { "enum": ["active", "blocked", "done"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "impact": {
+      "type": "object",
+      "properties": {
+        "operatorDeclared": { "type": ["string", "null"] },
+        "runtimeDetected": { "type": ["string", "null"] },
+        "effective": { "type": ["string", "null"] }
+      }
+    },
+    "requirements": { "type": "array", "items": { "$ref": "requirement-record.schema.json" } },
+    "findings": { "type": "array", "items": { "$ref": "finding-record.schema.json" } },
+    "evidenceIds": { "type": "array", "items": { "type": "string" }, "description": "pointers into .claude/ops/evidence/*.json" },
+    "checkpointIds": { "type": "array", "items": { "type": "string" }, "description": "pointers into .claude/ops/checkpoints/*.json" },
+    "touchedFiles": { "type": "array", "items": { "type": "string" } },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "resolved"],
+        "properties": { "id": { "type": "string" }, "text": { "type": "string" }, "resolved": { "type": "boolean" } }
+      }
+    }
+  }
+}

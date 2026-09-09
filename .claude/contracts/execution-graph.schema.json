@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/execution-graph.schema.json",
+  "title": "ExecutionGraph",
+  "description": "The dynamic graph mission-orchestrator builds from a workflow-manifest plus detected impact/signals: which agents/skills run, in what order, with what dependencies. Consumer: graph-engine.mjs builds and validates this; gate-engine.mjs walks it to know which gates apply.",
+  "type": "object",
+  "required": ["id", "nodes"],
+  "properties": {
+    "id": { "type": "string" },
+    "workflowName": { "type": ["string", "null"] },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "ref"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["agent", "skill", "gate"] },
+          "ref": { "type": "string" },
+          "dependsOn": { "type": "array", "items": { "type": "string" } },
+          "status": { "enum": ["PENDING", "RUNNING", "DONE", "BLOCKED", "SKIPPED"] }
+        }
+      }
+    }
+  }
+}

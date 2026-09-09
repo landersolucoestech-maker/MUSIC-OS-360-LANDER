@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/deployment-record.schema.json",
+  "title": "DeploymentRecord",
+  "description": "The act of deploying a specific release-record to a specific environment. Consumer: ops.mjs deployment record; production-validation-record.deploymentId points here.",
+  "type": "object",
+  "required": ["id", "releaseId", "target", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "releaseId": { "type": "string" },
+    "target": { "type": "string" },
+    "strategy": { "enum": ["direct", "canary", "blue-green", "feature-flag", "progressive"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "description": "Which gate categories are required per effective impact level before completion-gate.mjs can PASS. gate categories map to common package.json script names auto-detected by completion-gate.mjs; a project can override script names via .claude/policies/gate-scripts.local.json (created by repo-intelligence discovery), which takes precedence over the defaults here.",
+  "requiredGatesByLevel": {
+    "L0": [],
+    "L1": ["lint"],
+    "L2": ["lint", "typecheck", "test"],
+    "L3": ["lint", "typecheck", "test", "build"],
+    "L4": ["lint", "typecheck", "test", "build"],
+    "L5": ["lint", "typecheck", "test", "build", "security"]
+  },
+  "defaultScriptNames": {
+    "lint": ["lint"],
+    "typecheck": ["typecheck", "type-check"],
+    "test": ["test", "test:ci"],
+    "build": ["build"],
+    "security": ["security", "audit", "security:check"]
+  },
+  "extraGatesByLevel": {
+    "L3": ["independentReview", "adversarialReview", "regressionReview"],
+    "L4": ["independentReview", "adversarialReview", "regressionReview", "architectureReview", "contractReview"],
+    "L5": ["independentReview", "adversarialReview", "regressionReview", "architectureReview", "contractReview", "securityReview", "supplyChainReview", "recoveryReview", "productionReadinessReview"]
+  }
+}

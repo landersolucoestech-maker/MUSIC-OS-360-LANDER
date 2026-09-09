@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/impact-assessment.schema.json",
+  "title": "ImpactAssessment",
+  "description": "Shape of impact.mjs's output. Formalizes what was previously an ad hoc object; tests/impact.test.mjs validates impact.mjs's real output against this schema.",
+  "type": "object",
+  "required": ["status", "runtimeDetected", "effective"],
+  "properties": {
+    "status": { "enum": ["OK", "BLOCKED"] },
+    "operatorDeclared": { "type": ["string", "null"] },
+    "runtimeDetected": { "type": "string" },
+    "effective": { "type": ["string", "null"] },
+    "touchedFileCount": { "type": "integer" },
+    "reasons": { "type": "array", "items": { "type": "string" } }
+  }
+}

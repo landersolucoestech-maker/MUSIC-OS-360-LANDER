@@ -1,0 +1,11 @@
+{
+  "_comment": "Template for machine-local overrides. Copy to settings.local.json (gitignored) and edit — never commit real values here. No real secrets belong in either file; runtime scripts read secrets from the environment, never from .claude/settings*.json.",
+  "permissions": {
+    "allow": [],
+    "deny": []
+  },
+  "env": {
+    "_comment": "Example only — this pack's runtime reads no environment variables today. A per-project stack rule file (see .claude/rules/architecture.md) may document real ones for that project; list their NAMES here if a local override is needed, never their values.",
+    "EXAMPLE_LOCAL_OVERRIDE": ""
+  }
+}

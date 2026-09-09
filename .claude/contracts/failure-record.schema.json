@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/failure-record.schema.json",
+  "title": "FailureRecord",
+  "description": "A failed gate/check outcome with a fingerprint identifying its failure mode, distinct from a Finding (a code defect) — this is about a run outcome. Consumer: gate-engine.mjs; two FailureRecords sharing the same fingerprint for the same task-spec trigger the loop-breaker (change strategy instead of repeating the same fix a third time).",
+  "type": "object",
+  "required": ["id", "fingerprint", "summary", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "fingerprint": { "type": "string" },
+    "summary": { "type": "string" },
+    "gateResultId": { "type": ["string", "null"] },
+    "taskId": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

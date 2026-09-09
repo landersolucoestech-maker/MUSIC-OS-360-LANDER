@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/dependency-graph.schema.json",
+  "title": "DependencyGraph",
+  "description": "Module-level (file-to-file) import graph built by dependency-graph.mjs from static import/require statements. Deliberately scoped to MODULE-level edges, not function-level call graphs — a real symbol/call graph needs a real AST parser, which this dependency-free pack does not vendor; this is documented as a known scope boundary (see the module's own header comment), not silently pretended to be more than it is.",
+  "type": "object",
+  "required": ["nodes", "edges", "scannedAt"],
+  "properties": {
+    "nodes": { "type": "array", "items": { "type": "string" } },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "properties": { "from": { "type": "string" }, "to": { "type": "string" } }
+      }
+    },
+    "unresolvedImports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "specifier"],
+        "properties": { "from": { "type": "string" }, "specifier": { "type": "string" } }
+      },
+      "description": "Import specifiers that couldn't be resolved to a file in the repo (external packages, or a resolution this regex-based extractor doesn't handle) — reported explicitly rather than silently dropped."
+    },
+    "scannedAt": { "type": "string", "format": "date-time" }
+  }
+}

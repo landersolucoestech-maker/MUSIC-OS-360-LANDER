@@ -1,0 +1,8 @@
+# Shipped by the pack and copied into every install target (see installer/install.mjs
+# COPY_FILES) — scopes ignore rules to .claude/ itself, so they take effect
+# regardless of what the target project's own root .gitignore contains.
+# .claude/ops/state.json, evidence/, findings, etc. are the mission's audit
+# trail and are NOT ignored here — only ephemeral/generated artifacts are.
+scheduled_tasks.lock
+ops/runtime/*.lock
+settings.local.json

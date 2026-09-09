@@ -1,0 +1,11 @@
+{
+  "id": "evid-63bf2f51",
+  "createdAt": "2026-09-06T22:14:10.293Z",
+  "type": "REVIEW",
+  "reviewer": "adversarial-reviewer",
+  "verdict": "FAIL",
+  "status": "FAIL",
+  "summary": "test",
+  "workspaceFingerprint": "276168bb2346cf97d2721f3c2e9f33b3505a29e368e75ba35837ee5cde19e5ef",
+  "fingerprintStatus": "BOUND"
+}

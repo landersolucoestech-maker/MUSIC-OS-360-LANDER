@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/decision-record.schema.json",
+  "title": "DecisionRecord",
+  "description": "A durable arbitration outcome (a canonical-naming choice, an architecture call) that closes a conflict-record or stands alone. Consumer: ops.mjs decision add; canonical-naming skill writes one whenever docs/NAMING_NORMALIZATION_CANONICAL_MAP.md gets a new/changed entry, so the map's history is traceable, not just its current state.",
+  "type": "object",
+  "required": ["id", "topic", "decision", "decidedBy", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "topic": { "type": "string" },
+    "decision": { "type": "string" },
+    "rationale": { "type": ["string", "null"] },
+    "decidedBy": { "type": "string" },
+    "conflictId": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/checkpoint-record.schema.json",
+  "title": "CheckpointRecord",
+  "description": "One file-per-record under .claude/ops/checkpoints/<id>.json. Consumer: ops.mjs checkpoint command (git-checkpoint skill); referenced by id from run-state.schema.json's checkpointIds[].",
+  "type": "object",
+  "required": ["id", "label", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "label": { "type": "string" },
+    "workspaceFingerprint": { "type": ["string", "null"] },
+    "head": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

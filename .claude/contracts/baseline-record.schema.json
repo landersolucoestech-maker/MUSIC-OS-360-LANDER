@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/baseline-record.schema.json",
+  "title": "BaselineRecord",
+  "description": "NOT in the originally-named 31 contracts, added because .claude/ops/baselines/ was explicitly requested as a directory and needs a real shape to be functional rather than an empty folder — see .claude/rules/scope-control.md 'preserve a content baseline before writes'. Consumer: ops.mjs baseline record, called by implementation-engineer before a risky/large batch; git-auditor compares the current tree against the most recent baseline to detect scope leakage.",
+  "type": "object",
+  "required": ["id", "label", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "label": { "type": "string" },
+    "gitStatusPorcelain": { "type": "string" },
+    "workspaceFingerprint": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

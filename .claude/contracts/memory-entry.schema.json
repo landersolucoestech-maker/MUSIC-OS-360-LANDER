@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/memory-entry.schema.json",
+  "title": "MemoryEntry",
+  "description": "Shape of one entry in .claude/ops/memory/entries.json, written by memory.mjs remember. No architectural reason to omit a schema for this — added per explicit request; memory.mjs now validates against it on write.",
+  "type": "object",
+  "required": ["id", "key", "text", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "key": { "type": "string" },
+    "text": { "type": "string" },
+    "source": { "type": ["string", "null"] },
+    "sourceHash": { "type": ["string", "null"] },
+    "workspaceFingerprintAtWrite": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "supersededBy": { "type": ["string", "null"] }
+  }
+}

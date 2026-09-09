@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/event-record.schema.json",
+  "title": "EventRecord",
+  "description": "Shape of one line in .claude/ops/logs/journal.ndjson — the append-only, hash-chained audit log of every mutation ops.mjs makes. Consumer: journal.mjs appends these; journal-verify.mjs replays the hash chain to detect a corrupted/tampered/truncated journal.",
+  "type": "object",
+  "required": ["seq", "kind", "at", "prevHash", "hash"],
+  "properties": {
+    "seq": { "type": "integer" },
+    "kind": { "type": "string" },
+    "recordId": { "type": ["string", "null"] },
+    "at": { "type": "string", "format": "date-time" },
+    "prevHash": { "type": "string" },
+    "hash": { "type": "string" }
+  }
+}

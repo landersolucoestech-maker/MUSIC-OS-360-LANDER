@@ -1,0 +1,6 @@
+{
+  "description": "Production/release gate requirements per .claude/rules/release-production.md. Consumer: completion-gate.mjs's L5 path (gate-matrix.json's extraGatesByLevel.L5 'productionReadinessReview') requires a production-validation-record with one of these statuses before closing an L5 mission that touches production/release code.",
+  "acceptableStatuses": ["HEALTHY", "OUT_OF_SCOPE"],
+  "preferredBlastRadius": ["preview", "canary", "blue-green", "feature-flag", "progressive"],
+  "requireSourceCommitTraceability": true
+}

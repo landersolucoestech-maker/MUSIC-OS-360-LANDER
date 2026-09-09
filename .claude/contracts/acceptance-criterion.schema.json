@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/acceptance-criterion.schema.json",
+  "title": "AcceptanceCriterion",
+  "description": "Extracted from requirement-record.schema.json so it can be referenced standalone (e.g. by task-spec, which points at a criterion it will close). Consumer: ops.mjs criterion/evidence commands; requirement-record.schema.json $refs this file.",
+  "type": "object",
+  "required": ["id", "text", "status"],
+  "properties": {
+    "id": { "type": "string" },
+    "text": { "type": "string" },
+    "status": { "enum": ["open", "closed"] },
+    "evidenceIds": { "type": "array", "items": { "type": "string" } }
+  }
+}

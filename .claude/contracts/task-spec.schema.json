@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/task-spec.schema.json",
+  "title": "TaskSpec",
+  "description": "A bounded unit of implementation work targeting one or more acceptance criteria, used as a graph-engine.mjs execution-graph node. Consumer: ops.mjs task open/close.",
+  "type": "object",
+  "required": ["id", "title", "criterionIds", "status"],
+  "properties": {
+    "id": { "type": "string" },
+    "title": { "type": "string" },
+    "criterionIds": { "type": "array", "items": { "type": "string" } },
+    "changeSetId": { "type": ["string", "null"] },
+    "assignedAgent": { "type": "string" },
+    "status": { "enum": ["PENDING", "IN_PROGRESS", "DONE", "BLOCKED"] }
+  }
+}

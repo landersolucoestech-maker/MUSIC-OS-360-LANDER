@@ -1,0 +1,52 @@
+// Real quorum/consensus mechanism on top of the existing conflict/decision/
+// vote record kinds — formalizes .claude/rules/agent-orchestration.md's
+// "Arbiter resolves evidence-backed reviewer conflicts" as counted votes
+// against a conflict's declared parties, instead of one agent unilaterally
+// writing a decision-record and calling it arbitration.
+import { addRecord, getRecord, updateRecord, listRecords } from "./record-store.mjs";
+
+export function castVote(cwd, conflictId, voter, choice) {
+  const conflict = getRecord(cwd, "conflict", conflictId);
+  if (!conflict) throw new Error(`CONFLICT_NOT_FOUND: ${conflictId}`);
+  if (conflict.status !== "OPEN") throw new Error(`CONFLICT_NOT_OPEN: ${conflictId} is ${conflict.status}`);
+  if (!conflict.parties.includes(voter)) throw new Error(`VOTER_NOT_A_PARTY: ${voter} is not among ${conflict.parties.join(", ")}`);
+  return addRecord(cwd, "vote", { conflictId, voter, choice });
+}
+
+export function tallyVotes(cwd, conflictId) {
+  const votes = listRecords(cwd, "vote").filter((v) => v.conflictId === conflictId);
+  const counts = {};
+  for (const v of votes) counts[v.choice] = (counts[v.choice] || 0) + 1;
+  return { votes, counts };
+}
+
+/** A choice wins only when its vote count exceeds `threshold` (default
+ * simple majority, >50%) of the conflict's DECLARED parties — not just of
+ * votes cast, so an arbiter can't manufacture a quorum by having only
+ * supporters vote. Writes a decision-record and flips the conflict to
+ * RESOLVED only when a winner is found; otherwise leaves both untouched and
+ * reports resolved:false so the caller knows to keep soliciting votes. */
+export function resolveByQuorum(cwd, conflictId, { threshold = 0.5, decidedBy = "quorum" } = {}) {
+  const conflict = getRecord(cwd, "conflict", conflictId);
+  if (!conflict) throw new Error(`CONFLICT_NOT_FOUND: ${conflictId}`);
+  if (conflict.status !== "OPEN") return { resolved: false, reason: `conflict already ${conflict.status}` };
+  const { counts, votes } = tallyVotes(cwd, conflictId);
+  const denominator = conflict.parties.length;
+  let winner = null;
+  for (const [choice, count] of Object.entries(counts)) {
+    if (count / denominator > threshold) {
+      winner = choice;
+      break;
+    }
+  }
+  if (!winner) return { resolved: false, reason: "no choice has crossed the quorum threshold yet", counts, denominator };
+  const decision = addRecord(cwd, "decision", {
+    topic: conflict.description,
+    decision: winner,
+    rationale: `resolved by quorum: ${counts[winner]}/${denominator} parties voted "${winner}"`,
+    decidedBy,
+    conflictId,
+  });
+  const resolvedConflict = updateRecord(cwd, "conflict", conflictId, { status: "RESOLVED", decisionId: decision.id });
+  return { resolved: true, winner, counts, decision, conflict: resolvedConflict };
+}

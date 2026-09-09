@@ -1,0 +1,6 @@
+{
+  "description": "Scope-leakage thresholds per .claude/rules/scope-control.md. Consumer: git-auditor's checklist and (mechanically) policy-engine.mjs's scopeCheck(), which git-auditor's evidence review is expected to run before verdict.",
+  "maxUnexplainedDirtyFiles": 0,
+  "maxUnexplainedLockfileChurnLines": 20,
+  "note": "0 unexplained files means every dirty/untracked file must be traceable to a RequirementRecord, a disposed Finding, or an open ChangeSet — not that a mission may never touch more than zero files."
+}

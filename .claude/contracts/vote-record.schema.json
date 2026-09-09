@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/vote-record.schema.json",
+  "title": "VoteRecord",
+  "description": "One agent's vote toward resolving a conflict-record by quorum instead of single-arbiter fiat, for cases .claude/rules/agent-orchestration.md's Arbiter role wants backed by an explicit count rather than one agent's say-so. Consumer/producer: lib/quorum.mjs (castVote writes, tallyVotes/resolveByQuorum read); resolveByQuorum closes the conflict-record and writes a decision-record once a choice crosses the configured threshold of the conflict's parties.",
+  "type": "object",
+  "required": ["id", "conflictId", "voter", "choice", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "conflictId": { "type": "string" },
+    "voter": { "type": "string" },
+    "choice": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

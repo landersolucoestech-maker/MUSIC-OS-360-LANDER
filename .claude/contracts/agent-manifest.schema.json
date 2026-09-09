@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/agent-manifest.schema.json",
+  "title": "AgentManifest",
+  "description": "Shape of a .claude/agents/*.md file's YAML frontmatter. Consumer: .claude/runtime/registry.mjs parses every agent file and validates its frontmatter against this schema, failing loudly on drift instead of an agent silently missing required fields.",
+  "type": "object",
+  "required": ["name", "description"],
+  "properties": {
+    "name": { "type": "string" },
+    "description": { "type": "string", "minLength": 20 },
+    "tools": { "type": "string" },
+    "model": { "type": "string" }
+  }
+}

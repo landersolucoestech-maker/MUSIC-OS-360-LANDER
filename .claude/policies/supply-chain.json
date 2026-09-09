@@ -1,0 +1,6 @@
+{
+  "description": "Dependency governance thresholds per .claude/rules/supply-chain.md. Consumer: supply-chain-reviewer's checklist; policy-engine.mjs exposes massUpdateThreshold to authority.json's 'dependency-upgrade-mass' action class.",
+  "massUpdateThreshold": 5,
+  "blockedPostinstallScripts": true,
+  "requireLockfileForRuntimeDependency": true
+}

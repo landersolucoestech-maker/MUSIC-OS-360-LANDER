@@ -1,0 +1,7 @@
+{
+  "description": "Machine-checkable subset of .claude/rules/evidence-governance.md, consumed by completion-gate.mjs so freshness/allowed-type rules are data, not hardcoded — changing this file changes gate behavior without editing runtime code.",
+  "allowedTypes": ["COMMAND", "REVIEW"],
+  "requireFreshFingerprint": true,
+  "freshnessNote": "An evidence record's workspaceFingerprint must equal the CURRENT fingerprint for its status to count as fresh PASS; a match against any older fingerprint is stale regardless of status.",
+  "minimumForCriterionClosure": 1
+}

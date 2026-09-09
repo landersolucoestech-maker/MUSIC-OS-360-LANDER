@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/evidence-record.schema.json",
+  "title": "EvidenceRecord",
+  "description": "A fact produced by an executed check or a completed agent review. Never hand-authored for a command that did not run or a review that did not occur. Consumer: ops.mjs evidence run/review (lib/record-store.mjs), stored one-file-per-record under .claude/ops/evidence/<id>.json.",
+  "type": "object",
+  "required": ["id", "type", "status", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "enum": ["COMMAND", "REVIEW"] },
+    "status": { "enum": ["PASS", "FAIL", "BLOCKED"] },
+    "command": { "type": "string" },
+    "reviewer": { "type": "string" },
+    "verdict": { "enum": ["PASS", "FAIL"] },
+    "summary": { "type": "string" },
+    "workspaceFingerprint": { "type": ["string", "null"] },
+    "fingerprintStatus": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

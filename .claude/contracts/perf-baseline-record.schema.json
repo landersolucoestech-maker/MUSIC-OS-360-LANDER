@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/perf-baseline-record.schema.json",
+  "title": "PerfBaselineRecord",
+  "description": "A captured performance measurement (median of N node:perf_hooks samples) for a named operation, stored so a later measurement can be compared against it to detect a real regression instead of an impression of slowness. Consumer/producer: lib/perf-baseline.mjs (recordBaseline writes, compareToBaseline reads the most recent one for a given name).",
+  "type": "object",
+  "required": ["id", "createdAt", "name", "medianMs", "samples", "runs"],
+  "properties": {
+    "id": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "name": { "type": "string" },
+    "medianMs": { "type": "number" },
+    "samples": { "type": "array", "items": { "type": "number" } },
+    "runs": { "type": "integer" }
+  }
+}

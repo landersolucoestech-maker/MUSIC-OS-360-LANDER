@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/project-manifest.schema.json",
+  "title": "ProjectManifest",
+  "description": "Shape of the per-target .claude/project-manifest.json, populated by repo-intelligence's discovery pass (never shipped pre-filled by the pack, since it describes a specific installed project). Consumer: mission-orchestrator reads it before delegating so it doesn't re-run discovery every mission; architecture-reviewer and database-reviewer read it to avoid re-guessing the stack.",
+  "type": "object",
+  "required": ["discoveredAt", "workspaces"],
+  "properties": {
+    "discoveredAt": { "type": ["string", "null"], "format": "date-time" },
+    "packageManager": { "type": ["string", "null"] },
+    "workspaces": { "type": "array", "items": { "type": "string" } },
+    "persistence": {
+      "type": "object",
+      "properties": {
+        "orm": { "type": ["string", "null"] },
+        "migrationsPath": { "type": ["string", "null"] },
+        "tenantIsolation": { "type": ["string", "null"] }
+      }
+    },
+    "apiStyle": { "type": ["string", "null"] },
+    "frontendFramework": { "type": ["string", "null"] },
+    "asyncSystems": { "type": "array", "items": { "type": "string" } },
+    "integrations": { "type": "array", "items": { "type": "string" } },
+    "testTooling": { "type": "array", "items": { "type": "string" } },
+    "openUnknowns": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/production-validation-record.schema.json",
+  "title": "ProductionValidationRecord",
+  "description": "Result of a Phase 13 production-readiness check per .claude/rules/release-production.md ('a successful deploy command is not proof of healthy production'). Consumer: ops.mjs production-validation record; completion-gate.mjs requires one with status HEALTHY (or an explicit OUT_OF_SCOPE record with a reason) before a mission touching release-production.md's territory can close.",
+  "type": "object",
+  "required": ["id", "status", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "status": { "enum": ["HEALTHY", "DEGRADED", "FAILED", "OUT_OF_SCOPE"] },
+    "checkedJourneys": { "type": "array", "items": { "type": "string" } },
+    "outOfScopeReason": { "type": ["string", "null"] },
+    "deploymentId": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

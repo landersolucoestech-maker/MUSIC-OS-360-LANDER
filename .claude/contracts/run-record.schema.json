@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/run-record.schema.json",
+  "title": "RunRecord",
+  "description": "Archived historical summary of one closed mission run — written once by the release-checkpoint skill when a mission reaches DONE, distinct from the live run-state.schema.json it summarizes. Consumer: ops.mjs run archive (lib/record-store.mjs), stored at .claude/ops/records/run/<id>.json.",
+  "type": "object",
+  "required": ["id", "missionId", "outcome", "closedAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "missionId": { "type": "string" },
+    "missionName": { "type": "string" },
+    "outcome": { "enum": ["DONE", "ABANDONED"] },
+    "requirementCount": { "type": "integer" },
+    "findingCount": { "type": "integer" },
+    "acceptedDebtCount": { "type": "integer" },
+    "finalWorkspaceFingerprint": { "type": ["string", "null"] },
+    "closedAt": { "type": "string", "format": "date-time" }
+  }
+}

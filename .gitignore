@@ -15,9 +15,7 @@ node_modules/
 # Monorepo / task runner cache
 .turbo/
 
-# Local agent/tool state
-.claude/
-.agents/
+# Local machine/tool caches (not project state)
 .config/
 
 # Environment files and secret backups

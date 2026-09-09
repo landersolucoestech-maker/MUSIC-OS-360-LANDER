@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/release-record.schema.json",
+  "title": "ReleaseRecord",
+  "description": "Source commit + artifact identity + gates passed for one release, per .claude/rules/supply-chain.md and release-production.md ('the artifact validated must be traceable to the source commit'). Consumer: ops.mjs release record; deployment-record.releaseId points here.",
+  "type": "object",
+  "required": ["id", "sourceCommit", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "sourceCommit": { "type": "string" },
+    "artifactId": { "type": ["string", "null"] },
+    "gateResultIds": { "type": "array", "items": { "type": "string" } },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

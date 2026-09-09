@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/tool-capability.schema.json",
+  "title": "ToolCapability",
+  "description": "Normalized detection result for an external tool or PROJECT_NATIVE toolchain (rg, CodeQL, Graphify, OSV-Scanner, TypeScript, ESLint) — produced by lib/tool-capability.mjs's detectTool()/detectProjectNative(). Availability is never inferred from documentation, an adapter existing, or a registry entry: it is set only from a real, executed detection (PATH lookup + --version invocation, or tsconfig/config-file presence for PROJECT_NATIVE tools). Consumer: security-verification-engine.mjs (gates whether a tool may be invoked) and doctor.mjs/self-test reporting.",
+  "type": "object",
+  "required": ["name", "availability", "source", "detectedAt"],
+  "properties": {
+    "name": { "type": "string" },
+    "executable": { "type": ["string", "null"] },
+    "version": { "type": ["string", "null"] },
+    "availability": {
+      "enum": ["AVAILABLE", "NOT_INSTALLED", "NOT_CONFIGURED", "NOT_AUTHORIZED", "NOT_LICENSED", "NOT_APPLICABLE", "FORBIDDEN_BY_POLICY", "EXECUTION_FAILED"]
+    },
+    "source": { "enum": ["PATH", "PROJECT_NATIVE", "POLICY", "NONE"] },
+    "executionAllowed": { "type": "boolean" },
+    "authorizationStatus": { "type": ["string", "null"] },
+    "licenseStatus": { "type": ["string", "null"] },
+    "policyRequirement": { "enum": ["OPTIONAL", "REQUIRED", null] },
+    "status": { "enum": ["OK", "DEGRADED", "BLOCKED", null] },
+    "reason": { "type": ["string", "null"] },
+    "detectedAt": { "type": "string", "format": "date-time" }
+  }
+}

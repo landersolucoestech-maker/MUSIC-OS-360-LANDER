@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/coverage-ledger-entry.schema.json",
+  "title": "CoverageLedgerEntry",
+  "description": "One file's audit-coverage record in .claude/ops/coverage/ledger.json, written by lib/coverage-ledger.mjs markAudited. Backs gate-engine.mjs's 'coverage-threshold' check type — a mission cannot close below a declared coverage percentage of the repository's real file list (from dependency-graph.mjs / git ls-files), not just its own self-selected subset.",
+  "type": "object",
+  "required": ["file", "auditedAt", "by"],
+  "properties": {
+    "file": { "type": "string" },
+    "auditedAt": { "type": "string", "format": "date-time" },
+    "by": { "type": "string" },
+    "findingIds": { "type": "array", "items": { "type": "string" } }
+  }
+}

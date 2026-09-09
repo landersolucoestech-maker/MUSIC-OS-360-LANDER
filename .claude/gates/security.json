@@ -1,0 +1,11 @@
+{
+  "description": "Security-specific GATE DEFINITION consumed by the SAME gate-engine.mjs completion.json uses (section 25 of the tool-integration mission) — not a second gate engine. Every check here is an EXISTING, general-purpose check (no-undisposed-findings scoped to CRITICAL/HIGH, criteria-fresh-evidence, no-open-conflicts) except required-capability-available, which is new and opt-in via requiredCapabilities. Run with: node .claude/runtime/gate-engine.mjs security. BLOCK conditions map exactly to section 25: CRITICAL/HIGH confirmed finding undisposed, REQUIRED security evidence missing/stale, an unresolved conflict, or a REQUIRED capability unavailable/failing. MEDIUM/LOW never block here by design.",
+  "checks": [
+    { "id": "state-exists", "type": "state-exists" },
+    { "id": "fingerprint-available", "type": "fingerprint-available" },
+    { "id": "no-undisposed-critical-high-security-findings", "type": "no-undisposed-findings", "severities": ["CRITICO", "CRITICAL", "ALTO", "HIGH"] },
+    { "id": "criteria-fresh-evidence", "type": "criteria-fresh-evidence" },
+    { "id": "no-open-conflicts", "type": "no-open-conflicts" },
+    { "id": "required-capability-available", "type": "required-capability-available", "requiredCapabilities": [] }
+  ]
+}

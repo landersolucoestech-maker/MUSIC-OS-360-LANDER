@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/lock-record.schema.json",
+  "title": "LockRecord",
+  "description": "Shape of a lock file's content under .claude/ops/runtime/<taskId>.lock or .claude/scheduled_tasks.lock, written by lib/lock.mjs acquireLock. No architectural reason to omit a schema; lock.mjs now validates the payload shape before writing.",
+  "type": "object",
+  "required": ["pid", "acquiredAt"],
+  "properties": {
+    "pid": { "type": "integer" },
+    "acquiredAt": { "type": "string", "format": "date-time" },
+    "taskId": { "type": ["string", "null"] }
+  }
+}

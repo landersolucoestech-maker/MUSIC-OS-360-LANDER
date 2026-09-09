@@ -1,0 +1,12 @@
+{
+  "description": "Which action classes require a human-granted approval-request before they may execute. Consumer: policy-engine.mjs requiresApproval(actionClass); ops.mjs approval commands read this to validate an action class name.",
+  "actionClasses": [
+    { "name": "destructive-git", "requiresApproval": true, "examples": ["push --force", "reset --hard", "clean -f", "branch -D"] },
+    { "name": "production-write", "requiresApproval": true, "examples": ["deploy to production", "run a migration against a live database"] },
+    { "name": "external-send", "requiresApproval": true, "examples": ["send an email", "post to an external API with side effects", "create a PR/issue comment"] },
+    { "name": "destructive-data", "requiresApproval": true, "examples": ["DROP TABLE", "TRUNCATE", "bulk DELETE"] },
+    { "name": "dependency-upgrade-mass", "requiresApproval": true, "examples": ["updating more than 5 dependencies in one change"] },
+    { "name": "repository-write", "requiresApproval": false, "examples": ["edit/create files", "run local tests"] },
+    { "name": "read-only", "requiresApproval": false, "examples": ["git status", "git diff", "reading files"] }
+  ]
+}

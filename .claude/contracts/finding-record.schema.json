@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/finding-record.schema.json",
+  "title": "FindingRecord",
+  "description": "Consumer: ops.mjs finding add/disposition; embedded in run-state.schema.json's findings[] array. Renamed from an earlier finding.schema.json to match the canonical name.",
+  "type": "object",
+  "required": ["id", "category", "severity", "file", "summary"],
+  "properties": {
+    "id": { "type": "string" },
+    "category": {
+      "type": "string",
+      "description": "A..R: A=internal code, B=business rule, C=internal contract, D=external contract, E=database/persistence, F=user interface, G=security, H=performance, I=reliability, J=observability, K=test, L=configuration, M=infrastructure, N=historical/legacy, O=generated code, P=documentation, Q=historical data, R=build/cache artifact"
+    },
+    "severity": { "enum": ["CRITICO", "CRITICAL", "ALTO", "HIGH", "MEDIO", "MEDIUM", "BAIXO", "LOW", "INFORMATIVO", "INFO"] },
+    "file": { "type": "string" },
+    "line": { "type": ["integer", "null"] },
+    "summary": { "type": "string" },
+    "rootCause": { "type": ["string", "null"] },
+    "disposition": {
+      "enum": [
+        null, "CORRIGIDA", "LEGITIMA", "CONTRATO_EXTERNO", "HISTORICO_MIGRATION", "DADO_HISTORICO",
+        "GENERATED", "DOCUMENTACAO_HISTORICA", "ARTEFATO_DESCARTAVEL", "FALSO_POSITIVO", "DIVIDA_ACEITA"
+      ]
+    },
+    "justification": { "type": ["string", "null"] },
+    "evidenceIds": { "type": "array", "items": { "type": "string" } },
+    "fingerprint": { "type": ["string", "null"], "description": "Correlation key (see lib/finding-correlation.mjs) letting multiple tool results (OSV, npm audit, CodeQL, a reviewer) that detected the SAME underlying problem collapse into one canonical finding instead of duplicating it. Optional — absent for hand-written findings that never went through correlation." },
+    "sources": { "type": "array", "items": { "type": "string" }, "description": "Which tool(s)/reviewer(s) contributed evidence to this finding (e.g. [\"osv-scanner\", \"npm-audit\"]) — populated by lib/finding-correlation.mjs when two+ raw results correlate to the same fingerprint. Optional." }
+  }
+}

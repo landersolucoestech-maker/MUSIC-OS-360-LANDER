@@ -1,0 +1,12 @@
+{
+  "description": "Command patterns policy-engine.mjs (via lib/hooks.mjs) flags as destructive/irreversible per .claude/rules/git-safety.md and side-effects-recovery.md. A match requires a GRANTED approval-request (see authority.json 'destructive-git'/'destructive-data') before execution proceeds; hooks.mjs surfaces a warning, it does not silently block a real terminal (this pack has no shell hook execution authority over the host CLI) — it's consumed by review agents (git-auditor) and by ops.mjs effect logging to classify an effect automatically.",
+  "patterns": [
+    { "pattern": "git\\s+push\\s+.*--force", "flags": "i", "classification": "IRREVERSIBLE" },
+    { "pattern": "git\\s+reset\\s+--hard", "flags": "i", "classification": "DESTRUCTIVE" },
+    { "pattern": "git\\s+clean\\s+-f", "flags": "i", "classification": "DESTRUCTIVE" },
+    { "pattern": "git\\s+branch\\s+-D", "flags": "i", "classification": "DESTRUCTIVE" },
+    { "pattern": "rm\\s+-rf", "flags": "i", "classification": "DESTRUCTIVE" },
+    { "pattern": "DROP\\s+TABLE|TRUNCATE\\s+", "flags": "i", "classification": "IRREVERSIBLE" },
+    { "pattern": "DELETE\\s+FROM\\s+\\w+\\s*;?\\s*$", "flags": "i", "classification": "DESTRUCTIVE" }
+  ]
+}

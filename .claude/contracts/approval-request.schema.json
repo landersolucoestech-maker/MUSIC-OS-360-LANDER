@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/approval-request.schema.json",
+  "title": "ApprovalRequest",
+  "description": "A human-authorization checkpoint for an action .claude/policies/authority.json marks as requiring explicit approval (destructive ops, production writes, external sends). Consumer: ops.mjs approval request/grant; gate-engine.mjs blocks a gate requiring approval until a matching granted record exists.",
+  "type": "object",
+  "required": ["id", "action", "status", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "action": { "type": "string" },
+    "requestedBy": { "type": "string" },
+    "status": { "enum": ["PENDING", "GRANTED", "DENIED"] },
+    "grantedBy": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "resolvedAt": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

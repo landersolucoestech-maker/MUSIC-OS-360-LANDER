@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/assumption-record.schema.json",
+  "title": "AssumptionRecord",
+  "description": "Records a claim treated as true without direct evidence during investigation, so it's traceable and can later be confirmed or retracted instead of quietly hardening into a fact (.claude/rules/evidence-governance.md: 'claims and inferences may guide investigation but cannot satisfy deterministic gates'). Consumer: ops.mjs assumption add/confirm/retract; completion-gate.mjs warns (does not block) on any assumption still unresolved at closure.",
+  "type": "object",
+  "required": ["id", "text", "status", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "text": { "type": "string" },
+    "madeBy": { "type": "string" },
+    "status": { "enum": ["OPEN", "CONFIRMED", "RETRACTED"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/workflow-manifest.schema.json",
+  "title": "WorkflowManifest",
+  "description": "Shape of .claude/workflows/*.json. Consumer: graph-engine.mjs loads and validates each workflow file before building an execution-graph from it.",
+  "type": "object",
+  "required": ["name", "phases"],
+  "properties": {
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "requiredAgents"],
+        "properties": {
+          "id": { "type": "string" },
+          "requiredAgents": { "type": "array", "items": { "type": "string" } },
+          "requiredSkills": { "type": "array", "items": { "type": "string" } },
+          "requiredEvidence": { "type": "array", "items": { "type": "string" } },
+          "gates": { "type": "array", "items": { "type": "string" } },
+          "approvalRequired": { "type": "boolean" },
+          "dependsOn": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "recoveryPath": { "type": "string" },
+    "completionConditions": { "type": "array", "items": { "type": "string" } }
+  }
+}

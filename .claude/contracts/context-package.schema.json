@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/context-package.schema.json",
+  "title": "ContextPackage",
+  "description": "The bounded package mission-orchestrator hands a delegated agent per .claude/rules/agent-orchestration.md ('Do not dump the entire repository or irrelevant conversation history into every agent'). Consumer: ops.mjs delegation open/close, stored at .claude/ops/records/delegation/<id>.json; closes when the delegated agent's evidence/finding is recorded.",
+  "type": "object",
+  "required": ["id", "agent", "objective", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "agent": { "type": "string" },
+    "objective": { "type": "string" },
+    "requirementIds": { "type": "array", "items": { "type": "string" } },
+    "filesInScope": { "type": "array", "items": { "type": "string" } },
+    "knownDecisions": { "type": "array", "items": { "type": "string" } },
+    "status": { "enum": ["OPEN", "CLOSED"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

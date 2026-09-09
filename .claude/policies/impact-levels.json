@@ -1,0 +1,28 @@
+{
+  "description": "Heuristics used by runtime/impact.mjs to detect a floor impact level from touched files and diff content. Runtime-detected impact can only raise the effective level, never lower an operator-declared one. Extend pathRules/contentRules per-project after repo-intelligence discovery; do not delete the defaults, add to them.",
+  "defaultLevel": "L1",
+  "docOnlyLevel": "L0",
+  "docOnlyPathPatterns": [
+    "\\.md$",
+    "^docs/",
+    "^README",
+    "\\.txt$"
+  ],
+  "pathRules": [
+    { "level": "L5", "pattern": "migrations?/.*(drop|delete|truncate)", "flags": "i", "reason": "destructive migration filename" },
+    { "level": "L5", "pattern": "(^|/)(auth|authn|authz|rbac|permissions?|rls|security)(/|\\.)", "flags": "i", "reason": "authorization/security boundary path" },
+    { "level": "L5", "pattern": "(^|/)(infra|terraform|k8s|kubernetes|helm)(/|\\.)", "flags": "i", "reason": "infrastructure path" },
+    { "level": "L5", "pattern": "(docker-compose|Dockerfile)", "flags": "i", "reason": "deployment/infrastructure artifact" },
+    { "level": "L5", "pattern": "(^|/)(\\.env)(\\.|$)", "flags": "i", "reason": "secrets/environment file" },
+    { "level": "L4", "pattern": "(^|/)(migrations?)(/|\\.)", "flags": "i", "reason": "schema/data migration" },
+    { "level": "L4", "pattern": "(openapi|swagger)\\.(ya?ml|json)$", "flags": "i", "reason": "public contract definition" },
+    { "level": "L4", "pattern": "package\\.json$|pnpm-lock\\.yaml$|package-lock\\.json$|yarn\\.lock$", "flags": "i", "reason": "dependency/contract-affecting manifest" },
+    { "level": "L3", "pattern": "(^|/)(integrations?|webhooks?|providers?)(/|\\.)", "flags": "i", "reason": "external integration boundary" },
+    { "level": "L2", "pattern": "(^|/)(services?|controllers?|repositories?|use-?cases?|domain)(/|\\.)", "flags": "i", "reason": "module/feature behavior" }
+  ],
+  "contentRules": [
+    { "level": "L5", "pattern": "DROP\\s+TABLE|TRUNCATE\\s+|DELETE\\s+FROM\\s+\\w+\\s*;", "flags": "i", "reason": "destructive SQL in diff" },
+    { "level": "L5", "pattern": "(disable|bypass).{0,20}(auth|rls|policy)", "flags": "i", "reason": "authorization bypass language in diff" },
+    { "level": "L4", "pattern": "ALTER\\s+TABLE|CREATE\\s+(TABLE|INDEX)", "flags": "i", "reason": "schema change in diff" }
+  ]
+}

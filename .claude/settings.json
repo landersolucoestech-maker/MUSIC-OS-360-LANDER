@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(node .claude/runtime/*.mjs*)",
+      "Bash(node .claude/runtime/lib/*.mjs*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(rm -rf /*)"
+    ]
+  },
+  "_comment": "Generic, safe defaults shipped with the pack: read-only git inspection and the pack's own deterministic runtime scripts are pre-allowed since they are LOCAL_WRITE at most and fully covered by tests; destructive git operations are explicitly denied by default per .claude/rules/git-safety.md. A target project's own settings.json is never overwritten by the installer (see installer/install.mjs skip-customized behavior) — this file only applies where the target has none yet."
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/security-scan-result.schema.json",
+  "title": "SecurityScanResult",
+  "description": "Common envelope for the three real, dependency-free scan kinds security-scan.mjs performs: secret-scan (regex-based, no vendored tool), dependency-audit (shells out to the project's OWN npm/pnpm/yarn audit — detect-and-invoke, not vendored), and sbom (generated from the lockfile already on disk). `kind` distinguishes them; `available` is false when the underlying tool/lockfile isn't present, reported explicitly rather than silently skipped.",
+  "type": "object",
+  "required": ["kind", "available", "scannedAt"],
+  "properties": {
+    "kind": { "enum": ["secret-scan", "dependency-audit", "sbom", "osv-scan"] },
+    "available": { "type": "boolean" },
+    "unavailableReason": { "type": ["string", "null"] },
+    "findings": { "type": "array" },
+    "scannedAt": { "type": "string", "format": "date-time" }
+  }
+}

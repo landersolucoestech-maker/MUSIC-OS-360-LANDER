@@ -1,0 +1,38 @@
+{
+  "description": "Security-testing authorization policy consumed by security-verification-engine.mjs before invoking ANY external security tool (OSV-Scanner, CodeQL, Graphify) or acting on its own secret-scan/dependency-audit findings. Reuses the existing classification vocabulary this pack already applies to side effects (.claude/rules/side-effects-recovery.md) rather than inventing a second taxonomy. No external tool may bypass this policy.",
+  "classifications": {
+    "PASSIVE": "Local, read-only static analysis — secret scanning, dependency manifest inspection, SARIF/JSON parsing of already-produced results. Always permitted.",
+    "SAFE_ACTIVE": "Execution permitted only against localhost, fixtures, containers, or another explicitly authorized environment — never a real target project's production or shared infrastructure.",
+    "INTRUSIVE": "Requires an explicit approval-request (.claude/contracts/approval-request.schema.json) GRANTED before execution.",
+    "EXTERNAL_UNAUTHORIZED": "Always BLOCK — sending code, dependency lists, or repository data to an external service without explicit authorization."
+  },
+  "tools": {
+    "secret-scan": { "classification": "PASSIVE", "policyRequirement": "OPTIONAL", "networkRequired": false },
+    "npm-audit": { "classification": "PASSIVE", "policyRequirement": "OPTIONAL", "networkRequired": false },
+    "osv-scanner": {
+      "classification": "PASSIVE",
+      "policyRequirement": "OPTIONAL",
+      "networkRequired": true,
+      "note": "osv-scanner's default `--format json` mode queries the real OSV.dev API over HTTPS to resolve vulnerability data — it is NOT a fully local/offline analysis despite being read-only. Gated on `networkAllowed` below, same as any other network-touching capability; when networkAllowed is false this tool is SKIPPED (graceful degradation, OPTIONAL — never a BLOCK) rather than silently invoked in contradiction of the policy."
+    },
+    "codeql": { "classification": "SAFE_ACTIVE", "policyRequirement": "OPTIONAL", "networkRequired": false, "note": "database create/analyze against local source is fully local; downloading a query pack (codeql pack download) IS network-requiring and is never done automatically by this pack's adapter." },
+    "graphify": {
+      "policyRequirement": "OPTIONAL",
+      "note": "Graphify's real CLI (confirmed via `graphify --help`) exposes distinct LOCAL and NETWORK operations — classified per-operation, not as one opaque binary-wide verdict.",
+      "operations": {
+        "path": { "classification": "PASSIVE", "networkRequired": false, "description": "shortest-path query against an already-built local graph.json" },
+        "explain": { "classification": "PASSIVE", "networkRequired": false, "description": "local read-only node explanation against an existing graph.json" },
+        "diagnose": { "classification": "PASSIVE", "networkRequired": false, "description": "local multigraph-collapse diagnostic against an existing graph.json" },
+        "merge-graphs": { "classification": "PASSIVE", "networkRequired": false, "description": "merges two already-local graph.json files" },
+        "clone": { "classification": "EXTERNAL_UNAUTHORIZED", "networkRequired": true, "description": "clones an arbitrary GitHub repo — real network/data-egress" },
+        "add": { "classification": "EXTERNAL_UNAUTHORIZED", "networkRequired": true, "description": "fetches an arbitrary URL into the local corpus — real network/data-egress" },
+        "install": { "classification": "EXTERNAL_UNAUTHORIZED", "networkRequired": false, "description": "writes graphify config/hooks into another agent's CLAUDE.md/AGENTS.md/settings — a persistent configuration change to this environment, never invoked automatically" }
+      }
+    }
+  },
+  "networkAllowed": false,
+  "dataEgressAllowed": false,
+  "externalModelAllowed": false,
+  "allowedProviders": [],
+  "sensitiveDataAllowed": false
+}

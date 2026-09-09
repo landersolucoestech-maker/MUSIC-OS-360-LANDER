@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/capability-manifest.schema.json",
+  "title": "CapabilityManifest",
+  "description": "Shape of .claude/policies/capabilities.json: which tool-manifest-classified tools each agent role may hold. Consumer: policy-engine.mjs, checked against .claude/ownership.json and each agent's frontmatter tools: list.",
+  "type": "object",
+  "required": ["roles"],
+  "properties": {
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["agent", "allowedTools"],
+        "properties": {
+          "agent": { "type": "string" },
+          "allowedTools": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

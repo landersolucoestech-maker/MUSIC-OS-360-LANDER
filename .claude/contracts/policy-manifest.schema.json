@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/policy-manifest.schema.json",
+  "title": "PolicyManifest",
+  "description": "Common envelope every file under .claude/policies/*.json (and .claude/engineering-os.json, .claude/ownership.json) satisfies at minimum. Consumer: policy-engine.mjs loads every policy file and rejects one missing a description, catching a malformed/truncated policy file before it's silently ignored.",
+  "type": "object",
+  "required": ["description"],
+  "properties": {
+    "description": { "type": "string", "minLength": 5 }
+  }
+}

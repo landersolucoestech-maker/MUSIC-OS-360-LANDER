@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/gate-result.schema.json",
+  "title": "GateResult",
+  "description": "Result of running one gate check (lint/test/build/review), distinct from completion-gate.mjs's aggregate PASS/BLOCKED. Consumer: gate-engine.mjs writes one per gate it runs; two GateResults with the same failureFingerprint trigger the loop-breaker in .claude/rules/00-execution-protocol.md.",
+  "type": "object",
+  "required": ["id", "gate", "status", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "gate": { "type": "string" },
+    "status": { "enum": ["PASS", "FAIL", "BLOCKED"] },
+    "evidenceId": { "type": ["string", "null"] },
+    "failureFingerprint": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

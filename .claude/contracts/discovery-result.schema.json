@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/discovery-result.schema.json",
+  "title": "DiscoveryResult",
+  "description": "Output of discovery-engine.mjs's real, signature-based technology detection — distinct from project-manifest.schema.json (which is the STORED, possibly-hand-annotated per-target manifest repo-intelligence writes). A DiscoveryResult is the raw, re-derivable scan output; repo-intelligence copies its fields into project-manifest.json.",
+  "type": "object",
+  "required": ["packageManagers", "workspaces", "languages", "scannedAt"],
+  "properties": {
+    "packageManagers": { "type": "array", "items": { "type": "string" } },
+    "workspaces": { "type": "array", "items": { "type": "string" } },
+    "languages": { "type": "array", "items": { "type": "string" } },
+    "frameworks": { "type": "array", "items": { "type": "string" } },
+    "testTooling": { "type": "array", "items": { "type": "string" } },
+    "hasDatabaseMigrations": { "type": "boolean" },
+    "hasDockerfile": { "type": "boolean" },
+    "hasCI": { "type": "boolean" },
+    "scannedAt": { "type": "string", "format": "date-time" }
+  }
+}

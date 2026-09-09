@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/requirement-record.schema.json",
+  "title": "RequirementRecord",
+  "description": "Consumer: ops.mjs requirement/criterion commands (lib/state-store.mjs); embedded in run-state.schema.json's requirements[] array (kept embedded, not file-per-record, since requirements are small and always queried together with the mission they belong to).",
+  "type": "object",
+  "required": ["id", "text", "acceptanceCriteria"],
+  "properties": {
+    "id": { "type": "string" },
+    "text": { "type": "string", "minLength": 1 },
+    "nonRequirements": { "type": "array", "items": { "type": "string" } },
+    "acceptanceCriteria": { "type": "array", "items": { "$ref": "acceptance-criterion.schema.json" } },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

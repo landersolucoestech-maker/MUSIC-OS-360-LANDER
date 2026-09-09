@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://engineering-os/contracts/recovery-plan.schema.json",
+  "title": "RecoveryPlan",
+  "description": "The compensating action for a side effect that failed or must be reversible, per .claude/rules/side-effects-recovery.md ('a failed or partial side effect cannot be repaired by source rollback alone'). Consumer: ops.mjs recovery-plan add, linked from side-effect-record.recoveryPlanId; required before completion-gate.mjs will pass a mission containing an unreconciled DESTRUCTIVE/EXTERNAL_WRITE effect.",
+  "type": "object",
+  "required": ["id", "sideEffectId", "compensatingAction", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "sideEffectId": { "type": "string" },
+    "compensatingAction": { "type": "string" },
+    "kind": { "enum": ["CODE_ROLLBACK", "SCHEMA_ROLLBACK", "DATA_RESTORATION", "CONFIG_ROLLBACK", "DEPLOYMENT_ROLLBACK", "BUSINESS_COMPENSATION"] },
+    "executed": { "type": "boolean" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

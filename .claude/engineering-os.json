@@ -1,0 +1,50 @@
+{
+  "$schema": "./contracts/policy-manifest.schema.json",
+  "name": "engineering-os-pack",
+  "version": "1.0.0-rc.1",
+  "description": "Reusable Engineering OS pack: agents, skills, rules, contracts, policies, workflows, and a deterministic runtime for governed systemic audits of any installed target project.",
+  "structure": {
+    "description": "Canonical expected-structure manifest consumed by .claude/runtime/validate-pack.mjs. Every entry the validator checks against the live filesystem. required=true means the structural validator BLOCKS when the path is missing from an installed pack; required=false means recommended/generated-on-demand (e.g. per-project files repo-intelligence creates).",
+    "categories": {
+      "rules": { "dir": ".claude/rules", "glob": "*.md", "required": true, "minCount": 18 },
+      "agents": { "dir": ".claude/agents", "glob": "*.md", "required": true, "minCount": 34 },
+      "skills": { "dir": ".claude/skills", "glob": "*/SKILL.md", "required": true, "minCount": 45 },
+      "contracts": { "dir": ".claude/contracts", "glob": "*.schema.json", "required": true, "minCount": 43 },
+      "policies": { "dir": ".claude/policies", "glob": "*.json", "required": true, "minCount": 11 },
+      "runtime": { "dir": ".claude/runtime", "glob": "*.mjs", "required": true, "minCount": 21 },
+      "runtimeLib": { "dir": ".claude/runtime/lib", "glob": "*.mjs", "required": true, "minCount": 22 },
+      "evaluations": { "dir": ".claude/evaluations", "glob": "*.json", "required": true, "minCount": 1 },
+      "gates": { "dir": ".claude/gates", "glob": "*.json", "required": true, "minCount": 1 },
+      "launchers": { "dir": ".claude/launchers", "glob": "*", "required": true, "minCount": 2 },
+      "workflows": { "dir": ".claude/workflows", "glob": "*.json", "required": true, "minCount": 6 },
+      "claudeDocs": { "dir": ".claude/docs", "glob": "*.md", "required": true, "minCount": 1 }
+    },
+    "requiredFiles": [
+      ".claude/ownership.json",
+      ".claude/settings.json",
+      ".claude/settings.local.example.json",
+      ".claude/.gitignore",
+      ".claude/docs/README.md",
+      ".claude/policies/authority.json",
+      ".claude/policies/capabilities.json",
+      ".claude/policies/destructive-operations.json",
+      ".claude/policies/evidence.json",
+      ".claude/policies/production.json",
+      ".claude/policies/scope.json",
+      ".claude/policies/supply-chain.json",
+      ".claude/policies/trust-boundaries.json",
+      ".claude/policies/impact-levels.json",
+      ".claude/policies/gate-matrix.json",
+      ".claude/gates/completion.json",
+      ".claude/evaluations/runtime-scenarios.json"
+    ],
+    "generatedPerInstall": [
+      ".claude/project-manifest.json",
+      "docs/NAMING_NORMALIZATION_CANONICAL_MAP.md",
+      "docs/NAMING_NORMALIZATION_STATUS.md",
+      "docs/NAMING_NORMALIZATION_REPORT.md",
+      ".claude/scheduled_tasks.lock"
+    ],
+    "notes": "project-manifest.json and NAMING_NORMALIZATION_CANONICAL_MAP.md are placeholders the installer creates empty and repo-intelligence populates per target project. scheduled_tasks.lock is a runtime-managed lock file (created/removed by .claude/runtime/lib/lock.mjs while a scheduled task holds it) and is intentionally absent from a clean distribution and from git (see .gitignore) — its presence means a task is currently running, not a shipped artifact. .claude/agents and .claude/skills are the single canonical source with no generated derivative elsewhere: there is no .agents/, .skills/, root AGENTS.md, or compat facade layer."
+  }
+}
